@@ -13,12 +13,18 @@ body,
 body {
 	margin: 0;
 	background:
-		radial-gradient(circle at top, rgba(14, 165, 233, 0.08), transparent 35%),
-		linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+		radial-gradient(circle at top, rgba(31, 79, 178, 0.08), transparent 28%),
+		linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
 	color: #0f172a;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
 }
 
 a {
 	color: inherit;
 	text-decoration: none;
+}
+
+* {
+	box-sizing: border-box;
 }
