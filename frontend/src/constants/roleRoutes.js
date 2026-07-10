@@ -6,13 +6,17 @@ export const roleRoutes = {
     footer: 'Giao diện dành cho quản trị viên',
     tabItems: [
       { label: 'Tổng quan', to: 'dashboard' },
-      { label: 'Người dùng', to: 'users' },
       { label: 'Hóa đơn', to: 'billing' },
       { label: 'Kho', to: 'inventory' },
+      { label: 'Bệnh nhân', to: 'patients' },
+      { label: 'Nha sĩ', to: 'dentists' },
+      { label: 'Khuyến mãi', to: 'promotions' },  
+      { label: 'Dịch vụ', to: 'services' },
+      { label: 'Cài đặt', to: 'settings' },
+
     ],
     pages: [
       { path: 'dashboard', title: 'Trang tổng quan Admin' },
-      { path: 'users', title: 'Quản lý người dùng' },
       { path: 'appointments', title: 'Quản lý lịch hẹn' },
       { path: 'patients', title: 'Quản lý bệnh nhân' },
       { path: 'dentists', title: 'Quản lý nha sĩ' },
@@ -22,6 +26,7 @@ export const roleRoutes = {
       { path: 'promotions', title: 'Quản lý khuyến mãi' },
       { path: 'notifications', title: 'Thông báo hệ thống' },
       { path: 'settings', title: 'Cài đặt hệ thống' },
+      { path: 'services', title: 'Quản lý dịch vụ' },
     ],
   },
   dentist: {
@@ -33,7 +38,11 @@ export const roleRoutes = {
       { label: 'Tổng quan', to: 'dashboard' },
       { label: 'Lịch hẹn', to: 'appointments' },
       { label: 'Điều trị', to: 'treatment-plans' },
-      { label: 'Bệnh án', to: 'medical-records' },
+      { label: 'Hồ sơ bệnh án', to: 'medical-records' },
+      { label: 'Đơn thuốc', to: 'prescriptions' },
+      { label: 'X-quang', to: 'xray-analysis' },
+      { label: 'Bệnh nhân', to: 'patients' },
+      { label: 'Thông báo', to: 'notifications' },
     ],
     pages: [
       { path: 'dashboard', title: 'Trang tổng quan Dentist' },
@@ -53,9 +62,12 @@ export const roleRoutes = {
     footer: 'Giao diện dành cho nhân viên',
     tabItems: [
       { label: 'Tổng quan', to: 'dashboard' },
-      { label: 'Tiếp nhận', to: 'appointments' },
+      { label: 'Lịch hẹn', to: 'appointments' },
+      { label: 'Bệnh nhân đang chờ', to: 'patients-waiting' },
       { label: 'Thanh toán', to: 'billing' },
       { label: 'Kho', to: 'inventory' },
+      { label: 'Nhập/Xuất', to: 'import-export' },
+      { label: 'Báo cáo', to: 'report' },
     ],
     pages: [
       { path: 'dashboard', title: 'Trang tổng quan Employee' },
@@ -63,7 +75,10 @@ export const roleRoutes = {
       { path: 'patients', title: 'Tra cứu bệnh nhân' },
       { path: 'billing', title: 'Thanh toán hóa đơn' },
       { path: 'inventory', title: 'Quản lý kho' },
+      { path: 'import-export', title: 'Nhập/Xuất vật tư' },
+      { path: 'report', title: 'Báo cáo' },
       { path: 'notifications', title: 'Thông báo nhân viên' },
+      { path: 'patients-waiting', title: 'Bệnh nhân đang chờ' },
     ],
   },
   patient: {
