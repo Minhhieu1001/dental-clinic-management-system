@@ -50,7 +50,7 @@ export default function PublicLayout() {
                   type="button"
                   className="rounded-full bg-[#1f4fb2] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#183f8d]"
                 >
-                  Đăng nhập
+                  Đặt lịch hẹn
                 </button>
               </div>
             </div>
