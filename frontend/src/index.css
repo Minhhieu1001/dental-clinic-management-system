@@ -12,12 +12,11 @@ body,
 
 body {
 	margin: 0;
-	background:
-		radial-gradient(circle at top, rgba(31, 79, 178, 0.08), transparent 28%),
-		linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
+	background: #ffffff;
 	color: #0f172a;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
+	overflow-x: hidden;
 }
 
 a {
