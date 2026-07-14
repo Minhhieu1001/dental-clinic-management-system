@@ -3,18 +3,22 @@ import Footer from './Footer.jsx'
 import Header from './Header.jsx'
 import TabBar from './TabBar.jsx'
 
-export default function RoleShell({ config }) {
+export default function RoleShell({ config, CustomHeader }) {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 lg:pl-64">
       <TabBar items={config.tabItems} />
 
-      <Header
-        roleLabel={config.roleLabel}
-        title={config.title}
-        subtitle={config.subtitle}
-      />
+      {CustomHeader ? (
+        <CustomHeader config={config} />
+      ) : (
+        <Header
+          roleLabel={config.roleLabel}
+          title={config.title}
+          subtitle={config.subtitle}
+        />
+      )}
 
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+      <main className="w-full px-2 py-4 sm:px-3 lg:px-4">
         <Outlet />
       </main>
 

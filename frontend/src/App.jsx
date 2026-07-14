@@ -1,7 +1,13 @@
 import AppRouter from './routes/AppRouter.jsx'
+import { Toaster } from 'react-hot-toast'
 
 function App() {
-  return <AppRouter />
+  return (
+    <>
+      <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
+      <AppRouter />
+    </>
+  )
 }
 
 export default App
