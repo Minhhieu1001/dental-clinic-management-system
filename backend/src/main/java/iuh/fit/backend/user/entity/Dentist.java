@@ -32,6 +32,9 @@ public class Dentist {
     private String licenseNumber;
 
     @Column(length = 255)
+    private String fullName;
+
+    @Column(length = 255)
     private String specialization;
 
     private Integer experienceYears;
