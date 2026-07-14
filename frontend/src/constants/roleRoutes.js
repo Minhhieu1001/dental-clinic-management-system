@@ -10,6 +10,7 @@ export const roleRoutes = {
       { label: 'Kho', to: 'inventory' },
       { label: 'Bệnh nhân', to: 'patients' },
       { label: 'Nha sĩ', to: 'dentists' },
+      { label: 'Nhân viên', to: 'employees' },
       { label: 'Khuyến mãi', to: 'promotions' },  
       { label: 'Dịch vụ', to: 'services' },
       { label: 'Cài đặt', to: 'settings' },

@@ -8,7 +8,7 @@ export default function PagePlaceholder({ role, title }) {
         {title}
       </h2>
       <p className="mt-3 max-w-lg text-sm text-slate-500">
-        
+
       </p>
     </section>
   )
