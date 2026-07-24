@@ -1,5 +1,6 @@
 package iuh.fit.backend.user.controller;
 
+import iuh.fit.backend.user.dto.DentistListResponse;
 import iuh.fit.backend.user.dto.DentistRequest;
 import iuh.fit.backend.user.dto.DentistResponse;
 import iuh.fit.backend.user.service.DentistService;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -29,9 +31,19 @@ public class DentistController {
         return dentistService.getAllDentists();
     }
 
+    @GetMapping("/list")
+    public List<DentistListResponse> getDentistsList() {
+        return dentistService.getDentistsList();
+    }
+
+    @GetMapping("/stats")
+    public Map<String, Long> getDentistStats() {
+        return dentistService.getDentistStats();
+    }
+
 
     @GetMapping("/{id}")
-    public DentistResponse getDentistById(@PathVariable UUID id) {
+    public DentistListResponse getDentistById(@PathVariable UUID id) {
         return dentistService.getDentistById(id);
     }
 
@@ -42,7 +54,7 @@ public class DentistController {
     }
 
     @PutMapping("/{id}")
-    public DentistResponse updateDentist(@PathVariable UUID id, @RequestBody DentistRequest request) {
+    public DentistListResponse updateDentist(@PathVariable UUID id, @RequestBody DentistRequest request) {
         return dentistService.updateDentist(id, request);
     }
 

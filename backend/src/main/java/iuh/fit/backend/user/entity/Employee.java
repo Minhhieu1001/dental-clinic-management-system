@@ -28,6 +28,9 @@ public class Employee {
     @JoinColumn(name = "user_id")
     private User user;
 
+    @Column(length = 500)
+    private String fullName;
+
     @Enumerated(EnumType.STRING)
     private Position position;
 
@@ -37,6 +40,12 @@ public class Employee {
     private LocalDateTime hireDate;
 
     private Boolean status;
+
+    @Column(length = 50)
+    private String gender;
+
+    @Column(length = 500)
+    private String address;
 
     @Builder.Default
     @OneToMany(mappedBy = "employee", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})

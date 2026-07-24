@@ -44,12 +44,7 @@ public class AuthServiceImpl implements AuthService {
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
             User user = userDetails.getUser();
 
-            if (user.getStatus() == StatusUser.BLOCK) {
-                throw new AppException(ErrorCode.ACCOUNT_LOCKED);
-            }
-            if (user.getStatus() == StatusUser.INACTIVE) {
-                throw new AppException(ErrorCode.ACCOUNT_INACTIVE);
-            }
+            validateAccountStatus(user);
 
             String accessToken = jwtTokenProvider.generateAccessToken(userDetails);
             String refreshToken = jwtTokenProvider.generateRefreshToken(userDetails);
@@ -89,14 +84,17 @@ public class AuthServiceImpl implements AuthService {
         String refreshToken = extractTokenFromCookie(request, "refresh_token");
 
         if (refreshToken == null) {
+            clearAuthCookies(response);
             throw new AppException(ErrorCode.REFRESH_TOKEN_NOT_FOUND);
         }
 
         if (!jwtTokenProvider.validateToken(refreshToken)) {
+            clearAuthCookies(response);
             throw new AppException(ErrorCode.INVALID_TOKEN);
         }
 
         if (!jwtTokenProvider.isRefreshToken(refreshToken)) {
+            clearAuthCookies(response);
             throw new AppException(ErrorCode.INVALID_TOKEN,
                     "Token không phải là Refresh Token");
         }
@@ -104,6 +102,12 @@ public class AuthServiceImpl implements AuthService {
         String email = jwtTokenProvider.getEmailFromToken(refreshToken);
         CustomUserDetails userDetails =
                 (CustomUserDetails) userDetailsService.loadUserByUsername(email);
+        try {
+            validateAccountStatus(userDetails.getUser());
+        } catch (AppException ex) {
+            clearAuthCookies(response);
+            throw ex;
+        }
 
         String newAccessToken = jwtTokenProvider.generateAccessToken(userDetails);
 
@@ -113,6 +117,12 @@ public class AuthServiceImpl implements AuthService {
         log.info("Access token refreshed for user: {}", email);
 
         return toAuthResponse(userDetails.getUser());
+    }
+
+    private void clearAuthCookies(HttpServletResponse response) {
+        response.addHeader(HttpHeaders.SET_COOKIE, cookieUtils.createCleanAccessTokenCookie().toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, cookieUtils.createCleanRefreshTokenCookie().toString());
+        SecurityContextHolder.clearContext();
     }
 
     @Override
@@ -135,6 +145,15 @@ public class AuthServiceImpl implements AuthService {
                 user.getRole().name(),
                 user.getAvatarUrl()
         );
+    }
+
+    private void validateAccountStatus(User user) {
+        if (user.getStatus() == StatusUser.BLOCK) {
+            throw new AppException(ErrorCode.ACCOUNT_LOCKED);
+        }
+        if (user.getStatus() == StatusUser.INACTIVE) {
+            throw new AppException(ErrorCode.ACCOUNT_INACTIVE);
+        }
     }
 
     private String extractTokenFromCookie(HttpServletRequest request, String cookieName) {
