@@ -7,9 +7,7 @@ public record DentistResponse(
         UUID userId,
         String username,
         String email,
-        String licenseNumber,
-        String specialization,
         Integer experienceYears,
-        String qualification
+        String education
 ) {
 }

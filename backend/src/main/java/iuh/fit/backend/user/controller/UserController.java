@@ -2,6 +2,7 @@ package iuh.fit.backend.user.controller;
 
 import iuh.fit.backend.user.dto.UserRequest;
 import iuh.fit.backend.user.dto.UserResponse;
+import iuh.fit.backend.user.dto.UpdateUserStatusRequest;
 import iuh.fit.backend.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -53,6 +54,11 @@ public class UserController {
     @PutMapping("/{id}")
     public UserResponse updateUser(@PathVariable UUID id, @RequestBody UserRequest request) {
         return userService.updateUser(id, request);
+    }
+
+    @PutMapping("/{id}/status")
+    public UserResponse updateUserStatus(@PathVariable UUID id, @RequestBody UpdateUserStatusRequest request) {
+        return userService.updateUserStatus(id, request.status());
     }
 
     @DeleteMapping("/{id}")

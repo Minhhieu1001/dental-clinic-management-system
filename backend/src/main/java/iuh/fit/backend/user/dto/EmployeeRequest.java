@@ -11,6 +11,9 @@ public record EmployeeRequest(
         Position position,
         BigDecimal salary,
         LocalDateTime hireDate,
-        Boolean status
+        Boolean status,
+        String gender,
+        String address
 ) {
 }
+

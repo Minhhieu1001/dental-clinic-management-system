@@ -8,6 +8,7 @@ import iuh.fit.backend.treatment.entity.TreatmentPlan;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -29,15 +30,30 @@ public class Dentist {
     private User user;
 
     @Column(length = 255)
-    private String licenseNumber;
+    private String fullName;
+
+    @Column(length = 50)
+    private String gender;
+
+    private LocalDate dateOfBirth;
 
     @Column(length = 255)
-    private String specialization;
+    private String address;
+
+    @Column(length = 255)
+    private String education;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
 
     private Integer experienceYears;
+    @Builder.Default
+    @OneToMany(mappedBy = "dentist", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<DentistSpecialization> dentistSpecializations = new ArrayList<>();
 
-    @Column(length = 255)
-    private String qualification;
+    @Builder.Default
+    @OneToMany(mappedBy = "dentist", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Certificate> certificates = new ArrayList<>();
 
     @Builder.Default
     @OneToMany(mappedBy = "dentist", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
@@ -58,4 +74,6 @@ public class Dentist {
     @Builder.Default
     @OneToMany(mappedBy = "dentist", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<TreatmentPlan> treatmentPlans = new ArrayList<>();
+
+
 }
