@@ -24,6 +24,16 @@ export const getReviews = async () => {
   return response.data
 }
 
+export const getPromotions = async () => {
+  const response = await apiClient.get('/promotions')
+  return response.data
+}
+
+export const getPromotion = async (id) => {
+  const response = await apiClient.get(`/promotions/${id}`)
+  return response.data
+}
+
 export const createAppointment = async (bookingData) => {
   const response = await apiClient.post('/appointments', bookingData)
   return response.data

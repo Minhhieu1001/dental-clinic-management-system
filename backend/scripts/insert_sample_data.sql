@@ -225,14 +225,23 @@ INSERT INTO invoice_details (id, invoice_id, service_id, prescription_id, quanti
 ('91000000-0000-0000-0000-000000000005', '90000000-0000-0000-0000-000000000005', '60000000-0000-0000-0000-000000000005', '81000000-0000-0000-0000-000000000005', 1, 1802500.00, 1802500.00)
 ON CONFLICT (id) DO NOTHING;
 
--- Promotions
-INSERT INTO promotions (id, title, description, discount_percent, start_date, end_date) VALUES
-('a0000000-0000-0000-0000-000000000001', 'New patient checkup', 'Discount for first-time patients.', 10.00, '2026-07-01 00:00:00', '2026-07-31 23:59:59'),
-('a0000000-0000-0000-0000-000000000002', 'Scaling summer offer', 'Discount for scaling and polishing.', 15.00, '2026-07-01 00:00:00', '2026-08-31 23:59:59'),
-('a0000000-0000-0000-0000-000000000003', 'Family dental care', 'Family package service discount.', 12.50, '2026-07-15 00:00:00', '2026-09-15 23:59:59'),
-('a0000000-0000-0000-0000-000000000004', 'Whitening campaign', 'Limited offer for teeth whitening.', 20.00, '2026-07-01 00:00:00', '2026-07-31 23:59:59'),
-('a0000000-0000-0000-0000-000000000005', 'Root canal support', 'Support discount for root canal treatment.', 8.00, '2026-07-01 00:00:00', '2026-10-31 23:59:59')
-ON CONFLICT (id) DO NOTHING;
+-- Promotions: dữ liệu được đọc trực tiếp từ PostgreSQL qua GET /api/promotions.
+-- Các chương trình đều còn hiệu lực tại thời điểm seed (tháng 07/2026).
+ALTER TABLE promotions ADD COLUMN IF NOT EXISTS image_url varchar(1000);
+
+INSERT INTO promotions (id, title, description, image_url, discount_percent, start_date, end_date) VALUES
+('a0000000-0000-0000-0000-000000000001', 'Khám răng lần đầu – Ưu đãi khách hàng mới', 'Áp dụng cho khách hàng lần đầu thăm khám tại Crown Dental. Bao gồm khám tổng quát và tư vấn kế hoạch điều trị cùng bác sĩ.', 'https://images.unsplash.com/photo-1606811971618-4486d14f3f99?auto=format&fit=crop&w=1200&q=85', 10.00, '2026-07-01 00:00:00', '2026-07-31 23:59:59'),
+('a0000000-0000-0000-0000-000000000002', 'Chăm sóc răng miệng mùa hè', 'Giảm giá dịch vụ lấy cao răng và đánh bóng. Phù hợp cho khách hàng muốn làm sạch mảng bám, chăm sóc nướu và duy trì hơi thở thơm mát.', 'https://images.unsplash.com/photo-1550831107-1553da8c8464?auto=format&fit=crop&w=1200&q=85', 15.00, '2026-07-01 00:00:00', '2026-08-31 23:59:59'),
+('a0000000-0000-0000-0000-000000000003', 'Gói chăm sóc răng miệng cho gia đình', 'Ưu đãi dành cho gia đình có nhu cầu điều trị sâu răng bằng vật liệu composite. Giá được áp dụng trên từng răng điều trị.', 'https://images.unsplash.com/photo-1606265752439-1f18756aa2c9?auto=format&fit=crop&w=1200&q=85', 12.50, '2026-07-15 00:00:00', '2026-09-15 23:59:59'),
+('a0000000-0000-0000-0000-000000000004', 'Tẩy trắng răng Zoom WhiteSpeed', 'Ưu đãi tẩy trắng răng tại ghế bằng công nghệ Zoom WhiteSpeed, có thăm khám và đánh giá tình trạng men răng trước điều trị.', 'https://images.unsplash.com/photo-1609840114035-3c981b782dfe?auto=format&fit=crop&w=1200&q=85', 20.00, '2026-07-01 00:00:00', '2026-08-15 23:59:59'),
+('a0000000-0000-0000-0000-000000000005', 'Hỗ trợ điều trị tủy răng', 'Giảm chi phí điều trị tủy cho khách hàng có chỉ định từ bác sĩ sau khi thăm khám và chụp phim cần thiết.', 'https://images.unsplash.com/photo-1581585097435-8e2a4d0f5f8f?auto=format&fit=crop&w=1200&q=85', 8.00, '2026-07-01 00:00:00', '2026-10-31 23:59:59')
+ON CONFLICT (id) DO UPDATE SET
+title = EXCLUDED.title,
+description = EXCLUDED.description,
+image_url = EXCLUDED.image_url,
+discount_percent = EXCLUDED.discount_percent,
+start_date = EXCLUDED.start_date,
+end_date = EXCLUDED.end_date;
 
 -- Promotion services
 INSERT INTO promotion_services (id, promotion_id, service_id) VALUES
@@ -241,6 +250,8 @@ INSERT INTO promotion_services (id, promotion_id, service_id) VALUES
 ('a1000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000003', '60000000-0000-0000-0000-000000000003'),
 ('a1000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000004', '60000000-0000-0000-0000-000000000005'),
 ('a1000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000005', '60000000-0000-0000-0000-000000000004')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET
+promotion_id = EXCLUDED.promotion_id,
+service_id = EXCLUDED.service_id;
 
 COMMIT;

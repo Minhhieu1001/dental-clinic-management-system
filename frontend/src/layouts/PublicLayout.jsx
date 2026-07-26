@@ -30,12 +30,11 @@ export default function PublicLayout() {
 
             {/* Logo CROWN Dental */}
             <NavLink to="/" className="flex items-center gap-3 flex-shrink-0 select-none">
-              <div className="flex flex-col items-center justify-center w-12 h-12 bg-white border-2 border-[#1f4fb2] rounded-xl">
-                <div className="flex items-center gap-1">
-                  <div className="w-2.5 h-2.5 bg-[#1f4fb2]" style={{ clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' }} />
-                  <div className="w-2.5 h-2.5 bg-[#00a859]" style={{ clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' }} />
-                </div>
-              </div>
+              <img
+                src="/logo.png"
+                alt="Crown Dental Logo"
+                className="h-14 w-14 object-contain rounded-xl"
+              />
               <div className="leading-tight">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">NHA KHOA</p>
                 <h1 className="text-2xl font-black tracking-tight text-[#1f4fb2] leading-none my-0.5">
@@ -79,21 +78,22 @@ export default function PublicLayout() {
               {/* Nút Hotline */}
               <a
                 href="tel:19008059"
-                className="flex items-center justify-center gap-2.5 rounded-full bg-[#edf3ff] px-6 h-[46px] text-sm font-bold text-[#1f64f2] hover:bg-[#e1ecff] transition"
+                className="flex items-center justify-center gap-2 rounded-full bg-[#ebf3ff] px-6 h-[44px] text-[15px] font-black text-[#1f64f2] hover:bg-[#dfeaff] transition duration-200"
               >
-                <svg className="h-4 w-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                <svg className="h-5 w-5 mr-1" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.57a1 1 0 00-1.01.24l-2.2 2.2a15.045 15.045 0 01-6.59-6.59l2.2-2.21a.96.96 0 00.25-1C9.17 6.36 8.97 5.17 8.97 3.94c0-.55-.45-1-1-1H4.42c-.55 0-1 .45-1 1C3.42 14.17 10.33 21 19.42 21c.55 0 1-.45 1-1v-3.62c0-.55-.45-1-1-1z" />
                 </svg>
                 1900 8059
               </a>
               
-              {/* Nút Đặt lịch hẹn - Chữ Trắng tinh tế trên nền Gradient Xanh Đậm trùng khớp mẫu */}
+              {/* Nút Đặt lịch hẹn */}
               <Link
                 to="/contact"
-                className="flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#2c4b8b] to-[#1c3266] px-6 h-[46px] text-sm font-semibold text-white hover:opacity-95 shadow-md shadow-blue-900/5 transition"
+                className="flex items-center justify-center gap-2.5 rounded-full px-6 h-[44px] text-[15px] font-bold text-white transition duration-200 shadow-md shadow-blue-900/5 hover:opacity-95"
+                style={{ background: 'linear-gradient(90deg, #3E587B 0%, #394579 50%, #363876 100%)' }}
               >
-                <svg className="h-4 w-4 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                <svg className="h-5 w-5 mr-1" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 002 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2zm-7 5H7v2h5v-2zm4 0h-3v2h3v-2zm-4 4H7v2h5v-2zm4 0h-3v2h3v-2z" />
                 </svg>
                 Đặt lịch hẹn
               </Link>
@@ -102,29 +102,82 @@ export default function PublicLayout() {
 
           {/* Primary Navigation */}
           <div className="flex justify-center border-t border-slate-100">
-            <nav className="flex items-center gap-1 overflow-x-auto py-1 no-scrollbar">
-              {navItems.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={item.to === '/'}
-                  className={({ isActive }) =>
-                    [
-                      'relative whitespace-nowrap px-4 py-3 text-[14.5px] font-bold transition-colors flex items-center gap-1',
-                      isActive
-                        ? 'text-[#1f4fb2] after:absolute after:bottom-0 after:left-4 after:right-4 after:h-[3px] after:bg-[#1f4fb2] after:rounded-full'
-                        : 'text-[#132c6b] hover:text-[#1f4fb2]',
-                    ].join(' ')
-                  }
-                >
-                  {item.label}
-                  {item.hasDropdown && (
-                    <svg className="h-3.5 w-3.5 mt-0.5 text-slate-400 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  )}
-                </NavLink>
-              ))}
+            <nav className="flex items-center gap-1 overflow-visible py-1 no-scrollbar">
+              {navItems.map((item) => {
+                if (item.hasDropdown) {
+                  return (
+                    <div key={item.to} className="relative group">
+                      <NavLink
+                        to={item.to}
+                        className={({ isActive }) =>
+                          [
+                            'relative whitespace-nowrap px-4 py-3 text-[14.5px] font-bold transition-colors flex items-center gap-1',
+                            isActive
+                              ? 'text-[#1f4fb2] after:absolute after:bottom-0 after:left-4 after:right-4 after:h-[3px] after:bg-[#1f4fb2] after:rounded-full'
+                              : 'text-[#132c6b] hover:text-[#1f4fb2]',
+                          ].join(' ')
+                        }
+                      >
+                        {item.label}
+                        <svg className="h-3.5 w-3.5 mt-0.5 text-slate-400 stroke-[2.5] transition-transform group-hover:rotate-180 duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </NavLink>
+                      {/* Dropdown Menu */}
+                      <div className="absolute left-0 top-full pt-1 w-64 rounded-2xl bg-white border border-slate-100 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 py-3">
+                        <Link
+                          to="/services?tab=IMPLANT"
+                          className="block px-6 py-3.5 text-[15px] font-bold text-[#1f4fb2] hover:text-[#0f3a9e] hover:bg-slate-50 transition-colors"
+                        >
+                          Trồng Răng Implant
+                        </Link>
+                        <Link
+                          to="/services?tab=NIENG_RANG"
+                          className="block px-6 py-3.5 text-[15px] font-bold text-[#1f4fb2] hover:text-[#0f3a9e] hover:bg-slate-50 transition-colors"
+                        >
+                          Niềng Răng
+                        </Link>
+                        <Link
+                          to="/services?tab=KHAM_DIEU_TRI"
+                          className="block px-6 py-3.5 text-[15px] font-bold text-[#1f4fb2] hover:text-[#0f3a9e] hover:bg-slate-50 transition-colors"
+                        >
+                          Nha Khoa Tổng Quát
+                        </Link>
+                        <Link
+                          to="/services?tab=RANG_SU"
+                          className="block px-6 py-3.5 text-[15px] font-bold text-[#1f4fb2] hover:text-[#0f3a9e] hover:bg-slate-50 transition-colors"
+                        >
+                          Nha Khoa Thẩm Mỹ
+                        </Link>
+                        <Link
+                          to="/services?tab=NIENG_RANG&filter=KIDS"
+                          className="block px-6 py-3.5 text-[15px] font-bold text-[#1f4fb2] hover:text-[#0f3a9e] hover:bg-slate-50 transition-colors"
+                        >
+                          Nha Khoa Trẻ Em
+                        </Link>
+                      </div>
+                    </div>
+                  )
+                }
+
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.to === '/'}
+                    className={({ isActive }) =>
+                      [
+                        'relative whitespace-nowrap px-4 py-3 text-[14.5px] font-bold transition-colors flex items-center gap-1',
+                        isActive
+                          ? 'text-[#1f4fb2] after:absolute after:bottom-0 after:left-4 after:right-4 after:h-[3px] after:bg-[#1f4fb2] after:rounded-full'
+                          : 'text-[#132c6b] hover:text-[#1f4fb2]',
+                      ].join(' ')
+                    }
+                  >
+                    {item.label}
+                  </NavLink>
+                )
+              })}
             </nav>
           </div>
 
@@ -142,12 +195,11 @@ export default function PublicLayout() {
           <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-4">
             <div>
               <div className="flex items-center gap-3 mb-4">
-                <div className="flex flex-col items-center justify-center w-10 h-10 bg-white border-2 border-[#1f4fb2] rounded-md">
-                  <div className="flex items-center gap-0.5">
-                    <div className="w-2 h-2 bg-[#1f4fb2]" style={{ clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' }} />
-                    <div className="w-2 h-2 bg-[#00a859]" style={{ clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' }} />
-                  </div>
-                </div>
+                <img
+                  src="/logo.png"
+                  alt="Crown Dental Logo"
+                  className="h-12 w-12 object-contain"
+                />
                 <div>
                   <p className="text-[8px] text-slate-300 uppercase tracking-widest">NHA KHOA</p>
                   <h3 className="text-base font-black tracking-tight text-white leading-none">CROWN Dental</h3>

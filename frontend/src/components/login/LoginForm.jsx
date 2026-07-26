@@ -105,13 +105,13 @@ export default function LoginForm({
 
           {/* Logo (Visible mainly on mobile where hero is hidden) */}
           <motion.div variants={itemVariants} className="flex flex-col items-center justify-center mb-6 lg:hidden">
-            <div className="text-blue-600 mb-2">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-10 h-10">
-                <path d="M12 2C9.5 2 7 4 7 7c0 2 .5 3.5 1 5 .5 1.5 1 3 1 5 0 1.5.5 3 1.5 3s1.5-1 1.5-2.5V16c0-.5.5-1 1-1s1 .5 1 1v1.5c0 1.5.5 2.5 1.5 2.5s1.5-1.5 1.5-3c0-2 .5-3.5 1-5s1-3 1-5c0-3-2.5-5-5-5z"></path>
-              </svg>
-            </div>
+            <img
+              src="/logo.png"
+              alt="Crown Dental Logo"
+              className="w-14 h-14 object-contain rounded-xl mb-2"
+            />
             <div className="text-center">
-              <span className="text-slate-800 text-lg font-bold tracking-tight block leading-none">DentalCare</span>
+              <span className="text-slate-800 text-lg font-bold tracking-tight block leading-none">Crown Dental</span>
             </div>
           </motion.div>
 

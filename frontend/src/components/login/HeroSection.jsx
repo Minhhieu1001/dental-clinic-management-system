@@ -68,14 +68,14 @@ export default function HeroSection() {
     >
       {/* Top Logo */}
       <motion.div variants={itemVariants} className="absolute top-10 left-12 xl:left-24 flex items-center gap-2">
-        <div className="text-blue-600">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-8 h-8">
-            <path d="M12 2C9.5 2 7 4 7 7c0 2 .5 3.5 1 5 .5 1.5 1 3 1 5 0 1.5.5 3 1.5 3s1.5-1 1.5-2.5V16c0-.5.5-1 1-1s1 .5 1 1v1.5c0 1.5.5 2.5 1.5 2.5s1.5-1.5 1.5-3c0-2 .5-3.5 1-5s1-3 1-5c0-3-2.5-5-5-5z"></path>
-          </svg>
-        </div>
+        <img
+          src="/logo.png"
+          alt="Crown Dental Logo"
+          className="w-10 h-10 object-contain rounded-lg"
+        />
         <div>
           <span className="text-slate-800 text-xl font-bold tracking-tight block leading-none">
-            DentalCare
+            Crown Dental
           </span>
           <span className="text-slate-500 text-xs font-medium">Smart Clinic System</span>
         </div>

@@ -102,26 +102,63 @@ const SERVICE_IMAGES = {
 
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&q=80&w=300'
 
-// ─────────────────────────────────────────────────
-// Hero showcase data
-// ─────────────────────────────────────────────────
-const HERO_SHOWCASE_CARDS = [
+// ─────────────────────// Hero showcase slides data
+const HERO_SLIDES = [
   {
-    name: 'Ca sĩ Min',
-    img: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=420&h=560',
+    eyebrow: 'NHA KHOA CROWN DENTAL',
+    title: 'Không gian phòng khám chuyên nghiệp, hiện đại',
+    description: 'Trải nghiệm thăm khám thoải mái với môi trường sạch sẽ, sáng sủa và trang thiết bị đồng bộ theo tiêu chuẩn cao.',
+    tags: ['Phòng chờ sáng', 'Thiết bị hiện đại', 'Quy trình chuyên nghiệp'],
+    img: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=1600',
+    badgeText: 'CROWN Dental Clinic',
+    cardEyebrow: 'Phòng khám tiêu chuẩn',
+    cardTitle: 'Không gian thăm khám chuyên nghiệp',
+    cardDesc: 'Sáng, sạch, hiện đại và tạo cảm giác tin cậy ngay từ khi bước vào.'
   },
   {
-    name: 'MC Khánh Vy',
-    img: 'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&q=80&w=420&h=560',
+    eyebrow: 'ĐỘI NGŨ CHUYÊN GIA',
+    title: 'Đội ngũ bác sĩ tu nghiệp nước ngoài uy tín',
+    description: '100% các bác sĩ chuyên khoa tốt nghiệp Đại học Y Dược danh tiếng, hoàn thành nhiều khóa tu nghiệp chuyên sâu tại Singapore, Mỹ, và châu Âu.',
+    tags: ['Bác sĩ chuyên khoa', 'Tu nghiệp Hoa Kỳ', '10+ năm kinh nghiệm'],
+    img: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=1000',
+    badgeText: 'CROWN Dental Experts',
+    cardEyebrow: 'Đội ngũ chuyên môn',
+    cardTitle: 'Tận tâm & Chuyên nghiệp',
+    cardDesc: 'Mang lại kết quả điều trị tối ưu và sự an tâm tuyệt đối cho khách hàng.'
   },
   {
-    name: 'Người mẫu Salim',
-    img: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=420&h=560',
+    eyebrow: 'CÔNG NGHỆ TIÊN TIẾN',
+    title: 'Trang thiết bị chuẩn quốc tế hàng đầu',
+    description: 'Sở hữu máy quét dấu răng iTero Element 5D, hệ thống chụp phim CT Cone Beam hiện đại và phòng phẫu thuật vô trùng khép kín theo tiêu chuẩn Bộ Y tế.',
+    tags: ['iTero Element 5D', 'CT Cone Beam', 'Vô trùng tuyệt đối'],
+    img: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&q=80&w=1000',
+    badgeText: 'CROWN Dental Technology',
+    cardEyebrow: 'Công nghệ nha khoa',
+    cardTitle: 'Trang thiết bị tối tân',
+    cardDesc: 'Hỗ trợ chẩn đoán chính xác tuyệt đối và điều trị nhẹ nhàng, nhanh chóng.'
   },
   {
-    name: 'Vlogger Trinh Phạm',
-    img: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&q=80&w=420&h=560',
+    eyebrow: 'DỊCH VỤ TẬN TÂM',
+    title: 'Chế độ bảo hành dài hạn & trả góp 0%',
+    description: 'Cam kết chất lượng điều trị bằng văn bản, chế độ bảo hành rõ ràng, minh bạch cùng chính sách hỗ trợ trả góp lãi suất 0% liên kết với nhiều ngân hàng.',
+    tags: ['Bảo hành dài hạn', 'Trả góp 0%', 'Hỗ trợ 24/7'],
+    img: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&q=80&w=1000',
+    badgeText: 'CROWN Care & Warranty',
+    cardEyebrow: 'Chế độ hậu mãi',
+    cardTitle: 'Cam kết chất lượng',
+    cardDesc: 'Đồng hành cùng nụ cười của bạn trên hành trình chăm sóc răng miệng.'
   },
+  {
+    eyebrow: 'HỆ THỐNG PHÒNG KHÁM',
+    title: 'Không gian sang trọng chuẩn Singapore',
+    description: 'Hệ thống phòng khám sở hữu không gian thiết kế sang trọng, hiện đại, mang lại cảm giác thư giãn thoải mái như đi spa cho mọi khách hàng.',
+    tags: ['Chuẩn Singapore', 'Phòng khám VIP', 'Thư giãn thoải mái'],
+    img: 'https://images.unsplash.com/photo-1504813184591-015578c77e5f?auto=format&fit=crop&q=80&w=1000',
+    badgeText: 'CROWN Singapore Standard',
+    cardEyebrow: 'Không gian VIP',
+    cardTitle: 'Trải nghiệm thư thái',
+    cardDesc: 'Xóa bỏ hoàn toàn nỗi sợ nha khoa với không gian thư giãn lý tưởng.'
+  }
 ]
 
 export default function Home() {
@@ -144,7 +181,8 @@ export default function Home() {
   const [bookingStatus, setBookingStatus] = useState({ loading: false, success: false, error: null, data: null })
 
   // Carousel state now follows the hero showcase cards
-  const SLIDE_COUNT = HERO_SHOWCASE_CARDS.length
+  const SLIDE_COUNT = HERO_SLIDES.length
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -155,10 +193,14 @@ export default function Home() {
           getReviews(),
         ])
         setServices(servicesData)
-        setDentists(dentistsData)
+        // Only show dentists that have complete data (name + avatar)
+        const validDentists = dentistsData.filter(
+          (d) => (d.fullName || d.username) && d.avatarUrl
+        )
+        setDentists(validDentists)
         setReviews(reviewsData)
-        if (dentistsData.length > 0) {
-          setActiveDentist(dentistsData[0])
+        if (validDentists.length > 0) {
+          setActiveDentist(validDentists[0])
         }
       } catch (err) {
         console.error('Error fetching dynamic data:', err)
@@ -227,16 +269,16 @@ export default function Home() {
             <div className="grid items-stretch gap-0 lg:grid-cols-[0.95fr_1.05fr]">
               <div className="order-2 flex items-center bg-[linear-gradient(135deg,#f5f9ff_0%,#eaf1fd_100%)] px-5 py-7 sm:px-8 sm:py-10 lg:order-1">
                 <div className="mx-auto max-w-xl text-center lg:text-left">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.34em] text-[#3557a8]">NHA KHOA CROWN DENTAL</p>
-                  <h2 className="mt-3 text-[clamp(1.9rem,4vw,3.4rem)] font-black leading-tight text-[#1f4fb2]">
-                    Không gian phòng khám chuyên nghiệp, hiện đại
+                  <p className="text-[11px] font-bold uppercase tracking-[0.34em] text-[#3557a8]">{HERO_SLIDES[activeSlide]?.eyebrow}</p>
+                  <h2 className="mt-3 text-[clamp(1.9rem,4vw,3.4rem)] font-black leading-tight text-[#1f4fb2] min-h-[3.6em] flex items-center justify-center lg:justify-start">
+                    {HERO_SLIDES[activeSlide]?.title}
                   </h2>
-                  <p className="mt-4 text-sm sm:text-base leading-relaxed text-slate-600">
-                    Trải nghiệm thăm khám thoải mái với môi trường sạch sẽ, sáng sủa và trang thiết bị đồng bộ theo tiêu chuẩn cao.
+                  <p className="mt-4 text-sm sm:text-base leading-relaxed text-slate-600 min-h-[4.5em]">
+                    {HERO_SLIDES[activeSlide]?.description}
                   </p>
 
-                  <div className="mt-5 flex flex-wrap justify-center gap-2 lg:justify-start">
-                    {['Phòng chờ sáng', 'Thiết bị hiện đại', 'Quy trình chuyên nghiệp'].map((item) => (
+                  <div className="mt-5 flex flex-wrap justify-center gap-2 lg:justify-start min-h-[2.5em] items-center">
+                    {HERO_SLIDES[activeSlide]?.tags.map((item) => (
                       <span
                         key={item}
                         className="inline-flex items-center rounded-full bg-white px-3 py-2 text-[12px] font-semibold text-[#3557a8] ring-1 ring-[#dbe5f8] shadow-sm"
@@ -245,25 +287,39 @@ export default function Home() {
                       </span>
                     ))}
                   </div>
+
+                  {/* Slide Indicators */}
+                  <div className="mt-6 flex justify-center lg:justify-start gap-1.5">
+                    {HERO_SLIDES.map((_, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setActiveSlide(idx)}
+                        className={`h-1.5 rounded-full transition-all duration-300 ${
+                          activeSlide === idx ? 'w-6 bg-[#1f4fb2]' : 'w-1.5 bg-slate-300 hover:bg-slate-400'
+                        }`}
+                        aria-label={`Go to slide ${idx + 1}`}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
 
               <div className="order-1 relative min-h-[300px] overflow-hidden lg:order-2 lg:min-h-[420px]">
                 <img
-                  src="https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=1600"
-                  alt="Phòng khám nha khoa chuyên nghiệp"
-                  className="h-full w-full object-cover object-center"
+                  src={HERO_SLIDES[activeSlide]?.img}
+                  alt={HERO_SLIDES[activeSlide]?.title}
+                  className="h-full w-full object-cover object-center transition-all duration-500 ease-in-out"
                 />
                 <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.06)_0%,rgba(255,255,255,0)_42%,rgba(19,35,97,0.12)_100%)]" />
 
                 <div className="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-1 text-[11px] font-semibold text-[#3557a8] shadow-sm ring-1 ring-[#dbe5f8]">
-                  CROWN Dental Clinic
+                  {HERO_SLIDES[activeSlide]?.badgeText}
                 </div>
 
                 <div className="absolute bottom-4 left-4 right-4 max-w-[360px] rounded-[22px] bg-white/94 px-4 py-3 shadow-sm backdrop-blur">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#00a859]">Phòng khám tiêu chuẩn</p>
-                  <p className="mt-1 text-lg font-black text-[#1f4fb2]">Sáng, sạch và chuyên nghiệp ngay từ cái nhìn đầu tiên</p>
-                  <p className="text-sm text-slate-600">Hình ảnh phòng khám thực tế với không gian hiện đại và thân thiện hơn cho khách hàng.</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#00a859]">{HERO_SLIDES[activeSlide]?.cardEyebrow}</p>
+                  <p className="mt-1 text-lg font-black text-[#1f4fb2]">{HERO_SLIDES[activeSlide]?.cardTitle}</p>
+                  <p className="text-sm text-slate-600">{HERO_SLIDES[activeSlide]?.cardDesc}</p>
                 </div>
               </div>
             </div>
@@ -306,36 +362,121 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 3. Comprehensive dental care */}
-      <section id="care-services-section" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-12">
-        <div className="text-center space-y-3 mb-10">
-          <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#00a859]">TIÊU CHUẨN ĐIỀU TRỊ CHẤT LƯỢNG</p>
-          <h3 className="text-2xl font-black text-[#1f4fb2] sm:text-3xl">
-            Chăm Sóc Răng Miệng Toàn Diện
-          </h3>
-          <p className="max-w-2xl mx-auto text-sm text-slate-500">
-            Hệ thống nha khoa uy tín cung cấp đầy đủ giải pháp từ nha khoa tổng quát, phục hình thẩm mỹ đến nắn chỉnh răng chuyên sâu.
-          </p>
-        </div>
+      {/* 3. Why Choose Crown Dental — Modern stats + feature cards */}
+      <section id="why-us-section" className="relative overflow-hidden py-20 mt-4 bg-gradient-to-b from-white via-[#f4f7fe] to-white border-y border-[#eef2fa]">
+        {/* Soft decorative background gradients (z-0 to sit behind content) */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(31,79,178,0.03),transparent_50%)] z-0 pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(0,168,89,0.03),transparent_50%)] z-0 pointer-events-none" />
 
-        <div className="grid gap-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-          {services.map((item) => (
-            <div
-              key={item.id}
-              className="flex flex-col items-center bg-white rounded-2xl p-4 border border-slate-100 shadow-sm hover:shadow-md transition text-center"
-            >
-              <div className="relative h-20 w-20 overflow-hidden rounded-full border-2 border-slate-100 shadow-inner">
-                <img
-                  src={SERVICE_IMAGES[item.serviceName] || DEFAULT_IMAGE}
-                  alt={item.serviceName}
-                  className="h-full w-full object-cover transition transform hover:scale-110"
-                />
+        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          {/* Header */}
+          <div className="text-center mb-14">
+            <span className="inline-block bg-[#eef3ff] border border-[#d2e0ff] text-[#1f4fb2] text-[10px] font-bold uppercase tracking-[0.3em] px-4 py-1.5 rounded-full mb-4 shadow-sm">
+              TẠI SAO CHỌN CROWN DENTAL
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 leading-tight">
+              Tiêu Chuẩn Nha Khoa<br/>
+              <span className="bg-gradient-to-r from-[#1f4fb2] to-[#00a859] bg-clip-text text-transparent">Đẳng Cấp Quốc Tế</span>
+            </h2>
+            <p className="mt-4 text-slate-500 text-sm max-w-xl mx-auto leading-relaxed">
+              Chúng tôi không chỉ điều trị — chúng tôi kiến tạo nụ cười hoàn hảo cùng công nghệ hiện đại nhất và đội ngũ chuyên gia hàng đầu.
+            </p>
+          </div>
+
+          {/* Stats Row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-14">
+            {[
+              { value: '15+', label: 'Năm kinh nghiệm', icon: '🏆' },
+              { value: '50K+', label: 'Bệnh nhân tin tưởng', icon: '😁' },
+              { value: '1,000+', label: 'Ca Invisalign/năm', icon: '🦷' },
+              { value: '98%', label: 'Khách hàng hài lòng', icon: '⭐' },
+            ].map((stat) => (
+              <div
+                key={stat.label}
+                className="relative group rounded-2xl border border-slate-100 bg-white p-5 text-center shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.06)] hover:-translate-y-0.5 transition-all duration-300 overflow-hidden"
+              >
+                <div className="text-2xl mb-1">{stat.icon}</div>
+                <p className="text-3xl sm:text-4xl font-black text-[#1f4fb2] tracking-tight">{stat.value}</p>
+                <p className="text-xs text-slate-500 mt-2 font-semibold tracking-wide">{stat.label}</p>
               </div>
-              <h4 className="mt-3 text-xs font-bold text-slate-800 line-clamp-2 h-8 flex items-center justify-center">
-                {item.serviceName}
-              </h4>
-            </div>
-          ))}
+            ))}
+          </div>
+
+          {/* Feature Cards */}
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                icon: (
+                  <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z"/>
+                  </svg>
+                ),
+                accent: 'from-violet-500 to-indigo-500',
+                title: 'Công Nghệ AI & 3D',
+                desc: 'Ứng dụng AI chẩn đoán hình ảnh, lập kế hoạch 3D và mô phỏng kết quả nụ cười trước khi điều trị — giúp bạn thấy kết quả ngay từ đầu.',
+                tags: ['Scan 3D', 'AI Diagnosis', 'iTero Scanner'],
+              },
+              {
+                icon: (
+                  <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.562.562 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"/>
+                  </svg>
+                ),
+                accent: 'from-amber-400 to-orange-500',
+                title: 'Chuyên Gia Đầu Ngành',
+                desc: 'Đội ngũ bác sĩ được đào tạo tại Singapore, Mỹ và châu Âu — sở hữu các chứng chỉ quốc tế uy tín và hơn 10 năm kinh nghiệm thực tiễn.',
+                tags: ['Invisalign Platinum', 'Implant Expert', 'Aesthetic Master'],
+              },
+              {
+                icon: (
+                  <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
+                  </svg>
+                ),
+                accent: 'from-emerald-400 to-teal-500',
+                title: 'Cam Kết & Bảo Hành',
+                desc: 'Bảo hành dài hạn cho mọi công trình nha khoa. Chúng tôi đồng hành cùng bạn sau điều trị — bởi nụ cười đẹp là hành trình, không phải đích đến.',
+                tags: ['Bảo hành 5 năm', 'Hỗ trợ 24/7', 'Tái khám miễn phí'],
+              },
+            ].map((card) => (
+              <div
+                key={card.title}
+                className="group relative rounded-3xl border border-slate-100 bg-white p-7 hover:shadow-[0_15px_45px_rgba(31,79,178,0.08)] hover:-translate-y-1 transition-all duration-300 overflow-hidden"
+              >
+                {/* Card glow */}
+                <div className={`absolute -top-8 -right-8 w-32 h-32 rounded-full bg-gradient-to-br ${card.accent} opacity-5 group-hover:opacity-10 blur-2xl transition-opacity`} />
+                {/* Icon */}
+                <div className={`inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br ${card.accent} text-white mb-5 shadow-lg`}>
+                  {card.icon}
+                </div>
+                <h3 className="text-lg font-black text-slate-800 mb-3">{card.title}</h3>
+                <p className="text-sm text-slate-500 leading-relaxed mb-5">{card.desc}</p>
+                {/* Tags */}
+                <div className="flex flex-wrap gap-2">
+                  {card.tags.map(tag => (
+                    <span key={tag} className="text-[10px] font-semibold bg-slate-50 text-slate-600 px-2.5 py-1 rounded-full border border-slate-100">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* CTA bottom */}
+          <div className="mt-12 text-center">
+            <a
+              href="#booking-form-section"
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-[#00a859] to-[#059669] hover:from-[#059669] hover:to-[#047857] text-white font-bold px-8 py-4 rounded-full shadow-lg hover:shadow-green-500/20 transition-all duration-300 text-sm"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
+              </svg>
+              Đặt Lịch Tư Vấn Miễn Phí
+            </a>
+            <p className="mt-3 text-xs text-slate-400">Phản hồi trong 30 phút • Không cần đặt cọc</p>
+          </div>
         </div>
       </section>
 
@@ -413,86 +554,159 @@ export default function Home() {
       </section>
 
       {/* 5. Dentist Team Section */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center space-y-3 mb-12">
-          <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#00a859]">CHUYÊN GIA HÀNG ĐẦU</p>
-          <h3 className="text-2xl font-black text-[#1f4fb2] sm:text-3xl">
-            Đội Ngũ Bác Sĩ Răng Hàm Mặt Giàu Kinh Nghiệm
-          </h3>
-          <p className="max-w-2xl mx-auto text-sm text-slate-500">
-            Các bác sĩ tốt nghiệp tại các trường đại học y danh tiếng, sở hữu chứng chỉ chuyên sâu và luôn tận tâm vì sức khỏe nụ cười của bạn.
-          </p>
-        </div>
+      <section className="py-20 bg-gradient-to-b from-white to-[#f4f7fe]">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          {/* Section Header */}
+          <div className="text-center mb-16">
+            <span className="inline-block bg-[#eef3ff] border border-[#d2e0ff] text-[#1f4fb2] text-[10px] font-bold uppercase tracking-[0.3em] px-4 py-1.5 rounded-full mb-4 shadow-sm">
+              CHUYÊN GIA HÀNG ĐẦU
+            </span>
+            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 leading-tight">
+              Đội Ngũ Bác Sĩ<br/>
+              <span className="bg-gradient-to-r from-[#1f4fb2] to-[#00a859] bg-clip-text text-transparent">Răng Hàm Mặt Chuyên Sâu</span>
+            </h3>
+            <p className="mt-4 max-w-2xl mx-auto text-sm text-slate-500 leading-relaxed">
+              100% bác sĩ tốt nghiệp các trường đại học y danh tiếng, sở hữu chứng chỉ quốc tế uy tín và luôn tận tâm vì nụ cười của bạn.
+            </p>
+          </div>
 
-        {dentists.length > 0 ? (
-          <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-stretch bg-white border border-slate-100 rounded-3xl p-6 sm:p-8 shadow-md">
-            {/* Active Dentist Spotlight Detail */}
-            {activeDentist && (
-              <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start text-center sm:text-left">
-                <img
-                  src={activeDentist.avatarUrl || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2'}
-                  alt={activeDentist.fullName}
-                  className="w-48 h-48 sm:w-56 sm:h-56 rounded-2xl object-cover border-4 border-slate-50 shadow-md shrink-0"
-                />
-                <div className="space-y-4">
-                  <div>
-                    <span className="text-[10px] font-bold text-[#00a859] uppercase tracking-wider bg-green-50 px-2 py-1 rounded">
-                      Chuyên khoa: {activeDentist.specialization}
-                    </span>
-                    <h4 className="text-2xl font-black text-[#1f4fb2] mt-1">{activeDentist.fullName}</h4>
-                    <p className="text-xs text-slate-400 mt-0.5">Số CCHN: {activeDentist.licenseNumber}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                      🎓 <span className="text-slate-600">{activeDentist.qualification}</span>
-                    </p>
-                    <p className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                      ⭐ <span className="text-slate-600">{activeDentist.experienceYears} năm kinh nghiệm làm việc thực tế</span>
-                    </p>
-                  </div>
-                  <div className="pt-2">
-                    <a
-                      href="#booking-form-section"
-                      className="inline-block rounded-full bg-[#1f4fb2] hover:bg-[#183f8d] text-white text-xs font-bold px-5 py-2.5 shadow transition"
-                    >
-                      Đặt lịch với Bác sĩ
-                    </a>
+          {dentists.length > 0 ? (
+            <div>
+              {/* Active Doctor Spotlight */}
+              {activeDentist && (
+                <div className="mb-8 relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1f4fb2] to-[#0d3a8a] shadow-2xl">
+                  {/* Background decorations */}
+                  <div className="absolute top-0 right-0 w-80 h-80 bg-[#00a859]/10 rounded-full blur-3xl -translate-y-20 translate-x-20 pointer-events-none" />
+                  <div className="absolute bottom-0 left-0 w-60 h-60 bg-white/5 rounded-full blur-2xl translate-y-10 -translate-x-10 pointer-events-none" />
+
+                  <div className="relative flex flex-col lg:flex-row gap-0 lg:gap-0">
+                    {/* Doctor Photo */}
+                    <div className="relative lg:w-72 shrink-0">
+                      <div className="h-64 lg:h-full min-h-[280px] overflow-hidden">
+                        <img
+                          src={activeDentist.avatarUrl || 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?auto=format&fit=crop&q=80&w=600'}
+                          alt={activeDentist.fullName || activeDentist.username}
+                          className="h-full w-full object-cover object-top"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#1f4fb2]/30 lg:bg-gradient-to-t lg:from-[#1f4fb2]/40 lg:to-transparent" />
+                      </div>
+                    </div>
+
+                    {/* Doctor Info */}
+                    <div className="flex-1 p-8 lg:p-10 flex flex-col justify-center">
+                      <div className="inline-flex items-center gap-2 bg-white/15 border border-white/20 backdrop-blur-sm text-[#4ade80] text-[10px] font-bold uppercase tracking-[0.25em] px-3 py-1.5 rounded-full mb-4 w-fit">
+                        <span className="w-1.5 h-1.5 bg-[#4ade80] rounded-full animate-pulse" />
+                        Chuyên khoa: {activeDentist.specialization}
+                      </div>
+
+                      <h4 className="text-3xl font-black text-white leading-tight mb-1">
+                        {activeDentist.fullName || activeDentist.username}
+                      </h4>
+                      <p className="text-white/50 text-xs font-medium mb-6">
+                        Số CCHN: {activeDentist.licenseNumber}
+                      </p>
+
+                      <div className="grid sm:grid-cols-2 gap-4 mb-8">
+                        <div className="flex items-start gap-3 bg-white/10 backdrop-blur-sm border border-white/15 rounded-2xl p-4">
+                          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shrink-0 shadow">
+                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5"/></svg>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-white/50 font-semibold uppercase tracking-wide mb-0.5">Học vị</p>
+                            <p className="text-sm text-white font-semibold leading-snug">{activeDentist.qualification}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3 bg-white/10 backdrop-blur-sm border border-white/15 rounded-2xl p-4">
+                          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shrink-0 shadow">
+                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-white/50 font-semibold uppercase tracking-wide mb-0.5">Kinh nghiệm</p>
+                            <p className="text-sm text-white font-semibold">{activeDentist.experienceYears}+ năm thực tiễn</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-3">
+                        <a
+                          href="#booking-form-section"
+                          className="inline-flex items-center gap-2 rounded-full bg-white text-[#1f4fb2] text-xs font-black px-6 py-3 shadow-lg hover:shadow-white/20 hover:-translate-y-0.5 transition-all duration-200"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/></svg>
+                          Đặt Lịch Với Bác Sĩ
+                        </a>
+                        <button className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 backdrop-blur-sm text-white text-xs font-bold px-5 py-3 hover:bg-white/20 transition-all duration-200">
+                          Xem Hồ Sơ Đầy Đủ
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* List of other dentists on right to pick */}
-            <div className="border-t lg:border-t-0 lg:border-l border-slate-100 pt-6 lg:pt-0 lg:pl-6 space-y-4 flex flex-col justify-start">
-              <h5 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-2">Xem danh sách bác sĩ</h5>
-              <div className="space-y-3 overflow-y-auto max-h-[300px] pr-1">
+              {/* Dentist Card Grid */}
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 {dentists.map((d) => (
                   <div
                     key={d.id}
                     onClick={() => setActiveDentist(d)}
-                    className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition ${
+                    className={`group relative overflow-hidden rounded-2xl border cursor-pointer transition-all duration-300 hover:-translate-y-1 ${
                       activeDentist?.id === d.id
-                        ? 'border-[#1f4fb2] bg-blue-50/55'
-                        : 'border-slate-100 bg-slate-50 hover:bg-slate-100/70'
+                        ? 'border-[#1f4fb2] shadow-[0_12px_35px_rgba(31,79,178,0.2)]'
+                        : 'border-slate-100 bg-white shadow-sm hover:shadow-[0_12px_35px_rgba(31,79,178,0.08)]'
                     }`}
                   >
-                    <img
-                      src={d.avatarUrl || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2'}
-                      alt={d.fullName}
-                      className="w-12 h-12 rounded-full object-cover shrink-0"
-                    />
-                    <div className="flex-grow">
-                      <p className="text-xs font-extrabold text-slate-800">{d.fullName}</p>
-                      <p className="text-[10px] text-slate-400 line-clamp-1">{d.specialization}</p>
+                    {/* Active indicator */}
+                    {activeDentist?.id === d.id && (
+                      <div className="absolute top-0 inset-x-0 h-0.5 bg-gradient-to-r from-[#1f4fb2] to-[#00a859]" />
+                    )}
+
+                    {/* Doctor image */}
+                    <div className="relative h-52 overflow-hidden">
+                      <img
+                        src={d.avatarUrl || 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?auto=format&fit=crop&q=80&w=400'}
+                        alt={d.fullName || d.username}
+                        className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+
+                      {/* Specialization badge on photo */}
+                      <div className="absolute bottom-3 left-3 right-3">
+                        <span className="inline-block bg-white/90 backdrop-blur-sm text-[#1f4fb2] text-[9px] font-bold uppercase tracking-[0.15em] px-2.5 py-1 rounded-full">
+                          {d.specialization}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Doctor info */}
+                    <div className={`p-4 ${activeDentist?.id === d.id ? 'bg-[#f0f5ff]' : 'bg-white'}`}>
+                      <p className="text-sm font-black text-slate-800 leading-snug mb-1">
+                        {d.fullName || d.username}
+                      </p>
+                      <p className="text-[10px] text-slate-400 font-medium">
+                        {d.experienceYears}+ năm kinh nghiệm
+                      </p>
+
+                      {activeDentist?.id === d.id && (
+                        <div className="mt-2 flex items-center gap-1 text-[#1f4fb2]">
+                          <span className="w-1.5 h-1.5 bg-[#1f4fb2] rounded-full" />
+                          <span className="text-[10px] font-bold">Đang xem</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-          </div>
-        ) : (
-          <p className="text-center text-slate-400">Đang tải danh sách bác sĩ...</p>
-        )}
+          ) : (
+            <div className="text-center py-16">
+              <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+              </div>
+              <p className="text-slate-400 text-sm font-medium">Đang tải danh sách bác sĩ...</p>
+            </div>
+          )}
+        </div>
       </section>
 
       {/* 6. Clinic banner */}

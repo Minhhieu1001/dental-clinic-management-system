@@ -1,5 +1,4 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import PagePlaceholder from '../components/common/PagePlaceholder.jsx'
 import ProtectedRoute from '../components/common/ProtectedRoute.jsx'
 import AdminLayout from '../layouts/AdminLayouts.jsx'
 import DentistLayout from '../layouts/DentistLayout.jsx'
@@ -12,6 +11,11 @@ import ServicesPublic from '../pages/Services.jsx'
 import Pricing from '../pages/Pricing.jsx'
 import News from '../pages/News.jsx'
 import Contact from '../pages/Contact.jsx'
+import PromotionsPublic from '../pages/Promotions.jsx'
+import PromotionDetail from '../pages/PromotionDetail.jsx'
+import PublicInfo from '../pages/PublicInfo.jsx'
+import Knowledge from '../pages/Knowledge.jsx'
+import KnowledgeDetail from '../pages/KnowledgeDetail.jsx'
 import Login from '../pages/Login.jsx'
 
 // Feature Components - Admin
@@ -70,6 +74,13 @@ export default function AppRouter() {
           <Route path="pricing" element={<Pricing />} />
           <Route path="news" element={<News />} />
           <Route path="contact" element={<Contact />} />
+          <Route path="promotions" element={<PromotionsPublic />} />
+          <Route path="promotions/:id" element={<PromotionDetail />} />
+          <Route path="celebrities" element={<PublicInfo />} />
+          <Route path="knowledge" element={<Knowledge />} />
+          <Route path="knowledge/:id" element={<KnowledgeDetail />} />
+          <Route path="careers" element={<PublicInfo />} />
+          <Route path="doctors" element={<PublicInfo />} />
         </Route>
 
         {/* Login page */}
