@@ -7,6 +7,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -24,6 +26,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomUserDetailsService userDetailsService;
+    private final CookieUtils cookieUtils;
 
     @Override
     protected void doFilterInternal(
@@ -37,8 +40,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (accessToken != null && jwtTokenProvider.validateToken(accessToken)) {
                 String email = jwtTokenProvider.getEmailFromToken(accessToken);
 
+                // kiểm tra trường lợp tài khoản login rồi bất ngờ bị khóa
                 if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                     UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+
+                    if (!userDetails.isAccountNonLocked() || !userDetails.isEnabled()) {
+                        SecurityContextHolder.clearContext();
+                        response.addHeader(HttpHeaders.SET_COOKIE, cookieUtils.createCleanAccessTokenCookie().toString());
+                        response.addHeader(HttpHeaders.SET_COOKIE, cookieUtils.createCleanRefreshTokenCookie().toString());
+                        response.sendError(HttpStatus.UNAUTHORIZED.value(), "Account is locked or inactive.");
+                        return;
+                    }
 
                     UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(

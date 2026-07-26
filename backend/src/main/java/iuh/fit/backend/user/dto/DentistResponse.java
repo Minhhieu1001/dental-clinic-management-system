@@ -12,6 +12,6 @@ public record DentistResponse(
         String licenseNumber,
         String specialization,
         Integer experienceYears,
-        String qualification
+        String education
 ) {
 }
