@@ -37,7 +37,7 @@ export const shortcutItems = [
 
 export const spotlightCards = [
   {
-    title: 'Parkway style hero',
+    title: 'Crown style hero',
     description: 'Khung banner lớn, tiêu đề mạnh và vùng nội dung nổi bật ở trung tâm.',
   },
   {

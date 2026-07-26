@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Search, Bell, Settings } from 'lucide-react';
 import AdminProfileModal from '../../components/ui/AdminProfileModal';
 

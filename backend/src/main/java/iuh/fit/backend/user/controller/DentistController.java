@@ -3,7 +3,11 @@ package iuh.fit.backend.user.controller;
 import iuh.fit.backend.user.dto.DentistListResponse;
 import iuh.fit.backend.user.dto.DentistRequest;
 import iuh.fit.backend.user.dto.DentistResponse;
+import iuh.fit.backend.user.entity.Dentist;
+import iuh.fit.backend.user.repository.DentistRepository;
 import iuh.fit.backend.user.service.DentistService;
+import lombok.Builder;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -19,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/dentists")
@@ -62,5 +67,45 @@ public class DentistController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteDentist(@PathVariable UUID id) {
         dentistService.deleteDentist(id);
+    }
+}
+
+/**
+ * Public endpoint retained for the homepage, which consumes /api/dentists.
+ */
+@RestController
+@RequestMapping("/api/dentists")
+class PublicDentistController {
+    private final DentistRepository dentistRepository;
+
+    PublicDentistController(DentistRepository dentistRepository) {
+        this.dentistRepository = dentistRepository;
+    }
+
+    @GetMapping
+    List<PublicDentistDto> getAllPublicDentists() {
+        return dentistRepository.findAll().stream()
+                .map(dentist -> PublicDentistDto.builder()
+                        .id(dentist.getId())
+                        .fullName(dentist.getFullName())
+                        .licenseNumber(dentist.getLicenseNumber())
+                        .specialization(dentist.getSpecialization())
+                        .experienceYears(dentist.getExperienceYears())
+                        .qualification(dentist.getQualification())
+                        .avatarUrl(dentist.getUser() != null ? dentist.getUser().getAvatarUrl() : null)
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    @Data
+    @Builder
+    static class PublicDentistDto {
+        private UUID id;
+        private String fullName;
+        private String licenseNumber;
+        private String specialization;
+        private Integer experienceYears;
+        private String qualification;
+        private String avatarUrl;
     }
 }
