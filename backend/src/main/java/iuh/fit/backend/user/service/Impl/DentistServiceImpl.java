@@ -224,8 +224,10 @@ public class DentistServiceImpl implements DentistService {
         return new DentistResponse(
                 dentist.getId(),
                 user != null ? user.getId() : null,
+                user != null ? user.getUsername() : null,
                 getDentistDisplayName(dentist, user),
                 user != null ? user.getEmail() : null,
+                user != null ? user.getAvatarUrl() : null,
                 dentist.getExperienceYears(),
                 dentist.getEducation()
         );

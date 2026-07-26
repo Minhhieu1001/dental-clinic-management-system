@@ -70,42 +70,40 @@ public class DentistController {
     }
 }
 
-/**
- * Public endpoint retained for the homepage, which consumes /api/dentists.
- */
-@RestController
-@RequestMapping("/api/dentists")
-class PublicDentistController {
-    private final DentistRepository dentistRepository;
 
-    PublicDentistController(DentistRepository dentistRepository) {
-        this.dentistRepository = dentistRepository;
-    }
-
-    @GetMapping
-    List<PublicDentistDto> getAllPublicDentists() {
-        return dentistRepository.findAll().stream()
-                .map(dentist -> PublicDentistDto.builder()
-                        .id(dentist.getId())
-                        .fullName(dentist.getFullName())
-                        .licenseNumber(dentist.getLicenseNumber())
-                        .specialization(dentist.getSpecialization())
-                        .experienceYears(dentist.getExperienceYears())
-                        .qualification(dentist.getQualification())
-                        .avatarUrl(dentist.getUser() != null ? dentist.getUser().getAvatarUrl() : null)
-                        .build())
-                .collect(Collectors.toList());
-    }
-
-    @Data
-    @Builder
-    static class PublicDentistDto {
-        private UUID id;
-        private String fullName;
-        private String licenseNumber;
-        private String specialization;
-        private Integer experienceYears;
-        private String qualification;
-        private String avatarUrl;
-    }
-}
+//@RestController
+//@RequestMapping("/api/dentists")
+//class PublicDentistController {
+//    private final DentistRepository dentistRepository;
+//
+//    PublicDentistController(DentistRepository dentistRepository) {
+//        this.dentistRepository = dentistRepository;
+//    }
+//
+//    @GetMapping
+//    List<PublicDentistDto> getAllPublicDentists() {
+//        return dentistRepository.findAll().stream()
+//                .map(dentist -> PublicDentistDto.builder()
+//                        .id(dentist.getId())
+//                        .fullName(dentist.getFullName())
+//                        .licenseNumber(dentist.getLicenseNumber())
+//                        .specialization(dentist.getSpecialization())
+//                        .experienceYears(dentist.getExperienceYears())
+//                        .qualification(dentist.getQualification())
+//                        .avatarUrl(dentist.getUser() != null ? dentist.getUser().getAvatarUrl() : null)
+//                        .build())
+//                .collect(Collectors.toList());
+//    }
+//
+//    @Data
+//    @Builder
+//    static class PublicDentistDto {
+//        private UUID id;
+//        private String fullName;
+//        private String licenseNumber;
+//        private String specialization;
+//        private Integer experienceYears;
+//        private String qualification;
+//        private String avatarUrl;
+//    }
+//}
