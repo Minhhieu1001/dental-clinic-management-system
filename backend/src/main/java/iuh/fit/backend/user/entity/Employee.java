@@ -1,5 +1,7 @@
 package iuh.fit.backend.user.entity;
 
+import iuh.fit.backend.appointment.entity.Appointment;
+import iuh.fit.backend.appointment.entity.AppointmentRequest;
 import iuh.fit.backend.appointment.entity.Shift;
 import iuh.fit.backend.user.enums.Position;
 import iuh.fit.backend.inventory.entity.InventoryTransaction;
@@ -54,4 +56,13 @@ public class Employee {
     @Builder.Default
     @OneToMany(mappedBy = "employee", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<InventoryTransaction> inventoryTransactions = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "employee", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    private List<AppointmentRequest> appointmentsRequests = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "employee", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    private List<Appointment> appointments = new ArrayList<>();
+
 }

@@ -1,7 +1,6 @@
 package iuh.fit.backend.appointment.entity;
 
 import iuh.fit.backend.patient.entity.Patient;
-import iuh.fit.backend.user.entity.Dentist;
 import iuh.fit.backend.user.entity.Employee;
 import jakarta.persistence.*;
 import lombok.*;
@@ -15,8 +14,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "appoinment_requests")
-public class AppoinmentRequest {
+@Table(name = "appointment_requests")
+public class AppointmentRequest {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
