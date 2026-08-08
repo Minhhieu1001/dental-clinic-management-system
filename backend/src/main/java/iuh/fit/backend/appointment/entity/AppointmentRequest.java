@@ -1,6 +1,6 @@
 package iuh.fit.backend.appointment.entity;
 
-import iuh.fit.backend.patient.entity.Patient;
+import iuh.fit.backend.appointment.enums.StatustAppointmentRequest;
 import iuh.fit.backend.user.entity.Employee;
 import jakarta.persistence.*;
 import lombok.*;
@@ -27,14 +27,10 @@ public class AppointmentRequest {
     private String description;
     private LocalDateTime createAt;
 
+    @Enumerated(EnumType.STRING)
+    private StatustAppointmentRequest statustAppointmentRequest;
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "employee_id")
+    @JoinColumn(name = "employee_id", nullable = true)
     private Employee employee;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "patient_id")
-    private Patient patient;
-
-
-
 }

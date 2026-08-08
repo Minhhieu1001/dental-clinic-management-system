@@ -23,6 +23,14 @@ public enum ErrorCode {
     EMAIL_NOT_FOUND(HttpStatus.NOT_FOUND, "Email không tồn tại trong hệ thống"),
     EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "Email đã được sử dụng"),
 
+    // AppointmentRequest
+    APPOINTMENT_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy yêu cầu lịch hẹn"),
+    APPOINTMENT_REQUEST_ALREADY_PROCESSED(HttpStatus.CONFLICT, "Yêu cầu lịch hẹn đã được nhân viên khác xử lý"),
+    APPOINTMENT_REQUEST_DATA_REQUIRED(HttpStatus.BAD_REQUEST, "Dữ liệu yêu cầu lịch hẹn không được để trống"),
+    APPOINTMENT_REQUEST_FULL_NAME_REQUIRED(HttpStatus.BAD_REQUEST, "Họ tên không được để trống"),
+    APPOINTMENT_REQUEST_PHONE_REQUIRED(HttpStatus.BAD_REQUEST, "Số điện thoại không được để trống"),
+    CURRENT_USER_NOT_EMPLOYEE(HttpStatus.FORBIDDEN, "Tài khoản hiện tại không phải nhân viên"),
+
     // Generic
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Lỗi hệ thống. Vui lòng thử lại sau"),
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "Dữ liệu không hợp lệ"),
