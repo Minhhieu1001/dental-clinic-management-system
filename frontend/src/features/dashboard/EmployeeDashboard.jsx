@@ -1,8 +1,37 @@
-﻿export default function EmployeeDashboard() {
+import DashboardHeader from './receptionist/DashboardHeader';
+import StatsRow from './receptionist/StatsRow';
+import AppointmentTable from './receptionist/AppointmentTable';
+import AppointmentRequests from './receptionist/AppointmentRequests';
+import QuickActions from './receptionist/QuickActions';
+import { useReceptionistDashboard } from '../../hooks/useReceptionistDashboard';
+import { staffName } from './receptionist/receptionistData';
+
+export default function EmployeeDashboard() {
+  const { stats, appointments, requests, loading } = useReceptionistDashboard();
+
   return (
-    <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-      <h2 className="text-xl font-bold text-slate-800">EmployeeDashboard</h2>
-      <p className="mt-2 text-slate-500">Giao diá»‡n cá»§a tÃ­nh nÄƒng EmployeeDashboard sáº½ náº±m á»Ÿ Ä‘Ã¢y.</p>
+    <div className="mx-auto max-w-[1400px] px-1">
+      {/* Header */}
+      <DashboardHeader staffName={staffName} />
+
+      {/* Stats row */}
+      <div className="mt-3">
+        <StatsRow stats={stats} loading={loading} />
+      </div>
+
+      {/* Main content: 2 columns */}
+      <div className="mt-3 flex gap-3 items-start">
+        {/* Left column — Appointment table */}
+        <div className="min-w-0 flex-[73]">
+          <AppointmentTable appointments={appointments} />
+        </div>
+
+        {/* Right column — Requests + Quick actions */}
+        <div className="flex flex-[27] flex-col gap-3">
+          <AppointmentRequests requests={requests} />
+          <QuickActions />
+        </div>
+      </div>
     </div>
   );
 }

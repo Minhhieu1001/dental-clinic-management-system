@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { NavLink, Outlet, Link } from 'react-router-dom'
+import AppointmentRequestModal from '../components/ui/AppointmentRequestModal'
 
 const topLinks = [
   { label: 'Ưu đãi', to: '/promotions' },
@@ -20,8 +22,10 @@ const navItems = [
 ]
 
 export default function PublicLayout() {
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
+
   return (
-    <div className="min-h-screen bg-white text-slate-900" style={{ fontFamily: "'Be Vietnam Pro', 'Inter', sans-serif" }}>
+    <div className="min-h-screen bg-white text-slate-900 flex flex-col" style={{ fontFamily: "'Be Vietnam Pro', 'Inter', sans-serif" }}>
       <header className="sticky top-0 z-40 bg-white shadow-sm">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           
@@ -72,7 +76,7 @@ export default function PublicLayout() {
               </div>
             </div>
 
-            {/* Bên phải: Cặp nút bấm hành động - Đảm bảo đồng bộ chiều cao lý tưởng */}
+            {/* Bên phải: Cặp nút bấm hành động */}
             <div className="flex items-center gap-3 flex-shrink-0 h-full self-center">
               
               {/* Nút Hotline */}
@@ -86,17 +90,18 @@ export default function PublicLayout() {
                 1900 8059
               </a>
               
-              {/* Nút Đặt lịch hẹn */}
-              <Link
-                to="/contact"
-                className="flex items-center justify-center gap-2.5 rounded-full px-6 h-[44px] text-[15px] font-bold text-white transition duration-200 shadow-md shadow-blue-900/5 hover:opacity-95"
-                style={{ background: 'linear-gradient(90deg, #3E587B 0%, #394579 50%, #363876 100%)' }}
+              {/* Nút Đặt lịch hẹn - Mở modal trực tiếp */}
+              <button
+                type="button"
+                onClick={() => setIsRequestModalOpen(true)}
+                className="flex items-center justify-center gap-2.5 rounded-full px-6 h-[44px] text-[15px] font-bold text-white transition duration-200 shadow-md shadow-blue-900/5 hover:opacity-95 cursor-pointer active:scale-95"
+                style={{ background: 'linear-gradient(90deg, #1f4fb2 0%, #00a859 100%)' }}
               >
                 <svg className="h-5 w-5 mr-1" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 002 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2zm-7 5H7v2h5v-2zm4 0h-3v2h3v-2zm-4 4H7v2h5v-2zm4 0h-3v2h3v-2z" />
                 </svg>
                 Đặt lịch hẹn
-              </Link>
+              </button>
             </div>
           </div>
 
@@ -186,7 +191,7 @@ export default function PublicLayout() {
 
       {/* Main Content Component */}
       <main className="flex-grow">
-        <Outlet />
+        <Outlet context={{ openAppointmentModal: () => setIsRequestModalOpen(true) }} />
       </main>
 
       {/* Footer */}
@@ -244,6 +249,12 @@ export default function PublicLayout() {
           </div>
         </div>
       </footer>
+
+      {/* Global Appointment Request Modal */}
+      <AppointmentRequestModal
+        isOpen={isRequestModalOpen}
+        onClose={() => setIsRequestModalOpen(false)}
+      />
     </div>
   )
 }
