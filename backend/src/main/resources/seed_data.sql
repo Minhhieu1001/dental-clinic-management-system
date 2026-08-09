@@ -61,18 +61,36 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 
--- 6. THÊM LỊCH HẸN KHÁM BÁC SĨ (APPOINTMENTS)
+-- 6. THÊM LỊCH HẸN KHÁM BÁC SĨ TỪ T2 ĐẾN CN TRONG TUẦN (APPOINTMENTS)
 INSERT INTO appointments (id, patient_id, dentist_id, employee_id, appointment_date, appointment_time, reason, notes, diagnosis, symptoms, treatment_notes, status, room_id, created_at)
 VALUES 
-  -- Lịch hẹn 1: Dành cho BS. Nguyễn Thị Phương (Tâm Thành Nguyễn - Chờ khám)
-  ('d1111111-1111-1111-1111-111111111111', 'c1111111-1111-1111-1111-111111111111', 'a1111111-1111-1111-1111-111111111111', 'b1111111-1111-1111-1111-111111111111', NOW(), NOW(), 'Tư vấn niềng răng trong suốt Invisalign', 'Bệnh nhân có nhu cầu tư vấn thẩm mỹ răng', NULL, 'Răng thưa & lệch khớp cắn nhẹ', NULL, 'WAITING', 'f1111111-1111-1111-1111-111111111111', NOW()),
+  -- Lịch hẹn T2: Dành cho BS. Nguyễn Thị Phương (Trần Thị Mai - 08:00)
+  ('d1111111-1111-1111-1111-111111111111', 'c1111111-1111-1111-1111-111111111111', 'a1111111-1111-1111-1111-111111111111', 'b1111111-1111-1111-1111-111111111111', CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE - INTERVAL '6 days' + TIME '08:00:00', 'Cạo vôi răng & Đánh bóng', 'Đã đặt trước qua hotline', 'Vôi răng độ 1', 'Mảng bám bề mặt răng', 'Đã cạo vôi 2 hàm', 'COMPLETED', 'f1111111-1111-1111-1111-111111111111', NOW()),
 
-  -- Lịch hẹn 2: Dành cho BS. Nguyễn Thị Phương (Lê Thị Hương - Đang khám)
-  ('d2222222-2222-2222-2222-222222222222', 'c2222222-2222-2222-2222-222222222222', 'a1111111-1111-1111-1111-111111111111', 'b1111111-1111-1111-1111-111111111111', NOW(), NOW(), 'Trám răng composite R36', 'Đã check-in tại phòng chờ', 'Sâu răng độ 2 R36', 'Đau nhức nhẹ khi ăn đồ lạnh', 'Tiến hành nạo xoang sâu & trám composite thẩm mỹ', 'IN_PROGRESS', 'f2222222-2222-2222-2222-222222222222', NOW()),
+  -- Lịch hẹn T3: Dành cho BS. Nguyễn Thị Phương (Lê Hoàng Nam - 10:00)
+  ('d2222222-2222-2222-2222-222222222222', 'c2222222-2222-2222-2222-222222222222', 'a1111111-1111-1111-1111-111111111111', 'b1111111-1111-1111-1111-111111111111', CURRENT_DATE - INTERVAL '5 days', CURRENT_DATE - INTERVAL '5 days' + TIME '10:00:00', 'Trám răng composite R24', 'Đã check-in', 'Sâu răng độ 1 R24', 'Ê buốt nhẹ', 'Tiến hành trám composite', 'COMPLETED', 'f2222222-2222-2222-2222-222222222222', NOW()),
 
-  -- Lịch hẹn 3: Dành cho BS. Trần Quang (Nguyễn Minh Long - Hoàn tất)
-  ('d3333333-3333-3333-3333-333333333333', 'c3333333-3333-3333-3333-333333333333', 'a2222222-2222-2222-2222-222222222222', 'b1111111-1111-1111-1111-111111111111', NOW(), NOW(), 'Cạo vôi răng & Tẩy trắng', 'Đã hoàn tất thanh toán', 'Vôi răng độ 1', 'Mảng bám bề mặt răng', 'Đã cạo vôi răng 2 hàm & đánh bóng', 'COMPLETED', 'f1111111-1111-1111-1111-111111111111', NOW())
-ON CONFLICT (id) DO NOTHING;
+  -- Lịch hẹn T4: Dành cho BS. Nguyễn Thị Phương (Nguyễn Văn Nam - 09:00)
+  ('d3333333-3333-3333-3333-333333333333', 'c3333333-3333-3333-3333-333333333333', 'a1111111-1111-1111-1111-111111111111', 'b1111111-1111-1111-1111-111111111111', CURRENT_DATE - INTERVAL '4 days', CURRENT_DATE - INTERVAL '4 days' + TIME '09:00:00', 'Nhổ răng khôn R38', 'Đã chụp X-quang Pano', 'Răng khôn mọc lệch 90 độ', 'Đau sưng lợi vùng R38', 'Phẫu thuật nhổ răng khôn', 'COMPLETED', 'f1111111-1111-1111-1111-111111111111', NOW()),
+
+  -- Lịch hẹn T5: Dành cho BS. Nguyễn Thị Phương (Bùi Thị Lan - 13:00)
+  ('d4444444-4444-4444-4444-444444444444', 'c1111111-1111-1111-1111-111111111111', 'a1111111-1111-1111-1111-111111111111', 'b1111111-1111-1111-1111-111111111111', CURRENT_DATE - INTERVAL '3 days', CURRENT_DATE - INTERVAL '3 days' + TIME '13:00:00', 'Nhổ răng sâu độ 3', 'Nhổ răng hàm dưới', 'Răng sâu hư vỡ lớn R46', 'Đau nhức sưng tấy', 'Tiến hành nhổ răng an toàn', 'COMPLETED', 'f2222222-2222-2222-2222-222222222222', NOW()),
+
+  -- Lịch hẹn T6: Dành cho BS. Nguyễn Thị Phương (Đỗ Minh Quân - 08:00)
+  ('d5555555-5555-5555-5555-555555555555', 'c2222222-2222-2222-2222-222222222222', 'a1111111-1111-1111-1111-111111111111', 'b1111111-1111-1111-1111-111111111111', CURRENT_DATE - INTERVAL '2 days', CURRENT_DATE - INTERVAL '2 days' + TIME '08:00:00', 'Tư vấn niềng răng mắc cài', 'Muốn tư vấn mắc cài kim loại', 'Khớp cắn ngược độ 1', 'Chen chúc hàm dưới', 'Lên phác đồ niềng răng', 'IN_PROGRESS', 'f1111111-1111-1111-1111-111111111111', NOW()),
+
+  -- Lịch hẹn T7: Dành cho BS. Nguyễn Thị Phương (Nghiêm Đức Anh - 09:00)
+  ('d6666666-6666-6666-6666-666666666666', 'c3333333-3333-3333-3333-333333333333', 'a1111111-1111-1111-1111-111111111111', 'b1111111-1111-1111-1111-111111111111', CURRENT_DATE - INTERVAL '1 day', CURRENT_DATE - INTERVAL '1 day' + TIME '09:00:00', 'Cạo vôi răng & Đánh bóng', 'Hẹn tái khám 6 tháng', 'Vôi răng độ 2', 'Chảy máu chân răng', 'Đã xử lý sạch vôi răng', 'COMPLETED', 'f2222222-2222-2222-2222-222222222222', NOW()),
+
+  -- Lịch hẹn CN (Hôm nay 1): Dành cho BS. Nguyễn Thị Phương (Tâm Thành Nguyễn - 09:00)
+  ('d7777777-7777-7777-7777-777777777777', 'c1111111-1111-1111-1111-111111111111', 'a1111111-1111-1111-1111-111111111111', 'b1111111-1111-1111-1111-111111111111', CURRENT_DATE, CURRENT_DATE + TIME '09:00:00', 'Tư vấn niềng răng Invisalign', 'Bệnh nhân có nhu cầu niềng răng', 'Khớp cắn lệch nhẹ', 'Răng thưa 2 hàm', 'Tư vấn phác đồ Invisalign 18 tháng', 'WAITING', 'f1111111-1111-1111-1111-111111111111', NOW()),
+
+  -- Lịch hẹn CN (Hôm nay 2): Dành cho BS. Nguyễn Thị Phương (Lê Thị Hương - 10:00)
+  ('d8888888-8888-8888-8888-888888888888', 'c2222222-2222-2222-2222-222222222222', 'a1111111-1111-1111-1111-111111111111', 'b1111111-1111-1111-1111-111111111111', CURRENT_DATE, CURRENT_DATE + TIME '10:00:00', 'Nhổ răng khôn R48', 'Răng khôn mọc lệch', 'Răng khôn mọc kẹt R48', 'Đau sưng lợi', 'Đã tiến hành nhổ răng an toàn', 'COMPLETED', 'f2222222-2222-2222-2222-222222222222', NOW())
+ON CONFLICT (id) DO UPDATE SET 
+  appointment_date = EXCLUDED.appointment_date,
+  appointment_time = EXCLUDED.appointment_time,
+  status = EXCLUDED.status;
 
 
 -- 7. THÊM YÊU CẦU ĐẶT LỊCH TƯ VẤN HÔM NAY (APPOINTMENT_REQUESTS)

@@ -40,19 +40,24 @@ export default function DentistDashboard() {
   const [selectedExamAppt, setSelectedExamAppt] = useState(null);
   const [isExamModalOpen, setIsExamModalOpen] = useState(false);
 
-  // Helper to format doctor name from username if no record found
+  // Helper to format doctor name with clean professional titles
   const formatDoctorTitle = (usr) => {
-    if (!usr) return 'Nguyễn Văn Tâm';
-    if (usr.fullName) return usr.fullName.replace(/^ThS\.\s*BS\./i, '').replace(/^BS\.\s*/i, '');
+    if (!usr) return 'ThS. BS. Nguyễn Thị Phương';
+    if (usr.fullName) {
+      let fName = usr.fullName.trim();
+      if (!/^(ThS\.|BS\.|TS\.|Dr\.)/i.test(fName)) fName = 'BS. ' + fName;
+      return fName;
+    }
     const uname = usr.username || usr.email?.split('@')[0] || '';
     if (uname.includes('nguyen.thi.phuong') || uname.includes('phuong')) {
-      return 'Nguyễn Thị Phương';
+      return 'ThS. BS. Nguyễn Thị Phương';
     }
     if (uname.includes('tran.quang') || uname.includes('quang')) {
-      return 'Trần Quang';
+      return 'BS. Trần Quang';
     }
-    return uname.replace(/^(bs\.|dr\.)/i, '').replace(/\./g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()) || 'Nguyễn Văn Tâm';
+    return 'BS. ' + uname.replace(/^(bs\.|dr\.)/i, '').replace(/\./g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
   };
+
 
   // Fetch logged in dentist details, real appointments & real inventory
   const fetchDashboardData = useCallback(async () => {
@@ -263,10 +268,12 @@ export default function DentistDashboard() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <p className="text-xs sm:text-sm font-medium text-slate-500">Chào buổi sáng,</p>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2 mt-0.5">
-            Dr. {doctorDisplayName} <span className="inline-block animate-bounce">👋</span>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight mt-0.5">
+            {doctorDisplayName}
           </h1>
         </div>
+
+
 
         {/* Refresh & Action */}
         <div className="flex items-center gap-3">
