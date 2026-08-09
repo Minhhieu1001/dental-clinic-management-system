@@ -1,162 +1,109 @@
 package iuh.fit.backend.appointment.controller;
 
-import iuh.fit.backend.appointment.entity.Appointment;
+import iuh.fit.backend.appointment.dto.AppointmentCreateDTO;
+import iuh.fit.backend.appointment.dto.AppointmentDetailDTO;
 import iuh.fit.backend.appointment.enums.StatusAppointment;
-import iuh.fit.backend.appointment.repository.AppointmentRepository;
-import iuh.fit.backend.patient.entity.Patient;
-import iuh.fit.backend.patient.repository.PatientRepository;
-import iuh.fit.backend.user.entity.Dentist;
+import iuh.fit.backend.appointment.service.AppointmentService;
 import iuh.fit.backend.user.entity.User;
-import iuh.fit.backend.user.enums.Role;
-import iuh.fit.backend.user.enums.StatusUser;
-import iuh.fit.backend.user.repository.DentistRepository;
 import iuh.fit.backend.user.repository.UserRepository;
 import lombok.Data;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/appointments")
+@RequestMapping("/api/v1/appointments")
+@RequiredArgsConstructor
 public class AppointmentController {
 
-    private final AppointmentRepository appointmentRepository;
-    private final PatientRepository patientRepository;
+    private final AppointmentService appointmentService;
     private final UserRepository userRepository;
-    private final DentistRepository dentistRepository;
-
-    public AppointmentController(AppointmentRepository appointmentRepository,
-                                 PatientRepository patientRepository,
-                                 UserRepository userRepository,
-                                 DentistRepository dentistRepository) {
-        this.appointmentRepository = appointmentRepository;
-        this.patientRepository = patientRepository;
-        this.userRepository = userRepository;
-        this.dentistRepository = dentistRepository;
-    }
 
     @PostMapping
-    @Transactional
-    public ResponseEntity<?> createAppointment(@RequestBody AppointmentRequest request) {
+    @ResponseStatus(HttpStatus.CREATED)
+    public AppointmentDetailDTO createAppointment(@RequestBody AppointmentCreateDTO dto) {
+        return appointmentService.createAppointment(dto);
+    }
+
+    @GetMapping
+    public List<AppointmentDetailDTO> getAllAppointments(
+            @RequestParam(required = false) UUID dentistId,
+            @RequestParam(required = false) String date,
+            @RequestParam(required = false) StatusAppointment status
+    ) {
+        return appointmentService.getAllAppointments(dentistId, date, status);
+    }
+
+    @GetMapping("/rooms")
+    public List<iuh.fit.backend.appointment.entity.Room> getAllRooms() {
+        return appointmentService.getAllRooms();
+    }
+
+    @GetMapping("/dentist/{dentistId}")
+    public List<AppointmentDetailDTO> getAppointmentsByDentist(@PathVariable UUID dentistId) {
+        return appointmentService.getAppointmentsByDentist(dentistId);
+    }
+
+
+    @GetMapping("/my-appointments")
+    public List<AppointmentDetailDTO> getMyAppointments(@RequestParam(required = false) UUID dentistId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getName() != null && !auth.getName().equalsIgnoreCase("anonymousUser")) {
+            String username = auth.getName();
+            User user = userRepository.findByUsername(username)
+                    .orElseGet(() -> userRepository.findByEmail(username).orElse(null));
+            if (user != null) {
+                List<AppointmentDetailDTO> list = appointmentService.getAppointmentsByDentistUser(user.getId());
+                if (!list.isEmpty()) {
+                    return list;
+                }
+            }
+        }
+        if (dentistId != null) {
+            return appointmentService.getAppointmentsByDentist(dentistId);
+        }
+        return appointmentService.getAllAppointments(null, null, null);
+    }
+
+
+    @GetMapping("/{id}")
+    public AppointmentDetailDTO getAppointmentById(@PathVariable UUID id) {
+        return appointmentService.getAppointmentById(id);
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<?> updateAppointmentStatus(
+            @PathVariable String id,
+            @RequestParam StatusAppointment status
+    ) {
         try {
-            // Find or create User by phone
-            String phone = request.getPhone() != null ? request.getPhone().trim() : "";
-            if (phone.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("message", "Số điện thoại không được để trống"));
-            }
-
-            Optional<User> userOpt = userRepository.findByPhone(phone);
-            User user;
-            Patient patient;
-
-            if (userOpt.isEmpty()) {
-                // Create user
-                String username = "patient_" + phone;
-                user = User.builder()
-                        .username(username)
-                        .password("123456") // default password
-                        .phone(phone)
-                        .role(Role.PATIENT)
-                        .status(StatusUser.ACTIVE)
-                        .build();
-                user = userRepository.save(user);
-
-                // Create patient
-                patient = Patient.builder()
-                        .user(user)
-                        .fullName(request.getFullName() != null ? request.getFullName().trim() : "Khách vãng lai")
-                        .patientCode("PA-" + (System.currentTimeMillis() % 1000000))
-                        .createdAt(LocalDateTime.now())
-                        .build();
-                patient = patientRepository.save(patient);
-            } else {
-                user = userOpt.get();
-                // Find patient associated with this user
-                patient = user.getPatient();
-                if (patient == null) {
-                    patient = Patient.builder()
-                            .user(user)
-                            .fullName(request.getFullName() != null ? request.getFullName().trim() : user.getUsername())
-                            .patientCode("PA-" + (System.currentTimeMillis() % 1000000))
-                            .createdAt(LocalDateTime.now())
-                            .build();
-                    patient = patientRepository.save(patient);
-                }
-            }
-
-            // Find default dentist to assign if any exists
-            List<Dentist> dentists = dentistRepository.findAll();
-            Dentist assignedDentist = dentists.isEmpty() ? null : dentists.get(0);
-
-            // Parse Date and Time
-            LocalDateTime apptDate = LocalDateTime.now().plusDays(1).withHour(9).withMinute(0);
-            LocalDateTime apptTime = apptDate;
-
-            if (request.getDate() != null && !request.getDate().isEmpty()) {
-                try {
-                    LocalDate parsedDate = LocalDate.parse(request.getDate(), DateTimeFormatter.ISO_LOCAL_DATE);
-                    apptDate = parsedDate.atStartOfDay();
-                    if (request.getTime() != null && !request.getTime().isEmpty()) {
-                        LocalTime parsedTime = LocalTime.parse(request.getTime());
-                        apptTime = parsedDate.atTime(parsedTime);
-                    } else {
-                        apptTime = parsedDate.atTime(9, 0);
-                    }
-                } catch (Exception e) {
-                    System.err.println("Error parsing date/time: " + e.getMessage());
-                }
-            }
-
-            String reason = "Đặt lịch trực tuyến: Dịch vụ " + request.getServiceName() 
-                    + " tại cơ sở " + request.getBranchName();
-            if (request.getMessage() != null && !request.getMessage().trim().isEmpty()) {
-                reason += ". Chi tiết: " + request.getMessage().trim();
-            }
-
-            Appointment appointment = Appointment.builder()
-                    .patient(patient)
-                    .dentist(assignedDentist)
-                    .appointmentDate(apptDate)
-                    .appointmentTime(apptTime)
-                    .reason(reason)
-                    .status(StatusAppointment.PENDING)
-                    .notes(request.getMessage())
-                    .build();
-
-            appointmentRepository.save(appointment);
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "Đặt lịch hẹn thành công!");
-            response.put("appointmentId", appointment.getId());
-            response.put("patientCode", patient.getPatientCode());
-
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(Map.of(
-                    "success", false,
-                    "message", "Đã xảy ra lỗi hệ thống: " + e.getMessage()
-            ));
+            UUID uuid = UUID.fromString(id);
+            AppointmentDetailDTO updated = appointmentService.updateAppointmentStatus(uuid, status);
+            return ResponseEntity.ok(updated);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Mã lịch hẹn không hợp lệ: " + id);
         }
     }
 
-    @Data
-    public static class AppointmentRequest {
-        private String fullName;
-        private String phone;
-        private String serviceName;
-        private String branchName;
-        private String message;
-        private String date;
-        private String time;
+    @PutMapping("/{id}/exam")
+    public ResponseEntity<?> updateClinicalExam(
+            @PathVariable String id,
+            @RequestBody AppointmentCreateDTO dto
+    ) {
+        try {
+            UUID uuid = UUID.fromString(id);
+            AppointmentDetailDTO updated = appointmentService.updateClinicalExam(uuid, dto);
+            return ResponseEntity.ok(updated);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Mã lịch hẹn không hợp lệ: " + id);
+        }
     }
 }
+
+

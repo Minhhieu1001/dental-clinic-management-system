@@ -26,3 +26,5 @@ export const updateAppointmentRequest = async (id, status = 'CANCELLED') => {
     });
     return response.data;
 };
+
+export const updateAppointmentRequestStatus = updateAppointmentRequest;
