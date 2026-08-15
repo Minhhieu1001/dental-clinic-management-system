@@ -10,6 +10,8 @@ import {
   Stethoscope,
   Building,
   AlertCircle,
+  AlertTriangle,
+  X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { requestStatusConfig } from './receptionistData';
@@ -209,14 +211,30 @@ export default function AppointmentRequests({ onOpenCreateModal }) {
     }
   };
 
-  // Handle Reject Request
-  const handleReject = async (reqItem) => {
+  // Rejection Confirmation Dialog States
+  const [rejectTarget, setRejectTarget] = useState(null);
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [isRejecting, setIsRejecting] = useState(false);
+
+  // Trigger Reject Confirmation Modal
+  const handleOpenRejectModal = (reqItem) => {
+    setRejectTarget(reqItem);
+    setRejectReason('');
+    setIsRejectModalOpen(true);
+  };
+
+  // Confirm Reject Request
+  const confirmReject = async () => {
+    if (!rejectTarget) return;
+    setIsRejecting(true);
+    const reqItem = rejectTarget;
     setProcessingId(reqItem.id);
     try {
       if (reqItem.isApiData) {
         await updateAppointmentRequestStatus(reqItem.id, 'CANCELLED').catch(() => null);
       }
-      toast.error(`Đã từ chối yêu cầu của ${reqItem.name}`);
+      toast.success(`Đã từ chối yêu cầu của ${reqItem.name}`);
 
       setRequestList((prev) => {
         const updatedList = prev.map((item) => {
@@ -230,9 +248,13 @@ export default function AppointmentRequests({ onOpenCreateModal }) {
         });
         return sortRequests(updatedList);
       });
+      setIsRejectModalOpen(false);
+      setRejectTarget(null);
     } catch (error) {
       console.error('Lỗi khi từ chối yêu cầu:', error);
+      toast.error('Không thể từ chối yêu cầu đặt lịch');
     } finally {
+      setIsRejecting(false);
       setProcessingId(null);
     }
   };
@@ -429,9 +451,9 @@ export default function AppointmentRequests({ onOpenCreateModal }) {
                     <div className="flex w-full items-center justify-end gap-2">
                       <button
                         type="button"
-                        onClick={() => handleReject(req)}
+                        onClick={() => handleOpenRejectModal(req)}
                         disabled={isProcessingThis}
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-800 disabled:opacity-50"
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 disabled:opacity-50"
                       >
                         Từ chối
                       </button>
@@ -454,6 +476,92 @@ export default function AppointmentRequests({ onOpenCreateModal }) {
           })
         )}
       </div>
+
+      {/* Rejection Confirmation Modal */}
+      {isRejectModalOpen && rejectTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-fadeIn">
+          <div className="w-full max-w-md rounded-[4px] bg-white p-5 shadow-xl space-y-4 border border-rose-100">
+            <div className="flex items-center justify-between border-b border-rose-100 pb-3">
+              <div className="flex items-center gap-2.5 text-rose-600">
+                <div className="flex h-9 w-9 items-center justify-center rounded-[4px] bg-rose-100">
+                  <AlertTriangle size={18} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-slate-900 leading-tight">Xác nhận từ chối yêu cầu</h3>
+                  <p className="text-xs text-slate-500 font-medium">Hành động này không thể hoàn tác</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsRejectModalOpen(false);
+                  setRejectTarget(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-[4px] hover:bg-slate-100 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="rounded-[4px] bg-rose-50/70 border border-rose-100 p-3 space-y-1 text-xs text-slate-700">
+              <p><strong>Bệnh nhân:</strong> <span className="font-bold text-slate-900">{rejectTarget.name}</span></p>
+              {rejectTarget.phone && <p><strong>SĐT:</strong> {rejectTarget.phone}</p>}
+              {rejectTarget.description && (
+                <p><strong>Nội dung:</strong> {rejectTarget.description}</p>
+              )}
+            </div>
+
+            {/* Quick Reason Options */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-700">Lý do từ chối (Tùy chọn):</label>
+              <div className="flex flex-wrap gap-1.5 text-[11px]">
+                {['Lịch kín', 'Bệnh nhân báo hủy', 'Không liên lạc được', 'Khác'].map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setRejectReason(r)}
+                    className={`px-2.5 py-1 rounded-[4px] border font-medium transition-all ${
+                      rejectReason === r
+                        ? 'bg-rose-600 text-white border-rose-600 font-bold'
+                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+              <input
+                type="text"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Nhập lý do cụ thể..."
+                className="w-full rounded-[4px] border border-slate-200 p-2 text-xs outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsRejectModalOpen(false);
+                  setRejectTarget(null);
+                }}
+                className="rounded-[4px] border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                disabled={isRejecting}
+                onClick={confirmReject}
+                className="flex items-center gap-1.5 rounded-[4px] bg-rose-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-rose-700 transition-all disabled:opacity-50"
+              >
+                {isRejecting ? 'Đang từ chối...' : 'Xác nhận từ chối'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,10 +1,27 @@
 import { useState, useEffect } from 'react';
-import { X, Stethoscope, User, Phone, Calendar, Clock, FileText, CheckCircle2, Save, Pill, AlertCircle, Building } from 'lucide-react';
+import {
+  X,
+  Stethoscope,
+  User,
+  Phone,
+  Clock,
+  FileText,
+  CheckCircle2,
+  Save,
+  Pill,
+  AlertCircle,
+  Building,
+  Edit3,
+  Printer,
+  ShieldCheck,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import { updateClinicalExam, updateAppointmentStatus } from '../../services/appointment.service';
 
 export default function ClinicalExamModal({ isOpen, onClose, appointment, onSuccess }) {
   const [submitting, setSubmitting] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+
   const [formData, setFormData] = useState({
     symptoms: '',
     diagnosis: '',
@@ -13,8 +30,16 @@ export default function ClinicalExamModal({ isOpen, onClose, appointment, onSucc
     reason: '',
   });
 
+  const isCompleted = appointment?.status === 'COMPLETED';
+  const isWaiting =
+    appointment?.status === 'WAITING' ||
+    appointment?.status === 'PENDING' ||
+    appointment?.status === 'UNASSIGNED';
+  const isProcessing = appointment?.status === 'IN_PROGRESS';
+
   useEffect(() => {
     if (!isOpen || !appointment) return;
+
     setFormData({
       symptoms: appointment.symptoms || appointment.reason || '',
       diagnosis: appointment.diagnosis || '',
@@ -22,7 +47,10 @@ export default function ClinicalExamModal({ isOpen, onClose, appointment, onSucc
       notes: appointment.notes || '',
       reason: appointment.reason || 'Tư vấn & Khám bệnh nha khoa',
     });
-  }, [isOpen, appointment]);
+
+    // Default: Completed appointments open in View Mode (Read-Only), others in Edit Mode
+    setIsEditMode(!isCompleted);
+  }, [isOpen, appointment, isCompleted]);
 
   if (!isOpen || !appointment) return null;
 
@@ -41,7 +69,7 @@ export default function ClinicalExamModal({ isOpen, onClose, appointment, onSucc
           await updateAppointmentStatus(appointment.id, 'IN_PROGRESS').catch((err) => console.warn('Lỗi API status:', err));
         }
       }
-      toast.success('Đã lưu thông tin khám bệnh lâm sàng!');
+      toast.success('Đã lưu tạm thời hồ sơ khám bệnh!');
       if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
@@ -57,7 +85,7 @@ export default function ClinicalExamModal({ isOpen, onClose, appointment, onSucc
   // Complete Examination (status COMPLETED)
   const handleCompleteExam = async (e) => {
     e.preventDefault();
-    if (!formData.diagnosis.trim()) {
+    if (isEditMode && !formData.diagnosis.trim()) {
       toast.error('Vui lòng nhập chẩn đoán bệnh của Bác sĩ trước khi hoàn thành ca khám!');
       return;
     }
@@ -66,14 +94,20 @@ export default function ClinicalExamModal({ isOpen, onClose, appointment, onSucc
     try {
       if (appointment.id && !String(appointment.id).startsWith('mock-')) {
         await updateClinicalExam(appointment.id, formData).catch((err) => console.warn('Lỗi API exam:', err));
-        await updateAppointmentStatus(appointment.id, 'COMPLETED').catch((err) => console.warn('Lỗi API status:', err));
+        if (!isCompleted) {
+          await updateAppointmentStatus(appointment.id, 'COMPLETED').catch((err) => console.warn('Lỗi API status:', err));
+        }
       }
-      toast.success(`Đã hoàn tất ca khám cho bệnh nhân ${appointment.patientName}!`);
+      toast.success(
+        isCompleted
+          ? 'Đã cập nhật hồ sơ khám bệnh thành công!'
+          : `Đã hoàn tất ca khám cho bệnh nhân ${appointment.patientName}!`
+      );
       if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
       console.warn('Lỗi hoàn tất ca khám:', err);
-      toast.success(`Đã hoàn tất ca khám cho bệnh nhân ${appointment.patientName}!`);
+      toast.success(`Đã lưu hồ sơ khám cho bệnh nhân ${appointment.patientName}!`);
       if (onSuccess) onSuccess();
       onClose();
     } finally {
@@ -81,73 +115,113 @@ export default function ClinicalExamModal({ isOpen, onClose, appointment, onSucc
     }
   };
 
-
-  const patientInitials = appointment.patientName
-    ? appointment.patientName
-        .split(' ')
-        .map((n) => n[0])
-        .slice(-2)
-        .join('')
-        .toUpperCase()
-    : 'BN';
+  const handlePrint = () => {
+    toast.success('Đang gửi lệnh in Phiếu khám & Hồ sơ bệnh án...');
+    window.print();
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl ring-1 ring-slate-900/10 overflow-hidden">
+      <div className="w-full max-w-2xl rounded-[4px] bg-white shadow-2xl ring-1 ring-slate-900/10 overflow-hidden">
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-teal-800 via-teal-700 to-emerald-700 px-6 py-4 text-white">
+        <div
+          className={`flex items-center justify-between border-b border-slate-100 px-6 py-4 text-white transition-colors ${
+            isCompleted
+              ? 'bg-gradient-to-r from-emerald-800 via-teal-800 to-emerald-700'
+              : isProcessing
+              ? 'bg-gradient-to-r from-purple-800 via-teal-800 to-purple-700'
+              : 'bg-gradient-to-r from-teal-800 via-teal-700 to-sky-700'
+          }`}
+        >
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 backdrop-blur-md border border-white/20 text-white shadow-md">
+            <div className="flex h-11 w-11 items-center justify-center rounded-[4px] bg-white/15 backdrop-blur-md border border-white/20 text-white shadow-md">
               <Stethoscope size={22} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-teal-200">Phiếu Khám & Hồ Sơ Điều Trị</span>
-                <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold text-white">
-                  {appointment.status === 'COMPLETED' ? 'Đã hoàn thành' : 'Đang tiến hành'}
+                <span className="text-[11px] font-bold uppercase tracking-wider text-teal-200">
+                  {isCompleted ? 'Hồ Sơ Ca Khám Đã Hoàn Thành' : 'Phiếu Khám & Hồ Sơ Điều Trị'}
+                </span>
+                <span
+                  className={`rounded-[3px] px-2 py-0.5 text-[10px] font-extrabold flex items-center gap-1 ${
+                    isCompleted
+                      ? 'bg-emerald-500/30 text-emerald-100 border border-emerald-400/40'
+                      : isProcessing
+                      ? 'bg-purple-500/30 text-purple-100 border border-purple-400/40'
+                      : 'bg-sky-500/30 text-sky-100 border border-sky-400/40'
+                  }`}
+                >
+                  {isCompleted && <ShieldCheck size={12} />}
+                  {isCompleted ? 'Đã hoàn thành' : isProcessing ? 'Đang tiến hành khám' : 'Chưa khám (Chờ khám)'}
                 </span>
               </div>
-              <h3 className="text-lg font-bold leading-tight">Khám Bệnh: {appointment.patientName}</h3>
+              <h3 className="text-lg font-bold leading-tight">
+                {isCompleted ? 'Bệnh án Hoàn Tất:' : 'Khám Bệnh:'} {appointment.patientName}
+              </h3>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full p-1.5 text-teal-100 hover:bg-white/10 hover:text-white transition-colors"
+            className="rounded-[4px] p-1.5 text-teal-100 hover:bg-white/10 hover:text-white transition-colors"
           >
             <X size={20} />
           </button>
         </div>
 
         {/* Patient Summary Bar */}
-        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 px-6 py-3 text-xs text-slate-600">
+        <div className="flex flex-wrap items-center justify-between border-b border-slate-200 bg-slate-50/90 px-6 py-3 text-xs text-slate-600 gap-2">
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5 font-semibold text-slate-800">
+            <div className="flex items-center gap-1.5 font-bold text-slate-900">
               <User size={14} className="text-teal-600" />
               <span>{appointment.patientName}</span>
-              <span className="text-[11px] font-normal text-slate-400">({appointment.patientCode || 'PA-NEW'})</span>
+              <span className="text-[11px] font-semibold text-teal-800 bg-teal-100/70 border border-teal-200 px-1.5 py-0.2 rounded-[3px]">
+                {appointment.patientCode || 'PA-NEW'}
+              </span>
             </div>
-            <div className="flex items-center gap-1 font-medium text-slate-600">
-              <Phone size={13} className="text-slate-400" />
-              <span>{appointment.phone}</span>
-            </div>
+            {appointment.phone && (
+              <div className="flex items-center gap-1 font-medium text-slate-600">
+                <Phone size={13} className="text-slate-400" />
+                <span>{appointment.phone}</span>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-3 text-[11px]">
             {appointment.roomName && (
-              <span className="flex items-center gap-1 font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200">
+              <span className="flex items-center gap-1 font-semibold text-teal-800 bg-teal-50 px-2 py-0.5 rounded-[3px] border border-teal-200">
                 <Building size={12} /> {appointment.roomName}
               </span>
             )}
             <span className="flex items-center gap-1 font-semibold text-slate-700">
               <Clock size={12} className="text-teal-600" />
-              {appointment.time || '10:00'}
+              {appointment.time || '09:00 - 10:00'}
             </span>
           </div>
         </div>
 
         {/* Clinical Form */}
-        <form onSubmit={handleCompleteExam} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+        <form onSubmit={handleCompleteExam} className="p-6 space-y-4 max-h-[68vh] overflow-y-auto">
+          {/* Completed Notice Banner if View Mode */}
+          {isCompleted && !isEditMode && (
+            <div className="flex items-center justify-between rounded-[4px] border border-emerald-200 bg-emerald-50/80 p-3 text-xs text-emerald-900 shadow-2xs">
+              <div className="flex items-center gap-2">
+                <ShieldCheck size={18} className="text-emerald-600 shrink-0" />
+                <div>
+                  <p className="font-bold">Hồ sơ khám bệnh này đã được hoàn tất và khóa an toàn.</p>
+                  <p className="text-[11px] text-emerald-700">Chỉ xem thông tin. Bấm "Chỉnh sửa hồ sơ" nếu cần cập nhật lại thông tin điều trị.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditMode(true)}
+                className="flex items-center gap-1 rounded-[4px] bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-800 transition-colors shrink-0"
+              >
+                <Edit3 size={13} /> Sửa hồ sơ
+              </button>
+            </div>
+          )}
+
           {/* Service / Reason for visit */}
           <div>
             <label className="block text-[12px] font-bold text-slate-700 mb-1">
@@ -156,10 +230,15 @@ export default function ClinicalExamModal({ isOpen, onClose, appointment, onSucc
             <input
               type="text"
               name="reason"
+              disabled={!isEditMode}
               value={formData.reason}
               onChange={handleChange}
               placeholder="VD: Tư vấn niềng răng, Trám răng composite..."
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-800 bg-slate-50/50 focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+              className={`w-full rounded-[4px] border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-800 outline-none transition-all ${
+                !isEditMode
+                  ? 'bg-slate-100/70 text-slate-700 cursor-not-allowed'
+                  : 'bg-slate-50/50 focus:border-teal-500 focus:bg-white focus:ring-1 focus:ring-teal-500'
+              }`}
             />
           </div>
 
@@ -174,10 +253,15 @@ export default function ClinicalExamModal({ isOpen, onClose, appointment, onSucc
             <textarea
               name="symptoms"
               rows={2}
+              disabled={!isEditMode}
               value={formData.symptoms}
               onChange={handleChange}
               placeholder="Mô tả triệu chứng bệnh nhân (VD: Ê buốt răng khi ăn uống đồ lạnh, sưng nướu nhẹ...)"
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 resize-none"
+              className={`w-full rounded-[4px] border border-slate-200 px-3 py-2 text-xs text-slate-800 outline-none resize-none transition-all ${
+                !isEditMode
+                  ? 'bg-slate-100/70 text-slate-700 cursor-not-allowed'
+                  : 'focus:border-teal-500 focus:ring-1 focus:ring-teal-500'
+              }`}
             />
           </div>
 
@@ -186,21 +270,26 @@ export default function ClinicalExamModal({ isOpen, onClose, appointment, onSucc
             <label className="block text-[12px] font-bold text-slate-700 mb-1">
               <span className="flex items-center gap-1.5">
                 <Stethoscope size={14} className="text-teal-600" />
-                Chẩn đoán của Bác sĩ <span className="text-rose-500">*</span>
+                Chẩn đoán của Bác sĩ {isEditMode && <span className="text-rose-500">*</span>}
               </span>
             </label>
             <textarea
               name="diagnosis"
-              required
+              required={isEditMode}
               rows={2}
+              disabled={!isEditMode}
               value={formData.diagnosis}
               onChange={handleChange}
               placeholder="Nhập chẩn đoán bác sĩ (VD: Sâu răng mặt nhai R36, Viêm nướu răng hàm dưới...)"
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-800 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 resize-none"
+              className={`w-full rounded-[4px] border border-slate-200 px-3 py-2 text-xs font-bold text-slate-800 outline-none resize-none transition-all ${
+                !isEditMode
+                  ? 'bg-slate-100/70 text-slate-700 cursor-not-allowed'
+                  : 'focus:border-teal-500 focus:ring-1 focus:ring-teal-500'
+              }`}
             />
           </div>
 
-          {/* Phương án Điều trị & Chỉ định */}
+          {/* Phương án Điều trị & Ghi chú kỹ thuật */}
           <div>
             <label className="block text-[12px] font-bold text-slate-700 mb-1">
               <span className="flex items-center gap-1.5">
@@ -211,10 +300,15 @@ export default function ClinicalExamModal({ isOpen, onClose, appointment, onSucc
             <textarea
               name="treatmentNotes"
               rows={2}
+              disabled={!isEditMode}
               value={formData.treatmentNotes}
               onChange={handleChange}
               placeholder="Chi tiết phương án điều trị (VD: Trám composite thẩm mỹ R36, mài viền, lấy vôi răng...)"
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 resize-none"
+              className={`w-full rounded-[4px] border border-slate-200 px-3 py-2 text-xs text-slate-800 outline-none resize-none transition-all ${
+                !isEditMode
+                  ? 'bg-slate-100/70 text-slate-700 cursor-not-allowed'
+                  : 'focus:border-teal-500 focus:ring-1 focus:ring-teal-500'
+              }`}
             />
           </div>
 
@@ -229,10 +323,15 @@ export default function ClinicalExamModal({ isOpen, onClose, appointment, onSucc
             <input
               type="text"
               name="notes"
+              disabled={!isEditMode}
               value={formData.notes}
               onChange={handleChange}
               placeholder="VD: Giữ vệ sinh răng miệng, kiêng đồ quá cứng, tái khám sau 1 tuần..."
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+              className={`w-full rounded-[4px] border border-slate-200 px-3 py-2 text-xs text-slate-800 outline-none transition-all ${
+                !isEditMode
+                  ? 'bg-slate-100/70 text-slate-700 cursor-not-allowed'
+                  : 'focus:border-teal-500 focus:bg-white focus:ring-1 focus:ring-teal-500'
+              }`}
             />
           </div>
 
@@ -241,34 +340,56 @@ export default function ClinicalExamModal({ isOpen, onClose, appointment, onSucc
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+              className="rounded-[4px] border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
             >
-              Hủy / Đóng
+              {isCompleted && !isEditMode ? 'Đóng' : 'Hủy / Đóng'}
             </button>
 
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleSaveDraft}
-                disabled={submitting}
-                className="flex items-center gap-1.5 rounded-lg border border-teal-200 bg-teal-50 px-4 py-2 text-xs font-bold text-teal-800 hover:bg-teal-100 transition-colors disabled:opacity-50"
-              >
-                <Save size={15} />
-                Lưu tạm hồ sơ
-              </button>
+              {/* Show Print Button when completed */}
+              {isCompleted && (
+                <button
+                  type="button"
+                  onClick={handlePrint}
+                  className="flex items-center gap-1.5 rounded-[4px] border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  <Printer size={15} className="text-slate-500" />
+                  In phiếu khám
+                </button>
+              )}
 
-              <button
-                type="submit"
-                disabled={submitting}
-                className="flex items-center gap-1.5 rounded-lg bg-teal-700 px-5 py-2 text-xs font-bold text-white shadow-md shadow-teal-700/20 hover:bg-teal-800 transition-colors disabled:opacity-50"
-              >
-                {submitting ? (
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                ) : (
-                  <CheckCircle2 size={16} />
-                )}
-                Hoàn Thành Ca Khám
-              </button>
+              {/* Show Save Draft only when in edit mode & not completed yet */}
+              {isEditMode && !isCompleted && (
+                <button
+                  type="button"
+                  onClick={handleSaveDraft}
+                  disabled={submitting}
+                  className="flex items-center gap-1.5 rounded-[4px] border border-teal-200 bg-teal-50 px-4 py-2 text-xs font-bold text-teal-800 hover:bg-teal-100 transition-colors disabled:opacity-50"
+                >
+                  <Save size={15} />
+                  Lưu tạm hồ sơ
+                </button>
+              )}
+
+              {/* Primary Action Button */}
+              {isEditMode && (
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className={`flex items-center gap-1.5 rounded-[4px] px-5 py-2 text-xs font-bold text-white shadow-md transition-colors disabled:opacity-50 ${
+                    isCompleted
+                      ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
+                      : 'bg-teal-700 hover:bg-teal-800 shadow-teal-700/20'
+                  }`}
+                >
+                  {submitting ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  ) : (
+                    <CheckCircle2 size={16} />
+                  )}
+                  {isCompleted ? 'Lưu cập nhật hồ sơ' : isWaiting ? 'Bắt đầu & Hoàn thành khám' : 'Hoàn Thành Ca Khám'}
+                </button>
+              )}
             </div>
           </div>
         </form>

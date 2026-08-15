@@ -19,10 +19,14 @@ import iuh.fit.backend.user.entity.Dentist;
 import iuh.fit.backend.user.entity.User;
 import iuh.fit.backend.user.enums.Role;
 import iuh.fit.backend.user.enums.StatusUser;
+import iuh.fit.backend.user.entity.Employee;
 import iuh.fit.backend.user.repository.DentistRepository;
+import iuh.fit.backend.user.repository.EmployeeRepository;
 import iuh.fit.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +34,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -45,6 +50,7 @@ public class AppointmentServiceImpl implements AppointmentService {
     private final PatientRepository patientRepository;
     private final UserRepository userRepository;
     private final DentistRepository dentistRepository;
+    private final EmployeeRepository employeeRepository;
     private final RoomRepository roomRepository;
 
     @Override
@@ -133,10 +139,31 @@ public class AppointmentServiceImpl implements AppointmentService {
             }
         }
 
+        // 4.5 Resolve Employee from SecurityContext if available
+        Employee employee = null;
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getName() != null && !auth.getName().equalsIgnoreCase("anonymousUser")) {
+                String username = auth.getName();
+                User currentUser = userRepository.findByUsername(username)
+                        .orElseGet(() -> userRepository.findByEmail(username).orElse(null));
+                if (currentUser != null) {
+                    if (currentUser.getEmployee() != null) {
+                        employee = currentUser.getEmployee();
+                    } else if (currentUser.getRole() == Role.EMPLOYEE) {
+                        employee = employeeRepository.findByUserId(currentUser.getId()).orElse(null);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not resolve logged-in employee: {}", e.getMessage());
+        }
+
         // 5. Build Appointment entity
         Appointment appointment = Appointment.builder()
                 .patient(patient)
                 .dentist(dentist)
+                .employee(employee)
                 .appointmentDate(apptDate)
                 .appointmentTime(apptTime)
                 .reason(dto.getReason() != null ? dto.getReason() : "Tư vấn & khám bệnh")
@@ -201,14 +228,60 @@ public class AppointmentServiceImpl implements AppointmentService {
     @Override
     @Transactional(readOnly = true)
     public List<AppointmentDetailDTO> getAppointmentsByDentist(UUID dentistId) {
-        return appointmentRepository.findByDentistIdOrderByAppointmentDateAscAppointmentTimeAsc(dentistId)
+        Dentist targetDentist = dentistRepository.findById(dentistId).orElse(null);
+        if (targetDentist == null) {
+            return appointmentRepository.findByDentistIdOrderByAppointmentDateAscAppointmentTimeAsc(dentistId)
+                    .stream().map(this::mapToDTO).collect(Collectors.toList());
+        }
+
+        List<Dentist> allDentists = dentistRepository.findAllWithUser();
+        List<UUID> matchingDentistIds = allDentists.stream()
+                .filter(d -> {
+                    if (d.getId().equals(dentistId)) return true;
+                    if (targetDentist.getUser() != null && d.getUser() != null && targetDentist.getUser().getId().equals(d.getUser().getId())) return true;
+                    String name1 = targetDentist.getFullName() != null ? targetDentist.getFullName().trim().toLowerCase() : "";
+                    String name2 = d.getFullName() != null ? d.getFullName().trim().toLowerCase() : "";
+                    return !name1.isEmpty() && name1.equals(name2);
+                })
+                .map(Dentist::getId)
+                .collect(Collectors.toList());
+
+        return appointmentRepository.findByDentistIdInOrderByAppointmentDateAscAppointmentTimeAsc(matchingDentistIds)
                 .stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<AppointmentDetailDTO> getAppointmentsByDentistUser(UUID userId) {
-        return appointmentRepository.findByDentistUserIdOrderByAppointmentDateAscAppointmentTimeAsc(userId)
+        User user = userRepository.findById(userId).orElse(null);
+
+        List<Dentist> allDentists = dentistRepository.findAllWithUser();
+        List<UUID> matchingDentistIds = allDentists.stream()
+                .filter(d -> {
+                    if (d.getUser() != null && d.getUser().getId().equals(userId)) return true;
+                    if (d.getId().equals(userId)) return true;
+                    if (user != null) {
+                        if (d.getUser() != null && user.getEmail() != null && user.getEmail().equalsIgnoreCase(d.getUser().getEmail())) return true;
+                        if (d.getUser() != null && user.getUsername() != null && user.getUsername().equalsIgnoreCase(d.getUser().getUsername())) return true;
+                        String dName = d.getFullName() != null ? d.getFullName() : (d.getUser() != null ? d.getUser().getUsername() : "");
+                        String uName = user.getUsername() != null ? user.getUsername() : "";
+                        if (!dName.isEmpty() && !uName.isEmpty()) {
+                            String cleanD = dName.replaceAll("(?i)^(ThS\\.|BS\\.|TS\\.|Dr\\.)\\s*", "").trim().toLowerCase();
+                            String cleanU = uName.replaceAll("(?i)^(bs\\.|dr\\.)", "").replace(".", " ").trim().toLowerCase();
+                            if (cleanD.contains(cleanU) || cleanU.contains(cleanD)) return true;
+                        }
+                    }
+                    return false;
+                })
+                .map(Dentist::getId)
+                .collect(Collectors.toList());
+
+        if (matchingDentistIds.isEmpty()) {
+            return appointmentRepository.findByDentistUserIdOrderByAppointmentDateAscAppointmentTimeAsc(userId)
+                    .stream().map(this::mapToDTO).collect(Collectors.toList());
+        }
+
+        return appointmentRepository.findByDentistIdInOrderByAppointmentDateAscAppointmentTimeAsc(matchingDentistIds)
                 .stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 

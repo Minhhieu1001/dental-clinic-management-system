@@ -16,6 +16,8 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
 
     List<Appointment> findByDentistIdOrderByAppointmentDateAscAppointmentTimeAsc(UUID dentistId);
 
+    List<Appointment> findByDentistIdInOrderByAppointmentDateAscAppointmentTimeAsc(List<UUID> dentistIds);
+
     @Query("SELECT a FROM Appointment a WHERE (a.dentist IS NOT NULL AND (a.dentist.user.id = :userId OR a.dentist.id = :userId)) ORDER BY a.appointmentDate ASC, a.appointmentTime ASC")
     List<Appointment> findByDentistUserIdOrderByAppointmentDateAscAppointmentTimeAsc(@Param("userId") UUID userId);
 

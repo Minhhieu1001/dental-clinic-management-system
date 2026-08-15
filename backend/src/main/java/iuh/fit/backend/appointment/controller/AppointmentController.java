@@ -59,10 +59,7 @@ public class AppointmentController {
             User user = userRepository.findByUsername(username)
                     .orElseGet(() -> userRepository.findByEmail(username).orElse(null));
             if (user != null) {
-                List<AppointmentDetailDTO> list = appointmentService.getAppointmentsByDentistUser(user.getId());
-                if (!list.isEmpty()) {
-                    return list;
-                }
+                return appointmentService.getAppointmentsByDentistUser(user.getId());
             }
         }
         if (dentistId != null) {

@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,10 +45,28 @@ public class DentistServiceImpl implements DentistService {
 
     @Override
     public List<DentistListResponse> getDentistsList() {
-        return dentistRepository.findAllWithUser()
-                .stream()
-                .map(this::toDentistListResponse)
-                .toList();
+        List<Dentist> allDentists = new ArrayList<>(dentistRepository.findAllWithUser());
+        allDentists.sort((d1, d2) -> {
+            boolean d1HasUser = d1.getUser() != null;
+            boolean d2HasUser = d2.getUser() != null;
+            if (d1HasUser && !d2HasUser) return -1;
+            if (!d1HasUser && d2HasUser) return 1;
+            return 0;
+        });
+
+        Map<String, DentistListResponse> seenNames = new HashMap<>();
+        List<DentistListResponse> result = new ArrayList<>();
+
+        for (Dentist dentist : allDentists) {
+            DentistListResponse dto = toDentistListResponse(dentist);
+            String nameKey = dto.name() != null ? dto.name().trim().toLowerCase() : dentist.getId().toString();
+            if (!seenNames.containsKey(nameKey)) {
+                seenNames.put(nameKey, dto);
+                result.add(dto);
+            }
+        }
+
+        return result;
     }
 
     @Override

@@ -267,11 +267,11 @@ export default function CreateAppointmentModal({ isOpen, onClose, initialData = 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl ring-1 ring-slate-900/10 overflow-hidden max-h-[92vh] flex flex-col">
+      <div className="w-full max-w-2xl rounded-xl bg-white shadow-2xl ring-1 ring-slate-900/10 overflow-hidden max-h-[92vh] flex flex-col">
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-teal-800 via-teal-700 to-emerald-700 px-6 py-4 text-white shrink-0">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 backdrop-blur-md border border-white/20 text-white shadow-md">
+            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-white/15 backdrop-blur-md border border-white/20 text-white shadow-md">
               <Stethoscope size={22} />
             </div>
             <div>
