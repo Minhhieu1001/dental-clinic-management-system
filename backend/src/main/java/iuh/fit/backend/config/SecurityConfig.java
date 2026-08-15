@@ -73,7 +73,9 @@ public class SecurityConfig {
                                 "/api/dentists/**",
                                 "/api/reviews/**",
                                 "/api/appointments/**",
+                                "/api/v1/appointments/**",
                                 "/v3/api-docs/**",
+
                                 "/swagger-ui/**",
                                 "/swagger-ui.html"
                         ).permitAll()

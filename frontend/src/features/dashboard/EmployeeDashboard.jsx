@@ -1,18 +1,36 @@
+import { useState } from 'react';
 import DashboardHeader from './receptionist/DashboardHeader';
 import StatsRow from './receptionist/StatsRow';
 import AppointmentTable from './receptionist/AppointmentTable';
 import AppointmentRequests from './receptionist/AppointmentRequests';
 import QuickActions from './receptionist/QuickActions';
+import CreateAppointmentModal from '../../components/ui/CreateAppointmentModal';
 import { useReceptionistDashboard } from '../../hooks/useReceptionistDashboard';
 import { staffName } from './receptionist/receptionistData';
 
 export default function EmployeeDashboard() {
-  const { stats, appointments, requests, loading } = useReceptionistDashboard();
+  const { stats, appointments, requests, loading, refetch } = useReceptionistDashboard();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+
+  const handleOpenCreateModal = (requestData = null) => {
+    setSelectedRequest(requestData);
+    setIsModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setSelectedRequest(null);
+  };
+
+  const handleModalSuccess = () => {
+    refetch();
+  };
 
   return (
     <div className="mx-auto max-w-[1400px] px-1">
       {/* Header */}
-      <DashboardHeader staffName={staffName} />
+      <DashboardHeader staffName={staffName} onOpenCreateModal={() => handleOpenCreateModal()} />
 
       {/* Stats row */}
       <div className="mt-3">
@@ -28,10 +46,18 @@ export default function EmployeeDashboard() {
 
         {/* Right column — Requests + Quick actions */}
         <div className="flex flex-[27] flex-col gap-3">
-          <AppointmentRequests requests={requests} />
-          <QuickActions />
+          <AppointmentRequests requests={requests} onOpenCreateModal={handleOpenCreateModal} />
+          <QuickActions onOpenCreateModal={() => handleOpenCreateModal()} />
         </div>
       </div>
+
+      {/* Modal create appointment */}
+      <CreateAppointmentModal
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        initialData={selectedRequest}
+        onSuccess={handleModalSuccess}
+      />
     </div>
   );
 }

@@ -42,19 +42,26 @@ export default function DentistHeader({ config }) {
     <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/80 backdrop-blur-xl">
       <div className="flex h-16 items-center justify-between px-4 sm:px-6">
 
-        {/* Left Side: Logo + Search */}
+        {/* Left Side: Logo Branding (Matches Home Page) */}
         <div className="flex items-center gap-4">
-          <Link to="/employee/dashboard" className="hidden sm:flex flex-col leading-tight">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-teal-700">
-              Dental Clinic
-            </span>
-            <span className="text-[15px] font-semibold text-slate-800">
-              Staff Portal
-            </span>
+          <Link to="/employee/dashboard" className="flex items-center gap-3 flex-shrink-0 select-none group">
+            <img
+              src="/logo.png"
+              alt="Crown Dental Logo"
+              className="h-10 w-10 sm:h-11 sm:w-11 object-contain group-hover:scale-105 transition-transform"
+            />
+            <div className="leading-tight">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">NHA KHOA</p>
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-[#1f4fb2] leading-none my-0.5 group-hover:text-[#193f90] transition-colors">
+                CROWN Dental
+              </h1>
+              <p className="text-[8px] text-slate-400 uppercase tracking-wider font-semibold">NGƯỜI BẠN TRỌN ĐỜI</p>
+            </div>
           </Link>
 
           <div className="hidden h-8 w-px bg-slate-200 sm:block" />
         </div>
+
 
         {/* Right Side: Actions */}
         <div className="flex items-center gap-2 sm:gap-4 ml-4">

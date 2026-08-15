@@ -52,6 +52,16 @@ public class Appointment {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+    @Column(columnDefinition = "TEXT")
+    private String diagnosis;
+
+    @Column(columnDefinition = "TEXT")
+    private String symptoms;
+
+    @Column(columnDefinition = "TEXT")
+    private String treatmentNotes;
+
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

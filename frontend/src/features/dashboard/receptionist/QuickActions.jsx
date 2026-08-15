@@ -27,9 +27,9 @@ const actions = [
   },
 ];
 
-export default function QuickActions() {
+export default function QuickActions({ onOpenCreateModal }) {
   return (
-    <div className="rounded-[4px] border border-slate-200 bg-white">
+    <div className="rounded-[4px] border border-slate-200 bg-white shadow-sm">
       <div className="border-b border-slate-100 px-4 py-2.5">
         <h3 className="text-[14px] font-semibold text-slate-700">
           Thao tác nhanh
@@ -42,6 +42,11 @@ export default function QuickActions() {
             <button
               key={action.key}
               type="button"
+              onClick={() => {
+                if (action.key === 'schedule' && onOpenCreateModal) {
+                  onOpenCreateModal();
+                }
+              }}
               className="flex items-center gap-2.5 bg-white px-3.5 py-3 text-left transition-colors hover:bg-slate-50 active:bg-slate-100"
             >
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[3px] bg-teal-50 text-teal-700">

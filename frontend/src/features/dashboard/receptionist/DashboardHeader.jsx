@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Search, Bell, Plus } from 'lucide-react';
 
-export default function DashboardHeader({ staffName }) {
+export default function DashboardHeader({ staffName, onOpenCreateModal }) {
   const [searchValue, setSearchValue] = useState('');
 
   const today = new Date();
@@ -52,7 +52,8 @@ export default function DashboardHeader({ staffName }) {
         {/* Create appointment button */}
         <button
           type="button"
-          className="flex h-[36px] items-center gap-1.5 rounded-[4px] bg-teal-700 px-3.5 text-[13px] font-medium text-white transition-colors hover:bg-teal-800 active:bg-teal-900"
+          onClick={() => onOpenCreateModal && onOpenCreateModal()}
+          className="flex h-[36px] items-center gap-1.5 rounded-[4px] bg-teal-700 px-3.5 text-[13px] font-medium text-white transition-colors hover:bg-teal-800 active:bg-teal-900 shadow-sm"
         >
           <Plus size={15} strokeWidth={2.5} />
           <span>Tạo lịch hẹn</span>
