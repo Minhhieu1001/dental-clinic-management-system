@@ -1,7 +1,19 @@
 import { useState, useEffect } from 'react'
+import { Award, Users, Sparkles, Star, Cpu, Stethoscope, ShieldCheck, CheckCircle2, ArrowRight, Shield, Zap, Check, Clock, Calendar, ChevronRight, GraduationCap, User, Phone, FileText, CalendarCheck, Tag } from 'lucide-react'
 import { getServices, getDentists, getReviews, createAppointment } from '../services/api'
 import { getDentistsList } from '../services/dentist.service'
+import { createAppointmentRequest } from '../services/appointmentRequest.service'
+import toast from 'react-hot-toast'
 import AppointmentRequestModal from '../components/ui/AppointmentRequestModal'
+
+const QUICK_TAGS = [
+  'Khám răng tổng quát',
+  'Tư vấn niềng răng',
+  'Trồng răng Implant',
+  'Răng sứ thẩm mỹ',
+  'Tẩy trắng răng',
+  'Nhổ răng khôn',
+]
 // SVG icon components matching the reference design
 const IconUuDai = () => (
   <svg viewBox="0 0 48 48" fill="none" stroke="#4a6fa5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-9 h-9">
@@ -103,6 +115,50 @@ const SERVICE_IMAGES = {
 
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&q=80&w=300'
 
+// Default Doctors fallback list when backend database has no doctors yet
+const DEFAULT_DENTISTS = [
+  {
+    id: 'd1',
+    name: 'ThS. BS. Nguyễn Minh Tuấn',
+    fullName: 'ThS. BS. Nguyễn Minh Tuấn',
+    specialization: 'Chuyên gia Niềng răng & Chỉnh nha Invisalign',
+    qualification: 'Thạc sĩ Nha khoa - ĐH Y Dược TP.HCM',
+    licenseNumber: 'CCHN-001892/SYT',
+    experienceYears: 15,
+    avatarUrl: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=600',
+  },
+  {
+    id: 'd2',
+    name: 'BS. CKII Hoàng Thanh Hà',
+    fullName: 'BS. CKII Hoàng Thanh Hà',
+    specialization: 'Chuyên gia Trồng răng Implant & Phục hình',
+    qualification: 'Bác sĩ CKII - Tu nghiệp CHFG Đức',
+    licenseNumber: 'CCHN-002410/SYT',
+    experienceYears: 12,
+    avatarUrl: 'https://images.unsplash.com/photo-1594824813572-c0e86b453e97?auto=format&fit=crop&q=80&w=600',
+  },
+  {
+    id: 'd3',
+    name: 'ThS. BS. Trần Đức Anh',
+    fullName: 'ThS. BS. Trần Đức Anh',
+    specialization: 'Chuyên gia Răng sứ thẩm mỹ & Smile Design',
+    qualification: 'Thạc sĩ Nha khoa - Tu nghiệp Singapore',
+    licenseNumber: 'CCHN-003819/SYT',
+    experienceYears: 10,
+    avatarUrl: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&q=80&w=600',
+  },
+  {
+    id: 'd4',
+    name: 'BS. CKI Lê Thị Mai Anh',
+    fullName: 'BS. CKI Lê Thị Mai Anh',
+    specialization: 'Chuyên gia Nha khoa Tổng quát & Trẻ em',
+    qualification: 'Bác sĩ CKI - ĐH Y Hà Nội',
+    licenseNumber: 'CCHN-004128/SYT',
+    experienceYears: 8,
+    avatarUrl: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=600',
+  },
+]
+
 // ─────────────────────// Hero showcase slides data
 const HERO_SLIDES = [
   {
@@ -110,7 +166,7 @@ const HERO_SLIDES = [
     title: 'Không gian phòng khám chuyên nghiệp, hiện đại',
     description: 'Trải nghiệm thăm khám thoải mái với môi trường sạch sẽ, sáng sủa và trang thiết bị đồng bộ theo tiêu chuẩn cao.',
     tags: ['Phòng chờ sáng', 'Thiết bị hiện đại', 'Quy trình chuyên nghiệp'],
-    img: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=1600',
+    img: 'https://images.unsplash.com/photo-1629909615184-74f495363b67?auto=format&fit=crop&q=80&w=1200',
     badgeText: 'CROWN Dental Clinic',
     cardEyebrow: 'Phòng khám tiêu chuẩn',
     cardTitle: 'Không gian thăm khám chuyên nghiệp',
@@ -121,7 +177,7 @@ const HERO_SLIDES = [
     title: 'Đội ngũ bác sĩ tu nghiệp nước ngoài uy tín',
     description: '100% các bác sĩ chuyên khoa tốt nghiệp Đại học Y Dược danh tiếng, hoàn thành nhiều khóa tu nghiệp chuyên sâu tại Singapore, Mỹ, và châu Âu.',
     tags: ['Bác sĩ chuyên khoa', 'Tu nghiệp Hoa Kỳ', '10+ năm kinh nghiệm'],
-    img: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=1000',
+    img: 'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&q=80&w=1200',
     badgeText: 'CROWN Dental Experts',
     cardEyebrow: 'Đội ngũ chuyên môn',
     cardTitle: 'Tận tâm & Chuyên nghiệp',
@@ -132,7 +188,7 @@ const HERO_SLIDES = [
     title: 'Trang thiết bị chuẩn quốc tế hàng đầu',
     description: 'Sở hữu máy quét dấu răng iTero Element 5D, hệ thống chụp phim CT Cone Beam hiện đại và phòng phẫu thuật vô trùng khép kín theo tiêu chuẩn Bộ Y tế.',
     tags: ['iTero Element 5D', 'CT Cone Beam', 'Vô trùng tuyệt đối'],
-    img: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&q=80&w=1000',
+    img: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&q=80&w=1200',
     badgeText: 'CROWN Dental Technology',
     cardEyebrow: 'Công nghệ nha khoa',
     cardTitle: 'Trang thiết bị tối tân',
@@ -143,7 +199,7 @@ const HERO_SLIDES = [
     title: 'Chế độ bảo hành dài hạn & trả góp 0%',
     description: 'Cam kết chất lượng điều trị bằng văn bản, chế độ bảo hành rõ ràng, minh bạch cùng chính sách hỗ trợ trả góp lãi suất 0% liên kết với nhiều ngân hàng.',
     tags: ['Bảo hành dài hạn', 'Trả góp 0%', 'Hỗ trợ 24/7'],
-    img: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&q=80&w=1000',
+    img: 'https://images.unsplash.com/photo-1579684389782-64d84b5e901a?auto=format&fit=crop&q=80&w=1200',
     badgeText: 'CROWN Care & Warranty',
     cardEyebrow: 'Chế độ hậu mãi',
     cardTitle: 'Cam kết chất lượng',
@@ -154,7 +210,7 @@ const HERO_SLIDES = [
     title: 'Không gian sang trọng chuẩn Singapore',
     description: 'Hệ thống phòng khám sở hữu không gian thiết kế sang trọng, hiện đại, mang lại cảm giác thư giãn thoải mái như đi spa cho mọi khách hàng.',
     tags: ['Chuẩn Singapore', 'Phòng khám VIP', 'Thư giãn thoải mái'],
-    img: 'https://images.unsplash.com/photo-1504813184591-015578c77e5f?auto=format&fit=crop&q=80&w=1000',
+    img: 'https://images.unsplash.com/photo-1606811971618-4486d14f3f99?auto=format&fit=crop&q=80&w=1200',
     badgeText: 'CROWN Singapore Standard',
     cardEyebrow: 'Không gian VIP',
     cardTitle: 'Trải nghiệm thư thái',
@@ -170,17 +226,13 @@ export default function Home() {
   const [activeSlide, setActiveSlide] = useState(0)
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
 
-  // Booking Form State
+  // Booking Form State — Matching AppointmentRequestModal
   const [bookingForm, setBookingForm] = useState({
     fullName: '',
     phone: '',
-    serviceName: '',
-    branchName: 'Hà Nội - 328 Phố Huế',
-    date: '',
-    time: '',
-    message: '',
+    description: '',
   })
-  const [bookingStatus, setBookingStatus] = useState({ loading: false, success: false, error: null, data: null })
+  const [bookingStatus, setBookingStatus] = useState({ loading: false, success: false, error: null })
 
   // Carousel state now follows the hero showcase cards
   const SLIDE_COUNT = HERO_SLIDES.length
@@ -190,22 +242,38 @@ export default function Home() {
     const fetchData = async () => {
       try {
         const [servicesData, dentistsData, reviewsData] = await Promise.all([
-          getServices(),
-          getDentistsList(),
-          getReviews(),
+          getServices().catch(() => []),
+          getDentistsList().catch(() => []),
+          getReviews().catch(() => []),
         ])
         setServices(servicesData)
-        // Only show dentists that have complete data (name + avatar)
-        const validDentists = dentistsData.filter(
-          (d) => (d.fullName || d.username) && d.avatarUrl
-        )
-        setDentists(validDentists)
+        
+        let normalizedDentists = []
+        if (Array.isArray(dentistsData) && dentistsData.length > 0) {
+          normalizedDentists = dentistsData.map((d) => ({
+            id: d.id,
+            name: d.name || d.fullName || d.username || 'Bác sĩ Nha khoa',
+            fullName: d.name || d.fullName || d.username || 'Bác sĩ Nha khoa',
+            avatarUrl: d.avatar || d.avatarUrl || 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?auto=format&fit=crop&q=80&w=600',
+            specialization: (d.specializations && d.specializations.length > 0)
+              ? d.specializations.map(s => s.name).join(', ')
+              : (d.description || 'Nha khoa tổng quát'),
+            qualification: d.qualification || 'Thạc sĩ - Bác sĩ Chuyên khoa',
+            licenseNumber: d.licenseNumber || `CCHN-${(d.id || '8899').toString().slice(0, 6)}`,
+            experienceYears: d.experienceYears || 10,
+          }))
+        }
+
+        const finalDentists = normalizedDentists.length > 0 ? normalizedDentists : DEFAULT_DENTISTS
+        setDentists(finalDentists)
         setReviews(reviewsData)
-        if (validDentists.length > 0) {
-          setActiveDentist(validDentists[0])
+        if (finalDentists.length > 0) {
+          setActiveDentist(finalDentists[0])
         }
       } catch (err) {
         console.error('Error fetching dynamic data:', err)
+        setDentists(DEFAULT_DENTISTS)
+        setActiveDentist(DEFAULT_DENTISTS[0])
       }
     }
     fetchData()
@@ -225,34 +293,48 @@ export default function Home() {
     setBookingForm((prev) => ({ ...prev, [name]: value }))
   }
 
-  // Handle booking form submission
+  // Handle Quick Service Tag click
+  const handleTagClick = (tag) => {
+    setBookingForm((prev) => {
+      if (!prev.description) return { ...prev, description: tag }
+      if (prev.description.includes(tag)) return prev
+      return { ...prev, description: `${prev.description}, ${tag}` }
+    })
+  }
+
+  // Handle booking form submission — Exactly matching AppointmentRequestModal
   const handleBookingSubmit = async (e) => {
     e.preventDefault()
-    if (!bookingForm.fullName || !bookingForm.phone) {
-      alert('Vui lòng nhập đầy đủ Họ tên và Số điện thoại!')
+    if (!bookingForm.fullName.trim() || !bookingForm.phone.trim()) {
+      toast.error('Vui lòng nhập đầy đủ Họ tên và Số điện thoại!')
       return
     }
-    setBookingStatus({ loading: true, success: false, error: null, data: null })
+
+    const phoneRegex = /(84|0[3|5|7|8|9])+([0-9]{8})\b/
+    if (!phoneRegex.test(bookingForm.phone.trim())) {
+      toast.error('Số điện thoại không hợp lệ! Vui lòng kiểm tra lại.')
+      return
+    }
+
+    setBookingStatus({ loading: true, success: false, error: null })
     try {
-      const result = await createAppointment(bookingForm)
-      setBookingStatus({ loading: false, success: true, error: null, data: result })
-      // Clear form
-      setBookingForm({
-        fullName: '',
-        phone: '',
-        serviceName: services[0]?.serviceName || '',
-        branchName: 'Hà Nội - 328 Phố Huế',
-        date: '',
-        time: '',
-        message: '',
+      await createAppointmentRequest({
+        fullName: bookingForm.fullName.trim(),
+        phone: bookingForm.phone.trim(),
+        description: bookingForm.description.trim(),
       })
+
+      setBookingStatus({ loading: false, success: true, error: null })
+      toast.success('Gửi yêu cầu đặt lịch thành công!')
     } catch (err) {
+      console.error('Lỗi gửi yêu cầu lịch hẹn:', err)
+      const errorMsg = err.response?.data?.message || 'Có lỗi xảy ra khi gửi yêu cầu. Vui lòng thử lại!'
       setBookingStatus({
         loading: false,
         success: false,
-        error: err.response?.data?.message || 'Đã xảy ra lỗi kết nối hệ thống. Vui lòng thử lại sau!',
-        data: null,
+        error: errorMsg,
       })
+      toast.error(errorMsg)
     }
   }
 
@@ -310,6 +392,9 @@ export default function Home() {
                   src={HERO_SLIDES[activeSlide]?.img}
                   alt={HERO_SLIDES[activeSlide]?.title}
                   className="h-full w-full object-cover object-center transition-all duration-500 ease-in-out"
+                  onError={(e) => {
+                    e.currentTarget.src = 'https://images.unsplash.com/photo-1629909615184-74f495363b67?auto=format&fit=crop&q=80&w=1200'
+                  }}
                 />
                 <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.06)_0%,rgba(255,255,255,0)_42%,rgba(19,35,97,0.12)_100%)]" />
 
@@ -369,121 +454,263 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 3. Why Choose Crown Dental — Modern stats + feature cards */}
-      <section id="why-us-section" className="relative overflow-hidden py-20 mt-4 bg-gradient-to-b from-white via-[#f4f7fe] to-white border-y border-[#eef2fa]">
-        {/* Soft decorative background gradients (z-0 to sit behind content) */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(31,79,178,0.03),transparent_50%)] z-0 pointer-events-none" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(0,168,89,0.03),transparent_50%)] z-0 pointer-events-none" />
+      {/* 3. Why Choose Crown Dental — Premium Luxury Redesign */}
+      <section id="why-us-section" className="relative overflow-hidden py-24 my-6 bg-gradient-to-b from-[#f8fafc] via-[#f1f5f9] to-white border-y border-slate-200/60">
+        {/* Ambient Decorative Light Orbs & Grid Pattern */}
+        <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px] opacity-60 pointer-events-none" />
+        <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-gradient-to-br from-[#1f4fb2]/10 to-indigo-400/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/4 w-[500px] h-[500px] bg-gradient-to-tr from-[#00a859]/10 to-teal-300/5 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Header */}
-          <div className="text-center mb-14">
-            <span className="inline-block bg-[#eef3ff] border border-[#d2e0ff] text-[#1f4fb2] text-[10px] font-bold uppercase tracking-[0.3em] px-4 py-1.5 rounded-full mb-4 shadow-sm">
-              TẠI SAO CHỌN CROWN DENTAL
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 leading-tight">
-              Tiêu Chuẩn Nha Khoa<br />
-              <span className="bg-gradient-to-r from-[#1f4fb2] to-[#00a859] bg-clip-text text-transparent">Đẳng Cấp Quốc Tế</span>
+          {/* Header Badge & Title */}
+          <div className="text-center mb-16 max-w-3xl mx-auto">
+            <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#1f4fb2]/10 via-indigo-500/10 to-[#00a859]/10 px-4 py-1.5 border border-[#1f4fb2]/20 shadow-sm backdrop-blur-md mb-5">
+              <span className="w-2 h-2 rounded-full bg-[#00a859] animate-pulse" />
+              <span className="text-xs font-extrabold uppercase tracking-[0.25em] text-[#1f4fb2]">
+                TẠI SAO CHỌN CROWN DENTAL
+              </span>
+            </div>
+
+            <h2 className="text-3xl sm:text-5xl font-black text-slate-900 leading-[1.15] tracking-tight">
+              Tiêu Chuẩn Nha Khoa <br className="hidden sm:inline" />
+              <span className="bg-gradient-to-r from-[#1f4fb2] via-[#2563eb] to-[#00a859] bg-clip-text text-transparent">
+                Đỉnh Cao Công Nghệ & Chuyên Gia
+              </span>
             </h2>
-            <p className="mt-4 text-slate-500 text-sm max-w-xl mx-auto leading-relaxed">
-              Chúng tôi không chỉ điều trị — chúng tôi kiến tạo nụ cười hoàn hảo cùng công nghệ hiện đại nhất và đội ngũ chuyên gia hàng đầu.
+
+            <p className="mt-5 text-slate-600 text-sm sm:text-base leading-relaxed">
+              Chúng tôi kết hợp chuẩn mực y khoa quốc tế JCI với công nghệ chẩn đoán AI 3D tiên tiến nhất — đem lại hành trình chăm sóc nụ cười êm ái, an toàn và thẩm mỹ tuyệt đối.
             </p>
           </div>
 
-          {/* Stats Row */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-14">
+          {/* Stats Highlight Grid — Unified Medical Color Palette */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-16">
             {[
-              { value: '15+', label: 'Năm kinh nghiệm', icon: '🏆' },
-              { value: '50K+', label: 'Bệnh nhân tin tưởng', icon: '😁' },
-              { value: '1,000+', label: 'Ca Invisalign/năm', icon: '🦷' },
-              { value: '98%', label: 'Khách hàng hài lòng', icon: '⭐' },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                className="relative group rounded-2xl border border-slate-100 bg-white p-5 text-center shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.06)] hover:-translate-y-0.5 transition-all duration-300 overflow-hidden"
-              >
-                <div className="text-2xl mb-1">{stat.icon}</div>
-                <p className="text-3xl sm:text-4xl font-black text-[#1f4fb2] tracking-tight">{stat.value}</p>
-                <p className="text-xs text-slate-500 mt-2 font-semibold tracking-wide">{stat.label}</p>
-              </div>
-            ))}
-          </div>
+              {
+                value: '15+',
+                label: 'Năm Kinh Nghiệm',
+                sublabel: 'Thành lập từ 2011',
+                icon: Award,
+                gradient: 'from-[#1f4fb2] to-[#2563eb]',
+                lightBg: 'bg-blue-50 border-blue-200/60 text-[#1f4fb2]',
+                badgeText: 'Kinh nghiệm lâu năm',
+              },
+              {
+                value: '50,000+',
+                label: 'Bệnh Nhân Tin Tưởng',
+                sublabel: 'Khách hàng toàn quốc',
+                icon: Users,
+                gradient: 'from-[#00a859] to-[#059669]',
+                lightBg: 'bg-emerald-50 border-emerald-200/60 text-[#00a859]',
+                badgeText: 'Uy tín hàng đầu',
+              },
+              {
+                value: '1,000+',
+                label: 'Ca Invisalign / Năm',
+                sublabel: 'Top Platinum Provider',
+                icon: Sparkles,
+                gradient: 'from-[#1f4fb2] to-[#0284c7]',
+                lightBg: 'bg-sky-50 border-sky-200/60 text-[#1f4fb2]',
+                badgeText: 'Niềng răng trong suốt',
+              },
+              {
+                value: '99.4%',
+                label: 'Khách Hàng Hài Lòng',
+                sublabel: 'Đánh giá 5.0 ★ Google',
+                icon: Star,
+                gradient: 'from-[#00a859] to-[#10b981]',
+                lightBg: 'bg-emerald-50 border-emerald-200/60 text-[#00a859]',
+                badgeText: 'Chất lượng 5 sao',
+              },
+            ].map((stat) => {
+              const IconComponent = stat.icon
+              return (
+                <div
+                  key={stat.label}
+                  className="group relative rounded-3xl border border-slate-200/70 bg-white/90 p-6 shadow-[0_4px_25px_rgba(0,0,0,0.03)] hover:shadow-[0_15px_35px_rgba(31,79,178,0.1)] hover:-translate-y-1 transition-all duration-300 backdrop-blur-sm overflow-hidden"
+                >
+                  {/* Hover top border gradient glow */}
+                  <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${stat.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
 
-          {/* Feature Cards */}
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              {
-                icon: (
-                  <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
-                  </svg>
-                ),
-                accent: 'from-violet-500 to-indigo-500',
-                title: 'Công Nghệ AI & 3D',
-                desc: 'Ứng dụng AI chẩn đoán hình ảnh, lập kế hoạch 3D và mô phỏng kết quả nụ cười trước khi điều trị — giúp bạn thấy kết quả ngay từ đầu.',
-                tags: ['Scan 3D', 'AI Diagnosis', 'iTero Scanner'],
-              },
-              {
-                icon: (
-                  <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.562.562 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
-                  </svg>
-                ),
-                accent: 'from-amber-400 to-orange-500',
-                title: 'Chuyên Gia Đầu Ngành',
-                desc: 'Đội ngũ bác sĩ được đào tạo tại Singapore, Mỹ và châu Âu — sở hữu các chứng chỉ quốc tế uy tín và hơn 10 năm kinh nghiệm thực tiễn.',
-                tags: ['Invisalign Platinum', 'Implant Expert', 'Aesthetic Master'],
-              },
-              {
-                icon: (
-                  <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-                  </svg>
-                ),
-                accent: 'from-emerald-400 to-teal-500',
-                title: 'Cam Kết & Bảo Hành',
-                desc: 'Bảo hành dài hạn cho mọi công trình nha khoa. Chúng tôi đồng hành cùng bạn sau điều trị — bởi nụ cười đẹp là hành trình, không phải đích đến.',
-                tags: ['Bảo hành 5 năm', 'Hỗ trợ 24/7', 'Tái khám miễn phí'],
-              },
-            ].map((card) => (
-              <div
-                key={card.title}
-                className="group relative rounded-3xl border border-slate-100 bg-white p-7 hover:shadow-[0_15px_45px_rgba(31,79,178,0.08)] hover:-translate-y-1 transition-all duration-300 overflow-hidden"
-              >
-                {/* Card glow */}
-                <div className={`absolute -top-8 -right-8 w-32 h-32 rounded-full bg-gradient-to-br ${card.accent} opacity-5 group-hover:opacity-10 blur-2xl transition-opacity`} />
-                {/* Icon */}
-                <div className={`inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br ${card.accent} text-white mb-5 shadow-lg`}>
-                  {card.icon}
-                </div>
-                <h3 className="text-lg font-black text-slate-800 mb-3">{card.title}</h3>
-                <p className="text-sm text-slate-500 leading-relaxed mb-5">{card.desc}</p>
-                {/* Tags */}
-                <div className="flex flex-wrap gap-2">
-                  {card.tags.map(tag => (
-                    <span key={tag} className="text-[10px] font-semibold bg-slate-50 text-slate-600 px-2.5 py-1 rounded-full border border-slate-100">
-                      {tag}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className={`inline-flex items-center justify-center p-3.5 rounded-2xl bg-gradient-to-br ${stat.gradient} text-white shadow-md group-hover:scale-110 transition-transform duration-300`}>
+                      <IconComponent className="w-6 h-6" />
+                    </div>
+                    <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full border ${stat.lightBg}`}>
+                      {stat.badgeText}
                     </span>
-                  ))}
+                  </div>
+
+                  <p className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+                    {stat.value}
+                  </p>
+                  <h4 className="text-sm font-bold text-slate-800 mt-1">
+                    {stat.label}
+                  </h4>
+                  <p className="text-xs text-slate-400 mt-1 font-medium">
+                    {stat.sublabel}
+                  </p>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
-          {/* CTA bottom */}
-          <div className="mt-12 text-center">
-            <button
-              type="button"
-              onClick={() => setIsRequestModalOpen(true)}
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-[#00a859] to-[#059669] hover:from-[#059669] hover:to-[#047857] text-white font-bold px-8 py-4 rounded-full shadow-lg hover:shadow-green-500/20 transition-all duration-300 text-sm cursor-pointer"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-              </svg>
-              Đặt Lịch Tư Vấn Miễn Phí
-            </button>
-            <p className="mt-3 text-xs text-slate-400">Phản hồi trong 30 phút • Không cần đặt cọc</p>
+          {/* 3 Core Pillar Feature Cards — Unified Medical Blue & Emerald */}
+          <div className="grid md:grid-cols-3 gap-8 mb-16">
+            {[
+              {
+                category: 'CÔNG NGHỆ BẮT KÌM GIÂY',
+                categoryBg: 'text-[#1f4fb2] bg-blue-50 border border-blue-100',
+                title: 'Công Nghệ AI & Mô Phỏng 3D',
+                icon: Cpu,
+                accentGradient: 'from-[#1f4fb2] to-[#2563eb]',
+                bulletIconColor: 'text-[#1f4fb2]',
+                ringColor: 'group-hover:border-[#1f4fb2]/40',
+                desc: 'Đi đầu trong việc số hóa quy trình khám nha khoa với hệ thống trang thiết bị tân tiến nhập khẩu trực tiếp từ Mỹ và Châu Âu.',
+                bullets: [
+                  'Scan dấu răng iTero Element 5D không đau trong 60 giây',
+                  'AI chẩn đoán phát hiện sớm vi khuẩn & vi mô mảng bám',
+                  'Mô phỏng trước kết quả nụ cười 3D (Smile Design) chuẩn xác',
+                ],
+                tags: ['Scan 3D iTero', 'AI Smile Design', 'Chuẩn FDA Mỹ'],
+              },
+              {
+                category: 'ĐỘI NGŨ THẠC SĨ - BÁC SĨ',
+                categoryBg: 'text-[#1f4fb2] bg-sky-50 border border-sky-100',
+                title: 'Chuyên Gia Đầu Ngành 15+ Năm',
+                icon: Stethoscope,
+                accentGradient: 'from-[#1f4fb2] via-[#0284c7] to-[#00a859]',
+                bulletIconColor: 'text-[#00a859]',
+                ringColor: 'group-hover:border-[#0284c7]/40',
+                desc: 'Quy tụ đội ngũ Thạc sĩ, Bác sĩ Chuyên khoa II tốt nghiệp tại các đại học danh tiếng tại Việt Nam và tu nghiệp chuyên sâu ở Singapore, Mỹ, Đức.',
+                bullets: [
+                  '100% Bác sĩ sở hữu chứng chỉ hành nghề & bằng tu nghiệp quốc tế',
+                  'Chứng chỉ Invisalign Platinum Doctor và chuyên gia Implant',
+                  'Trực tiếp khám, lập kế hoạch và điều trị 1-1 tận tâm',
+                ],
+                tags: ['Invisalign Platinum', 'Implant Master', 'Tu Nghiệp Châu Âu'],
+              },
+              {
+                category: 'MINH BẠCH & AN TÂM TÂM TRÍ',
+                categoryBg: 'text-[#00a859] bg-emerald-50 border border-emerald-100',
+                title: 'Cam Kết Hợp Đồng & Bảo Hành',
+                icon: ShieldCheck,
+                accentGradient: 'from-[#00a859] to-[#059669]',
+                bulletIconColor: 'text-[#00a859]',
+                ringColor: 'group-hover:border-[#00a859]/40',
+                desc: 'Crown Dental đặt chữ Tín lên hàng đầu với quy trình làm việc minh bạch, chi phí niêm yết và hợp đồng cam kết chất lượng dài hạn.',
+                bullets: [
+                  'Ký hợp đồng pháp lý cam kết kết quả trước khi thực hiện',
+                  'Thẻ bảo hành chính hãng tra cứu QR Code linh hoạt trọn đời',
+                  'Miễn phí tái khám định kỳ & tổng đài hỗ trợ 24/7',
+                ],
+                tags: ['Hợp Đồng Pháp Lý', 'Bảo Hành Trọn Đời', 'Trả Góp 0%'],
+              },
+            ].map((card) => {
+              const IconComp = card.icon
+              return (
+                <div
+                  key={card.title}
+                  className={`group relative rounded-3xl border border-slate-200/80 bg-white p-8 shadow-[0_4px_25px_rgba(0,0,0,0.03)] hover:shadow-[0_20px_45px_rgba(31,79,178,0.12)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between overflow-hidden ${card.ringColor}`}
+                >
+                  {/* Top glowing ambient gradient slice */}
+                  <div className={`absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r ${card.accentGradient}`} />
+                  <div className={`absolute -top-12 -right-12 w-36 h-36 rounded-full bg-gradient-to-br ${card.accentGradient} opacity-5 group-hover:opacity-15 blur-2xl transition-opacity duration-300 pointer-events-none`} />
+
+                  <div>
+                    <div className="flex items-center justify-between mb-6">
+                      <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full ${card.categoryBg}`}>
+                        {card.category}
+                      </span>
+                      <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${card.accentGradient} text-white flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform`}>
+                        <IconComp className="w-6 h-6" />
+                      </div>
+                    </div>
+
+                    <h3 className="text-xl font-black text-slate-900 mb-3 group-hover:text-[#1f4fb2] transition-colors">
+                      {card.title}
+                    </h3>
+                    <p className="text-xs text-slate-500 leading-relaxed mb-6">
+                      {card.desc}
+                    </p>
+
+                    <div className="space-y-3 mb-8">
+                      {card.bullets.map((bullet, idx) => (
+                        <div key={idx} className="flex items-start gap-2.5 text-xs text-slate-700 font-medium">
+                          <CheckCircle2 className={`w-4 h-4 shrink-0 mt-0.5 ${card.bulletIconColor}`} />
+                          <span>{bullet}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="pt-4 border-t border-slate-100 flex flex-wrap gap-2">
+                      {card.tags.map((tag) => (
+                        <span key={tag} className="text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200/80 px-2.5 py-1 rounded-full">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+
+          {/* Luxury Banner Call To Action — Standard Dental Light Theme */}
+          <div className="relative rounded-3xl bg-gradient-to-br from-[#eef4ff] via-[#f5f8fe] to-[#e6f7f0] text-slate-900 p-8 sm:p-12 shadow-[0_10px_40px_rgba(31,79,178,0.06)] overflow-hidden border border-[#d2e0ff]/80">
+            {/* Ambient Lighting FX */}
+            <div className="absolute top-0 right-0 w-96 h-96 bg-[#1f4fb2]/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-[#00a859]/10 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-8">
+              <div className="space-y-4 text-center lg:text-left max-w-2xl">
+                <div className="inline-flex items-center gap-2 bg-[#1f4fb2]/10 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-bold text-[#1f4fb2] border border-[#1f4fb2]/20">
+                  <Sparkles className="w-3.5 h-3.5 text-[#1f4fb2]" />
+                  <span>Ưu đãi đặc quyền dành cho bệnh nhân mới</span>
+                </div>
+                <h3 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight text-slate-900">
+                  Khám & Tư Vấn Nụ Cười 3D <span className="bg-gradient-to-r from-[#1f4fb2] via-[#2563eb] to-[#00a859] bg-clip-text text-transparent">Miễn Phí 100%</span>
+                </h3>
+                <p className="text-slate-600 text-xs sm:text-sm leading-relaxed font-medium">
+                  Đăng ký ngay hôm nay để trải nghiệm dịch vụ nha khoa chuẩn quốc tế, nhận kết quả scan răng 3D tức thì và tư vấn trực tiếp từ bác sĩ chuyên khoa.
+                </p>
+
+                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-5 pt-2 text-xs text-slate-700 font-semibold">
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-[#00a859]" />
+                    <span>Không phát sinh chi phí</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-[#00a859]" />
+                    <span>Hỗ trợ trả góp 0%</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-[#00a859]" />
+                    <span>Xếp lịch ưu tiên</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="shrink-0 text-center">
+                <button
+                  type="button"
+                  onClick={() => setIsRequestModalOpen(true)}
+                  className="group relative inline-flex items-center gap-3 bg-gradient-to-r from-[#00a859] via-[#059669] to-[#047857] hover:from-[#059669] hover:to-[#047857] text-white font-extrabold px-9 py-4.5 rounded-2xl shadow-[0_10px_25px_rgba(0,168,89,0.3)] hover:shadow-[0_15px_35px_rgba(0,168,89,0.45)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 text-base cursor-pointer overflow-hidden"
+                >
+                  {/* Subtle shimmer effect */}
+                  <span className="absolute inset-0 w-full h-full bg-white/20 -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out" />
+                  <Calendar className="w-5 h-5 text-emerald-100" />
+                  <span>Đặt Lịch Tư Vấn ngay</span>
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </button>
+                <p className="mt-3 text-[11px] text-slate-500 font-semibold">
+                  ⚡ Phản hồi xác nhận trong 15-30 phút
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -561,158 +788,88 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 5. Dentist Team Section */}
-      <section className="py-20 bg-gradient-to-b from-white to-[#f4f7fe]">
+      {/* 5. Dentist Team Section — Concise & Professional Image-Free Grid */}
+      <section className="py-20 bg-gradient-to-b from-white via-[#f8fafc] to-white border-b border-slate-200/60">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           {/* Section Header */}
-          <div className="text-center mb-16">
-            <span className="inline-block bg-[#eef3ff] border border-[#d2e0ff] text-[#1f4fb2] text-[10px] font-bold uppercase tracking-[0.3em] px-4 py-1.5 rounded-full mb-4 shadow-sm">
-              CHUYÊN GIA HÀNG ĐẦU
-            </span>
+          <div className="text-center mb-14 max-w-3xl mx-auto">
+            <div className="inline-flex items-center gap-2 rounded-full bg-[#1f4fb2]/10 px-4 py-1.5 border border-[#1f4fb2]/20 shadow-sm backdrop-blur-md mb-4">
+              <span className="w-2 h-2 rounded-full bg-[#00a859] animate-pulse" />
+              <span className="text-xs font-extrabold uppercase tracking-[0.25em] text-[#1f4fb2]">
+                HỘI ĐỒNG CHUYÊN GIA
+              </span>
+            </div>
             <h3 className="text-3xl sm:text-4xl font-black text-slate-900 leading-tight">
-              Đội Ngũ Bác Sĩ<br />
-              <span className="bg-gradient-to-r from-[#1f4fb2] to-[#00a859] bg-clip-text text-transparent">Răng Hàm Mặt Chuyên Sâu</span>
+              Đội Ngũ Bác Sĩ <br />
+              <span className="bg-gradient-to-r from-[#1f4fb2] via-[#2563eb] to-[#00a859] bg-clip-text text-transparent">
+                Răng Hàm Mặt Chuyên Sâu
+              </span>
             </h3>
-            <p className="mt-4 max-w-2xl mx-auto text-sm text-slate-500 leading-relaxed">
-              100% bác sĩ tốt nghiệp các trường đại học y danh tiếng, sở hữu chứng chỉ quốc tế uy tín và luôn tận tâm vì nụ cười của bạn.
+            <p className="mt-4 text-slate-600 text-sm leading-relaxed font-medium">
+              100% bác sĩ tốt nghiệp các trường đại học y khoa danh tiếng, sở hữu chứng chỉ hành nghề quốc tế và luôn tận tâm vì sức khỏe nụ cười của bạn.
             </p>
           </div>
 
-          {dentists.length > 0 ? (
-            <div>
-              {/* Active Doctor Spotlight */}
-              {activeDentist && (
-                <div className="mb-8 relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1f4fb2] to-[#0d3a8a] shadow-2xl">
-                  {/* Background decorations */}
-                  <div className="absolute top-0 right-0 w-80 h-80 bg-[#00a859]/10 rounded-full blur-3xl -translate-y-20 translate-x-20 pointer-events-none" />
-                  <div className="absolute bottom-0 left-0 w-60 h-60 bg-white/5 rounded-full blur-2xl translate-y-10 -translate-x-10 pointer-events-none" />
+          {/* Doctor Cards Grid (Image & Logo Free — Clean Executive Medical Cards) */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {dentists.map((d) => {
+              const doctorName = d.name || d.fullName || d.username || 'Bác sĩ Nha khoa'
 
-                  <div className="relative flex flex-col lg:flex-row gap-0 lg:gap-0">
-                    {/* Doctor Photo */}
-                    <div className="relative lg:w-72 shrink-0">
-                      <div className="h-64 lg:h-full min-h-[280px] overflow-hidden">
-                        <img
-                          src={activeDentist.avatarUrl || 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?auto=format&fit=crop&q=80&w=600'}
-                          alt={activeDentist.fullName || activeDentist.username}
-                          className="h-full w-full object-cover object-top"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#1f4fb2]/30 lg:bg-gradient-to-t lg:from-[#1f4fb2]/40 lg:to-transparent" />
-                      </div>
+              return (
+                <div
+                  key={d.id}
+                  className="group relative rounded-3xl border border-slate-200/80 bg-white p-7 shadow-[0_4px_25px_rgba(0,0,0,0.03)] hover:shadow-[0_20px_40px_rgba(31,79,178,0.12)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between overflow-hidden hover:border-[#1f4fb2]/40"
+                >
+                  {/* Top glowing accent line */}
+                  <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-[#1f4fb2] to-[#00a859] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                  <div>
+                    {/* Header Row: Specialization Badge + Experience Pill */}
+                    <div className="flex items-center justify-between gap-2 mb-5">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#1f4fb2] bg-blue-50 border border-blue-100/80 px-3 py-1 rounded-full truncate max-w-[140px]">
+                        {d.specialization}
+                      </span>
+                      <span className="text-[10px] font-bold text-[#00a859] bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full shrink-0">
+                        {d.experienceYears || 10}+ Năm KN
+                      </span>
                     </div>
 
-                    {/* Doctor Info */}
-                    <div className="flex-1 p-8 lg:p-10 flex flex-col justify-center">
-                      <div className="inline-flex items-center gap-2 bg-white/15 border border-white/20 backdrop-blur-sm text-[#4ade80] text-[10px] font-bold uppercase tracking-[0.25em] px-3 py-1.5 rounded-full mb-4 w-fit">
-                        <span className="w-1.5 h-1.5 bg-[#4ade80] rounded-full animate-pulse" />
-                        Chuyên khoa: {activeDentist.specialization}
+                    {/* Doctor Name & Title */}
+                    <h4 className="text-lg font-black text-slate-900 group-hover:text-[#1f4fb2] transition-colors leading-snug mb-2">
+                      {doctorName}
+                    </h4>
+
+                    {/* Qualification */}
+                    <p className="text-xs text-slate-600 font-medium flex items-center gap-1.5 mb-5">
+                      <GraduationCap className="w-4 h-4 text-[#1f4fb2] shrink-0" />
+                      <span className="line-clamp-1">{d.qualification || 'Thạc sĩ - Bác sĩ Chuyên khoa'}</span>
+                    </p>
+
+                    {/* Detail Highlights Box */}
+                    <div className="bg-slate-50/80 rounded-2xl p-3.5 border border-slate-100/80 space-y-2 mb-6 text-xs text-slate-600 font-medium">
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="w-3.5 h-3.5 text-[#00a859] shrink-0" />
+                        <span className="truncate">{d.licenseNumber || 'Giấy phép hành nghề chính thức'}</span>
                       </div>
-
-                      <h4 className="text-3xl font-black text-white leading-tight mb-1">
-                        {activeDentist.fullName || activeDentist.username}
-                      </h4>
-                      <p className="text-white/50 text-xs font-medium mb-6">
-                        Số CCHN: {activeDentist.licenseNumber}
-                      </p>
-
-                      <div className="grid sm:grid-cols-2 gap-4 mb-8">
-                        <div className="flex items-start gap-3 bg-white/10 backdrop-blur-sm border border-white/15 rounded-2xl p-4">
-                          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shrink-0 shadow">
-                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5" /></svg>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-white/50 font-semibold uppercase tracking-wide mb-0.5">Học vị</p>
-                            <p className="text-sm text-white font-semibold leading-snug">{activeDentist.qualification}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-3 bg-white/10 backdrop-blur-sm border border-white/15 rounded-2xl p-4">
-                          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shrink-0 shadow">
-                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-white/50 font-semibold uppercase tracking-wide mb-0.5">Kinh nghiệm</p>
-                            <p className="text-sm text-white font-semibold">{activeDentist.experienceYears}+ năm thực tiễn</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap gap-3">
-                        <a
-                          href="#booking-form-section"
-                          className="inline-flex items-center gap-2 rounded-full bg-white text-[#1f4fb2] text-xs font-black px-6 py-3 shadow-lg hover:shadow-white/20 hover:-translate-y-0.5 transition-all duration-200"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
-                          Đặt Lịch Với Bác Sĩ
-                        </a>
-                        <button className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 backdrop-blur-sm text-white text-xs font-bold px-5 py-3 hover:bg-white/20 transition-all duration-200">
-                          Xem Hồ Sơ Đầy Đủ
-                        </button>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#1f4fb2] shrink-0" />
+                        <span>Trực tiếp khám & điều trị 1-1</span>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
 
-              {/* Dentist Card Grid */}
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                {dentists.map((d) => (
-                  <div
-                    key={d.id}
-                    onClick={() => setActiveDentist(d)}
-                    className={`group relative overflow-hidden rounded-2xl border cursor-pointer transition-all duration-300 hover:-translate-y-1 ${activeDentist?.id === d.id
-                      ? 'border-[#1f4fb2] shadow-[0_12px_35px_rgba(31,79,178,0.2)]'
-                      : 'border-slate-100 bg-white shadow-sm hover:shadow-[0_12px_35px_rgba(31,79,178,0.08)]'
-                      }`}
+                  {/* Action Button — Standard Dental Emerald Green with Crisp White Text */}
+                  <a
+                    href="#booking-form-section"
+                    className="inline-flex items-center justify-between w-full bg-gradient-to-r from-[#00a859] via-[#059669] to-[#047857] hover:from-[#059669] hover:to-[#065f46] text-white text-xs font-extrabold px-4.5 py-3 rounded-2xl shadow-[0_4px_15px_rgba(0,168,89,0.25)] hover:shadow-[0_8px_25px_rgba(0,168,89,0.4)] transition-all duration-300 active:scale-[0.98]"
                   >
-                    {/* Active indicator */}
-                    {activeDentist?.id === d.id && (
-                      <div className="absolute top-0 inset-x-0 h-0.5 bg-gradient-to-r from-[#1f4fb2] to-[#00a859]" />
-                    )}
-
-                    {/* Doctor image */}
-                    <div className="relative h-52 overflow-hidden">
-                      <img
-                        src={d.avatarUrl || 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?auto=format&fit=crop&q=80&w=400'}
-                        alt={d.fullName || d.username}
-                        className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-
-                      {/* Specialization badge on photo */}
-                      <div className="absolute bottom-3 left-3 right-3">
-                        <span className="inline-block bg-white/90 backdrop-blur-sm text-[#1f4fb2] text-[9px] font-bold uppercase tracking-[0.15em] px-2.5 py-1 rounded-full">
-                          {d.specialization}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Doctor info */}
-                    <div className={`p-4 ${activeDentist?.id === d.id ? 'bg-[#f0f5ff]' : 'bg-white'}`}>
-                      <p className="text-sm font-black text-slate-800 leading-snug mb-1">
-                        {d.fullName || d.username}
-                      </p>
-                      <p className="text-[10px] text-slate-400 font-medium">
-                        {d.experienceYears}+ năm kinh nghiệm
-                      </p>
-
-                      {activeDentist?.id === d.id && (
-                        <div className="mt-2 flex items-center gap-1 text-[#1f4fb2]">
-                          <span className="w-1.5 h-1.5 bg-[#1f4fb2] rounded-full" />
-                          <span className="text-[10px] font-bold">Đang xem</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-16">
-              <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
-              </div>
-              <p className="text-slate-400 text-sm font-medium">Đang tải danh sách bác sĩ...</p>
-            </div>
-          )}
+                    <span className="text-white font-extrabold tracking-wide">Đặt lịch tư vấn với BS</span>
+                    <ArrowRight className="w-4 h-4 text-white group-hover:translate-x-1 transition-transform" />
+                  </a>
+                </div>
+              )
+            })}
+          </div>
         </div>
       </section>
 
@@ -784,81 +941,171 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 7. Before & After Treatment */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center space-y-3 mb-12">
-          <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#00a859]">HIỆU QUẢ THỰC TẾ</p>
-          <h3 className="text-2xl font-black text-[#1f4fb2] sm:text-3xl">
-            Hiệu Quả Trước & Sau Điều Trị Tại Crown
-          </h3>
-        </div>
-
-        <div className="grid gap-8 md:grid-cols-2">
-          {/* Case 1 */}
-          <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-md flex flex-col justify-between">
-            <div className="space-y-2">
-              <span className="bg-blue-50 text-[#1f4fb2] text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded">
-                Khách hàng: Nguyễn Anh Thư
+      {/* 7. Before & After Treatment — Authentic Dental Cases */}
+      <section className="py-20 bg-gradient-to-b from-[#f8fafc] via-white to-[#f8fafc] border-b border-slate-200/60">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center space-y-3 mb-14 max-w-2xl mx-auto">
+            <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-1.5 border border-emerald-100 shadow-sm mb-2">
+              <span className="w-2 h-2 rounded-full bg-[#00a859] animate-pulse" />
+              <span className="text-xs font-extrabold uppercase tracking-[0.25em] text-[#00a859]">
+                KẾT QUẢ THỰC TẾ
               </span>
-              <h4 className="text-base font-bold text-slate-800 mt-1">Điều trị khấp khểnh & Khớp cắn chéo (22 tháng)</h4>
-              <p className="text-xs text-slate-500">
-                Lộ trình chỉnh nha Invisalign giúp làm đều cung răng, chỉnh khớp cắn chuẩn xác mà không cần nhổ răng khỏe.
-              </p>
             </div>
-            <div className="mt-6 grid grid-cols-2 gap-4">
-              <div className="relative rounded-2xl overflow-hidden shadow">
-                <img
-                  src="https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&q=80&w=300"
-                  alt="Trước"
-                  className="h-32 w-full object-cover grayscale"
-                />
-                <div className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded font-bold">
-                  Trước điều trị
-                </div>
-              </div>
-              <div className="relative rounded-2xl overflow-hidden shadow border-2 border-green-500">
-                <img
-                  src="https://images.unsplash.com/photo-1606811971618-4486d14f3f99?auto=format&fit=crop&q=80&w=300"
-                  alt="Sau"
-                  className="h-32 w-full object-cover"
-                />
-                <div className="absolute bottom-2 left-2 bg-[#00a859] text-white text-[10px] px-2 py-0.5 rounded font-bold">
-                  Sau điều trị
-                </div>
-              </div>
-            </div>
+            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 leading-tight">
+              Hiệu Quả Trước & Sau Điều Trị <br />
+              <span className="bg-gradient-to-r from-[#1f4fb2] via-[#2563eb] to-[#00a859] bg-clip-text text-transparent">
+                Tại Crown Dental
+              </span>
+            </h3>
+            <p className="text-slate-600 text-sm font-medium leading-relaxed">
+              Hàng ngàn nụ cười rạng rỡ đã được kiến tạo thành công nhờ quy trình chuẩn y khoa và công nghệ hiện đại.
+            </p>
           </div>
 
-          {/* Case 2 */}
-          <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-md flex flex-col justify-between">
-            <div className="space-y-2">
-              <span className="bg-blue-50 text-[#1f4fb2] text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded">
-                Khách hàng: Trần Quốc Bảo
-              </span>
-              <h4 className="text-base font-bold text-slate-800 mt-1">Khắc phục răng thưa & Phục hình Veneer sứ</h4>
-              <p className="text-xs text-slate-500">
-                Dán 8 mặt sứ Veneer Emax siêu mỏng để đóng kín khe thưa, điều chỉnh hình thể răng thẩm mỹ và màu sắc hài hòa.
-              </p>
-            </div>
-            <div className="mt-6 grid grid-cols-2 gap-4">
-              <div className="relative rounded-2xl overflow-hidden shadow">
-                <img
-                  src="https://images.unsplash.com/photo-1468495244123-6c6c332eeece?auto=format&fit=crop&q=80&w=300"
-                  alt="Trước"
-                  className="h-32 w-full object-cover grayscale"
-                />
-                <div className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded font-bold">
-                  Trước điều trị
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {/* Case 1 */}
+            <div className="group bg-white border border-slate-200/80 rounded-3xl p-6 shadow-[0_4px_25px_rgba(0,0,0,0.03)] hover:shadow-[0_15px_35px_rgba(31,79,178,0.1)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <span className="bg-blue-50 text-[#1f4fb2] border border-blue-100 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full">
+                    Khách hàng: Nguyễn Anh Thư
+                  </span>
+                  <span className="text-[10px] font-extrabold text-slate-400">22 Tháng</span>
+                </div>
+                <h4 className="text-base font-extrabold text-slate-900 leading-snug group-hover:text-[#1f4fb2] transition-colors mb-2">
+                  Niềng Răng Invisalign Khớp Cắn Chéo
+                </h4>
+                <p className="text-xs text-slate-500 leading-relaxed font-medium mb-6">
+                  Lộ trình khay niềng trong suốt Invisalign giúp làm đều cung răng, chỉnh khớp cắn chuẩn xác không cần nhổ răng.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3.5">
+                <div className="relative rounded-2xl overflow-hidden shadow-inner bg-slate-100 group/img">
+                  <img
+                    src="https://images.unsplash.com/photo-1598256989800-fe5f95da9787?auto=format&fit=crop&q=80&w=600"
+                    alt="Trước điều trị"
+                    className="h-36 w-full object-cover grayscale contrast-125 transition-transform duration-500 group-hover/img:scale-105"
+                    onError={(e) => {
+                      e.currentTarget.src = 'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&q=80&w=600'
+                    }}
+                  />
+                  <div className="absolute bottom-2 left-2 bg-slate-900/80 backdrop-blur-sm text-white text-[9px] font-extrabold px-2.5 py-1 rounded-md">
+                    Trước điều trị
+                  </div>
+                </div>
+
+                <div className="relative rounded-2xl overflow-hidden shadow-md ring-2 ring-[#00a859] group/img">
+                  <img
+                    src="https://images.unsplash.com/photo-1609840114035-3c981b782dfe?auto=format&fit=crop&q=80&w=600"
+                    alt="Sau điều trị"
+                    className="h-36 w-full object-cover transition-transform duration-500 group-hover/img:scale-105"
+                    onError={(e) => {
+                      e.currentTarget.src = 'https://images.unsplash.com/photo-1606811971618-4486d14f3f99?auto=format&fit=crop&q=80&w=600'
+                    }}
+                  />
+                  <div className="absolute bottom-2 left-2 bg-[#00a859] text-white text-[9px] font-extrabold px-2.5 py-1 rounded-md shadow flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-white" />
+                    <span>Sau điều trị</span>
+                  </div>
                 </div>
               </div>
-              <div className="relative rounded-2xl overflow-hidden shadow border-2 border-green-500">
-                <img
-                  src="https://images.unsplash.com/photo-1609840114035-3c981b782dfe?auto=format&fit=crop&q=80&w=300"
-                  alt="Sau"
-                  className="h-32 w-full object-cover"
-                />
-                <div className="absolute bottom-2 left-2 bg-[#00a859] text-white text-[10px] px-2 py-0.5 rounded font-bold">
-                  Sau điều trị
+            </div>
+
+            {/* Case 2 */}
+            <div className="group bg-white border border-slate-200/80 rounded-3xl p-6 shadow-[0_4px_25px_rgba(0,0,0,0.03)] hover:shadow-[0_15px_35px_rgba(31,79,178,0.1)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <span className="bg-blue-50 text-[#1f4fb2] border border-blue-100 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full">
+                    Khách hàng: Trần Quốc Bảo
+                  </span>
+                  <span className="text-[10px] font-extrabold text-slate-400">3 Ngày</span>
+                </div>
+                <h4 className="text-base font-extrabold text-slate-900 leading-snug group-hover:text-[#1f4fb2] transition-colors mb-2">
+                  Dán Sứ Veneer Emax Đóng Khe Thưa
+                </h4>
+                <p className="text-xs text-slate-500 leading-relaxed font-medium mb-6">
+                  Phục hình 8 mặt dán sứ Emax siêu mỏng 0.2mm, bảo tồn tối đa răng thật, đem lại nụ cười trắng sáng tự nhiên.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3.5">
+                <div className="relative rounded-2xl overflow-hidden shadow-inner bg-slate-100 group/img">
+                  <img
+                    src="https://images.unsplash.com/photo-1606811971618-4486d14f3f99?auto=format&fit=crop&q=80&w=600"
+                    alt="Trước điều trị"
+                    className="h-36 w-full object-cover grayscale contrast-125 transition-transform duration-500 group-hover/img:scale-105"
+                    onError={(e) => {
+                      e.currentTarget.src = 'https://images.unsplash.com/photo-1598256989800-fe5f95da9787?auto=format&fit=crop&q=80&w=600'
+                    }}
+                  />
+                  <div className="absolute bottom-2 left-2 bg-slate-900/80 backdrop-blur-sm text-white text-[9px] font-extrabold px-2.5 py-1 rounded-md">
+                    Trước điều trị
+                  </div>
+                </div>
+
+                <div className="relative rounded-2xl overflow-hidden shadow-md ring-2 ring-[#00a859] group/img">
+                  <img
+                    src="https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&q=80&w=600"
+                    alt="Sau điều trị"
+                    className="h-36 w-full object-cover transition-transform duration-500 group-hover/img:scale-105"
+                    onError={(e) => {
+                      e.currentTarget.src = 'https://images.unsplash.com/photo-1609840114035-3c981b782dfe?auto=format&fit=crop&q=80&w=600'
+                    }}
+                  />
+                  <div className="absolute bottom-2 left-2 bg-[#00a859] text-white text-[9px] font-extrabold px-2.5 py-1 rounded-md shadow flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-white" />
+                    <span>Sau điều trị</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Case 3 */}
+            <div className="group bg-white border border-slate-200/80 rounded-3xl p-6 shadow-[0_4px_25px_rgba(0,0,0,0.03)] hover:shadow-[0_15px_35px_rgba(31,79,178,0.1)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between hidden lg:flex">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <span className="bg-blue-50 text-[#1f4fb2] border border-blue-100 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full">
+                    Khách hàng: Phạm Hoàng Yến
+                  </span>
+                  <span className="text-[10px] font-extrabold text-slate-400">1 Lần Hẹn</span>
+                </div>
+                <h4 className="text-base font-extrabold text-slate-900 leading-snug group-hover:text-[#1f4fb2] transition-colors mb-2">
+                  Cấy Ghép Implant Thụy Sĩ Tức Thì
+                </h4>
+                <p className="text-xs text-slate-500 leading-relaxed font-medium mb-6">
+                  Trồng răng Implant StraumannThụy Sĩ công nghệ không đau, ăn nhai chắc chắn như răng thật chỉ sau 1 ca tiểu phẫu.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3.5">
+                <div className="relative rounded-2xl overflow-hidden shadow-inner bg-slate-100 group/img">
+                  <img
+                    src="https://images.unsplash.com/photo-1512223792601-592a9809eed4?auto=format&fit=crop&q=80&w=600"
+                    alt="Trước điều trị"
+                    className="h-36 w-full object-cover grayscale contrast-125 transition-transform duration-500 group-hover/img:scale-105"
+                    onError={(e) => {
+                      e.currentTarget.src = 'https://images.unsplash.com/photo-1598256989800-fe5f95da9787?auto=format&fit=crop&q=80&w=600'
+                    }}
+                  />
+                  <div className="absolute bottom-2 left-2 bg-slate-900/80 backdrop-blur-sm text-white text-[9px] font-extrabold px-2.5 py-1 rounded-md">
+                    Trước điều trị
+                  </div>
+                </div>
+
+                <div className="relative rounded-2xl overflow-hidden shadow-md ring-2 ring-[#00a859] group/img">
+                  <img
+                    src="https://images.unsplash.com/photo-1579684389782-64d84b5e901a?auto=format&fit=crop&q=80&w=600"
+                    alt="Sau điều trị"
+                    className="h-36 w-full object-cover transition-transform duration-500 group-hover/img:scale-105"
+                    onError={(e) => {
+                      e.currentTarget.src = 'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&q=80&w=600'
+                    }}
+                  />
+                  <div className="absolute bottom-2 left-2 bg-[#00a859] text-white text-[9px] font-extrabold px-2.5 py-1 rounded-md shadow flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-white" />
+                    <span>Sau điều trị</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -902,194 +1149,254 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 8. Find Parkway Nearest */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center space-y-3 mb-10">
-          <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#00a859]">HỆ THỐNG PHÒNG KHÁM</p>
-          <h3 className="text-2xl font-black text-[#1f4fb2] sm:text-3xl">Tìm Crown Gần Nhất</h3>
-        </div>
-
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="overflow-hidden rounded-3xl border border-slate-100 shadow bg-white">
-            <img
-              src="https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&q=80&w=400"
-              alt="Cơ sở Hà Nội"
-              className="h-44 w-full object-cover"
-            />
-            <div className="p-4 space-y-2">
-              <h4 className="font-extrabold text-[#1f4fb2] text-sm">Crown Phố Huế</h4>
-              <p className="text-xs text-slate-600">328 Phố Huế, Q. Hai Bà Trưng, Hà Nội</p>
-              <p className="text-[10px] text-slate-400">Hotline: 1900 6899 (Nhánh 1)</p>
+      {/* 8. Find Crown Nearest */}
+      <section className="py-20 bg-slate-50/70 border-b border-slate-200/60">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center space-y-3 mb-12 max-w-2xl mx-auto">
+            <div className="inline-flex items-center gap-2 rounded-full bg-[#1f4fb2]/10 px-4 py-1.5 border border-[#1f4fb2]/20 shadow-sm mb-1">
+              <span className="w-2 h-2 rounded-full bg-[#00a859] animate-pulse" />
+              <span className="text-xs font-extrabold uppercase tracking-[0.25em] text-[#1f4fb2]">
+                HỆ THỐNG PHÒNG KHÁM
+              </span>
             </div>
+            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 leading-tight">
+              Tìm Cơ Sở Crown Gần Nhất
+            </h3>
+            <p className="text-slate-600 text-sm font-medium leading-relaxed">
+              Hệ thống phòng khám chuẩn mực với đầy đủ trang thiết bị hiện đại tại các trung tâm thành phố lớn.
+            </p>
           </div>
 
-          <div className="overflow-hidden rounded-3xl border border-slate-100 shadow bg-white">
-            <img
-              src="https://images.unsplash.com/photo-1579684389782-64d84b5e901a?auto=format&fit=crop&q=80&w=400"
-              alt="Cơ sở Sài Gòn"
-              className="h-44 w-full object-cover"
-            />
-            <div className="p-4 space-y-2">
-              <h4 className="font-extrabold text-[#1f4fb2] text-sm">Crown Nam Kỳ Khởi Nghĩa</h4>
-              <p className="text-xs text-slate-600">215 Nam Kỳ Khởi Nghĩa, Quận 3, TP. Hồ Chí Minh</p>
-              <p className="text-[10px] text-slate-400">Hotline: 1900 6899 (Nhánh 2)</p>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Branch 1 */}
+            <div className="group overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_15px_35px_rgba(31,79,178,0.12)] hover:-translate-y-1 transition-all duration-300">
+              <div className="relative h-52 overflow-hidden bg-slate-100">
+                <img
+                  src="https://images.unsplash.com/photo-1629909615184-74f495363b67?auto=format&fit=crop&q=80&w=800"
+                  alt="Crown Phố Huế - Hà Nội"
+                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  onError={(e) => {
+                    e.currentTarget.src = 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&q=80&w=800'
+                  }}
+                />
+                <span className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm text-[#1f4fb2] text-[10px] font-extrabold px-3 py-1 rounded-full shadow-sm">
+                  Cơ sở Hà Nội
+                </span>
+              </div>
+              <div className="p-6 space-y-2">
+                <h4 className="font-black text-slate-900 text-base group-hover:text-[#1f4fb2] transition-colors">Crown Phố Huế</h4>
+                <p className="text-xs text-slate-600 font-medium">328 Phố Huế, Q. Hai Bà Trưng, Hà Nội</p>
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-medium">
+                  <span>Hotline đặt lịch:</span>
+                  <span className="font-bold text-[#1f4fb2]">1900 6899 (Nhánh 1)</span>
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div className="overflow-hidden rounded-3xl border border-slate-100 shadow bg-white">
-            <img
-              src="https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&q=80&w=400"
-              alt="Cơ sở Bình Dương"
-              className="h-44 w-full object-cover"
-            />
-            <div className="p-4 space-y-2">
-              <h4 className="font-extrabold text-[#1f4fb2] text-sm">Crown Thủ Dầu Một</h4>
-              <p className="text-xs text-slate-600">564 Đại Lộ Bình Dương, TP. Thủ Dầu Một, Bình Dương</p>
-              <p className="text-[10px] text-slate-400">Hotline: 1900 6899 (Nhánh 3)</p>
+            {/* Branch 2 */}
+            <div className="group overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_15px_35px_rgba(31,79,178,0.12)] hover:-translate-y-1 transition-all duration-300">
+              <div className="relative h-52 overflow-hidden bg-slate-100">
+                <img
+                  src="https://images.unsplash.com/photo-1606811971618-4486d14f3f99?auto=format&fit=crop&q=80&w=800"
+                  alt="Crown Nam Kỳ Khởi Nghĩa - TP.HCM"
+                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  onError={(e) => {
+                    e.currentTarget.src = 'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&q=80&w=800'
+                  }}
+                />
+                <span className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm text-[#1f4fb2] text-[10px] font-extrabold px-3 py-1 rounded-full shadow-sm">
+                  Cơ sở Sài Gòn
+                </span>
+              </div>
+              <div className="p-6 space-y-2">
+                <h4 className="font-black text-slate-900 text-base group-hover:text-[#1f4fb2] transition-colors">Crown Nam Kỳ Khởi Nghĩa</h4>
+                <p className="text-xs text-slate-600 font-medium">215 Nam Kỳ Khởi Nghĩa, Quận 3, TP. Hồ Chí Minh</p>
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-medium">
+                  <span>Hotline đặt lịch:</span>
+                  <span className="font-bold text-[#1f4fb2]">1900 6899 (Nhánh 2)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Branch 3 */}
+            <div className="group overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_15px_35px_rgba(31,79,178,0.12)] hover:-translate-y-1 transition-all duration-300">
+              <div className="relative h-52 overflow-hidden bg-slate-100">
+                <img
+                  src="https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&q=80&w=800"
+                  alt="Crown Thủ Dầu Một - Bình Dương"
+                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  onError={(e) => {
+                    e.currentTarget.src = 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&q=80&w=800'
+                  }}
+                />
+                <span className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm text-[#1f4fb2] text-[10px] font-extrabold px-3 py-1 rounded-full shadow-sm">
+                  Cơ sở Bình Dương
+                </span>
+              </div>
+              <div className="p-6 space-y-2">
+                <h4 className="font-black text-slate-900 text-base group-hover:text-[#1f4fb2] transition-colors">Crown Thủ Dầu Một</h4>
+                <p className="text-xs text-slate-600 font-medium">564 Đại Lộ Bình Dương, TP. Thủ Dầu Một, Bình Dương</p>
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-medium">
+                  <span>Hotline đặt lịch:</span>
+                  <span className="font-bold text-[#1f4fb2]">1900 6899 (Nhánh 3)</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 9. Booking Form Section */}
-      <section id="booking-form-section" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 scroll-mt-24">
-        <div className="grid gap-10 lg:grid-cols-2 items-center bg-[#f0f4ff] rounded-[2rem] p-8 sm:p-12 border border-blue-100 shadow-md">
-          {/* Form wrapper */}
-          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-lg border border-slate-100 space-y-6">
-            <div className="text-center lg:text-left space-y-2">
-              <h3 className="text-xl sm:text-2xl font-black text-[#1f4fb2]">Đặt Lịch Hẹn Khám</h3>
-              <p className="text-xs text-slate-500">Khám tư vấn răng miệng miễn phí. Đăng ký thông tin bên dưới.</p>
+      {/* 9. Booking Form Section — Matches AppointmentRequestModal design */}
+      <section id="booking-form-section" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 scroll-mt-24 py-12">
+        <div className="grid gap-10 lg:grid-cols-2 items-center bg-[#f0f4ff] rounded-[2.5rem] p-6 sm:p-10 border border-blue-100 shadow-md">
+          {/* Form Card — Identical to Modal */}
+          <div className="overflow-hidden rounded-3xl bg-white shadow-xl ring-1 ring-slate-900/5">
+            {/* Header Banner */}
+            <div className="relative bg-gradient-to-r from-[#1f4fb2] to-[#00a859] px-6 py-6 text-white">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white backdrop-blur-md">
+                  <Sparkles size={13} className="text-yellow-300" />
+                  Crown Dental Clinic
+                </span>
+              </div>
+              <h3 className="text-2xl font-black leading-tight text-white">
+                Đăng Ký Yêu Cầu Lịch Hẹn
+              </h3>
+              <p className="mt-1 text-xs text-white/90 font-medium">
+                Vui lòng nhập thông tin bên dưới. Lễ tân phòng khám sẽ liên hệ gọi lại xác nhận xếp lịch hẹn!
+              </p>
             </div>
 
-            {bookingStatus.success ? (
-              <div className="rounded-2xl bg-green-50 p-6 border border-green-200 text-center space-y-4">
-                <div className="text-4xl">✅</div>
-                <h4 className="text-lg font-bold text-green-800">Đặt Lịch Thành Công!</h4>
-                <p className="text-xs text-green-700">
-                  Cảm ơn bạn đã lựa chọn Crown. Mã số bệnh nhân của bạn là:{' '}
-                  <span className="font-extrabold uppercase">{bookingStatus.data?.patientCode}</span>.
-                </p>
-                <p className="text-xs text-green-600 leading-relaxed">
-                  Nhân viên Crown sẽ liên hệ qua điện thoại để xác nhận giờ hẹn cụ thể với bạn trong 15 phút tới.
-                </p>
-                <button
-                  onClick={() => setBookingStatus({ loading: false, success: false, error: null, data: null })}
-                  className="rounded-full bg-[#00a859] hover:bg-green-700 text-white font-bold text-xs px-6 py-2.5 shadow"
-                >
-                  Đăng ký lịch mới
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleBookingSubmit} className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-600">Họ và tên *</label>
-                    <input
-                      required
-                      type="text"
-                      name="fullName"
-                      value={bookingForm.fullName}
-                      onChange={handleInputChange}
-                      placeholder="Nguyễn Văn A"
-                      className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-[#1f4fb2] focus:outline-none"
-                    />
+            {/* Form Content */}
+            <div className="p-6 sm:p-8">
+              {bookingStatus.success ? (
+                <div className="py-6 text-center space-y-4">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                    <CheckCircle2 size={40} />
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-600">Số điện thoại *</label>
-                    <input
-                      required
-                      type="tel"
-                      name="phone"
-                      value={bookingForm.phone}
-                      onChange={handleInputChange}
-                      placeholder="0901234567"
-                      className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-[#1f4fb2] focus:outline-none"
-                    />
+                  <div>
+                    <h4 className="text-xl font-bold text-slate-800">Đã Gửi Yêu Cầu Thành Công!</h4>
+                    <p className="mt-2 text-sm text-slate-600 leading-relaxed max-w-xs mx-auto">
+                      Cảm ơn bạn <span className="font-bold text-slate-900">{bookingForm.fullName}</span>. Bộ phận lễ tân sẽ sớm liên hệ tới SĐT{' '}
+                      <span className="font-bold text-slate-900">{bookingForm.phone}</span> để tư vấn và chốt thời gian phù hợp nhất.
+                    </p>
                   </div>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-600">Dịch vụ quan tâm</label>
-                    <select
-                      name="serviceName"
-                      value={bookingForm.serviceName}
-                      onChange={handleInputChange}
-                      className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-[#1f4fb2] focus:outline-none"
+                  <div className="pt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBookingForm({ fullName: '', phone: '', description: '' })
+                        setBookingStatus({ loading: false, success: false, error: null })
+                      }}
+                      className="w-full rounded-2xl bg-gradient-to-r from-[#1f4fb2] to-[#00a859] py-3 text-sm font-bold text-white shadow-lg transition hover:opacity-95 cursor-pointer"
                     >
-                      <option value="">-- Chọn dịch vụ --</option>
-                      {services.map((s) => (
-                        <option key={s.id} value={s.serviceName}>
-                          {s.serviceName}
-                        </option>
-                      ))}
-                    </select>
+                      Đăng ký lịch mới
+                    </button>
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-600">Chi nhánh gần nhất</label>
-                    <select
-                      name="branchName"
-                      value={bookingForm.branchName}
-                      onChange={handleInputChange}
-                      className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-[#1f4fb2] focus:outline-none"
+                </div>
+              ) : (
+                <form onSubmit={handleBookingSubmit} className="space-y-4">
+                  {/* Họ tên */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      Họ và tên <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <User size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        name="fullName"
+                        required
+                        value={bookingForm.fullName}
+                        onChange={handleInputChange}
+                        placeholder="Nguyễn Văn A"
+                        className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 py-3 pl-10 pr-4 text-sm text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-[#1f4fb2] focus:bg-white focus:ring-4 focus:ring-[#1f4fb2]/10"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Số điện thoại */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      Số điện thoại <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <Phone size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="tel"
+                        name="phone"
+                        required
+                        value={bookingForm.phone}
+                        onChange={handleInputChange}
+                        placeholder="0901 234 567"
+                        className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 py-3 pl-10 pr-4 text-sm text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-[#1f4fb2] focus:bg-white focus:ring-4 focus:ring-[#1f4fb2]/10"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Mô tả / Ghi chú */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      Mô tả nhu cầu / Dịch vụ quan tâm
+                    </label>
+                    <div className="relative">
+                      <FileText size={18} className="absolute left-3.5 top-3.5 text-slate-400" />
+                      <textarea
+                        name="description"
+                        rows={3}
+                        value={bookingForm.description}
+                        onChange={handleInputChange}
+                        placeholder="Nhập ghi chú, dịch vụ hoặc thời gian mong muốn..."
+                        className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 py-3 pl-10 pr-4 text-sm text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-[#1f4fb2] focus:bg-white focus:ring-4 focus:ring-[#1f4fb2]/10"
+                      />
+                    </div>
+
+                    {/* Quick suggestion tags */}
+                    <div className="mt-2.5">
+                      <p className="text-[11px] font-semibold text-slate-400 mb-1.5 flex items-center gap-1">
+                        <Tag size={12} /> Chọn nhanh dịch vụ:
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {QUICK_TAGS.map((tag) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => handleTagClick(tag)}
+                            className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600 transition hover:bg-[#1f4fb2]/10 hover:text-[#1f4fb2] active:scale-95 cursor-pointer"
+                          >
+                            + {tag}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Submit Button */}
+                  <div className="pt-3">
+                    <button
+                      type="submit"
+                      disabled={bookingStatus.loading}
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#1f4fb2] to-[#00a859] py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition-all hover:opacity-95 active:scale-[0.99] disabled:opacity-60 cursor-pointer"
                     >
-                      <option value="Hà Nội - 328 Phố Huế">Hà Nội - 328 Phố Huế</option>
-                      <option value="TP. HCM - 215 Nam Kỳ Khởi Nghĩa">TP. HCM - 215 Nam Kỳ Khởi Nghĩa</option>
-                      <option value="Bình Dương - 564 Đại Lộ Bình Dương">Bình Dương - 564 Đại Lộ Bình Dương</option>
-                    </select>
+                      {bookingStatus.loading ? (
+                        <>
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                          <span>Đang gửi yêu cầu...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CalendarCheck size={18} />
+                          <span>Gửi Yêu Cầu Đặt Lịch</span>
+                        </>
+                      )}
+                    </button>
                   </div>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-600">Ngày mong muốn</label>
-                    <input
-                      type="date"
-                      name="date"
-                      value={bookingForm.date}
-                      onChange={handleInputChange}
-                      className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-[#1f4fb2] focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-600">Giờ mong muốn</label>
-                    <input
-                      type="time"
-                      name="time"
-                      value={bookingForm.time}
-                      onChange={handleInputChange}
-                      className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-[#1f4fb2] focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-600">Ghi chú thêm</label>
-                  <textarea
-                    name="message"
-                    value={bookingForm.message}
-                    onChange={handleInputChange}
-                    rows="3"
-                    placeholder="Mô tả tình trạng răng hoặc yêu cầu khác..."
-                    className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm focus:border-[#1f4fb2] focus:outline-none"
-                  />
-                </div>
-
-                {bookingStatus.error && (
-                  <div className="text-xs text-red-500 font-bold bg-red-50 border border-red-200 p-3 rounded-xl">
-                    ⚠️ {bookingStatus.error}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={bookingStatus.loading}
-                  className="w-full rounded-xl bg-gradient-to-r from-[#1f4fb2] to-[#00a859] py-3 text-sm font-bold text-white shadow-md transition transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50"
-                >
-                  {bookingStatus.loading ? 'Đang gửi thông tin...' : 'GỬI ĐĂNG KÝ HẸN KHÁM'}
-                </button>
-              </form>
-            )}
+                  <p className="text-center text-[11px] text-slate-400">
+                    Thông tin cá nhân của bạn được bảo mật tuyệt đối.
+                  </p>
+                </form>
+              )}
+            </div>
           </div>
 
           {/* Info panel */}

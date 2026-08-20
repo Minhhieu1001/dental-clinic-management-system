@@ -14,6 +14,7 @@ import Contact from '../pages/Contact.jsx'
 import PromotionsPublic from '../pages/Promotions.jsx'
 import PromotionDetail from '../pages/PromotionDetail.jsx'
 import PublicInfo from '../pages/PublicInfo.jsx'
+import Celebrities from '../pages/Celebrities.jsx'
 import Knowledge from '../pages/Knowledge.jsx'
 import KnowledgeDetail from '../pages/KnowledgeDetail.jsx'
 import Login from '../pages/Login.jsx'
@@ -76,7 +77,7 @@ export default function AppRouter() {
           <Route path="contact" element={<Contact />} />
           <Route path="promotions" element={<PromotionsPublic />} />
           <Route path="promotions/:id" element={<PromotionDetail />} />
-          <Route path="celebrities" element={<PublicInfo />} />
+          <Route path="celebrities" element={<Celebrities />} />
           <Route path="knowledge" element={<Knowledge />} />
           <Route path="knowledge/:id" element={<KnowledgeDetail />} />
           <Route path="careers" element={<PublicInfo />} />
