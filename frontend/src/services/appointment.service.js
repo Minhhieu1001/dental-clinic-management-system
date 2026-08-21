@@ -32,9 +32,21 @@ export const updateAppointmentStatus = async (id, status) => {
   return response.data;
 };
 
+// Update appointment details (Reschedule)
+export const updateAppointment = async (id, data) => {
+  const response = await api.put(`/appointments/${id}`, data);
+  return response.data;
+};
+
 // Update clinical exam & medical notes for appointment
 export const updateClinicalExam = async (id, data) => {
   const response = await api.put(`/appointments/${id}/exam`, data);
+  return response.data;
+};
+
+// Get appointment by ID
+export const getAppointmentById = async (id) => {
+  const response = await api.get(`/appointments/${id}`);
   return response.data;
 };
 

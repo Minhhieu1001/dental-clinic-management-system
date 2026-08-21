@@ -14,6 +14,7 @@ public interface AppointmentService {
     List<AppointmentDetailDTO> getAppointmentsByDentist(UUID dentistId);
     List<AppointmentDetailDTO> getAppointmentsByDentistUser(UUID userId);
     AppointmentDetailDTO updateAppointmentStatus(UUID appointmentId, StatusAppointment status);
+    AppointmentDetailDTO updateAppointment(UUID appointmentId, AppointmentCreateDTO dto);
     AppointmentDetailDTO updateClinicalExam(UUID appointmentId, AppointmentCreateDTO dto);
     AppointmentDetailDTO getAppointmentById(UUID id);
     List<iuh.fit.backend.appointment.entity.Room> getAllRooms();

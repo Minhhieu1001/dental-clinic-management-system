@@ -11,16 +11,18 @@ import { staffName } from './receptionist/receptionistData';
 export default function EmployeeDashboard() {
   const { stats, appointments, requests, loading, refetch } = useReceptionistDashboard();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [modalType, setModalType] = useState('add'); // 'add' | 'edit'
+  const [modalPayload, setModalPayload] = useState(null);
 
-  const handleOpenCreateModal = (requestData = null) => {
-    setSelectedRequest(requestData);
+  const handleOpenModal = (type = 'add', payloadData = null) => {
+    setModalType(type);
+    setModalPayload(payloadData);
     setIsModalOpen(true);
   };
 
   const handleModalClose = () => {
     setIsModalOpen(false);
-    setSelectedRequest(null);
+    setModalPayload(null);
   };
 
   const handleModalSuccess = () => {
@@ -30,7 +32,12 @@ export default function EmployeeDashboard() {
   return (
     <div className="mx-auto max-w-[1400px] px-1">
       {/* Header */}
-      <DashboardHeader staffName={staffName} onOpenCreateModal={() => handleOpenCreateModal()} />
+      <DashboardHeader
+        staffName={staffName}
+        onOpenCreateModal={() => handleOpenModal('add', null)}
+        onRefresh={refetch}
+        loading={loading}
+      />
 
       {/* Stats row */}
       <div className="mt-3">
@@ -41,21 +48,29 @@ export default function EmployeeDashboard() {
       <div className="mt-3 flex gap-3 items-start">
         {/* Left column — Appointment table */}
         <div className="min-w-0 flex-[73]">
-          <AppointmentTable appointments={appointments} />
+          <AppointmentTable
+            appointments={appointments}
+            onRefresh={refetch}
+            onOpenEditModal={(apt) => handleOpenModal('edit', apt)}
+          />
         </div>
 
         {/* Right column — Requests + Quick actions */}
         <div className="flex flex-[27] flex-col gap-3">
-          <AppointmentRequests requests={requests} onOpenCreateModal={handleOpenCreateModal} />
-          <QuickActions onOpenCreateModal={() => handleOpenCreateModal()} />
+          <AppointmentRequests
+            requests={requests}
+            onOpenCreateModal={(reqData) => handleOpenModal('add', reqData)}
+          />
+          <QuickActions onOpenCreateModal={() => handleOpenModal('add', null)} />
         </div>
       </div>
 
-      {/* Modal create appointment */}
+      {/* Modal create/edit appointment */}
       <CreateAppointmentModal
         isOpen={isModalOpen}
         onClose={handleModalClose}
-        initialData={selectedRequest}
+        type={modalType}
+        payload={modalPayload}
         onSuccess={handleModalSuccess}
       />
     </div>

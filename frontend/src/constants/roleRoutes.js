@@ -11,7 +11,7 @@ export const roleRoutes = {
       { label: 'Bệnh nhân', to: 'patients' },
       { label: 'Nha sĩ', to: 'dentists' },
       { label: 'Nhân viên', to: 'employees' },
-      { label: 'Khuyến mãi', to: 'promotions' },  
+      { label: 'Khuyến mãi', to: 'promotions' },
       { label: 'Dịch vụ', to: 'services' },
       { label: 'Cài đặt', to: 'settings' },
 
@@ -38,7 +38,8 @@ export const roleRoutes = {
     tabItems: [
       { label: 'Tổng quan', to: 'dashboard' },
       { label: 'Lịch hẹn', to: 'appointments' },
-      { label: 'Điều trị', to: 'treatment-plans' },
+      { label: 'Khám bệnh', to: 'clinical-exam' },
+      { label: 'Kế hoạch điều trị', to: 'treatment-plans' },
       { label: 'Hồ sơ bệnh án', to: 'medical-records' },
       { label: 'Đơn thuốc', to: 'prescriptions' },
       { label: 'X-quang', to: 'xray-analysis' },
@@ -64,7 +65,7 @@ export const roleRoutes = {
     tabItems: [
       { label: 'Tổng quan', to: 'dashboard' },
       { label: 'Lịch hẹn', to: 'appointments' },
-      { label: 'Bệnh nhân đang chờ', to: 'patients-waiting' },
+      { label: 'Bệnh nhân', to: 'patients' },
       { label: 'Thanh toán', to: 'billing' },
       { label: 'Kho', to: 'inventory' },
       { label: 'Nhập/Xuất', to: 'import-export' },

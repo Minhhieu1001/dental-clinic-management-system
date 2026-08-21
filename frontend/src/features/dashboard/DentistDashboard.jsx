@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Calendar,
   Clock,
@@ -18,6 +19,14 @@ import {
   ShieldCheck,
   AlertCircle,
   Building,
+  PhoneCall,
+  UserX,
+  UserPlus,
+  Phone,
+  AlertTriangle,
+  User,
+  Plus,
+  MapPin,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
@@ -25,20 +34,51 @@ import { getDentistsList } from '../../services/dentist.service';
 import { getMyAppointments, getAppointments, updateAppointmentStatus } from '../../services/appointment.service';
 import { getInventory } from '../../services/inventory.service';
 import ClinicalExamModal from '../../components/ui/ClinicalExamModal';
+import AppointmentTable from './dentist/AppointmentTable';
+import PatientInfoCard from './dentist/PatientInfoCard';
 
 export default function DentistDashboard() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [dentistInfo, setDentistInfo] = useState(null);
   const [appointments, setAppointments] = useState([]);
   const [inventoryList, setInventoryList] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('ALL'); // ALL, WAITING, IN_PROGRESS, COMPLETED
-  const [searchTerm, setSearchTerm] = useState('');
   const [actionLoadingId, setActionLoadingId] = useState(null);
 
   // Modal exam state
   const [selectedExamAppt, setSelectedExamAppt] = useState(null);
   const [isExamModalOpen, setIsExamModalOpen] = useState(false);
+  const [selectedPatientCard, setSelectedPatientCard] = useState(null);
+
+  // Active patient for Patient Info Card (only set when user clicks a row in the table)
+  const activePatientInfo = selectedPatientCard;
+
+  // Handle View Medical Record (Điều hướng trực tiếp tới /dentist/medical-records)
+  const handleViewMedicalRecord = (patient) => {
+    if (patient) {
+      navigate('/dentist/medical-records', {
+        state: {
+          patient: patient,
+          patientCode: patient.patientCode,
+          phone: patient.phone || patient.phoneNumber,
+        },
+      });
+    } else {
+      navigate('/dentist/medical-records');
+    }
+  };
+
+  // Handle Create Medical Record
+  const handleCreateMedicalRecord = (patient) => {
+    navigate('/dentist/patients', {
+      state: {
+        openCreateModal: true,
+        patientName: patient?.patientName || patient?.fullName,
+        phone: patient?.phone || patient?.phoneNumber,
+      },
+    });
+  };
 
   // Helper to format doctor name with clean professional titles
   const formatDoctorTitle = (usr) => {
@@ -121,7 +161,8 @@ export default function DentistDashboard() {
       );
 
       const statusMessages = {
-        IN_PROGRESS: 'Đã bắt đầu ca khám!',
+        CALLED: 'Đã gọi bệnh nhân vào phòng khám!',
+        IN_PROGRESS: 'Đã bắt đầu điều trị ca khám!',
         COMPLETED: 'Đã hoàn tất ca khám!',
         CANCELLED: 'Đã hủy lịch khám!',
       };
@@ -133,56 +174,121 @@ export default function DentistDashboard() {
     }
   };
 
-  // Start Exam: Set status to IN_PROGRESS and open Clinical Exam Modal
-  const handleStartExam = async (apt) => {
-    setAppointments((prev) =>
-      prev.map((item) => (item.id === apt.id ? { ...item, status: 'IN_PROGRESS' } : item))
-    );
-    setSelectedExamAppt({ ...apt, status: 'IN_PROGRESS' });
-    setIsExamModalOpen(true);
-
-    if (apt.id && !String(apt.id).startsWith('mock-')) {
-      await updateAppointmentStatus(apt.id, 'IN_PROGRESS').catch((err) =>
-        console.warn('Lỗi API cập nhật trạng thái:', err)
+  // 1. Call patient into examination room (WAITING -> CALLED)
+  const handleCallIn = async (apt) => {
+    setActionLoadingId(apt.id);
+    try {
+      if (apt.id && !String(apt.id).startsWith('mock-')) {
+        await updateAppointmentStatus(apt.id, 'CALLED').catch((err) =>
+          console.warn('Lỗi API cập nhật trạng thái:', err)
+        );
+      }
+      setAppointments((prev) =>
+        prev.map((item) => (item.id === apt.id ? { ...item, status: 'CALLED' } : item))
       );
+      toast.success(`Đã gọi bệnh nhân ${apt.patientName} vào phòng!`);
+    } catch (err) {
+      console.warn('Lỗi khi gọi bệnh nhân:', err);
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
-  // Open Exam Modal directly
+  // 2. Start Treatment & Open Clinical Exam Modal (CALLED -> IN_PROGRESS)
+  const handleStartTreatment = async (apt) => {
+    setActionLoadingId(apt.id);
+    try {
+      if (apt.id && !String(apt.id).startsWith('mock-')) {
+        await updateAppointmentStatus(apt.id, 'IN_PROGRESS').catch((err) =>
+          console.warn('Lỗi API cập nhật trạng thái:', err)
+        );
+      }
+      setAppointments((prev) =>
+        prev.map((item) => (item.id === apt.id ? { ...item, status: 'IN_PROGRESS' } : item))
+      );
+      setSelectedExamAppt({ ...apt, status: 'IN_PROGRESS' });
+      setIsExamModalOpen(true);
+      toast.success(`Bắt đầu ca điều trị cho ${apt.patientName}`);
+    } catch (err) {
+      console.warn('Lỗi khi bắt đầu điều trị:', err);
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  // Open Medical Record page directly
   const handleOpenExamModal = (apt) => {
-    setSelectedExamAppt(apt);
-    setIsExamModalOpen(true);
+    handleViewMedicalRecord(apt);
   };
-
-  // Filtered appointments list
-  const filteredAppointments = appointments.filter((apt) => {
-    const matchesSearch =
-      (apt.patientName && apt.patientName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (apt.phone && apt.phone.includes(searchTerm)) ||
-      (apt.patientCode && apt.patientCode.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (apt.reason && apt.reason.toLowerCase().includes(searchTerm.toLowerCase()));
-
-    if (!matchesSearch) return false;
-
-    if (activeTab === 'WAITING') {
-      return apt.status === 'WAITING' || apt.status === 'CONFIRMED' || apt.status === 'PENDING';
-    }
-    if (activeTab === 'IN_PROGRESS') {
-      return apt.status === 'IN_PROGRESS';
-    }
-    if (activeTab === 'COMPLETED') {
-      return apt.status === 'COMPLETED';
-    }
-    return true;
-  });
 
   // ================= DYNAMIC REAL DATA METRICS CALCULATIONS ================= //
-  const totalToday = appointments.length;
-  const waitingCount = appointments.filter(
-    (a) => a.status === 'WAITING' || a.status === 'CONFIRMED' || a.status === 'PENDING'
+  const extractYYYYMMDD = (val) => {
+    if (!val) return null;
+    if (typeof val === 'string') {
+      if (val.includes('T')) return val.split('T')[0];
+      if (val.includes(' ')) return val.split(' ')[0];
+      if (val.length >= 10) return val.substring(0, 10);
+    }
+    try {
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return null;
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const dt = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${dt}`;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const todayStr = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }, []);
+
+  // Filter today's appointments by todayStr date
+  const todayAppointments = useMemo(() => {
+    return appointments.filter((apt) => {
+      const dateVal = apt.appointmentDate || apt.appointmentTime || apt.createdAt;
+      const aptDateStr = extractYYYYMMDD(dateVal);
+      if (!aptDateStr) return true;
+      return aptDateStr === todayStr;
+    });
+  }, [appointments, todayStr]);
+
+  const totalTodayCount = todayAppointments.length;
+  const totalToday = totalTodayCount;
+  const inProgressCount = todayAppointments.filter((a) => a.status === 'IN_PROGRESS').length;
+  const completedCount = todayAppointments.filter((a) => a.status === 'COMPLETED').length;
+  const waitingCount = todayAppointments.filter(
+    (a) => a.status === 'WAITING' || a.status === 'CONFIRMED' || a.status === 'PENDING' || a.status === 'not-arrived'
   ).length;
-  const inProgressCount = appointments.filter((a) => a.status === 'IN_PROGRESS').length;
-  const completedCount = appointments.filter((a) => a.status === 'COMPLETED').length;
+
+  // Calculate appointments count in the current week
+  const weekAppointmentsCount = useMemo(() => {
+    if (!appointments || appointments.length === 0) return 0;
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diffToMon);
+    monday.setHours(0, 0, 0, 0);
+
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+
+    const filtered = appointments.filter((a) => {
+      const dateStr = a.appointmentDate || a.appointmentTime || a.createdAt;
+      if (!dateStr) return true;
+      const d = new Date(dateStr);
+      return d >= monday && d <= sunday;
+    });
+    return filtered.length > 0 ? filtered.length : appointments.length;
+  }, [appointments]);
 
   // Unique patient count dynamically
   const uniquePatientSet = new Set(appointments.map((a) => a.phone || a.patientName).filter(Boolean));
@@ -288,348 +394,100 @@ export default function DentistDashboard() {
         </div>
       </div>
 
-      {/* 2. Top 4 Stat Cards Row (Real Data Calculations) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Lịch hẹn hôm nay */}
-        <div className="rounded-[4px] border border-slate-200 bg-white p-5 shadow-xs hover:shadow-md transition-all">
+      {/* 2. Top 5 Stat Cards Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        {/* Ô 1: Lịch hẹn trong tuần */}
+        <div className="rounded-[4px] border border-slate-200 bg-white p-4 shadow-xs hover:shadow-md transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Lịch hẹn hôm nay</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-[4px] bg-teal-50 text-teal-600 border border-teal-100">
-              <Calendar size={18} />
+            <span className="text-xs font-semibold text-slate-500 truncate">Lịch hẹn trong tuần</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-[4px] bg-teal-50 text-teal-600 border border-teal-100 shrink-0">
+              <Calendar size={16} />
             </div>
           </div>
-          <p className="mt-3 text-3xl font-extrabold text-slate-800">{totalToday}</p>
-          <div className="mt-2 flex items-center gap-1 text-xs font-bold text-emerald-600">
-            <TrendingUp size={14} /> +20% <span className="font-normal text-slate-400">so với hôm qua</span>
+          <p className="mt-2.5 text-2xl font-extrabold text-slate-800">{weekAppointmentsCount}</p>
+          <div className="mt-1.5 flex items-center gap-1 text-[11px] font-bold text-emerald-600">
+            <TrendingUp size={12} /> <span className="font-normal text-slate-400">Danh sách tuần này</span>
           </div>
         </div>
 
-        {/* Card 2: Bệnh nhân mới */}
-        <div className="rounded-[4px] border border-slate-200 bg-white p-5 shadow-xs hover:shadow-md transition-all">
+        {/* Ô 2: Lịch hẹn hôm nay */}
+        <div className="rounded-[4px] border border-slate-200 bg-white p-4 shadow-xs hover:shadow-md transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Bệnh nhân mới</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-[4px] bg-teal-50 text-teal-600 border border-teal-100">
-              <UserCheck size={18} />
+            <span className="text-xs font-semibold text-slate-500 truncate">Lịch hẹn hôm nay</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-[4px] bg-teal-50 text-teal-600 border border-teal-100 shrink-0">
+              <Clock size={16} />
             </div>
           </div>
-          <p className="mt-3 text-3xl font-extrabold text-slate-800">{newPatientsCount}</p>
-          <div className="mt-2 flex items-center gap-1 text-xs font-bold text-emerald-600">
-            <TrendingUp size={14} /> +12% <span className="font-normal text-slate-400">so với tuần trước</span>
+          <p className="mt-2.5 text-2xl font-extrabold text-slate-800">{totalTodayCount}</p>
+          <div className="mt-1.5 flex items-center gap-1 text-[11px] font-bold text-emerald-600">
+            <TrendingUp size={12} /> <span className="font-normal text-slate-400">Ca khám hôm nay</span>
           </div>
         </div>
 
-        {/* Card 3: Doanh thu hôm nay */}
-        <div className="rounded-[4px] border border-slate-200 bg-white p-5 shadow-xs hover:shadow-md transition-all">
+        {/* Ô 3: Bệnh nhân chưa đến */}
+        <div className="rounded-[4px] border border-slate-200 bg-white p-4 shadow-xs hover:shadow-md transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Doanh thu hôm nay</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-[4px] bg-teal-50 text-teal-600 border border-teal-100">
-              <BarChart3 size={18} />
+            <span className="text-xs font-semibold text-slate-500 truncate">Bệnh nhân chưa đến</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-[4px] bg-amber-50 text-amber-600 border border-amber-100 shrink-0">
+              <UserX size={16} />
             </div>
           </div>
-          <p className="mt-3 text-2xl sm:text-3xl font-extrabold text-teal-800">{formattedTodayRevenue}</p>
-          <div className="mt-2 flex items-center gap-1 text-xs font-bold text-emerald-600">
-            <TrendingUp size={14} /> +18% <span className="font-normal text-slate-400">so với hôm qua</span>
+          <p className="mt-2.5 text-2xl font-extrabold text-amber-700">{waitingCount}</p>
+          <div className="mt-1.5 flex items-center gap-1 text-[11px] font-bold text-amber-600">
+            <span className="font-medium text-slate-400">Chờ vào phòng khám</span>
           </div>
         </div>
 
-        {/* Card 4: Điều trị đang thực hiện */}
-        <div className="rounded-[4px] border border-slate-200 bg-white p-5 shadow-xs hover:shadow-md transition-all">
+        {/* Ô 4: Bệnh nhân đang điều trị */}
+        <div className="rounded-[4px] border border-slate-200 bg-white p-4 shadow-xs hover:shadow-md transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Điều trị đang thực hiện</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-[4px] bg-teal-50 text-teal-600 border border-teal-100">
-              <Clock size={18} />
+            <span className="text-xs font-semibold text-slate-500 truncate">Bệnh nhân đang điều trị</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-[4px] bg-blue-50 text-blue-600 border border-blue-100 shrink-0">
+              <Stethoscope size={16} />
             </div>
           </div>
-          <p className="mt-3 text-3xl font-extrabold text-slate-800">{inProgressCount}</p>
-          <p
-            onClick={() => setActiveTab('IN_PROGRESS')}
-            className="mt-2 text-xs font-bold text-teal-700 hover:underline cursor-pointer"
-          >
-            Xem chi tiết &rarr;
-          </p>
+          <p className="mt-2.5 text-2xl font-extrabold text-blue-700">{inProgressCount}</p>
+          <div className="mt-1.5 flex items-center gap-1 text-[11px] font-bold text-blue-600">
+            <span className="font-medium text-slate-400">Đang thực hiện</span>
+          </div>
+        </div>
+
+        {/* Ô 5: Bệnh nhân hoàn thành điều trị */}
+        <div className="rounded-[4px] border border-slate-200 bg-white p-4 shadow-xs hover:shadow-md transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500 truncate">Hoàn thành điều trị</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-[4px] bg-emerald-50 text-emerald-600 border border-emerald-100 shrink-0">
+              <CheckCircle2 size={16} />
+            </div>
+          </div>
+          <p className="mt-2.5 text-2xl font-extrabold text-emerald-700">{completedCount}</p>
+          <div className="mt-1.5 flex items-center gap-1 text-[11px] font-bold text-emerald-600">
+            <span className="font-medium text-slate-400">Đã hoàn tất ca khám</span>
+          </div>
         </div>
       </div>
 
-      {/* 3. Middle Section: Lịch hẹn hôm nay Table + Doanh thu 7 ngày qua Chart */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Lịch hẹn hôm nay (7/12 width) */}
-        <div className="lg:col-span-7 rounded-[4px] border border-slate-200 bg-white p-5 shadow-xs flex flex-col justify-between">
-          <div>
-            {/* Title & Filter bar */}
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold text-slate-800">Lịch hẹn hôm nay</h2>
-              <button className="text-slate-400 hover:text-slate-600 p-1">
-                <MoreVertical size={18} />
-              </button>
-            </div>
+      {/* 3. Middle Section: Danh sách Lịch hẹn (Tỉ lệ 7) + Chi tiết Thông tin Bệnh nhân (Tỉ lệ 3) */}
+      <div className="flex flex-col lg:flex-row gap-3 items-start">
+        {/* Left Column: Bảng danh sách lịch hẹn (Tỉ lệ 7) */}
+        <AppointmentTable
+          appointments={appointments}
+          loading={loading}
+          activePatientInfo={activePatientInfo}
+          onSelectPatient={setSelectedPatientCard}
+          actionLoadingId={actionLoadingId}
+          onCallIn={handleCallIn}
+          onStartTreatment={handleStartTreatment}
+          onOpenExamModal={handleOpenExamModal}
+          onStatusChange={handleStatusChange}
+        />
 
-            {/* Filter Tabs & Search */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 mb-3">
-              <div className="flex items-center gap-1 rounded-[4px] bg-slate-100 p-1">
-                {[
-                  { key: 'ALL', label: `Tất cả (${totalToday})` },
-                  { key: 'WAITING', label: `Chờ khám (${waitingCount})` },
-                  { key: 'IN_PROGRESS', label: `Đang khám (${inProgressCount})` },
-                  { key: 'COMPLETED', label: `Hoàn tất (${completedCount})` },
-                ].map((tab) => (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    onClick={() => setActiveTab(tab.key)}
-                    className={`rounded-[4px] px-2.5 py-1 text-[11px] font-bold transition-all ${
-                      activeTab === tab.key
-                        ? 'bg-white text-teal-800 shadow-2xs'
-                        : 'text-slate-500 hover:text-slate-800'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="relative">
-                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Tìm bệnh nhân..."
-                  className="w-full sm:w-44 rounded-[4px] border border-slate-200 bg-slate-50/50 pl-7 pr-2 py-1 text-xs text-slate-800 placeholder-slate-400 focus:border-teal-500 focus:bg-white focus:outline-none"
-                />
-              </div>
-            </div>
-
-            {/* List / Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-100 text-[11px] font-bold text-slate-400">
-                    <th className="pb-2.5 font-semibold">Giờ</th>
-                    <th className="pb-2.5 font-semibold">Bệnh nhân</th>
-                    <th className="pb-2.5 font-semibold">Dịch vụ</th>
-                    <th className="pb-2.5 font-semibold">Trạng thái</th>
-                    <th className="pb-2.5 font-semibold text-right">Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {loading ? (
-                    <tr>
-                      <td colSpan={5} className="py-8 text-center text-slate-400">
-                        <RefreshCw size={20} className="mx-auto mb-1 animate-spin text-teal-600" />
-                        Đang tải danh sách...
-                      </td>
-                    </tr>
-                  ) : filteredAppointments.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="py-8 text-center text-slate-400">
-                        <AlertCircle size={24} className="mx-auto mb-1 text-slate-300" />
-                        Hiện chưa có lịch khám phù hợp.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredAppointments.map((apt) => {
-                      let timeStr = '09:00';
-                      if (apt.appointmentTime) {
-                        try {
-                          const d = new Date(apt.appointmentTime);
-                          timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-                        } catch (e) {
-                          timeStr = String(apt.appointmentTime).substring(11, 16) || '09:00';
-                        }
-                      }
-
-                      const initials = apt.patientName
-                        ? apt.patientName
-                            .split(' ')
-                            .map((n) => n[0])
-                            .slice(-2)
-                            .join('')
-                            .toUpperCase()
-                        : 'BN';
-
-                      const isExecuting = actionLoadingId === apt.id;
-
-                      return (
-                        <tr key={apt.id} className="hover:bg-slate-50/70 transition-colors">
-                          {/* Time */}
-                          <td className="py-3 font-semibold text-slate-600 whitespace-nowrap">{timeStr}</td>
-
-                          {/* Patient */}
-                          <td className="py-3 whitespace-nowrap">
-                            <div className="flex items-center gap-2.5">
-                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-50 font-bold text-teal-700 border border-teal-100 text-[11px]">
-                                {initials}
-                              </div>
-                              <div>
-                                <p className="font-bold text-slate-800">{apt.patientName}</p>
-                                <p className="text-[10px] text-slate-400">{apt.phone}</p>
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* Service */}
-                          <td className="py-3 text-slate-600 font-medium max-w-[140px] truncate">
-                            {apt.reason || 'Tư vấn nha khoa'}
-                          </td>
-
-                          {/* Status */}
-                          <td className="py-3 whitespace-nowrap">
-                            {apt.status === 'IN_PROGRESS' && (
-                              <span className="rounded-[4px] bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-800 border border-purple-200">
-                                Đang khám
-                              </span>
-                            )}
-                            {(apt.status === 'WAITING' || apt.status === 'CONFIRMED' || apt.status === 'PENDING') && (
-                              <span className="rounded-[4px] bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
-                                Đã xác nhận
-                              </span>
-                            )}
-                            {apt.status === 'COMPLETED' && (
-                              <span className="rounded-[4px] bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
-                                Hoàn thành
-                              </span>
-                            )}
-                            {apt.status === 'CANCELLED' && (
-                              <span className="rounded-[4px] bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-800 border border-rose-200">
-                                Đã hủy
-                              </span>
-                            )}
-                          </td>
-
-                          {/* Actions */}
-                          <td className="py-3 text-right whitespace-nowrap">
-                            {(apt.status === 'WAITING' || apt.status === 'CONFIRMED' || apt.status === 'PENDING') && (
-                              <button
-                                type="button"
-                                onClick={() => handleStartExam(apt)}
-                                disabled={isExecuting}
-                                className="inline-flex items-center gap-1 rounded-[4px] bg-teal-700 px-2.5 py-1 text-[11px] font-bold text-white shadow-2xs hover:bg-teal-800 transition-colors"
-                              >
-                                <Play size={11} fill="currentColor" /> Khám
-                              </button>
-                            )}
-
-                            {apt.status === 'IN_PROGRESS' && (
-                              <div className="flex items-center justify-end gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenExamModal(apt)}
-                                  className="rounded-[4px] border border-teal-600 bg-teal-50 px-2 py-1 text-[11px] font-bold text-teal-800 hover:bg-teal-100"
-                                >
-                                  Hồ sơ
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleStatusChange(apt.id, 'COMPLETED')}
-                                  disabled={isExecuting}
-                                  className="rounded-lg bg-emerald-600 px-2 py-1 text-[11px] font-bold text-white hover:bg-emerald-700"
-                                >
-                                  Xong
-                                </button>
-                              </div>
-                            )}
-
-                            {apt.status === 'COMPLETED' && (
-                              <button
-                                type="button"
-                                onClick={() => handleOpenExamModal(apt)}
-                                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-50"
-                              >
-                                Xem
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div className="pt-3 border-t border-slate-100">
-            <button
-              onClick={() => setActiveTab('ALL')}
-              className="text-xs font-bold text-teal-700 hover:underline"
-            >
-              Xem tất cả lịch hẹn &rarr;
-            </button>
-          </div>
-        </div>
-
-        {/* Right Column: Doanh thu 7 ngày qua Chart (Dynamic Real Chart) */}
-        <div className="lg:col-span-5 rounded-[4px] border border-slate-200 bg-white p-5 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-base font-bold text-slate-800">Doanh thu 7 ngày qua</h2>
-              <button className="text-slate-400 hover:text-slate-600 p-1">
-                <MoreVertical size={18} />
-              </button>
-            </div>
-
-            <div className="flex items-baseline gap-3 mb-4">
-              <p className="text-2xl font-extrabold text-slate-900">{formattedWeeklyTotal}</p>
-              <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
-                <TrendingUp size={13} /> 15% <span className="font-normal text-slate-400">so với 7 ngày trước</span>
-              </span>
-            </div>
-
-            {/* Dynamic Smooth SVG Curved Line Chart */}
-            <div className="relative w-full h-48 mt-2">
-              <svg viewBox="0 0 400 160" className="w-full h-full overflow-visible">
-                <defs>
-                  <linearGradient id="tealGradientDynamic" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#00897B" stopOpacity="0.3" />
-                    <stop offset="100%" stopColor="#00897B" stopOpacity="0.0" />
-                  </linearGradient>
-                </defs>
-
-                {/* Horizontal Grid lines */}
-                <line x1="0" y1="20" x2="400" y2="20" stroke="#f1f5f9" strokeWidth="1" />
-                <line x1="0" y1="60" x2="400" y2="60" stroke="#f1f5f9" strokeWidth="1" />
-                <line x1="0" y1="100" x2="400" y2="100" stroke="#f1f5f9" strokeWidth="1" />
-                <line x1="0" y1="140" x2="400" y2="140" stroke="#f1f5f9" strokeWidth="1" />
-
-                {/* Y-axis Labels */}
-                <text x="5" y="24" fill="#94a3b8" fontSize="9" fontWeight="bold">30M</text>
-                <text x="5" y="64" fill="#94a3b8" fontSize="9" fontWeight="bold">20M</text>
-                <text x="5" y="104" fill="#94a3b8" fontSize="9" fontWeight="bold">10M</text>
-                <text x="5" y="144" fill="#94a3b8" fontSize="9" fontWeight="bold">0</text>
-
-                {/* Dynamic Curved Area Fill */}
-                <path d={svgFillD} fill="url(#tealGradientDynamic)" />
-
-                {/* Dynamic Curved Line Path */}
-                <path d={svgPathD} fill="none" stroke="#00897B" strokeWidth="3.5" strokeLinecap="round" />
-
-                {/* Dynamic Data Points */}
-                {chartPoints.map((pt, idx) => (
-                  <circle
-                    key={idx}
-                    cx={pt.x}
-                    cy={pt.y}
-                    r={idx === todayDayIdx ? 6 : 4}
-                    fill="#00897B"
-                    stroke="#ffffff"
-                    strokeWidth="2"
-                  />
-                ))}
-              </svg>
-
-              {/* X-axis Day Labels */}
-              <div className="flex justify-between text-[11px] font-bold text-slate-400 px-4 mt-2">
-                <span className={todayDayIdx === 0 ? 'text-teal-800 font-extrabold' : ''}>T2</span>
-                <span className={todayDayIdx === 1 ? 'text-teal-800 font-extrabold' : ''}>T3</span>
-                <span className={todayDayIdx === 2 ? 'text-teal-800 font-extrabold' : ''}>T4</span>
-                <span className={todayDayIdx === 3 ? 'text-teal-800 font-extrabold' : ''}>T5</span>
-                <span className={todayDayIdx === 4 ? 'text-teal-800 font-extrabold' : ''}>T6</span>
-                <span className={todayDayIdx === 5 ? 'text-teal-800 font-extrabold' : ''}>T7</span>
-                <span className={todayDayIdx === 6 ? 'text-teal-800 font-extrabold' : ''}>CN</span>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Right Column: Chi tiết Thông Tin Bệnh Nhân (Tỉ lệ 3) */}
+        <PatientInfoCard
+          patientInfo={activePatientInfo}
+          onViewRecord={handleViewMedicalRecord}
+          onCreateRecord={handleCreateMedicalRecord}
+        />
       </div>
 
       {/* 4. Bottom Row (Dynamic 3 Columns: Điều trị phổ biến + Tình trạng điều trị + Kho vật tư) */}

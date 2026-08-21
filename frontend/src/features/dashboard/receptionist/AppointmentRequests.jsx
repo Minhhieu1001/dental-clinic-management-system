@@ -14,10 +14,10 @@ import {
   X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../../hooks/useAuth';
 import { requestStatusConfig } from './receptionistData';
 import {
   getAppointmentRequestToday,
-  processAppointmentRequest,
   updateAppointmentRequestStatus,
 } from '../../../services/appointmentRequest.service';
 import { getAppointments } from '../../../services/appointment.service';
@@ -31,7 +31,10 @@ const cleanDoctorTitle = (nameStr) => {
     .replace(/^BS\.\s*/i, '');
 };
 
-export default function AppointmentRequests({ onOpenCreateModal }) {
+export default function AppointmentRequests({ onOpenCreateModal, requests: propRequests }) {
+  const { user } = useAuth();
+  const currentUserDisplayName = user?.fullName || user?.username || user?.email?.split('@')[0] || 'Lễ tân';
+
   const [requestList, setRequestList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [processingId, setProcessingId] = useState(null);
@@ -110,6 +113,11 @@ export default function AppointmentRequests({ onOpenCreateModal }) {
     else if (isRejected) statusKey = 'rejected';
     else if (dto.status === 'processing') statusKey = 'processing';
 
+    const resolvedEmployeeName =
+      dto.employeeName ||
+      matchedApt?.employeeName ||
+      ((isScheduled || isConfirmed) ? currentUserDisplayName : null);
+
     return {
       id: dto.id,
       name: name,
@@ -118,8 +126,8 @@ export default function AppointmentRequests({ onOpenCreateModal }) {
       rawDate: rawDate,
       note: dto.descriptions || dto.description || dto.note || 'Không có ghi chú',
       status: statusKey,
-      employeeId: dto.employeeId || null,
-      employeeName: dto.employeeName || null,
+      employeeId: dto.employeeId || matchedApt?.employeeId || null,
+      employeeName: resolvedEmployeeName,
       isApiData: true,
       isScheduled: isScheduled,
       matchedApt: matchedApt,
@@ -173,41 +181,12 @@ export default function AppointmentRequests({ onOpenCreateModal }) {
 
   useEffect(() => {
     fetchRequests();
-  }, [fetchRequests]);
+  }, [fetchRequests, propRequests]);
 
-  // Handle Confirm Request
-  const handleConfirm = async (reqItem) => {
-    setProcessingId(reqItem.id);
-    try {
-      let updatedDto = null;
-      if (reqItem.isApiData) {
-        updatedDto = await processAppointmentRequest(reqItem.id).catch(() => null);
-      }
-      toast.success(`Đã xác nhận yêu cầu của ${reqItem.name}`);
-
-      setRequestList((prev) => {
-        const updatedList = prev.map((item) => {
-          if (item.id === reqItem.id) {
-            return {
-              ...item,
-              status: 'confirmed',
-              employeeId: updatedDto?.employeeId || item.employeeId || 'emp-id',
-              employeeName: updatedDto?.employeeName || item.employeeName || 'Nhân viên lễ tân',
-            };
-          }
-          return item;
-        });
-        return sortRequests(updatedList);
-      });
-
-      if (onOpenCreateModal) {
-        onOpenCreateModal(reqItem);
-      }
-    } catch (error) {
-      console.error('Lỗi khi xử lý yêu cầu đặt lịch:', error);
-      toast.error('Không thể xử lý yêu cầu. Vui lòng thử lại!');
-    } finally {
-      setProcessingId(null);
+  // Handle Confirm Request: Open modal to schedule appointment without updating status to COMPLETED prematurely
+  const handleConfirm = (reqItem) => {
+    if (onOpenCreateModal) {
+      onOpenCreateModal(reqItem);
     }
   };
 
@@ -404,19 +383,11 @@ export default function AppointmentRequests({ onOpenCreateModal }) {
                 {/* Row 4: Action Buttons */}
                 <div className="mt-2.5 flex items-center justify-between gap-2">
                   {req.isScheduled ? (
-                    <div className="flex w-full items-center justify-between gap-1 text-[11px]">
-                      <span className="flex items-center gap-1 font-medium text-slate-500">
-                        <UserCheck size={12} className="text-teal-600" />
-                        NV: {req.employeeName || 'Lễ tân'}
+                    <div className="flex w-full items-center justify-between text-[11px]">
+                      <span className="flex items-center gap-1.5 font-medium text-slate-700 bg-slate-100/80 border border-slate-200/80 px-2.5 py-1 rounded-lg">
+                        <UserCheck size={13} className="text-teal-600" />
+                        NV xử lý: <strong className="font-semibold text-slate-900">{req.employeeName || currentUserDisplayName || 'Lễ tân'}</strong>
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => onOpenCreateModal && onOpenCreateModal(req)}
-                        className="flex items-center gap-1.5 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition-colors shadow-2xs"
-                      >
-                        <CheckCircle2 size={13} className="text-emerald-700" />
-                        Đã lên lịch (Đổi lịch)
-                      </button>
                     </div>
                   ) : isConfirmed ? (
                     <div className="flex w-full items-center justify-between gap-1 text-[11px]">
@@ -437,7 +408,7 @@ export default function AppointmentRequests({ onOpenCreateModal }) {
                     <div className="flex w-full items-center justify-between text-[11px] text-slate-500">
                       <span className="flex items-center gap-1.5 font-medium text-slate-600 bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-md">
                         <UserCheck size={12} className="text-slate-500" />
-                        NV: {req.employeeName || 'Lễ tân'}
+                        NV xử lý: {req.employeeName || currentUserDisplayName || 'Lễ tân'}
                       </span>
                       <button
                         type="button"

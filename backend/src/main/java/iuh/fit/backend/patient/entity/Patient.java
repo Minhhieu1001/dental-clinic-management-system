@@ -29,15 +29,17 @@ public class Patient {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
-    private User user;
-
     @Column(length = 255)
     private String patientCode;
 
     @Column(length = 255)
     private String fullName;
+
+    @Column(length = 255)
+    private String nationality;
+
+    @Column(length = 50)
+    private String phoneNumber;
 
     @Enumerated(EnumType.STRING)
     private Gender gender;
@@ -47,12 +49,20 @@ public class Patient {
     @Column(columnDefinition = "TEXT")
     private String address;
 
+    @Column(columnDefinition = "TEXT")
+    private String systemicDisease;
+
+    @Column(columnDefinition = "TEXT")
+    private String allergies;
+
+    @Column(columnDefinition = "TEXT")
+    private String currentMedications;
+
+    @Column(columnDefinition = "TEXT")
+    private String surgicalHistory;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
-
-    @Builder.Default
-    @OneToMany(mappedBy = "patient", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    private List<Appointment> appointments = new ArrayList<>();
 
     @Builder.Default
     @OneToMany(mappedBy = "patient", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})

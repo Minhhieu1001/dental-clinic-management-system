@@ -334,21 +334,48 @@ export default function DentistAppointments() {
   // Status color styles & label mapping
   const getStatusCardStyle = (status) => {
     switch (status) {
-      case 'IN_PROGRESS':
+      case 'CONFIRMED':
+      case 'not-arrived':
         return {
-          cardBg: 'bg-purple-50/95 border-purple-600 text-purple-950 hover:bg-purple-100 hover:shadow-md',
+          cardBg: 'bg-amber-50/95 border-amber-500 text-amber-950 hover:bg-amber-100 hover:shadow-md',
+          badgeBg: 'bg-amber-600 text-white',
+          label: 'Chưa đến',
+          iconColor: 'text-amber-600',
+        };
+      case 'WAITING':
+      case 'waiting':
+        return {
+          cardBg: 'bg-blue-50/95 border-blue-500 text-blue-950 hover:bg-blue-100 hover:shadow-md',
+          badgeBg: 'bg-blue-600 text-white',
+          label: 'Đang chờ khám',
+          iconColor: 'text-blue-600',
+        };
+      case 'CALLED':
+      case 'called':
+        return {
+          cardBg: 'bg-purple-50/95 border-purple-500 text-purple-950 hover:bg-purple-100 hover:shadow-md',
           badgeBg: 'bg-purple-600 text-white',
-          label: 'Đang khám',
+          label: 'Đã gọi vào',
           iconColor: 'text-purple-600',
         };
-      case 'COMPLETED':
+      case 'IN_PROGRESS':
+      case 'in-progress':
         return {
           cardBg: 'bg-emerald-50/95 border-emerald-600 text-emerald-950 hover:bg-emerald-100 hover:shadow-md',
           badgeBg: 'bg-emerald-600 text-white',
-          label: 'Hoàn thành',
+          label: 'Đang điều trị',
           iconColor: 'text-emerald-600',
         };
+      case 'COMPLETED':
+      case 'completed':
+        return {
+          cardBg: 'bg-slate-100/95 border-slate-400 text-slate-900 hover:bg-slate-200 hover:shadow-md',
+          badgeBg: 'bg-slate-700 text-white',
+          label: 'Hoàn thành',
+          iconColor: 'text-slate-600',
+        };
       case 'CANCELLED':
+      case 'cancelled':
         return {
           cardBg: 'bg-rose-50/95 border-rose-500 text-rose-950 hover:bg-rose-100 hover:shadow-md',
           badgeBg: 'bg-rose-600 text-white',
@@ -356,11 +383,10 @@ export default function DentistAppointments() {
           iconColor: 'text-rose-600',
         };
       default:
-        // WAITING, PENDING, CONFIRMED
         return {
           cardBg: 'bg-sky-50/95 border-sky-600 text-sky-950 hover:bg-sky-100 hover:shadow-md',
           badgeBg: 'bg-sky-600 text-white',
-          label: 'Chưa khám',
+          label: 'Lịch hẹn',
           iconColor: 'text-sky-600',
         };
     }

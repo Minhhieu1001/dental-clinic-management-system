@@ -11,11 +11,11 @@ export function useReceptionistDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [stats, setStats] = useState({
-    appointmentsToday: { value: 0, compareLabel: 'Lịch hẹn hôm nay' },
-    requestsToday: { value: 0 },
-    checkedIn: { value: 0, ratio: '0% lịch hẹn' },
-    waiting: { value: 0, avgWait: 'Trung bình 12 phút' },
-    revenue: mockStats.revenue,
+    appointmentsThisWeek: { value: 0 },
+    appointmentsToday: { value: 0 },
+    acceptedToday: { value: 0 },
+    notArrivedToday: { value: 0 },
+    cancelledAppointments: { value: 0 },
   });
   const [appointments, setAppointments] = useState([]);
   const [requests, setRequests] = useState([]);
@@ -39,17 +39,21 @@ export function useReceptionistDashboard() {
       .join('')
       .toUpperCase();
 
-    // Map status enum to UI status key
-    let uiStatus = 'waiting';
-    if (dto.status === 'COMPLETED') uiStatus = 'completed';
-    else if (dto.status === 'IN_PROGRESS') uiStatus = 'in-progress';
-    else if (dto.status === 'WAITING' || dto.status === 'CONFIRMED') uiStatus = 'waiting';
-    else if (dto.status === 'CANCELLED') uiStatus = 'cancelled';
-    else if (dto.status === 'PENDING') uiStatus = 'not-arrived';
+    // Map status enum to UI status key directly
+    let uiStatus = dto.status || 'CONFIRMED';
+    if (dto.status === 'PENDING') uiStatus = 'CONFIRMED';
+
+    // Generate call info string when status is CALLED
+    const calledTimeStr = dto.updatedAt ? new Date(dto.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : timeStr;
+    const roomStr = dto.roomName || 'Phòng 101';
+    const dentistStr = dto.dentistName ? (dto.dentistName.startsWith('BS.') ? dto.dentistName : `BS. ${dto.dentistName}`) : 'BS. Nguyễn Thị Phương';
+    const calledInfo = `${calledTimeStr} - ${dentistStr} - ${roomStr}`;
 
     return {
       id: dto.id,
       time: timeStr,
+      appointmentDate: dto.appointmentDate,
+      appointmentTime: dto.appointmentTime,
       patientName: patientName,
       patientCode: dto.patientCode || 'BN-NEW',
       phone: dto.phone || '09xx xxx xxx',
@@ -57,8 +61,11 @@ export function useReceptionistDashboard() {
       isNewPatient: !dto.patientCode || dto.patientCode === 'N/A',
       service: dto.reason || 'Khám tổng quát',
       dentist: dto.dentistName || 'Chưa phân công',
+      roomName: roomStr,
       status: uiStatus,
       rawStatus: dto.status,
+      notes: dto.notes || '',
+      calledInfo: calledInfo,
     };
   };
 
@@ -66,6 +73,12 @@ export function useReceptionistDashboard() {
     setLoading(true);
     setError(null);
     try {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const date = String(now.getDate()).padStart(2, '0');
+      const todayStr = `${year}-${month}-${date}`;
+
       const [requestsRes, appointmentsRes] = await Promise.allSettled([
         getAppointmentRequestToday(),
         getAppointments(),
@@ -76,41 +89,82 @@ export function useReceptionistDashboard() {
 
       setRequests(requestsData);
 
-      if (appointmentsData.length > 0) {
-        const formatted = appointmentsData.map(formatAppointment);
-        setAppointments(formatted);
-      } else {
-        setAppointments([]);
-      }
+      const formatted = appointmentsData.map(formatAppointment);
+      setAppointments(formatted);
 
-      const activeRequests = requestsData.length;
-      const activeAppointments = appointmentsData.length;
+      // Helper function to extract YYYY-MM-DD
+      const extractYYYYMMDD = (val) => {
+        if (!val) return null;
+        if (typeof val === 'string') {
+          if (val.includes('T')) return val.split('T')[0];
+          if (val.includes(' ')) return val.split(' ')[0];
+          if (val.length >= 10) return val.substring(0, 10);
+        }
+        try {
+          const d = new Date(val);
+          if (isNaN(d.getTime())) return null;
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const dt = String(d.getDate()).padStart(2, '0');
+          return `${y}-${m}-${dt}`;
+        } catch (e) {
+          return null;
+        }
+      };
 
-      const checkedInCount = appointmentsData.filter(
-        (a) => a.status === 'COMPLETED' || a.status === 'IN_PROGRESS'
-      ).length;
+      // 1. Lịch hẹn trong tuần
+      const day = now.getDay();
+      const diffToMonday = day === 0 ? -6 : 1 - day;
+      const monday = new Date(now);
+      monday.setDate(now.getDate() + diffToMonday);
+      monday.setHours(0, 0, 0, 0);
 
-      const waitingCount = appointmentsData.filter(
-        (a) => a.status === 'WAITING' || a.status === 'CONFIRMED' || a.status === 'PENDING'
-      ).length;
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      sunday.setHours(23, 59, 59, 999);
+
+      const weekAppointments = formatted.filter((a) => {
+        const dVal = a.appointmentDate || a.appointmentTime;
+        if (!dVal) return true;
+        try {
+          const d = new Date(dVal);
+          return !isNaN(d.getTime()) && d >= monday && d <= sunday;
+        } catch (e) {
+          return true;
+        }
+      });
+
+      // 2. Lịch hẹn hôm nay
+      const todayAppointments = formatted.filter((a) => {
+        const dVal = a.appointmentDate || a.appointmentTime;
+        const dStr = extractYYYYMMDD(dVal);
+        return dStr === todayStr;
+      });
+
+      // 3. Đã tiếp nhận (Bệnh nhân đã đến trong ngày: WAITING, CALLED, IN_PROGRESS, COMPLETED)
+      const acceptedTodayCount = todayAppointments.filter((a) => {
+        const s = a.rawStatus || a.status;
+        return s === 'WAITING' || s === 'CALLED' || s === 'IN_PROGRESS' || s === 'COMPLETED' || s === 'waiting' || s === 'called';
+      }).length;
+
+      // 4. Bệnh nhân chưa đến trong ngày (CONFIRMED, PENDING, not-arrived)
+      const notArrivedTodayCount = todayAppointments.filter((a) => {
+        const s = a.rawStatus || a.status;
+        return s === 'CONFIRMED' || s === 'PENDING' || s === 'not-arrived';
+      }).length;
+
+      // 5. Lịch hẹn bị hủy (CANCELLED)
+      const cancelledAppointmentsCount = formatted.filter((a) => {
+        const s = a.rawStatus || a.status;
+        return s === 'CANCELLED' || s === 'cancelled' || s === 'REJECTED';
+      }).length;
 
       setStats({
-        appointmentsToday: {
-          value: activeAppointments,
-          compareLabel: '↑ Lịch hẹn hôm nay',
-        },
-        requestsToday: {
-          value: activeRequests,
-        },
-        checkedIn: {
-          value: checkedInCount,
-          ratio: `${Math.round((checkedInCount / (activeAppointments || 1)) * 100)}% lịch hẹn`,
-        },
-        waiting: {
-          value: waitingCount,
-          avgWait: 'Trung bình 12 phút',
-        },
-        revenue: mockStats.revenue,
+        appointmentsThisWeek: { value: weekAppointments.length },
+        appointmentsToday: { value: todayAppointments.length },
+        acceptedToday: { value: acceptedTodayCount },
+        notArrivedToday: { value: notArrivedTodayCount },
+        cancelledAppointments: { value: cancelledAppointmentsCount },
       });
     } catch (err) {
       console.warn('Lỗi fetch dữ liệu cho Dashboard Lễ Tân:', err);

@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getDentistsList } from '../../services/dentist.service';
-import { createAppointment } from '../../services/appointment.service';
+import { createAppointment, updateAppointment } from '../../services/appointment.service';
 import api from '../../services/axios';
 
 const COMMON_SERVICES = [
@@ -80,7 +80,14 @@ const getDoctorInitials = (doc) => {
   return cleanName.substring(0, 2).toUpperCase() || 'BS';
 };
 
-export default function CreateAppointmentModal({ isOpen, onClose, initialData = null, onSuccess }) {
+export default function CreateAppointmentModal({
+  isOpen,
+  onClose,
+  type = 'add', // 'add' | 'edit'
+  payload = null,
+  initialData = null,
+  onSuccess,
+}) {
   const [dentists, setDentists] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [loadingDentists, setLoadingDentists] = useState(false);
@@ -91,8 +98,12 @@ export default function CreateAppointmentModal({ isOpen, onClose, initialData = 
   const [doctorSearchTerm, setDoctorSearchTerm] = useState('');
   const dropdownRef = useRef(null);
 
+  const isEditMode = type === 'edit';
+  const targetData = payload || initialData;
+
   // Form states
   const [formData, setFormData] = useState({
+    appointmentId: null,
     requestId: null,
     fullName: '',
     phone: '',
@@ -188,20 +199,82 @@ export default function CreateAppointmentModal({ isOpen, onClose, initialData = 
 
     fetchInitialData();
 
-    if (initialData) {
-      setFormData((prev) => ({
-        ...prev,
-        requestId: initialData.id || null,
-        fullName: initialData.name || initialData.fullName || '',
-        phone: initialData.phone || '',
-        dentistId: initialData.dentistId || prev.dentistId,
-        appointmentDate: initialData.date ? initialData.date.split(' ')[0] : new Date().toISOString().split('T')[0],
+    if (targetData) {
+      if (isEditMode) {
+        // Edit mode (Reschedule existing appointment)
+        const aptId = targetData.appointmentId || targetData.id || null;
+        let dateVal = new Date().toISOString().split('T')[0];
+        if (targetData.appointmentDate) {
+          try {
+            dateVal = typeof targetData.appointmentDate === 'string'
+              ? targetData.appointmentDate.split('T')[0]
+              : new Date(targetData.appointmentDate).toISOString().split('T')[0];
+          } catch (e) {
+            dateVal = String(targetData.appointmentDate).substring(0, 10);
+          }
+        }
+
+        let timeVal = targetData.time || targetData.appointmentTime || '09:00';
+        if (timeVal && timeVal.includes('T')) {
+          try {
+            const d = new Date(timeVal);
+            timeVal = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+          } catch (e) {
+            timeVal = '09:00';
+          }
+        }
+
+        setFormData((prev) => ({
+          ...prev,
+          appointmentId: aptId,
+          requestId: null,
+          fullName: targetData.patientName || targetData.fullName || targetData.name || '',
+          phone: targetData.phone || '',
+          gender: targetData.gender || 'Nam',
+          dob: targetData.dob || '',
+          dentistId: targetData.dentistId || prev.dentistId,
+          roomId: targetData.roomId || prev.roomId,
+          appointmentDate: dateVal,
+          appointmentTime: timeVal,
+          reason: targetData.service || targetData.reason || targetData.note || targetData.description || COMMON_SERVICES[0],
+          notes: targetData.notes || '',
+        }));
+      } else {
+        // Add mode (Creating new appointment from request or empty)
+        setFormData((prev) => ({
+          ...prev,
+          appointmentId: null,
+          requestId: targetData.id || targetData.requestId || null,
+          fullName: targetData.name || targetData.fullName || targetData.patientName || '',
+          phone: targetData.phone || '',
+          gender: targetData.gender || 'Nam',
+          dob: targetData.dob || '',
+          dentistId: targetData.dentistId || prev.dentistId,
+          roomId: targetData.roomId || prev.roomId,
+          appointmentDate: targetData.date ? targetData.date.split(' ')[0] : new Date().toISOString().split('T')[0],
+          appointmentTime: '09:00',
+          reason: targetData.note || targetData.description || targetData.service || COMMON_SERVICES[0],
+          notes: targetData.notes || '',
+        }));
+      }
+    } else {
+      setFormData({
+        appointmentId: null,
+        requestId: null,
+        fullName: '',
+        phone: '',
+        gender: 'Nam',
+        dob: '',
+        dentistId: '',
+        roomId: '',
+        appointmentDate: new Date().toISOString().split('T')[0],
         appointmentTime: '09:00',
-        reason: initialData.note || initialData.description || COMMON_SERVICES[0],
-        notes: initialData.notes || '',
-      }));
+        reason: COMMON_SERVICES[0],
+        priority: 'NORMAL',
+        notes: '',
+      });
     }
-  }, [isOpen, initialData]);
+  }, [isOpen, targetData, type]);
 
   if (!isOpen) return null;
 
@@ -237,7 +310,7 @@ export default function CreateAppointmentModal({ isOpen, onClose, initialData = 
 
     setSubmitting(true);
     try {
-      const payload = {
+      const payloadData = {
         requestId: isValidUUID(formData.requestId) ? formData.requestId : null,
         fullName: formData.fullName.trim(),
         phone: formData.phone.trim(),
@@ -249,16 +322,20 @@ export default function CreateAppointmentModal({ isOpen, onClose, initialData = 
         notes: `${formData.priority === 'URGENT' ? '[ƯU TIÊN / CẤP CỨU] ' : ''}${formData.notes.trim()}`,
       };
 
-      await createAppointment(payload);
-
-      const docName = selectedDoctor ? getDoctorName(selectedDoctor) : 'Bác sĩ';
-      toast.success(`Đã phân công và tạo lịch khám cho ${docName}!`);
+      if (isEditMode && formData.appointmentId && !String(formData.appointmentId).startsWith('mock-')) {
+        await updateAppointment(formData.appointmentId, payloadData);
+        toast.success(`Đã đổi lịch khám thành công cho bệnh nhân ${formData.fullName}!`);
+      } else {
+        await createAppointment(payloadData);
+        const docName = selectedDoctor ? getDoctorName(selectedDoctor) : 'Bác sĩ';
+        toast.success(`Đã phân công và tạo lịch khám cho ${docName}!`);
+      }
 
       if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
-      console.error('Lỗi tạo lịch hẹn:', err);
-      toast.error(err.response?.data?.message || 'Tạo lịch hẹn thất bại. Vui lòng thử lại!');
+      console.error('Lỗi lưu lịch hẹn:', err);
+      toast.error(err.response?.data?.message || 'Thao tác thất bại. Vui lòng thử lại!');
     } finally {
       setSubmitting(false);
     }
@@ -276,12 +353,16 @@ export default function CreateAppointmentModal({ isOpen, onClose, initialData = 
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-teal-200">Đặt Lịch Khám Bệnh Nhân</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-teal-200">
+                  {isEditMode ? 'Đổi Lịch Khám Bệnh Nhân' : 'Đặt Lịch Khám Bệnh Nhân'}
+                </span>
                 <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold text-white flex items-center gap-1">
                   <Sparkles size={11} /> Đã kết nối Hệ thống Bác sĩ
                 </span>
               </div>
-              <h3 className="text-lg font-bold leading-tight">Phân Công Bác Sĩ & Tạo Ca Khám</h3>
+              <h3 className="text-lg font-bold leading-tight">
+                {isEditMode ? 'Cập Nhật Thông Tin & Đổi Ca Khám' : 'Phân Công Bác Sĩ & Tạo Ca Khám'}
+              </h3>
             </div>
           </div>
           <button
@@ -434,17 +515,15 @@ export default function CreateAppointmentModal({ isOpen, onClose, initialData = 
                         <div
                           key={doc.id}
                           onClick={() => handleSelectDoctor(doc)}
-                          className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all ${
-                            isSelected
+                          className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all ${isSelected
                               ? 'bg-teal-700 text-white font-bold shadow-md shadow-teal-700/20'
                               : 'hover:bg-slate-50 text-slate-800'
-                          }`}
+                            }`}
                         >
                           <div className="flex items-center gap-3">
                             <div
-                              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold text-xs ${
-                                isSelected ? 'bg-white text-teal-800' : 'bg-teal-50 text-teal-700 border border-teal-100'
-                              }`}
+                              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold text-xs ${isSelected ? 'bg-white text-teal-800' : 'bg-teal-50 text-teal-700 border border-teal-100'
+                                }`}
                             >
                               {initials}
                             </div>
@@ -454,9 +533,8 @@ export default function CreateAppointmentModal({ isOpen, onClose, initialData = 
                                   {docName}
                                 </p>
                                 <span
-                                  className={`rounded-md px-1.5 py-0.5 text-[9px] font-bold ${
-                                    isSelected ? 'bg-white/20 text-white' : 'bg-teal-50 text-teal-700 border border-teal-200'
-                                  }`}
+                                  className={`rounded-md px-1.5 py-0.5 text-[9px] font-bold ${isSelected ? 'bg-white/20 text-white' : 'bg-teal-50 text-teal-700 border border-teal-200'
+                                    }`}
                                 >
                                   {doc.experienceYears || 8}+ năm KN
                                 </span>
@@ -626,7 +704,7 @@ export default function CreateAppointmentModal({ isOpen, onClose, initialData = 
               ) : (
                 <CheckCircle2 size={16} />
               )}
-              Xác Nhận Tạo Lịch Hẹn
+              {isEditMode ? 'Xác Nhận Đổi Lịch' : 'Xác Nhận Tạo Lịch Hẹn'}
             </button>
           </div>
         </form>
