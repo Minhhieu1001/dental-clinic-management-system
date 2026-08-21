@@ -30,35 +30,66 @@ export const appointmentRequests = [];
 
 // Status config cho lịch hẹn
 export const appointmentStatusConfig = {
-  'in-progress': {
-    label: 'Đang khám',
-    className: 'bg-purple-50 text-purple-700 border border-purple-200',
-    action: 'Mở hồ sơ',
+  CONFIRMED: {
+    label: 'Chưa đến',
+    className: 'bg-amber-50 text-amber-700 border border-amber-200/80',
+    action: 'Check-in',
   },
-  'checked-in': {
-    label: 'Đã tiếp nhận',
-    className: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-    action: 'Mở hồ sơ',
+  WAITING: {
+    label: 'Đang chờ khám',
+    className: 'bg-blue-50 text-blue-700 border border-blue-200/80',
+    action: 'Đã Check-in',
   },
-  waiting: {
-    label: 'Đang chờ',
-    className: 'bg-amber-50 text-amber-700 border border-amber-200',
+  CALLED: {
+    label: 'Gọi vào',
+    className: 'bg-purple-50 text-purple-700 border border-purple-200/80',
     action: 'Gọi vào',
   },
+  IN_PROGRESS: {
+    label: 'Đang điều trị',
+    className: 'bg-emerald-50 text-emerald-700 border border-emerald-200/80',
+    action: 'Đang điều trị',
+  },
+  COMPLETED: {
+    label: 'Hoàn thành',
+    className: 'bg-slate-100 text-slate-700 border border-slate-200',
+    action: 'Hoàn thành',
+  },
+  CANCELLED: {
+    label: 'Đã hủy',
+    className: 'bg-rose-50 text-rose-700 border border-rose-200/80',
+    action: 'Đã hủy',
+  },
+  // Fallbacks
   'not-arrived': {
     label: 'Chưa đến',
-    className: 'bg-slate-50 text-slate-600 border border-slate-200',
-    action: 'Nhắc lịch',
+    className: 'bg-amber-50 text-amber-700 border border-amber-200/80',
+    action: 'Check-in',
+  },
+  waiting: {
+    label: 'Đang chờ khám',
+    className: 'bg-blue-50 text-blue-700 border border-blue-200/80',
+    action: 'Đã Check-in',
+  },
+  called: {
+    label: 'Gọi vào',
+    className: 'bg-purple-50 text-purple-700 border border-purple-200/80',
+    action: 'Gọi vào',
+  },
+  'in-progress': {
+    label: 'Đang điều trị',
+    className: 'bg-emerald-50 text-emerald-700 border border-emerald-200/80',
+    action: 'Đang điều trị',
   },
   completed: {
-    label: 'Đã hoàn tất',
-    className: 'bg-sky-50 text-sky-700 border border-sky-200',
-    action: 'Thanh toán',
+    label: 'Hoàn thành',
+    className: 'bg-slate-100 text-slate-700 border border-slate-200',
+    action: 'Hoàn thành',
   },
   cancelled: {
     label: 'Đã hủy',
-    className: 'bg-rose-50 text-rose-700 border border-rose-200',
-    action: 'Xem lại',
+    className: 'bg-rose-50 text-rose-700 border border-rose-200/80',
+    action: 'Đã hủy',
   },
 };
 

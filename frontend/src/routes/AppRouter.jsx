@@ -35,6 +35,7 @@ import ServicesAdmin from '../features/treatment/Services.jsx'
 import DentistDashboard from '../features/dashboard/DentistDashboard.jsx'
 import DentistAppointments from '../features/appointment/DentistAppointments.jsx'
 import TreatmentPlans from '../features/treatment/TreatmentPlans.jsx'
+import ClinicalExamination from '../features/treatment/ClinicalExamination.jsx'
 import MedicalRecords from '../features/medical-record/MedicalRecords.jsx'
 import Prescriptions from '../features/prescription/Prescriptions.jsx'
 import XrayAnalysis from '../features/ai-xray/XrayAnalysis.jsx'
@@ -50,7 +51,6 @@ import EmployeeInventory from '../features/inventory/EmployeeInventory.jsx'
 import ImportExport from '../features/inventory/ImportExport.jsx'
 import EmployeeReport from '../features/report/EmployeeReport.jsx'
 import EmployeeNotifications from '../features/notification/EmployeeNotifications.jsx'
-import PatientsWaiting from '../features/patient/PatientsWaiting.jsx'
 
 // Feature Components - Patient
 import PatientDashboard from '../features/dashboard/PatientDashboard.jsx'
@@ -111,6 +111,7 @@ export default function AppRouter() {
             <Route path="dashboard" element={<DentistDashboard />} />
             <Route path="appointments" element={<DentistAppointments />} />
             <Route path="treatment-plans" element={<TreatmentPlans />} />
+            <Route path="clinical-exam" element={<ClinicalExamination />} />
             <Route path="medical-records" element={<MedicalRecords />} />
             <Route path="prescriptions" element={<Prescriptions />} />
             <Route path="xray-analysis" element={<XrayAnalysis />} />
@@ -131,7 +132,6 @@ export default function AppRouter() {
             <Route path="import-export" element={<ImportExport />} />
             <Route path="report" element={<EmployeeReport />} />
             <Route path="notifications" element={<EmployeeNotifications />} />
-            <Route path="patients-waiting" element={<PatientsWaiting />} />
           </Route>
         </Route>
 

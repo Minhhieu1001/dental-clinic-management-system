@@ -44,6 +44,12 @@ const TIME_SLOTS = [
   '15:00',
   '16:00',
   '17:00',
+  '18:00',
+  '19:00',
+  '20:00',
+  '21:00',
+  '22:00',
+  '23:00',
 ];
 
 const WEEKDAYS = [
@@ -69,7 +75,7 @@ export default function EmployeeAppointments() {
 
   // View state: 'WEEK' | 'DAY' | 'MONTH'
   const [viewMode, setViewMode] = useState('WEEK');
-  
+
   // Receptionist Status Filter: 'ALL' | 'UNASSIGNED' | 'SCHEDULED' | 'REJECTED'
   const [statusFilter, setStatusFilter] = useState('ALL');
 
@@ -100,7 +106,7 @@ export default function EmployeeAppointments() {
       setDentists(Array.isArray(dentistsList) ? dentistsList : []);
 
       let mergedList = [];
-      
+
       // 1. Add clinic appointments
       if (Array.isArray(apptsList)) {
         mergedList = apptsList.map((apt) => ({
@@ -253,6 +259,30 @@ export default function EmployeeAppointments() {
 
     return `${dStart} - ${dEnd} / ${mEnd} / ${yEnd}`;
   }, [weekDaysList]);
+
+  // Dynamic Time Slots: Ensure standard 07:00-22:00 PLUS any extra hours present in actual appointments (e.g. 22:00 / 23:00)
+  const displayTimeSlots = useMemo(() => {
+    const hoursSet = new Set([7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]);
+
+    appointments.forEach((apt) => {
+      let d = null;
+      if (apt.appointmentTime) {
+        const parsed = new Date(apt.appointmentTime);
+        if (!isNaN(parsed.getTime())) d = parsed;
+      }
+      if (!d && apt.appointmentDate) {
+        const parsed = new Date(apt.appointmentDate);
+        if (!isNaN(parsed.getTime())) d = parsed;
+      }
+      if (d) {
+        hoursSet.add(d.getHours());
+      }
+    });
+
+    return Array.from(hoursSet)
+      .sort((a, b) => a - b)
+      .map((h) => `${String(h).padStart(2, '0')}:00`);
+  }, [appointments]);
 
   // Check if appointment was created by current employee or online
   const isApptByCurrentEmp = useCallback((apt) => {
@@ -496,17 +526,16 @@ export default function EmployeeAppointments() {
 
   // Creator Badge for Card showing WHICH Employee confirmed & scheduled
   const getCreatorBadge = (apt) => {
-    const isScheduled = apt.status === 'CONFIRMED' || apt.status === 'SCHEDULED' || apt.status === 'COMPLETED' || apt.status === 'IN_PROGRESS' || apt.dentistId;
+    const isScheduled = apt.status === 'CONFIRMED' || apt.status === 'WAITING' || apt.status === 'CALLED' || apt.status === 'SCHEDULED' || apt.status === 'COMPLETED' || apt.status === 'IN_PROGRESS' || apt.dentistId;
     const empName = apt.employeeName || (apt.employeeId ? (currentUsername || 'employee02') : (isScheduled ? currentUsername : null));
 
     if (empName) {
       const isMe = empName.toLowerCase().includes(currentUsername.toLowerCase()) || (user?.id && apt.employeeId === user.id);
       return (
-        <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-extrabold border ${
-          isMe
-            ? 'bg-emerald-50 text-emerald-900 border-emerald-200/90 shadow-2xs'
-            : 'bg-slate-100 text-slate-800 border-slate-200'
-        }`}>
+        <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-extrabold border ${isMe
+          ? 'bg-emerald-50 text-emerald-900 border-emerald-200/90 shadow-2xs'
+          : 'bg-slate-100 text-slate-800 border-slate-200'
+          }`}>
           <UserCheck2 size={10} className={isMe ? 'text-emerald-600' : 'text-slate-500'} />
           <span>NV xác nhận: <strong className="font-black text-slate-950">{empName}</strong></span>
         </span>
@@ -577,11 +606,10 @@ export default function EmployeeAppointments() {
             <button
               type="button"
               onClick={() => setCreatorScopeFilter('ALL')}
-              className={`rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${
-                creatorScopeFilter === 'ALL'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${creatorScopeFilter === 'ALL'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               Tất cả ({weekStats.total})
             </button>
@@ -589,11 +617,10 @@ export default function EmployeeAppointments() {
             <button
               type="button"
               onClick={() => setCreatorScopeFilter('MY_CREATED')}
-              className={`rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${
-                creatorScopeFilter === 'MY_CREATED'
-                  ? 'bg-emerald-700 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${creatorScopeFilter === 'MY_CREATED'
+                ? 'bg-emerald-700 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               Do tôi tạo ({weekStats.myCreatedCount})
             </button>
@@ -601,11 +628,10 @@ export default function EmployeeAppointments() {
             <button
               type="button"
               onClick={() => setCreatorScopeFilter('WEB_REQUESTS')}
-              className={`rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${
-                creatorScopeFilter === 'WEB_REQUESTS'
-                  ? 'bg-amber-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${creatorScopeFilter === 'WEB_REQUESTS'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               Web / Hotline ({weekStats.webRequestCount})
             </button>
@@ -645,33 +671,30 @@ export default function EmployeeAppointments() {
             <button
               type="button"
               onClick={() => setViewMode('DAY')}
-              className={`rounded-[4px] px-3 py-1 text-xs font-bold transition-all ${
-                viewMode === 'DAY'
-                  ? 'bg-white text-teal-800 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`rounded-[4px] px-3 py-1 text-xs font-bold transition-all ${viewMode === 'DAY'
+                ? 'bg-white text-teal-800 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               Ngày
             </button>
             <button
               type="button"
               onClick={() => setViewMode('WEEK')}
-              className={`rounded-[4px] px-3 py-1 text-xs font-bold transition-all ${
-                viewMode === 'WEEK'
-                  ? 'bg-[#E0F2FE] text-teal-900 shadow-xs border border-teal-200'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`rounded-[4px] px-3 py-1 text-xs font-bold transition-all ${viewMode === 'WEEK'
+                ? 'bg-[#E0F2FE] text-teal-900 shadow-xs border border-teal-200'
+                : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               Tuần
             </button>
             <button
               type="button"
               onClick={() => setViewMode('MONTH')}
-              className={`rounded-[4px] px-3 py-1 text-xs font-bold transition-all ${
-                viewMode === 'MONTH'
-                  ? 'bg-white text-teal-800 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`rounded-[4px] px-3 py-1 text-xs font-bold transition-all ${viewMode === 'MONTH'
+                ? 'bg-white text-teal-800 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               Tháng
             </button>
@@ -713,11 +736,10 @@ export default function EmployeeAppointments() {
           <button
             type="button"
             onClick={() => setStatusFilter('ALL')}
-            className={`flex items-center gap-1.5 rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${
-              statusFilter === 'ALL'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
+            className={`flex items-center gap-1.5 rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${statusFilter === 'ALL'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
           >
             Tất cả <span className="rounded-[3px] bg-white/20 px-1.5 py-0.2 text-[10px]">{weekStats.total}</span>
           </button>
@@ -726,11 +748,10 @@ export default function EmployeeAppointments() {
           <button
             type="button"
             onClick={() => setStatusFilter('UNASSIGNED')}
-            className={`flex items-center gap-1.5 rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${
-              statusFilter === 'UNASSIGNED'
-                ? 'bg-amber-600 text-white shadow-xs'
-                : 'bg-amber-50 text-amber-800 border border-amber-200/80 hover:bg-amber-100'
-            }`}
+            className={`flex items-center gap-1.5 rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${statusFilter === 'UNASSIGNED'
+              ? 'bg-amber-600 text-white shadow-xs'
+              : 'bg-amber-50 text-amber-800 border border-amber-200/80 hover:bg-amber-100'
+              }`}
           >
             <span className="h-2 w-2 rounded-full bg-amber-400" />
             Chưa lên lịch
@@ -741,11 +762,10 @@ export default function EmployeeAppointments() {
           <button
             type="button"
             onClick={() => setStatusFilter('SCHEDULED')}
-            className={`flex items-center gap-1.5 rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${
-              statusFilter === 'SCHEDULED'
-                ? 'bg-teal-700 text-white shadow-xs'
-                : 'bg-teal-50 text-teal-900 border border-teal-200/80 hover:bg-teal-100'
-            }`}
+            className={`flex items-center gap-1.5 rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${statusFilter === 'SCHEDULED'
+              ? 'bg-teal-700 text-white shadow-xs'
+              : 'bg-teal-50 text-teal-900 border border-teal-200/80 hover:bg-teal-100'
+              }`}
           >
             <span className="h-2 w-2 rounded-full bg-teal-400" />
             Đã lên lịch
@@ -756,11 +776,10 @@ export default function EmployeeAppointments() {
           <button
             type="button"
             onClick={() => setStatusFilter('REJECTED')}
-            className={`flex items-center gap-1.5 rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${
-              statusFilter === 'REJECTED'
-                ? 'bg-rose-600 text-white shadow-xs'
-                : 'bg-rose-50 text-rose-800 border border-rose-200/80 hover:bg-rose-100'
-            }`}
+            className={`flex items-center gap-1.5 rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${statusFilter === 'REJECTED'
+              ? 'bg-rose-600 text-white shadow-xs'
+              : 'bg-rose-50 text-rose-800 border border-rose-200/80 hover:bg-rose-100'
+              }`}
           >
             <span className="h-2 w-2 rounded-full bg-rose-400" />
             Từ chối
@@ -825,9 +844,8 @@ export default function EmployeeAppointments() {
                   return (
                     <div
                       key={idx}
-                      className={`p-3 border-r border-slate-200 last:border-r-0 ${
-                        isToday ? 'bg-teal-50/80 text-teal-900 font-extrabold' : ''
-                      }`}
+                      className={`p-3 border-r border-slate-200 last:border-r-0 ${isToday ? 'bg-teal-50/80 text-teal-900 font-extrabold' : ''
+                        }`}
                     >
                       <div className="text-xs font-extrabold uppercase">{WEEKDAYS[idx].short}</div>
                       <div className={`text-xs font-bold mt-0.5 ${isToday ? 'text-teal-700' : 'text-slate-500'}`}>
@@ -842,7 +860,7 @@ export default function EmployeeAppointments() {
               <div className="relative divide-y divide-slate-100">
 
                 {/* Time Slot Rows */}
-                {TIME_SLOTS.map((hourStr) => (
+                {displayTimeSlots.map((hourStr) => (
                   <div key={hourStr} className="grid grid-cols-8 min-h-[96px]">
                     {/* Time Label Column */}
                     <div className="p-2 border-r border-slate-200 bg-slate-50/40 text-xs font-bold text-slate-500 flex items-center justify-center">
@@ -1051,23 +1069,21 @@ export default function EmployeeAppointments() {
                   return (
                     <div
                       key={idx}
-                      className={`p-2 min-h-[95px] flex flex-col justify-start gap-1 transition-colors ${
-                        !item.isCurrentMonth
-                          ? 'bg-slate-50/50 text-slate-300'
-                          : isToday
+                      className={`p-2 min-h-[95px] flex flex-col justify-start gap-1 transition-colors ${!item.isCurrentMonth
+                        ? 'bg-slate-50/50 text-slate-300'
+                        : isToday
                           ? 'bg-teal-50/70 font-bold'
                           : 'bg-white hover:bg-slate-50/80'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center justify-between text-xs">
                         <span
-                          className={`font-extrabold px-1.5 py-0.2 rounded-[3px] ${
-                            isToday
-                              ? 'bg-teal-700 text-white shadow-2xs'
-                              : item.isCurrentMonth
+                          className={`font-extrabold px-1.5 py-0.2 rounded-[3px] ${isToday
+                            ? 'bg-teal-700 text-white shadow-2xs'
+                            : item.isCurrentMonth
                               ? 'text-slate-800'
                               : 'text-slate-300'
-                          }`}
+                            }`}
                         >
                           {cellDate.getDate()}
                         </span>
@@ -1184,11 +1200,10 @@ export default function EmployeeAppointments() {
                     key={r}
                     type="button"
                     onClick={() => setRejectReason(r)}
-                    className={`px-2.5 py-1 rounded-[4px] border font-medium transition-all ${
-                      rejectReason === r
-                        ? 'bg-rose-600 text-white border-rose-600 font-bold'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                    }`}
+                    className={`px-2.5 py-1 rounded-[4px] border font-medium transition-all ${rejectReason === r
+                      ? 'bg-rose-600 text-white border-rose-600 font-bold'
+                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                      }`}
                   >
                     {r}
                   </button>

@@ -58,47 +58,11 @@ public class AppointmentServiceImpl implements AppointmentService {
     public AppointmentDetailDTO createAppointment(AppointmentCreateDTO dto) {
         log.info("Creating appointment for dentistId: {}, patientName: {}, phone: {}", dto.getDentistId(), dto.getFullName(), dto.getPhone());
 
-        // 1. Resolve Patient
-        Patient patient = null;
-        if (dto.getPatientId() != null) {
-            patient = patientRepository.findById(dto.getPatientId()).orElse(null);
-        }
+        String patientName = (dto.getFullName() != null && !dto.getFullName().isBlank()) ? dto.getFullName().trim() : "Bệnh nhân mới";
+        String phone = (dto.getPhone() != null && !dto.getPhone().isBlank()) ? dto.getPhone().trim() : "";
 
-        if (patient == null) {
-            String phone = dto.getPhone() != null ? dto.getPhone().trim() : "";
-            if (!phone.isEmpty()) {
-                Optional<User> userOpt = userRepository.findByPhone(phone);
-                User user;
-                if (userOpt.isPresent()) {
-                    user = userOpt.get();
-                    patient = user.getPatient();
-                } else {
-                    String username = "patient_" + (phone.length() >= 4 ? phone.substring(phone.length() - 4) : phone) + "_" + (System.currentTimeMillis() % 10000);
-                    user = User.builder()
-                            .username(username)
-                            .password("123456")
-                            .phone(phone)
-                            .role(Role.PATIENT)
-                            .status(StatusUser.ACTIVE)
-                            .createdAt(LocalDateTime.now())
-                            .updatedAt(LocalDateTime.now())
-                            .build();
-                    user = userRepository.save(user);
-                }
-
-
-                if (patient == null) {
-                    patient = Patient.builder()
-                            .user(user)
-                            .fullName(dto.getFullName() != null ? dto.getFullName().trim() : "Bệnh nhân mới")
-                            .patientCode("PA-" + (System.currentTimeMillis() % 1000000))
-                            .createdAt(LocalDateTime.now())
-                            .build();
-                    patient = patientRepository.save(patient);
-                }
-            } else {
-                throw new AppException(ErrorCode.VALIDATION_ERROR, "Vui lòng nhập tên bệnh nhân và số điện thoại.");
-            }
+        if (patientName.isBlank() && phone.isBlank()) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Vui lòng nhập tên bệnh nhân và số điện thoại.");
         }
 
         // 2. Resolve Dentist
@@ -159,9 +123,10 @@ public class AppointmentServiceImpl implements AppointmentService {
             log.warn("Could not resolve logged-in employee: {}", e.getMessage());
         }
 
-        // 5. Build Appointment entity
+        // 5. Build Appointment entity with direct patientName and phone
         Appointment appointment = Appointment.builder()
-                .patient(patient)
+                .patientName(patientName)
+                .phone(phone)
                 .dentist(dentist)
                 .employee(employee)
                 .appointmentDate(apptDate)
@@ -173,7 +138,6 @@ public class AppointmentServiceImpl implements AppointmentService {
                 .status(StatusAppointment.CONFIRMED)
                 .build();
 
-
         appointment = appointmentRepository.save(appointment);
 
         // 6. If linked to AppointmentRequest, update its status
@@ -181,6 +145,9 @@ public class AppointmentServiceImpl implements AppointmentService {
             Optional<AppointmentRequest> reqOpt = appointmentRequestRepository.findById(dto.getRequestId());
             if (reqOpt.isPresent()) {
                 AppointmentRequest req = reqOpt.get();
+                if (employee != null) {
+                    req.setEmployee(employee);
+                }
                 req.setStatustAppointmentRequest(StatustAppointmentRequest.COMPLETED);
                 appointmentRequestRepository.save(req);
             }
@@ -297,6 +264,61 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     @Override
     @Transactional
+    public AppointmentDetailDTO updateAppointment(UUID appointmentId, AppointmentCreateDTO dto) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy lịch hẹn ID: " + appointmentId));
+
+        if (appointment.getStatus() != StatusAppointment.CONFIRMED && appointment.getStatus() != StatusAppointment.PENDING) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Lịch hẹn đã check-in hoặc đang tiến hành khám, không thể đổi lịch!");
+        }
+
+        if (dto.getFullName() != null && !dto.getFullName().isBlank()) {
+            appointment.setPatientName(dto.getFullName().trim());
+        }
+
+        if (dto.getPhone() != null && !dto.getPhone().isBlank()) {
+            appointment.setPhone(dto.getPhone().trim());
+        }
+
+        if (dto.getDentistId() != null) {
+            Dentist dentist = dentistRepository.findById(dto.getDentistId())
+                    .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy Bác sĩ ID: " + dto.getDentistId()));
+            appointment.setDentist(dentist);
+        }
+
+        if (dto.getRoomId() != null) {
+            Room room = roomRepository.findById(dto.getRoomId()).orElse(null);
+            appointment.setRoom(room);
+        }
+
+        if (dto.getAppointmentDate() != null && !dto.getAppointmentDate().isBlank()) {
+            try {
+                LocalDate parsedDate = LocalDate.parse(dto.getAppointmentDate(), DateTimeFormatter.ISO_LOCAL_DATE);
+                appointment.setAppointmentDate(parsedDate.atStartOfDay());
+
+                if (dto.getAppointmentTime() != null && !dto.getAppointmentTime().isBlank()) {
+                    LocalTime parsedTime = LocalTime.parse(dto.getAppointmentTime());
+                    appointment.setAppointmentTime(parsedDate.atTime(parsedTime));
+                }
+            } catch (Exception e) {
+                log.warn("Failed to parse date/time in updateAppointment: {}", e.getMessage());
+            }
+        }
+
+        if (dto.getReason() != null && !dto.getReason().isBlank()) {
+            appointment.setReason(dto.getReason());
+        }
+
+        if (dto.getNotes() != null) {
+            appointment.setNotes(dto.getNotes());
+        }
+
+        appointment = appointmentRepository.save(appointment);
+        return mapToDTO(appointment);
+    }
+
+    @Override
+    @Transactional
     public AppointmentDetailDTO updateClinicalExam(UUID appointmentId, AppointmentCreateDTO dto) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy lịch hẹn ID: " + appointmentId));
@@ -322,14 +344,14 @@ public class AppointmentServiceImpl implements AppointmentService {
     private AppointmentDetailDTO mapToDTO(Appointment apt) {
         return AppointmentDetailDTO.builder()
                 .id(apt.getId())
-                .patientId(apt.getPatient() != null ? apt.getPatient().getId() : null)
-                .patientName(apt.getPatient() != null ? apt.getPatient().getFullName() : "N/A")
-                .patientCode(apt.getPatient() != null ? apt.getPatient().getPatientCode() : "N/A")
-                .phone(apt.getPatient() != null && apt.getPatient().getUser() != null ? apt.getPatient().getUser().getPhone() : "")
+                .patientId(null)
+                .patientName(apt.getPatientName() != null ? apt.getPatientName() : "N/A")
+                .patientCode("N/A")
+                .phone(apt.getPhone() != null ? apt.getPhone() : "")
                 .dentistId(apt.getDentist() != null ? apt.getDentist().getId() : null)
                 .dentistName(apt.getDentist() != null ? apt.getDentist().getFullName() : "Chưa phân công")
                 .employeeId(apt.getEmployee() != null ? apt.getEmployee().getId() : null)
-                .employeeName(apt.getEmployee() != null ? apt.getEmployee().getFullName() : null)
+                .employeeName(resolveEmployeeName(apt.getEmployee()))
                 .appointmentDate(apt.getAppointmentDate())
                 .appointmentTime(apt.getAppointmentTime())
                 .reason(apt.getReason())
@@ -346,11 +368,31 @@ public class AppointmentServiceImpl implements AppointmentService {
     }
 
 
+    private String resolveEmployeeName(Employee employee) {
+        if (employee == null) {
+            return null;
+        }
+        if (employee.getFullName() != null && !employee.getFullName().trim().isEmpty()) {
+            return employee.getFullName().trim();
+        }
+
+        User user = employee.getUser();
+        if (user == null) {
+            return null;
+        }
+        if (user.getUsername() != null && !user.getUsername().trim().isEmpty()) {
+            return user.getUsername().trim();
+        }
+        if (user.getEmail() != null && !user.getEmail().trim().isEmpty()) {
+            return user.getEmail().trim();
+        }
+        return null;
+    }
+
     @Override
     @Transactional(readOnly = true)
     public List<iuh.fit.backend.appointment.entity.Room> getAllRooms() {
         return roomRepository.findAll();
     }
 }
-
 

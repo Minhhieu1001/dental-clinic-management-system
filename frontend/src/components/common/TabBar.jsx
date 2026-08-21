@@ -1,32 +1,124 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  Calendar,
+  Stethoscope,
+  ClipboardList,
+  FileText,
+  Pill,
+  Image as ImageIcon,
+  Users,
+  Bell,
+  CreditCard,
+  Package,
+  BarChart3,
+  UserCheck,
+  Briefcase,
+  Tag,
+  Activity,
+  Settings,
+  Sparkles,
+  ShieldCheck,
+} from 'lucide-react';
 
-export default function TabBar({ items }) {
+const getTabIcon = (to, label) => {
+  const key = (to || '').toLowerCase();
+  const lbl = (label || '').toLowerCase();
+
+  if (key.includes('dashboard') || lbl.includes('tổng quan')) return LayoutDashboard;
+  if (key.includes('appointment') || lbl.includes('lịch hẹn')) return Calendar;
+  if (key.includes('exam') || lbl.includes('khám')) return Stethoscope;
+  if (key.includes('treatment') || lbl.includes('kế hoạch')) return ClipboardList;
+  if (key.includes('medical') || key.includes('record') || lbl.includes('hồ sơ')) return FileText;
+  if (key.includes('prescription') || lbl.includes('đơn thuốc')) return Pill;
+  if (key.includes('xray') || lbl.includes('x-quang')) return ImageIcon;
+  if (key.includes('patient') || lbl.includes('bệnh nhân')) return Users;
+  if (key.includes('notification') || lbl.includes('thông báo')) return Bell;
+  if (key.includes('billing') || key.includes('invoice') || lbl.includes('thanh toán') || lbl.includes('hóa đơn')) return CreditCard;
+  if (key.includes('inventory') || key.includes('import') || lbl.includes('kho') || lbl.includes('nhập')) return Package;
+  if (key.includes('report') || lbl.includes('báo cáo')) return BarChart3;
+  if (key.includes('dentist') || lbl.includes('nha sĩ')) return UserCheck;
+  if (key.includes('employee') || lbl.includes('nhân viên')) return Briefcase;
+  if (key.includes('promotion') || lbl.includes('khuyến mãi')) return Tag;
+  if (key.includes('service') || lbl.includes('dịch vụ')) return Activity;
+  if (key.includes('setting') || lbl.includes('cài đặt')) return Settings;
+
+  return Activity;
+};
+
+export default function TabBar({ items = [] }) {
   return (
-    <nav className="fixed left-0 top-0 z-30 flex h-screen w-64 flex-col border-r border-slate-200 bg-white/95 backdrop-blur">
-      <div className="px-5 py-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">
-          Navigation
+    <nav className="fixed left-0 top-0 z-30 flex h-screen w-64 flex-col border-r border-slate-200/90 bg-white shadow-xs">
+      {/* Top Header Logo Banner */}
+      <div className="px-5 py-5 border-b border-slate-100/80 bg-slate-50/50">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-teal-700 to-teal-900 text-white shadow-sm ring-2 ring-teal-500/20">
+            <Stethoscope size={20} />
+          </div>
+          <div>
+            <span className="text-sm font-extrabold text-slate-800 tracking-tight flex items-center gap-1">
+              CROWN <span className="text-teal-700">Dental</span>
+            </span>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+              Management System
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation Label */}
+      <div className="px-5 pt-4 pb-2">
+        <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-slate-400 flex items-center justify-between">
+          <span>Menu Chức Năng</span>
+          <Sparkles size={12} className="text-teal-600" />
         </p>
       </div>
 
-      <div className="flex flex-1 flex-col gap-2 px-3 pb-4">
-        {items.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              [
-                'rounded-2xl px-4 py-3 text-left text-sm font-medium transition',
-                isActive
-                  ? 'bg-sky-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
-              ].join(' ')
-            }
-          >
-            {item.label}
-          </NavLink>
-        ))}
+      {/* Nav Links List */}
+      <div className="flex flex-1 flex-col gap-1 px-3 py-1 overflow-y-auto custom-scrollbar">
+        {items.map((item) => {
+          const IconComponent = getTabIcon(item.to, item.label);
+
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                [
+                  'group flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-xs font-bold transition-all duration-200 select-none cursor-pointer',
+                  isActive
+                    ? 'bg-gradient-to-r from-teal-700 to-teal-800 text-white shadow-md shadow-teal-700/20 translate-x-1 ring-1 ring-teal-600/30'
+                    : 'text-slate-600 hover:bg-teal-50/70 hover:text-teal-900 hover:translate-x-0.5',
+                ].join(' ')
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <div
+                    className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${
+                      isActive
+                        ? 'bg-white/20 text-white'
+                        : 'text-slate-400 group-hover:bg-teal-100/60 group-hover:text-teal-800'
+                    }`}
+                  >
+                    <IconComponent size={16} />
+                  </div>
+                  <span className="truncate">{item.label}</span>
+                </>
+              )}
+            </NavLink>
+          );
+        })}
+      </div>
+
+      {/* Bottom Footer Status Badge */}
+      <div className="p-3 border-t border-slate-100 bg-slate-50/60">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-teal-50/80 border border-teal-100 text-teal-800 text-[11px] font-bold">
+          <ShieldCheck size={14} className="text-teal-600 shrink-0" />
+          <span className="truncate">Nha Khoa Crown Active</span>
+          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse ml-auto shrink-0" />
+        </div>
       </div>
     </nav>
-  )
+  );
 }

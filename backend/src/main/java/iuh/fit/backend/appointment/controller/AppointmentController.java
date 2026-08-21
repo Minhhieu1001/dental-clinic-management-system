@@ -88,6 +88,20 @@ public class AppointmentController {
         }
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateAppointment(
+            @PathVariable String id,
+            @RequestBody AppointmentCreateDTO dto
+    ) {
+        try {
+            UUID uuid = UUID.fromString(id);
+            AppointmentDetailDTO updated = appointmentService.updateAppointment(uuid, dto);
+            return ResponseEntity.ok(updated);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Mã lịch hẹn không hợp lệ: " + id);
+        }
+    }
+
     @PutMapping("/{id}/exam")
     public ResponseEntity<?> updateClinicalExam(
             @PathVariable String id,

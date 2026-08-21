@@ -54,9 +54,6 @@ public class User {
     private LocalDateTime updatedAt;
 
     @OneToOne(mappedBy = "user", fetch = FetchType.LAZY)
-    private Patient patient;
-
-    @OneToOne(mappedBy = "user", fetch = FetchType.LAZY)
     private Employee employee;
 
     @OneToOne(mappedBy = "user", fetch = FetchType.LAZY)
