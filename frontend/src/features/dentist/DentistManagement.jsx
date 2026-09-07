@@ -8,7 +8,7 @@ import { getDentistsList, getDentistStats } from '../../services/dentist.service
 import { USE_MOCK_DATA, calcStatsFromDentists, fetchMockDentistData, } from './dentistMockData';
 import { DentistStatusDot, SpecialtyBadge } from './DentistBadges';
 import DentistDetailPanel from './DentistDetailPanel';
-import { SHIFT_OPTIONS, SPECIALIZATION_OPTIONS, calcPercent, mapDentistFromApi, } from './dentistHelpers';
+import { SHIFT_OPTIONS, CERTIFICATE_TYPE_OPTIONS, calcPercent, mapDentistFromApi, } from './dentistHelpers';
 import { lockUser, unlockUser } from '../../services/user.service';
 
 function StatCard({ title, value, subtitle, icon: Icon, iconBg, iconColor, valueColor }) {
@@ -111,7 +111,7 @@ export default function DentistManagement() {
 
             const matchesStatus = statusFilter === 'all' || dentist.displayStatus === statusFilter;
             const matchesSpecialty =
-                specialtyFilter === 'all' || dentist.specialization === specialtyFilter;
+                specialtyFilter === 'all' || (dentist.certificates || []).some(c => c.certificate_type === specialtyFilter);
             const matchesShift = shiftFilter === 'all' || dentist.shiftKey === shiftFilter;
 
             return matchesSearch && matchesStatus && matchesSpecialty && matchesShift;
@@ -257,7 +257,7 @@ export default function DentistManagement() {
                             className="h-10 w-44 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-blue-400 cursor-pointer"
                         >
                             <option value="all">Chuyên khoa</option>
-                            {SPECIALIZATION_OPTIONS.map((item) => (
+                            {CERTIFICATE_TYPE_OPTIONS.filter(item => item.value !== 'PRACTICE_LICENSE').map((item) => (
                                 <option key={item.value} value={item.value}>
                                     {item.label}
                                 </option>

@@ -24,10 +24,6 @@ public class DentistSpecialization {
     @JoinColumn(name = "dentist_id", nullable = false)
     private Dentist dentist;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "specialization_id", nullable = false)
-    private Specialization specialization;
-
     @CreationTimestamp
     private LocalDateTime createdAt;
 }

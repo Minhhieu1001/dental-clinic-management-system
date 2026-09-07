@@ -3,12 +3,9 @@ package iuh.fit.backend.user.service.Impl;
 import iuh.fit.backend.user.dto.*;
 import iuh.fit.backend.user.entity.Dentist;
 import iuh.fit.backend.user.entity.User;
-import iuh.fit.backend.user.entity.Specialization;
-import iuh.fit.backend.user.entity.DentistSpecialization;
 import iuh.fit.backend.user.entity.Certificate;
 import iuh.fit.backend.user.repository.DentistRepository;
 import iuh.fit.backend.user.repository.UserRepository;
-import iuh.fit.backend.user.repository.SpecializationRepository;
 import iuh.fit.backend.user.service.DentistService;
 import iuh.fit.backend.user.service.UserService;
 import iuh.fit.backend.user.enums.Role;
@@ -32,7 +29,6 @@ import java.util.UUID;
 public class DentistServiceImpl implements DentistService {
     private final DentistRepository dentistRepository;
     private final UserRepository userRepository;
-    private final SpecializationRepository specializationRepository;
     private final UserService userService;
 
     @Override
@@ -173,31 +169,6 @@ public class DentistServiceImpl implements DentistService {
             dentist.setDescription(request.description());
         }
 
-        List<String> requestedSpecializations = request.specializations();
-        if (requestedSpecializations == null && request.specialization() != null) {
-            requestedSpecializations = List.of(request.specialization());
-        }
-
-        if (requestedSpecializations != null) {
-            dentist.getDentistSpecializations().clear();
-            for (String name : requestedSpecializations) {
-                String trimmed = name == null ? null : name.trim();
-                if (trimmed == null || trimmed.isEmpty()) continue;
-
-                Specialization spec = specializationRepository.findByName(trimmed)
-                        .orElseGet(() -> {
-                            Specialization s = new Specialization();
-                            s.setName(trimmed);
-                            return specializationRepository.save(s);
-                        });
-
-                DentistSpecialization ds = new DentistSpecialization();
-                ds.setDentist(dentist);
-                ds.setSpecialization(spec);
-                dentist.getDentistSpecializations().add(ds);
-            }
-        }
-
         if (request.certificates() != null) {
             dentist.getCertificates().clear();
             for (CertificateCreateRequest cc : request.certificates()) {
@@ -208,6 +179,7 @@ public class DentistServiceImpl implements DentistService {
                 cert.setIssueDate(cc.issueDate());
                 cert.setExpiryDate(cc.expiryDate());
                 cert.setCertificateFileUrl(cc.certificateFileUrl());
+                cert.setCertificateType(cc.certificateType());
                 cert.setDentist(dentist);
                 dentist.getCertificates().add(cert);
             }
@@ -254,14 +226,6 @@ public class DentistServiceImpl implements DentistService {
 
     private DentistListResponse toDentistListResponse(Dentist dentist) {
         User user = dentist.getUser();
-        List<SpecializationDTO> specializations = dentist.getDentistSpecializations()
-                .stream()
-                .map(ds -> new SpecializationDTO(
-                        ds.getSpecialization().getId(),
-                        ds.getSpecialization().getName(),
-                        ds.getSpecialization().getDescription()
-                ))
-                .toList();
 
         List<CertificateDTO> certificates = dentist.getCertificates()
                 .stream()
@@ -272,7 +236,8 @@ public class DentistServiceImpl implements DentistService {
                         cert.getIssuedBy(),
                         cert.getIssueDate(),
                         cert.getExpiryDate(),
-                        cert.getCertificateFileUrl()
+                        cert.getCertificateFileUrl(),
+                        cert.getCertificateType()
                 ))
                 .toList();
 
@@ -292,7 +257,6 @@ public class DentistServiceImpl implements DentistService {
                 user != null ? user.getCreatedAt() : null,
                 user != null ? user.getStatus() : null,
                 null,
-                specializations,
                 certificates
         );
     }

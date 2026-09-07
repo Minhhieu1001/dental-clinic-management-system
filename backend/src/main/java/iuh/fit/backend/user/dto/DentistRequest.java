@@ -11,8 +11,6 @@ public record DentistRequest(
         String address,
         String fullName,
         LocalDate dateOfBirth,
-        String specialization,
-        List<String> specializations,
         List<CertificateCreateRequest> certificates,
         Integer experienceYears,
         String qualification,

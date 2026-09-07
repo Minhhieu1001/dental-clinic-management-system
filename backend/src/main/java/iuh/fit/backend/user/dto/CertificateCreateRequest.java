@@ -1,5 +1,7 @@
 package iuh.fit.backend.user.dto;
 
+import iuh.fit.backend.user.enums.CertificateType;
+
 import java.time.LocalDateTime;
 
 public record CertificateCreateRequest(
@@ -8,6 +10,7 @@ public record CertificateCreateRequest(
         String issuedBy,
         LocalDateTime issueDate,
         LocalDateTime expiryDate,
-        String certificateFileUrl
+        String certificateFileUrl,
+        CertificateType certificateType
 ) {
 }
