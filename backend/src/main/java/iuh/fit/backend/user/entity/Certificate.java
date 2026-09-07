@@ -1,5 +1,7 @@
 package iuh.fit.backend.user.entity;
 
+import iuh.fit.backend.user.enums.CertificateType;
+import iuh.fit.backend.user.enums.Role;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -40,6 +42,9 @@ public class Certificate {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dentist_id", nullable = false)
     private Dentist dentist;
+
+    @Enumerated(EnumType.STRING)
+    private CertificateType certificateType;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

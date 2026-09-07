@@ -47,9 +47,18 @@ public class MedicalRecord {
 
     private LocalDateTime recordDate;
 
+    @Column(length = 255)
+    private String fileName;
+
+    @Column(columnDefinition = "TEXT")
+    private String address;
+
+    @Column(columnDefinition = "TEXT")
+    private String dentalClinicName;
+
     @Builder.Default
     @OneToMany(mappedBy = "medicalRecord", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    private List<Examination> examinations = new ArrayList<>();
+    private List<ExaminationResult> examinationsResults = new ArrayList<>();
 
     @Builder.Default
     @OneToMany(mappedBy = "medicalRecord", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
@@ -58,4 +67,8 @@ public class MedicalRecord {
     @Builder.Default
     @OneToMany(mappedBy = "medicalRecord", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<Prescription> prescriptions = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "medicalRecord", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    private List<TreatmentHistorys> treatmentHistorys = new ArrayList<>();
 }

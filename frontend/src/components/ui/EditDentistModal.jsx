@@ -25,7 +25,7 @@ import {
 import toast from 'react-hot-toast';
 import { updateDentist, updateUser } from '../../services/dentist.service';
 import { uploadImage } from '../../services/media.service';
-import { DEFAULT_DENTIST_SPECIALIZATION, SPECIALIZATION_OPTIONS } from '../../features/dentist/dentistHelpers';
+import { CERTIFICATE_TYPE_OPTIONS, getCertificateTypeLabel } from '../../features/dentist/dentistHelpers';
 
 const EMPTY_CERTIFICATE = {
     certificate_name: '',
@@ -35,7 +35,7 @@ const EMPTY_CERTIFICATE = {
     expiry_date: '',
     certificate_file: null,
     certificate_file_preview: null,
-    specialization: DEFAULT_DENTIST_SPECIALIZATION,
+    certificate_type: 'GENERAL_DENTISTRY',
 };
 
 const STEPS = [
@@ -116,15 +116,15 @@ function CertificateCard({ cert, index, onChange, onRemove, onFileChange, canRem
                 )}
             </div>
 
-            {cert.specialization !== undefined && (
+            {cert.certificate_type !== undefined && (
                 <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-slate-600">Chuyên khoa <span className="text-red-400">*</span></label>
+                    <label className="text-xs font-medium text-slate-600">Loại chứng chỉ <span className="text-red-400">*</span></label>
                     <select
-                        value={cert.specialization}
-                        onChange={(e) => onChange(index, 'specialization', e.target.value)}
+                        value={cert.certificate_type}
+                        onChange={(e) => onChange(index, 'certificate_type', e.target.value)}
                         className="w-full px-3 h-9 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm bg-white"
                     >
-                        {SPECIALIZATION_OPTIONS.map((item) => (
+                        {CERTIFICATE_TYPE_OPTIONS.filter(item => item.value !== 'PRACTICE_LICENSE').map((item) => (
                             <option key={item.value} value={item.value}>{item.label}</option>
                         ))}
                     </select>
@@ -329,7 +329,7 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                         issued_by: c.issued_by || '',
                         issue_date: c.issue_date || '',
                         expiry_date: c.expiry_date || '',
-                        specialization: c.specialization || DEFAULT_DENTIST_SPECIALIZATION,
+                        certificate_type: c.certificate_type || 'GENERAL_DENTISTRY',
                         certificate_file: null,
                         certificate_file_preview: c.certificate_file_url || null,
                     }))
@@ -495,12 +495,8 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                 });
             }
 
-            const specializations = specCertificates.length > 0
-                ? specCertificates.map((c) => c.specialization)
-                : [DEFAULT_DENTIST_SPECIALIZATION];
-
             // Helper to upload certificate file and map to DTO
-            const uploadAndMapCertificate = async (cert) => {
+            const uploadAndMapCertificate = async (cert, certType) => {
                 let fileUrl = cert.certificate_file_preview || '';
                 // Only upload if it's a new file (not a string URL)
                 if (cert.certificate_file) {
@@ -514,14 +510,15 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                     issueDate: cert.issue_date ? new Date(cert.issue_date).toISOString() : null,
                     expiryDate: cert.expiry_date ? new Date(cert.expiry_date).toISOString() : null,
                     certificateFileUrl: fileUrl,
+                    certificateType: certType,
                 };
             };
 
             const isCertValid = (c) => c && c.certificate_name?.trim() && c.certificate_number?.trim();
 
-            const practiceCertData = isCertValid(practiceLicense) ? await uploadAndMapCertificate(practiceLicense) : null;
+            const practiceCertData = isCertValid(practiceLicense) ? await uploadAndMapCertificate(practiceLicense, 'PRACTICE_LICENSE') : null;
             const specCertsData = await Promise.all(
-                specCertificates.filter(isCertValid).map(uploadAndMapCertificate)
+                specCertificates.filter(isCertValid).map(c => uploadAndMapCertificate(c, c.certificate_type))
             );
             const allCertificates = [practiceCertData, ...specCertsData].filter(Boolean);
 
@@ -529,8 +526,6 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                 fullName: formData.username,
                 dateOfBirth: formData.dateOfBirth || null,
                 address: formData.address || null,
-                specialization: specializations[0],
-                specializations: specializations,
                 certificates: allCertificates,
                 experienceYears: formData.experienceYears,
                 gender: formData.gender,
@@ -871,18 +866,21 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                         </h4>
                         <div className="space-y-3">
                             {specCertsDisplay.map((cert, idx) => (
-                                <div key={idx} className="flex gap-3 items-start p-3 rounded-lg bg-slate-50">
+                                <div key={idx} className="flex gap-4 items-start p-3 rounded-lg bg-slate-50">
                                     {cert.certificate_file_preview && (
                                         <img
                                             src={cert.certificate_file_preview}
                                             alt="Certificate"
-                                            className="w-16 h-12 object-cover rounded-md border border-slate-200"
+                                            className="w-24 h-16 object-cover rounded-lg border border-slate-200"
                                         />
                                     )}
-                                    <div className="text-sm space-y-0.5 flex-1 min-w-0">
-                                        <p className="font-medium text-slate-700 truncate">{cert.certificate_name}</p>
-                                        <p className="text-xs text-slate-400">
-                                            {cert.specialization} • Số: {cert.certificate_number}
+                                    <div className="text-sm space-y-1 flex-1 min-w-0">
+                                        <p className="font-medium text-slate-700">{cert.certificate_name}</p>
+                                        <p className="text-slate-400">Loại: {getCertificateTypeLabel(cert.certificate_type)}</p>
+                                        <p className="text-slate-400">Số: {cert.certificate_number}</p>
+                                        <p className="text-slate-400">Nơi cấp: {cert.issued_by}</p>
+                                        <p className="text-slate-400">
+                                            {cert.issue_date} → {cert.expiry_date}
                                         </p>
                                     </div>
                                 </div>

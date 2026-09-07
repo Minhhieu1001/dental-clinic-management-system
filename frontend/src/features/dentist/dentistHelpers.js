@@ -76,28 +76,44 @@ export const getSpecializationLabel = (specialization) => {
   return match?.label || normalizedValue || 'Chưa cập nhật';
 };
 
+export const CERTIFICATE_TYPE_OPTIONS = [
+  { value: 'PRACTICE_LICENSE', label: 'Chứng chỉ hành nghề' },
+  { value: 'GENERAL_DENTISTRY', label: 'Nha khoa tổng quát' },
+  { value: 'IMPLANT_DENTISTRY', label: 'Nha sĩ Implant' },
+  { value: 'ORTHODONTICS', label: 'Chỉnh nha' },
+  { value: 'TOOTH_EXTRACTION', label: 'Nhổ răng' },
+  { value: 'PERIODONTICS', label: 'Nha chu' },
+  { value: 'COSMETIC_DENTISTRY', label: 'Thẩm mỹ nha khoa' },
+];
+
+export const getCertificateTypeLabel = (type) => {
+  if (!type) return 'Khác';
+  const match = CERTIFICATE_TYPE_OPTIONS.find(
+    (item) => item.value === type
+  );
+  return match?.label || type;
+};
+
 export const mapDentistFromApi = (dentist, index = 0) => {
   const shift = dentist.shiftKey
     ? SHIFT_OPTIONS.find((s) => s.key === dentist.shiftKey) ?? SHIFT_OPTIONS[index % SHIFT_OPTIONS.length]
     : SHIFT_OPTIONS[index % SHIFT_OPTIONS.length];
 
-  const specializationsList = dentist.specializations && dentist.specializations.length > 0
-    ? dentist.specializations.map(normalizeSpecializationValue).filter(Boolean)
-    : (dentist.specialization ? [normalizeSpecializationValue(dentist.specialization)].filter(Boolean) : []);
-
-  const displaySpecializations = specializationsList.length > 0
-    ? specializationsList.map(s => getSpecializationLabel(s))
+  // Derive specializations from certificate types (exclude PRACTICE_LICENSE)
+  const certs = dentist.certificates || [];
+  const specTypes = certs
+    .map(c => c.certificateType || c.certificate_type)
+    .filter(t => t && t !== 'PRACTICE_LICENSE');
+  const displaySpecializations = specTypes.length > 0
+    ? specTypes.map(t => getCertificateTypeLabel(t))
     : ['Chưa cập nhật'];
-
-  let specializationCertIndex = 0;
 
   return {
     ...dentist,
     name: dentist.name || dentist.username,
     displayStatus: mapStatus(dentist.statusUser),
-    displaySpecialization: displaySpecializations[0], // Keep for compatibility if needed elsewhere
+    displaySpecialization: displaySpecializations[0],
     displaySpecializations: displaySpecializations,
-    specialization: specializationsList[0],
     displayExperience: formatExperience(dentist.experienceYears),
     displayCreatedAt: formatDate(dentist.createdAt),
     displayShift: shift.label,
@@ -105,21 +121,11 @@ export const mapDentistFromApi = (dentist, index = 0) => {
     qualifications: parseQualifications(dentist.qualification),
     education: dentist.qualification,
     description: dentist.description || '',
-    certificates: (dentist.certificates || []).map((cert, i) => {
-      const certName = (cert.certificateName || cert.certificate_name || '').toLowerCase();
-      const isPracticeLicense = cert.type === 'practice_license'
-        || certName.includes('hành nghề')
-        || certName.includes('giấy phép hành nghề')
-        || (i === 0 && !cert.type); // First certificate is practice_license by convention
-      const specialization = !isPracticeLicense
-        ? normalizeSpecializationValue(cert.specialization) ||
-        specializationsList[specializationCertIndex] ||
-        DEFAULT_DENTIST_SPECIALIZATION
-        : undefined;
-
-      if (!isPracticeLicense) {
-        specializationCertIndex += 1;
-      }
+    certificates: certs.map((cert, i) => {
+      const certType = cert.certificateType || cert.certificate_type || null;
+      const isPracticeLicense = certType === 'PRACTICE_LICENSE'
+        || (cert.certificateName || cert.certificate_name || '').toLowerCase().includes('hành nghề')
+        || (i === 0 && !certType);
 
       return {
         ...cert,
@@ -130,8 +136,8 @@ export const mapDentistFromApi = (dentist, index = 0) => {
         issue_date: cert.issueDate ? (typeof cert.issueDate === 'string' ? cert.issueDate.split('T')[0] : cert.issueDate) : (cert.issue_date || ''),
         expiry_date: cert.expiryDate ? (typeof cert.expiryDate === 'string' ? cert.expiryDate.split('T')[0] : cert.expiryDate) : (cert.expiry_date || ''),
         certificate_file_url: cert.certificateFileUrl || cert.certificate_file_url || '',
+        certificate_type: isPracticeLicense ? 'PRACTICE_LICENSE' : (certType || null),
         type: isPracticeLicense ? 'practice_license' : 'specialization',
-        specialization,
       };
     }),
     avatar:

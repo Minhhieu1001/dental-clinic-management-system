@@ -1,5 +1,6 @@
 package iuh.fit.backend.treatment.entity;
 
+import iuh.fit.backend.medicalrecord.entity.TreatmentHistorys;
 import iuh.fit.backend.patient.entity.Patient;
 import iuh.fit.backend.user.entity.Dentist;
 import jakarta.persistence.*;
@@ -49,4 +50,8 @@ public class TreatmentPlan {
     @Builder.Default
     @OneToMany(mappedBy = "treatmentPlan", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<TreatmentPhase> treatmentPhases = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "treatmentPlan", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    private List<TreatmentHistorys> treatmentHistorys = new ArrayList<>();
 }
