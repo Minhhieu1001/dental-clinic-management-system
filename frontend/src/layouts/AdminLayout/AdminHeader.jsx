@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Bell, Settings } from 'lucide-react';
+import { Bell, Settings } from 'lucide-react';
 import AdminProfileModal from '../../components/ui/AdminProfileModal';
 
 export default function AdminHeader({ config }) {
@@ -8,17 +8,23 @@ export default function AdminHeader({ config }) {
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/80 backdrop-blur-xl">
-      <div className="flex h-16 items-center justify-between px-4 sm:px-6">
+      <div className="flex h-16 items-center justify-between px-2 sm:px-3 lg:px-4">
 
-        {/* Left Side: Search (Logo removed as requested) */}
-        <div className="flex w-full max-w-md items-center">
-          <div className="relative w-full group">
-            <input
-              type="text"
-              placeholder="Tìm bệnh nhân, lịch hẹn..."
-              className="w-full rounded-full border border-slate-200 bg-slate-50/50 py-2.5 pl-11 pr-4 text-sm text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-sky-500 focus:bg-white focus:ring-4 focus:ring-sky-500/10"
-            />
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-sky-500" />
+        {/* Left Side: Crown Dental Branding (Text only) */}
+        <div className="flex items-center">
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2">
+              <span className="text-base font-black tracking-tight text-slate-900">
+                CROWN<span className="text-[#005f73]">DENTAL</span> <span className="font-medium text-slate-400 text-xs tracking-normal">CLINIC SYSTEM</span>
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200/80 shadow-xs">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Enterprise Active
+              </span>
+            </div>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              Hệ Thống Quản Lý Nha Khoa Thẩm Mỹ & Điều Trị Chuyên Nghiệp
+            </span>
           </div>
         </div>
 
