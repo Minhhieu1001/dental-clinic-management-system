@@ -11,7 +11,9 @@ export const uploadImage = async (file) => {
             },
         }
     );
-    return response.data;
+    const data = response.data;
+    if (typeof data === 'string') return data;
+    return data?.data ?? data?.url ?? data?.result ?? data;
 };
 
 export const deleteImage = async (publicId) => {

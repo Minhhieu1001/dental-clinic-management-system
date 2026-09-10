@@ -5,5 +5,6 @@ public enum ServiceCategory {
     RANG_SU,
     IMPLANT,
     TAY_TRANG,
-    KHAM_DIEU_TRI
+    KHAM_DIEU_TRI,
+    NHA_KHOA_TRE_EM
 }

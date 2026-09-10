@@ -4,6 +4,19 @@
 -- Dùng ON CONFLICT DO NOTHING để tránh lỗi trùng dữ liệu
 -- ============================================================
 
+-- Tự động cập nhật các cột mới nếu chưa tồn tại
+ALTER TABLE services ADD COLUMN IF NOT EXISTS service_code VARCHAR(50);
+ALTER TABLE services ADD COLUMN IF NOT EXISTS category VARCHAR(50);
+ALTER TABLE services ADD COLUMN IF NOT EXISTS sub_category VARCHAR(255);
+ALTER TABLE services ADD COLUMN IF NOT EXISTS unit VARCHAR(100);
+ALTER TABLE services ADD COLUMN IF NOT EXISTS warranty_period VARCHAR(100);
+ALTER TABLE services ADD COLUMN IF NOT EXISTS image_url VARCHAR(1000);
+ALTER TABLE services ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0;
+ALTER TABLE services ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE;
+ALTER TABLE services ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+
+UPDATE services SET is_active = true WHERE is_active IS NULL;
+
 -- ============================================================
 -- BẢNG 1: SERVICES (Dịch vụ nha khoa)
 -- ============================================================

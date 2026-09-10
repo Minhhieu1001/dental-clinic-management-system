@@ -1,5 +1,4 @@
 import { Outlet } from 'react-router-dom'
-import Footer from './Footer.jsx'
 import Header from './Header.jsx'
 import TabBar from './TabBar.jsx'
 
@@ -21,8 +20,6 @@ export default function RoleShell({ config, CustomHeader }) {
       <main className="w-full px-2 py-4 sm:px-3 lg:px-4">
         <Outlet />
       </main>
-
-      <Footer footer={config.footer} />
     </div>
   )
 }

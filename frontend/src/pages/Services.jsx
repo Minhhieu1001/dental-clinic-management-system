@@ -250,9 +250,9 @@ export default function Services() {
     setSearchParams({ tab: key })
   }
 
-  // Lọc dịch vụ theo danh mục (category) đang chọn
+  // Lọc dịch vụ theo danh mục (category) đang chọn và chỉ lấy dịch vụ đang hoạt động
   const filteredByCategory = services.filter(
-    (service) => service.category === activeTab
+    (service) => service.category === activeTab && service.isActive !== false
   )
 
   // Áp dụng bộ lọc sắp xếp bổ sung (Tất cả, Khuyến mãi/Bán chạy, Giá tăng/giảm)
@@ -399,9 +399,16 @@ export default function Services() {
                 {/* Body */}
                 <div className="p-6 flex-1 flex flex-col justify-between">
                   <div className="space-y-3">
-                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-                      {service.subCategory || TABS.find((t) => t.key === activeTab)?.label}
-                    </p>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                        {service.subCategory || TABS.find((t) => t.key === activeTab)?.label}
+                      </p>
+                      {service.warrantyPeriod && service.warrantyPeriod !== 'Không bảo hành' && (
+                        <span className="bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                          🛡️ {service.warrantyPeriod}
+                        </span>
+                      )}
+                    </div>
                     <h3 className="text-lg font-black text-slate-900 group-hover:text-[#1f4fb2] transition-colors leading-snug">
                       {service.serviceName}
                     </h3>
