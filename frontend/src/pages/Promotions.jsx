@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { getPromotions, createAppointment } from '../services/api'
 
 const formatMoney = (value) => new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(value || 0) + 'đ'
@@ -10,15 +10,26 @@ function PromotionCard({ promotion }) {
   
   return (
     <article className="flex flex-col overflow-hidden rounded-2xl bg-white shadow-[0_10px_30px_rgba(15,45,95,0.06)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_15px_35px_rgba(15,45,95,0.12)] border border-slate-100">
-      <div className="relative h-48 w-full overflow-hidden bg-slate-100">
+      <div className="relative h-48 w-full overflow-hidden bg-slate-900/5 flex items-center justify-center border-b border-slate-100">
         {promotion.imageUrl ? (
-          <img src={promotion.imageUrl} alt={promotion.title} className="h-full w-full object-cover" />
+          <>
+            <img
+              src={promotion.imageUrl}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover blur-md scale-110 opacity-30 pointer-events-none"
+            />
+            <img
+              src={promotion.imageUrl}
+              alt={promotion.title}
+              className="relative z-10 h-full w-full object-contain p-1.5 drop-shadow-xs"
+            />
+          </>
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 text-sm font-semibold text-[#1e3a8a]">
             Crown Dental
           </div>
         )}
-        <span className="absolute left-0 top-3 rounded-r-lg bg-[#ff5b15] px-3 py-1 text-xs font-black text-white uppercase tracking-wider">
+        <span className="absolute left-0 top-3 z-20 rounded-r-lg bg-[#ff5b15] px-3 py-1 text-xs font-black text-white uppercase tracking-wider shadow-xs">
           Giảm {Number(promotion.discountPercent)}%
         </span>
       </div>
@@ -64,12 +75,21 @@ export default function Promotions() {
   const [promotions, setPromotions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [activeFilter, setActiveFilter] = useState('all') // 'all', 'nieng_rang', 'price_desc', 'price_asc'
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialCategory = searchParams.get('category') || searchParams.get('cat') || 'all'
+  const [activeFilter, setActiveFilter] = useState(initialCategory.toLowerCase())
 
   // Contact Form State
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
   const [formStatus, setFormStatus] = useState({ loading: false, success: false, error: null })
+
+  useEffect(() => {
+    const cat = searchParams.get('category') || searchParams.get('cat')
+    if (cat) {
+      setActiveFilter(cat.toLowerCase())
+    }
+  }, [searchParams])
 
   useEffect(() => {
     getPromotions()
@@ -78,28 +98,89 @@ export default function Promotions() {
       .finally(() => setLoading(false))
   }, [])
 
-  const filteredAndSortedPromotions = useMemo(() => {
-    let result = [...promotions]
-
-    // 1. Category Filter: 'nieng_rang' filters categories containing 'Niềng răng'
-    if (activeFilter === 'nieng_rang') {
-      result = result.filter(
-        (p) => p.category && p.category.toLowerCase().includes('niềng răng')
-      )
+  const categoryCounts = useMemo(() => {
+    const counts = {
+      all: promotions.length,
+      implant: 0,
+      nieng_rang: 0,
+      tong_quat: 0,
+      tham_my: 0,
+      tre_em: 0,
+      tay_trang: 0,
     }
 
-    // 2. Price Sorting
-    if (activeFilter === 'price_desc' || activeFilter === 'price_asc') {
+    promotions.forEach((p) => {
+      const cat = (p.category || '').toLowerCase()
+      const title = (p.title || '').toLowerCase()
+      const serviceNames = (p.services || []).map((s) => (s.serviceName || '').toLowerCase()).join(' ')
+
+      if (cat.includes('implant') || cat.includes('cấy ghép') || title.includes('implant') || serviceNames.includes('implant') || serviceNames.includes('trụ')) {
+        counts.implant++
+      }
+      if (cat.includes('niềng') || title.includes('niềng') || title.includes('invisalign') || serviceNames.includes('niềng') || serviceNames.includes('mắc cài') || serviceNames.includes('invisalign')) {
+        counts.nieng_rang++
+      }
+      if (cat.includes('tổng quát') || cat.includes('khám') || cat.includes('điều trị') || title.includes('nhổ') || title.includes('khám') || serviceNames.includes('nhổ') || serviceNames.includes('trám') || serviceNames.includes('cạo vôi') || serviceNames.includes('khám')) {
+        counts.tong_quat++
+      }
+      if (cat.includes('thẩm mỹ') || cat.includes('răng sứ') || cat.includes('veneer') || serviceNames.includes('sứ') || serviceNames.includes('veneer')) {
+        counts.tham_my++
+      }
+      if (cat.includes('trẻ em') || cat.includes('can thiệp sớm') || title.includes('can thiệp sớm') || title.includes('trẻ em')) {
+        counts.tre_em++
+      }
+      if (cat.includes('tẩy trắng') || title.includes('tẩy trắng') || serviceNames.includes('tẩy trắng')) {
+        counts.tay_trang++
+      }
+    })
+
+    return counts
+  }, [promotions])
+
+  const filteredAndSortedPromotions = useMemo(() => {
+    let result = [...promotions]
+    const key = (activeFilter || 'all').toLowerCase()
+
+    if (key !== 'all' && key !== 'price_desc' && key !== 'price_asc') {
+      result = result.filter((p) => {
+        const cat = (p.category || '').toLowerCase()
+        const title = (p.title || '').toLowerCase()
+        const serviceNames = (p.services || []).map((s) => (s.serviceName || '').toLowerCase()).join(' ')
+
+        if (key === 'implant' || key === 'cấy ghép implant' || key === 'trồng răng implant') {
+          return cat.includes('implant') || cat.includes('cấy ghép') || title.includes('implant') || serviceNames.includes('implant') || serviceNames.includes('trụ')
+        }
+        if (key === 'nieng_rang' || key === 'niềng răng') {
+          return cat.includes('niềng') || title.includes('niềng') || title.includes('invisalign') || serviceNames.includes('niềng') || serviceNames.includes('mắc cài') || serviceNames.includes('invisalign')
+        }
+        if (key === 'tong_quat' || key === 'kham_dieu_tri' || key === 'nha khoa tổng quát' || key === 'khám & điều trị') {
+          return cat.includes('tổng quát') || cat.includes('khám') || cat.includes('điều trị') || title.includes('nhổ') || title.includes('khám') || serviceNames.includes('nhổ') || serviceNames.includes('trám') || serviceNames.includes('cạo vôi') || serviceNames.includes('khám')
+        }
+        if (key === 'tham_my' || key === 'rang_su' || key === 'nha khoa thẩm mỹ' || key === 'răng sứ thẩm mỹ') {
+          return cat.includes('thẩm mỹ') || cat.includes('răng sứ') || cat.includes('veneer') || serviceNames.includes('sứ') || serviceNames.includes('veneer')
+        }
+        if (key === 'tre_em' || key === 'nha khoa trẻ em' || key === 'kids') {
+          return cat.includes('trẻ em') || cat.includes('can thiệp sớm') || title.includes('can thiệp sớm') || title.includes('trẻ em')
+        }
+        if (key === 'tay_trang' || key === 'tẩy trắng răng') {
+          return cat.includes('tẩy trắng') || title.includes('tẩy trắng') || serviceNames.includes('tẩy trắng')
+        }
+
+        return cat.includes(key) || title.includes(key) || serviceNames.includes(key)
+      })
+    }
+
+    if (key === 'price_desc' || key === 'price_asc') {
       result.sort((a, b) => {
         const getPromoPrice = (p) => {
-          if (p.title.includes("Gói can thiệp sớm")) return 15300000;
+          if (p.title?.includes('Gói can thiệp sớm')) return 15300000
           const service = p.services?.[0]
           if (!service) return 0
           return Number(service.price) * (1 - Number(p.discountPercent) / 100)
         }
         const priceA = getPromoPrice(a)
         const priceB = getPromoPrice(b)
-        return activeFilter === 'price_desc' ? priceB - priceA : priceA - priceB
+        return key === 'price_desc' ? priceB - priceA : priceA - priceB
       })
     }
 
@@ -149,33 +230,70 @@ export default function Promotions() {
       </div>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-10">
-        {/* Header Title with vertical line and filters */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-slate-200/80 pb-6 gap-4">
-          <div className="flex items-center gap-3">
-            <span className="h-9 w-[6px] bg-[#1f4fb2] rounded-full" />
-            <h1 className="text-3xl font-black tracking-tight text-[#1f3266]">Ưu đãi</h1>
+        {/* Modern Clean Header Title & Filter Section */}
+        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3 shrink-0 min-w-max">
+            <span className="h-7 w-1.5 bg-[#1f4fb2] rounded-full shrink-0" />
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-[#1f3266] whitespace-nowrap">
+                Chương Trình Ưu Đãi
+              </h1>
+            </div>
           </div>
 
-          {/* Filter Tags */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            {[
-              { id: 'all', label: 'Tất cả' },
-              { id: 'nieng_rang', label: 'Niềng răng' },
-              { id: 'price_desc', label: 'Giá từ cao xuống thấp' },
-              { id: 'price_asc', label: 'Giá từ thấp đến cao' },
-            ].map((tag) => (
+          {/* Price Sort Control */}
+          <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+            <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Sắp xếp:</span>
+            <div className="inline-flex rounded-xl bg-slate-100/90 p-1 border border-slate-200/60">
               <button
-                key={tag.id}
-                onClick={() => setActiveFilter(tag.id)}
-                className={`rounded-full px-4 py-2 text-xs font-bold transition-all duration-200 ${
-                  activeFilter === tag.id
-                    ? 'bg-[#1f4fb2] text-white shadow-sm shadow-blue-500/10'
-                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                type="button"
+                onClick={() => {
+                  setActiveFilter('all')
+                  setSearchParams({})
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  activeFilter !== 'price_desc' && activeFilter !== 'price_asc'
+                    ? 'bg-white text-[#1f4fb2] shadow-2xs font-extrabold'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                {tag.label}
+                Mặc định
               </button>
-            ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveFilter('price_desc')
+                  setSearchParams({ category: 'price_desc' })
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                  activeFilter === 'price_desc'
+                    ? 'bg-[#1f4fb2] text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span>Giá từ cao đến thấp</span>
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveFilter('price_asc')
+                  setSearchParams({ category: 'price_asc' })
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                  activeFilter === 'price_asc'
+                    ? 'bg-[#1f4fb2] text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span>Giá từ thấp đến cao</span>
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 15l7-7 7 7" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
 

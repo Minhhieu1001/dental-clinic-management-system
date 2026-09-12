@@ -1,61 +1,71 @@
 package iuh.fit.backend.treatment.controller;
 
+import iuh.fit.backend.common.response.ApiResponse;
+import iuh.fit.backend.treatment.dto.ServiceCreateDTO;
+import iuh.fit.backend.treatment.dto.ServiceDTO;
 import iuh.fit.backend.treatment.enums.ServiceCategory;
-import iuh.fit.backend.treatment.repository.ServiceRepository;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import iuh.fit.backend.treatment.service.DentalService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/services")
+@RequestMapping({"/api/v1/services", "/api/services"})
+@RequiredArgsConstructor
 public class ServiceController {
 
-    private final ServiceRepository serviceRepository;
-
-    public ServiceController(ServiceRepository serviceRepository) {
-        this.serviceRepository = serviceRepository;
-    }
+    private final DentalService dentalService;
 
     @GetMapping
-    public List<ServiceResponse> getAllServices() {
-        return serviceRepository.findAll().stream()
-                .sorted((s1, s2) -> {
-                    int order1 = s1.getSortOrder() != null ? s1.getSortOrder() : 0;
-                    int order2 = s2.getSortOrder() != null ? s2.getSortOrder() : 0;
-                    return Integer.compare(order1, order2);
-                })
-                .map(service -> new ServiceResponse(
-                        service.getId(),
-                        service.getServiceName(),
-                        service.getDescription(),
-                        service.getPrice(),
-                        service.getCategory(),
-                        service.getSubCategory(),
-                        service.getUnit(),
-                        service.getImageUrl(),
-                        service.getSortOrder(),
-                        service.getIsFeatured()))
-                .toList();
+    public ResponseEntity<ApiResponse<List<ServiceDTO>>> getAllServices(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) ServiceCategory category,
+            @RequestParam(required = false) Boolean isActive,
+            @RequestParam(required = false) Boolean isFeatured) {
+        List<ServiceDTO> services = dentalService.getAllServices(search, category, isActive, isFeatured);
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách dịch vụ thành công", services));
     }
 
-    /**
-     * A public-facing view of a service. Returning the entity directly exposes
-     * bidirectional JPA relationships, which causes recursive JSON serialization.
-     */
-    public record ServiceResponse(
-            UUID id,
-            String serviceName,
-            String description,
-            java.math.BigDecimal price,
-            ServiceCategory category,
-            String subCategory,
-            String unit,
-            String imageUrl,
-            Integer sortOrder,
-            Boolean isFeatured) {
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<ServiceDTO>> getServiceById(@PathVariable UUID id) {
+        ServiceDTO service = dentalService.getServiceById(id);
+        return ResponseEntity.ok(ApiResponse.success("Lấy thông tin chi tiết dịch vụ thành công", service));
+    }
+
+    @PostMapping
+    public ResponseEntity<ApiResponse<ServiceDTO>> createService(@RequestBody ServiceCreateDTO dto) {
+        ServiceDTO created = dentalService.createService(dto);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Tạo dịch vụ mới thành công", created));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<ServiceDTO>> updateService(
+            @PathVariable UUID id,
+            @RequestBody ServiceCreateDTO dto) {
+        ServiceDTO updated = dentalService.updateService(id, dto);
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật thông tin dịch vụ thành công", updated));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteService(@PathVariable UUID id) {
+        dentalService.deleteService(id);
+        return ResponseEntity.ok(ApiResponse.success("Xóa dịch vụ thành công", null));
+    }
+
+    @PatchMapping("/{id}/toggle-active")
+    public ResponseEntity<ApiResponse<ServiceDTO>> toggleActiveStatus(@PathVariable UUID id) {
+        ServiceDTO updated = dentalService.toggleActiveStatus(id);
+        return ResponseEntity.ok(ApiResponse.success("Thay đổi trạng thái hoạt động dịch vụ thành công", updated));
+    }
+
+    @PatchMapping("/{id}/toggle-featured")
+    public ResponseEntity<ApiResponse<ServiceDTO>> toggleFeaturedStatus(@PathVariable UUID id) {
+        ServiceDTO updated = dentalService.toggleFeaturedStatus(id);
+        return ResponseEntity.ok(ApiResponse.success("Thay đổi trạng thái dịch vụ nổi bật thành công", updated));
     }
 }
-

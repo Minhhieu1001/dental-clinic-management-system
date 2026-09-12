@@ -11,7 +11,7 @@ const apiClient = axios.create({
 
 export const getServices = async () => {
   const response = await apiClient.get('/services')
-  return response.data
+  return response.data?.data ?? response.data?.result ?? response.data ?? []
 }
 
 export const getDentists = async () => {
