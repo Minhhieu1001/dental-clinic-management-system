@@ -4,6 +4,30 @@
 -- Dùng ON CONFLICT DO NOTHING để tránh lỗi trùng dữ liệu
 -- ============================================================
 
+-- Cập nhật check constraint cho bảng tooth_records và diagnoses hỗ trợ enum Level mới
+ALTER TABLE tooth_records DROP CONSTRAINT IF EXISTS tooth_records_severity_check;
+ALTER TABLE tooth_records ADD CONSTRAINT tooth_records_severity_check 
+    CHECK (severity IS NULL OR severity IN ('ENAMEL', 'DENTIN', 'NEAR_PULP', 'PULP', 'MILD', 'MODERATE', 'SEVERE'));
+
+ALTER TABLE tooth_records DROP CONSTRAINT IF EXISTS tooth_records_caries_location_check;
+ALTER TABLE tooth_records ADD CONSTRAINT tooth_records_caries_location_check 
+    CHECK (caries_location IS NULL OR caries_location IN ('OCCLUSAL', 'MESIAL', 'DISTAL', 'BUCCAL', 'LINGUAL', 'PALATAL', 'CERVICAL', 'WHOLE_CROWN'));
+
+ALTER TABLE tooth_records DROP CONSTRAINT IF EXISTS tooth_records_tooth_status_check;
+ALTER TABLE tooth_records ADD CONSTRAINT tooth_records_tooth_status_check 
+    CHECK (tooth_status IS NULL OR tooth_status IN ('HEALTHY', 'CARIES', 'FILLED', 'MISSING', 'GINGIVITIS', 'ATTENTION_REQUIRE', 'ROOT_CANAL', 'MARROW'));
+
+ALTER TABLE diagnoses DROP CONSTRAINT IF EXISTS diagnoses_level_check;
+ALTER TABLE diagnoses ADD CONSTRAINT diagnoses_level_check 
+    CHECK (level IS NULL OR level IN ('ENAMEL', 'DENTIN', 'NEAR_PULP', 'PULP', 'MILD', 'MODERATE', 'SEVERE'));
+
+-- Bỏ unique constraint trên examination_result_id để hỗ trợ quan hệ 1-N giữa ExaminationResult và Diagnosis
+ALTER TABLE diagnoses DROP CONSTRAINT IF EXISTS diagnoses_examination_result_id_key;
+
+-- Đảm bảo quan hệ 1-1 giữa ExaminationResult và TreatmentPlans
+ALTER TABLE treatment_plans ADD COLUMN IF NOT EXISTS examination_result_id UUID;
+CREATE UNIQUE INDEX IF NOT EXISTS uk_treatment_plans_examination_result ON treatment_plans (examination_result_id);
+
 -- ============================================================
 -- BẢNG 1: SERVICES (Dịch vụ nha khoa)
 -- ============================================================

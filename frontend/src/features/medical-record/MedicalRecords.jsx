@@ -1,19 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
-  User,
-  Edit2,
-  Stethoscope,
-  FileText,
-  Image as ImageIcon,
-  Search,
   Phone,
   X,
   Users,
   Calendar,
   MapPin,
   CheckCircle2,
-  Sparkles,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -23,9 +16,22 @@ import {
   getPatients,
   updatePatient,
 } from '../../services/patient.service';
+import {
+  getMedicalRecordsByPatientCode,
+  createMedicalRecord,
+  updateMedicalRecord,
+} from '../../services/medicalRecord.service';
+
 import MedicalRecordHeader from './components/MedicalRecordHeader';
 import PatientGeneralInfoForm from './components/PatientGeneralInfoForm';
 import TreatmentHistoryTimeline from './components/TreatmentHistoryTimeline';
+import MedicalRecordEmptyState from './components/MedicalRecordEmptyState';
+import {
+  createDefaultMedicalRecord,
+  DEFAULT_DENTAL_CLINIC_NAME,
+  DEFAULT_DENTAL_CLINIC_ADDRESS,
+  generateRecordFileName,
+} from './medicalRecordHelpers';
 
 // Sample Treatment History mapped 100% to MedicalRecord.java entity fields
 const SAMPLE_MEDICAL_RECORDS = [
@@ -82,8 +88,6 @@ export default function MedicalRecords() {
   // Passed patient object from previous route or fallback default
   const passedPatient = location.state?.patient;
 
-  // Active Tab for bottom navigation toolbar
-  const [activeToolbarTab, setActiveToolbarTab] = useState('GENERAL'); // GENERAL, EXAM, PRESCRIPTION, IMAGES, DOCS
   const [isEditing, setIsEditing] = useState(false);
 
   // Phone Search State
@@ -94,6 +98,51 @@ export default function MedicalRecords() {
 
   // Selected systemic diseases list state (Array for checklist)
   const [systemicDiseases, setSystemicDiseases] = useState([]);
+
+  // Patient Options for quick Selectbox
+  const [patientOptions, setPatientOptions] = useState([]);
+  const [loadingPatientOptions, setLoadingPatientOptions] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    getPatients()
+      .then((res) => {
+        if (!isMounted) return;
+        const raw = Array.isArray(res) ? res : res?.data || res?.result || [];
+        if (Array.isArray(raw)) {
+          setPatientOptions(raw);
+        }
+      })
+      .catch((err) => console.warn('Lỗi tải danh sách bệnh nhân cho selectbox:', err))
+      .finally(() => {
+        if (isMounted) setLoadingPatientOptions(false);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Medical Record State matching MedicalRecord.java entity properties (helper generated)
+  const [medicalRecordData, setMedicalRecordData] = useState(() =>
+    createDefaultMedicalRecord(
+      passedPatient || {
+        fullName: location.state?.fullName,
+        patientCode: location.state?.patientCode,
+      }
+    )
+  );
+
+  // Treatment History Records state
+  const [treatmentRecords, setTreatmentRecords] = useState(() => {
+    if (
+      passedPatient?.fullName === 'Nguyễn Anh Khôi' ||
+      location.state?.fullName === 'Nguyễn Anh Khôi' ||
+      location.state?.patientCode === 'PA-234820'
+    ) {
+      return SAMPLE_MEDICAL_RECORDS;
+    }
+    return [];
+  });
 
   // Patient State matching PatientDTO.java entity properties 100%
   const [patientData, setPatientData] = useState({
@@ -112,6 +161,13 @@ export default function MedicalRecords() {
     email: passedPatient?.email || '',
     avatar: passedPatient?.avatar || '',
   });
+
+  // Check if patient profile data is loaded
+  const hasPatientData = Boolean(
+    patientData.id ||
+    (patientData.fullName && patientData.fullName.trim()) ||
+    (patientData.phone && patientData.phone.trim())
+  );
 
   // Apply chosen patient object onto form
   const applyPatientToForm = (patientObj) => {
@@ -132,6 +188,51 @@ export default function MedicalRecords() {
       avatar: patientObj.avatar || patientObj.avatarUrl || null,
     });
 
+    const pName = patientObj.fullName || patientObj.patientName || patientObj.user?.fullName || '';
+    const pCode = patientObj.patientCode || '';
+    setMedicalRecordData((prev) => ({
+      ...prev,
+      fileName: patientObj.fileName || generateRecordFileName(pName, pCode),
+      dentalClinicName: patientObj.dentalClinicName || DEFAULT_DENTAL_CLINIC_NAME,
+      address: patientObj.clinicAddress || DEFAULT_DENTAL_CLINIC_ADDRESS,
+      symptoms: patientObj.symptoms || patientObj.chiefComplaint || prev.symptoms || '',
+    }));
+
+    // Tự động load MedicalRecord thật của bệnh nhân từ backend
+    if (pCode) {
+      getMedicalRecordsByPatientCode(pCode)
+        .then((records) => {
+          if (Array.isArray(records) && records.length > 0) {
+            const rec = records[0];
+            setMedicalRecordData((prev) => ({
+              ...prev,
+              id: rec.id,
+              fileName: rec.fileName || prev.fileName,
+              dentalClinicName: rec.dentalClinicName || prev.dentalClinicName,
+              address: rec.address || prev.address,
+              symptoms: rec.symptoms || prev.symptoms,
+              diagnosis: rec.diagnosis || prev.diagnosis,
+              treatmentNotes: rec.treatmentNotes || prev.treatmentNotes,
+              recordDate: rec.recordDate || prev.recordDate,
+            }));
+          }
+        })
+        .catch(() => {});
+    }
+
+    // Set treatment history records
+    if (patientObj.treatmentHistory && Array.isArray(patientObj.treatmentHistory)) {
+      setTreatmentRecords(patientObj.treatmentHistory);
+    } else if (
+      patientObj.fullName === 'Nguyễn Anh Khôi' ||
+      patientObj.patientCode === 'PA-234820' ||
+      (patientObj.phone && patientObj.phone.includes('0369852147'))
+    ) {
+      setTreatmentRecords(SAMPLE_MEDICAL_RECORDS);
+    } else {
+      setTreatmentRecords([]);
+    }
+
     let diseases = [];
     if (Array.isArray(patientObj.systemicDisease)) {
       diseases = patientObj.systemicDisease;
@@ -139,6 +240,40 @@ export default function MedicalRecords() {
       diseases = patientObj.systemicDisease.split(',').map((s) => s.trim()).filter(Boolean);
     }
     setSystemicDiseases(diseases);
+  };
+
+  // Clear currently loaded patient to show empty state
+  const handleClearPatient = () => {
+    setPatientData({
+      id: '',
+      patientCode: '',
+      fullName: '',
+      nationality: 'Việt Nam',
+      phone: '',
+      gender: 'MALE',
+      dateOfBirth: '',
+      address: '',
+      allergies: '',
+      currentMedications: '',
+      surgicalHistory: '',
+      createdAt: '',
+      email: '',
+      avatar: '',
+    });
+    setMedicalRecordData(createDefaultMedicalRecord({}));
+    setTreatmentRecords([]);
+    setPhoneSearchQuery('');
+    toast.success('Đã đóng hồ sơ để tìm kiếm bệnh nhân khác');
+  };
+
+  // Handle selecting patient from the quick selectbox
+  const handleSelectPatientFromSelectbox = (selectedPatient) => {
+    if (!selectedPatient) {
+      handleClearPatient();
+      return;
+    }
+    applyPatientToForm(selectedPatient);
+    toast.success(`Đã chọn bệnh nhân: ${selectedPatient.fullName || selectedPatient.patientName}`);
   };
 
   // Search Patients By Phone Number
@@ -201,11 +336,10 @@ export default function MedicalRecords() {
     const code = passedPatient?.patientCode || location.state?.patientCode;
     const phoneNum = passedPatient?.phone || passedPatient?.phoneNumber || location.state?.phone;
 
-    if (passedPatient) {
-      applyPatientToForm(passedPatient);
-    }
-
     const loadData = async () => {
+      if (passedPatient) {
+        applyPatientToForm(passedPatient);
+      }
       try {
         let data = null;
         if (code && code !== 'N/A') {
@@ -242,21 +376,6 @@ export default function MedicalRecords() {
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
-      const payload = {
-        fullName: patientData.fullName,
-        phone: patientData.phone,
-        gender: patientData.gender,
-        dateOfBirth: patientData.dateOfBirth
-          ? (patientData.dateOfBirth.includes('T') ? patientData.dateOfBirth : `${patientData.dateOfBirth}T00:00:00`)
-          : null,
-        address: patientData.address,
-        nationality: patientData.nationality,
-        allergies: patientData.allergies || null,
-        currentMedications: patientData.currentMedications || null,
-        surgicalHistory: patientData.surgicalHistory || null,
-        systemicDisease: systemicDiseases.length > 0 ? systemicDiseases.join(', ') : null,
-      };
-
       const isUUID = (str) =>
         typeof str === 'string' &&
         /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
@@ -279,17 +398,100 @@ export default function MedicalRecords() {
         }
       }
 
+      // 1. Cập nhật thông tin bệnh nhân (Patient)
+      const patientPayload = {
+        fullName: patientData.fullName,
+        phone: patientData.phone,
+        gender: patientData.gender,
+        dateOfBirth: patientData.dateOfBirth
+          ? (patientData.dateOfBirth.includes('T') ? patientData.dateOfBirth : `${patientData.dateOfBirth}T00:00:00`)
+          : null,
+        address: patientData.address,
+        nationality: patientData.nationality,
+        allergies: patientData.allergies || null,
+        currentMedications: patientData.currentMedications || null,
+        surgicalHistory: patientData.surgicalHistory || null,
+        systemicDisease: systemicDiseases.length > 0 ? systemicDiseases.join(', ') : null,
+      };
+
+      let updatedPatient = null;
       if (targetId) {
-        const updated = await updatePatient(targetId, payload);
-        if (updated) {
-          applyPatientToForm(updated);
+        updatedPatient = await updatePatient(targetId, patientPayload);
+      }
+
+      // 2. Tìm hoặc xác định ID của MedicalRecord
+      let currentMrId = isUUID(medicalRecordData.id) ? medicalRecordData.id : null;
+      if (!currentMrId && patientData.patientCode) {
+        const records = await getMedicalRecordsByPatientCode(patientData.patientCode).catch(() => []);
+        if (Array.isArray(records) && records.length > 0 && records[0].id) {
+          currentMrId = records[0].id;
         }
       }
 
+      // 3. Cập nhật thông tin Hồ sơ bệnh án (MedicalRecord)
+      const mrPayload = {
+        patientId: targetId,
+        patientCode: patientData.patientCode,
+        dentalClinicName: medicalRecordData.dentalClinicName,
+        address: medicalRecordData.address,
+        fileName: medicalRecordData.fileName,
+        symptoms: medicalRecordData.symptoms,
+        diagnosis: medicalRecordData.diagnosis,
+        treatmentNotes: medicalRecordData.treatmentNotes,
+      };
+
+      let updatedMr = null;
+      try {
+        if (currentMrId) {
+          updatedMr = await updateMedicalRecord(currentMrId, mrPayload);
+        } else if (targetId) {
+          updatedMr = await createMedicalRecord(mrPayload);
+        }
+      } catch (mrErr) {
+        console.warn('Lỗi khi lưu medical record:', mrErr);
+      }
+
+      // 4. Đồng bộ State trực tiếp từ dữ liệu DB vừa lưu (Không gọi applyPatientToForm để tránh race condition)
+      if (updatedPatient) {
+        setPatientData((prev) => ({
+          ...prev,
+          id: updatedPatient.id || prev.id,
+          patientCode: updatedPatient.patientCode || prev.patientCode,
+          fullName: updatedPatient.fullName || prev.fullName,
+          nationality: updatedPatient.nationality || prev.nationality,
+          phone: updatedPatient.phone || updatedPatient.phoneNumber || prev.phone,
+          gender: updatedPatient.gender || prev.gender,
+          dateOfBirth: updatedPatient.dateOfBirth
+            ? String(updatedPatient.dateOfBirth).split('T')[0]
+            : prev.dateOfBirth,
+          address: updatedPatient.address || prev.address,
+          allergies: updatedPatient.allergies || '',
+          currentMedications: updatedPatient.currentMedications || '',
+          surgicalHistory: updatedPatient.surgicalHistory || '',
+          createdAt: updatedPatient.createdAt
+            ? String(updatedPatient.createdAt).split('T')[0]
+            : prev.createdAt,
+        }));
+      }
+
+      if (updatedMr) {
+        setMedicalRecordData((prev) => ({
+          ...prev,
+          id: updatedMr.id || prev.id,
+          fileName: updatedMr.fileName || prev.fileName,
+          dentalClinicName: updatedMr.dentalClinicName || prev.dentalClinicName,
+          address: updatedMr.address || prev.address,
+          symptoms: updatedMr.symptoms !== undefined ? updatedMr.symptoms : prev.symptoms,
+          diagnosis: updatedMr.diagnosis || prev.diagnosis,
+          treatmentNotes: updatedMr.treatmentNotes || prev.treatmentNotes,
+          recordDate: updatedMr.recordDate || prev.recordDate,
+        }));
+      }
+
       setIsEditing(false);
-      toast.success(`Đã cập nhật thông tin bệnh nhân ${patientData.fullName} thành công!`);
+      toast.success(`Đã cập nhật hồ sơ bệnh án thành công!`);
     } catch (err) {
-      console.error('Lỗi khi cập nhật thông tin bệnh nhân:', err);
+      console.error('Lỗi khi cập nhật thông tin hồ sơ bệnh án:', err);
       toast.error('Lỗi khi lưu thông tin bệnh nhân vào cơ sở dữ liệu!');
     } finally {
       setSaving(false);
@@ -312,15 +514,58 @@ export default function MedicalRecords() {
     return dateStr;
   };
 
+  const [navigatingExam, setNavigatingExam] = useState(false);
+
+  // Chuyển qua màn hình khám bệnh (chỉ chuyển trang, không tự ý khởi tạo ExaminationResult)
+  const handleNavigateTreatment = () => {
+    if (!hasPatientData) {
+      toast.error('Vui lòng chọn hoặc tìm kiếm bệnh nhân trước khi vào khám!');
+      return;
+    }
+
+    const currentSymptoms = patientData.symptoms || medicalRecordData?.symptoms || 'Khám răng hàm mặt định kỳ';
+    const currentMrId = medicalRecordData?.id || null;
+
+    navigate('/dentist/clinical-exam', {
+      state: {
+        patient: patientData,
+        medicalRecord: medicalRecordData,
+        patientCode: patientData.patientCode,
+        medicalRecordId: currentMrId,
+        medicalRecordCode:
+          medicalRecordData?.fileName ||
+          (currentMrId ? `HSBA-${String(currentMrId).slice(0, 8)}` : ''),
+        reason: currentSymptoms,
+        symptoms: currentSymptoms,
+        phone: patientData.phone,
+      },
+    });
+  };
+
   return (
     <div className="mx-auto max-w-[1500px] px-1 sm:px-2 space-y-4 py-1">
-      {/* Top Header Toolbar Component */}
+      {/* Top Header Toolbar Component with Dental Clinic Info & Global Search */}
       <MedicalRecordHeader
         patientName={patientData.fullName}
         patientCode={patientData.patientCode}
+        medicalRecordData={medicalRecordData}
+        setMedicalRecordData={setMedicalRecordData}
+        isEditing={isEditing}
         saving={saving}
         onSave={handleSaveProfile}
         onBack={() => navigate(-1)}
+        onNavigateTreatment={handleNavigateTreatment}
+        navigatingExam={navigatingExam}
+        phoneSearchQuery={phoneSearchQuery}
+        setPhoneSearchQuery={setPhoneSearchQuery}
+        onSearchPhone={handleSearchPhone}
+        searchingPhone={searchingPhone}
+        hasPatientData={hasPatientData}
+        patientOptions={patientOptions}
+        loadingPatientOptions={loadingPatientOptions}
+        selectedPatientId={patientData.id || patientData.patientCode}
+        onSelectPatient={handleSelectPatientFromSelectbox}
+        onClearPatient={handleClearPatient}
       />
 
       {/* Main 2-Column Grid Layout */}
@@ -330,8 +575,8 @@ export default function MedicalRecords() {
         {/* ========================================================================= */}
         <div className="lg:col-span-8 space-y-4">
           <div className="rounded-xl border border-slate-200/90 bg-white shadow-2xs overflow-hidden">
-            {/* Header section with Title & Phone Search Input */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between border-b border-slate-100 px-6 py-3.5 bg-slate-50/70 gap-3">
+            {/* Card Header section with Title and optional Clear/Change Patient button */}
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-3.5 bg-slate-50/70">
               <div className="flex items-center gap-2.5">
                 <h2 className="text-base font-extrabold text-slate-900 whitespace-nowrap tracking-tight">
                   Thông tin chung
@@ -343,165 +588,55 @@ export default function MedicalRecords() {
                 )}
               </div>
 
-              {/* Phone Search Bar Input Form */}
-              <form onSubmit={handleSearchPhone} className="flex items-center gap-2 flex-1 sm:max-w-md justify-end">
-                <div className="relative flex-1">
-                  <input
-                    type="text"
-                    value={phoneSearchQuery}
-                    onChange={(e) => setPhoneSearchQuery(e.target.value)}
-                    placeholder="Nhập số điện thoại tìm hồ sơ bệnh nhân..."
-                    className="w-full rounded-lg border border-slate-300/90 bg-white pl-8 pr-7 py-1.5 text-xs text-slate-900 font-medium focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none shadow-2xs transition-all"
-                  />
-                  <Phone size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-teal-700" />
-                  {phoneSearchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setPhoneSearchQuery('')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                    >
-                      <X size={13} />
-                    </button>
-                  )}
-                </div>
+              {hasPatientData && (
                 <button
-                  type="submit"
-                  disabled={searchingPhone}
-                  className="flex items-center gap-1.5 rounded-lg bg-teal-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-teal-800 disabled:opacity-50 transition-all whitespace-nowrap cursor-pointer"
-                  title="Tìm kiếm hồ sơ bệnh nhân theo số điện thoại"
+                  type="button"
+                  onClick={handleClearPatient}
+                  className="text-xs text-slate-500 hover:text-rose-600 transition-colors flex items-center gap-1 font-semibold cursor-pointer"
+                  title="Đóng hồ sơ bệnh án hiện tại để tìm bệnh nhân khác"
                 >
-                  <Search size={13} />
-                  <span>{searchingPhone ? 'Đang tìm...' : 'Tìm kiếm SĐT'}</span>
+                  <X size={14} />
+                  <span>Đổi bệnh nhân khác</span>
                 </button>
-              </form>
+              )}
             </div>
 
-            {/* TOP NAVIGATION TAB TOOLBAR */}
-            <div className="flex border-b border-slate-200/80 bg-slate-50/50 px-6 pt-3 pb-1 gap-2 text-xs font-bold overflow-x-auto">
-              <button
-                type="button"
-                onClick={() => setActiveToolbarTab('GENERAL')}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-t-lg border-b-2 transition-all whitespace-nowrap cursor-pointer ${
-                  activeToolbarTab === 'GENERAL'
-                    ? 'border-teal-700 text-teal-800 bg-white shadow-2xs font-extrabold'
-                    : 'border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-100/60'
-                }`}
-              >
-                <User size={15} />
-                <span>Thông tin chung</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => navigate('/dentist/clinical-exam', { state: { patient: patientData } })}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-t-lg border-b-2 border-transparent text-slate-600 hover:text-teal-900 hover:bg-slate-100/60 transition-all whitespace-nowrap cursor-pointer"
-              >
-                <Stethoscope size={15} className="text-teal-700" />
-                <span>Khám và chẩn đoán &rarr;</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveToolbarTab('PRESCRIPTION')}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-t-lg border-b-2 transition-all whitespace-nowrap cursor-pointer ${
-                  activeToolbarTab === 'PRESCRIPTION'
-                    ? 'border-teal-700 text-teal-800 bg-white shadow-2xs font-extrabold'
-                    : 'border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-100/60'
-                }`}
-              >
-                <Edit2 size={15} />
-                <span>Chỉ định</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveToolbarTab('IMAGES')}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-t-lg border-b-2 transition-all whitespace-nowrap cursor-pointer ${
-                  activeToolbarTab === 'IMAGES'
-                    ? 'border-teal-700 text-teal-800 bg-white shadow-2xs font-extrabold'
-                    : 'border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-100/60'
-                }`}
-              >
-                <ImageIcon size={15} />
-                <span>Hình ảnh</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveToolbarTab('DOCS')}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-t-lg border-b-2 transition-all whitespace-nowrap cursor-pointer ${
-                  activeToolbarTab === 'DOCS'
-                    ? 'border-teal-700 text-teal-800 bg-white shadow-2xs font-extrabold'
-                    : 'border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-100/60'
-                }`}
-              >
-                <FileText size={15} />
-                <span>Tài liệu</span>
-              </button>
-            </div>
-
-            {/* TAB CONTENT: THÔNG TIN CHUNG */}
-            {activeToolbarTab === 'GENERAL' && (
+            {/* THÔNG TIN CHUNG: RENDER FORM KHI ĐÃ CÓ DỮ LIỆU, HOẶC EMPTY STATE KHI CHƯA CÓ DỮ LIỆU */}
+            {hasPatientData ? (
               <PatientGeneralInfoForm
                 patientData={patientData}
                 setPatientData={setPatientData}
+                medicalRecordData={medicalRecordData}
+                setMedicalRecordData={setMedicalRecordData}
                 systemicDiseases={systemicDiseases}
                 handleToggleDisease={handleToggleDisease}
                 isEditing={isEditing}
                 onToggleEdit={() => setIsEditing(!isEditing)}
+                onNavigateTreatment={handleNavigateTreatment}
+                navigatingExam={navigatingExam}
               />
-            )}
-
-            {/* TAB CONTENT: KHÁM VÀ ĐIỀU TRỊ */}
-            {activeToolbarTab === 'EXAM' && (
-              <div className="p-6 space-y-3 text-xs">
-                <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
-                  <Stethoscope className="text-teal-700" size={17} /> Lịch Sử Khám Lâm Sàng & Điều Trị
-                </h3>
-                <p className="text-slate-500">Danh sách các buổi khám, sơ đồ răng và kế hoạch điều trị của bệnh nhân.</p>
-                <div className="bg-slate-50/80 p-5 rounded-xl border border-slate-200 text-slate-600 font-medium">
-                  Chưa có hồ sơ chẩn đoán răng mới trong ngày hôm nay.
-                </div>
-              </div>
-            )}
-
-            {/* TAB CONTENT: CHỈ ĐỊNH */}
-            {activeToolbarTab === 'PRESCRIPTION' && (
-              <div className="p-6 space-y-3 text-xs">
-                <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
-                  <Edit2 className="text-teal-700" size={17} /> Danh Sách Chỉ Định & Đơn Thuốc
-                </h3>
-                <p className="text-slate-500">Các chỉ định cận lâm sàng, xét nghiệm và đơn thuốc đã kê.</p>
-                <div className="bg-slate-50/80 p-5 rounded-xl border border-slate-200 text-slate-600 font-medium">
-                  Chưa có chỉ định thuốc mới cần xử lý.
-                </div>
-              </div>
-            )}
-
-            {/* TAB CONTENT: HÌNH ẢNH */}
-            {activeToolbarTab === 'IMAGES' && (
-              <div className="p-6 space-y-3 text-xs">
-                <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
-                  <ImageIcon className="text-teal-700" size={17} /> Phim X-Quang & Hình Ảnh Nha Khoa
-                </h3>
-                <p className="text-slate-500">Hình ảnh chụp X-quang răng Panorama, Periapical và ảnh trước/sau điều trị.</p>
-                <div className="bg-slate-50/80 p-5 rounded-xl border border-slate-200 text-slate-600 font-medium">
-                  Chưa có dữ liệu phim X-quang được tải lên.
-                </div>
-              </div>
-            )}
-
-            {/* TAB CONTENT: TÀI LIỆU */}
-            {activeToolbarTab === 'DOCS' && (
-              <div className="p-6 space-y-3 text-xs">
-                <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
-                  <FileText className="text-teal-700" size={17} /> Tài Liệu & Hợp Đồng Cam Kết
-                </h3>
-                <p className="text-slate-500">Các file PDF hợp đồng điều trị niềng răng, cam kết cấy ghép Implant.</p>
-                <div className="bg-slate-50/80 p-5 rounded-xl border border-slate-200 text-slate-600 font-medium">
-                  Chưa có file tài liệu đính kèm.
-                </div>
-              </div>
+            ) : (
+              <MedicalRecordEmptyState
+                onFocusSearch={() => {
+                  const input = document.getElementById('header-phone-search-input');
+                  if (input) input.focus();
+                }}
+                onNavigatePatients={() => navigate('/dentist/patients')}
+                onLoadSample={() => {
+                  applyPatientToForm({
+                    patientCode: 'PA-234820',
+                    fullName: 'Nguyễn Anh Khôi',
+                    phone: '0369852147',
+                    gender: 'MALE',
+                    dateOfBirth: '2009-02-03',
+                    nationality: 'Việt Nam',
+                    address: 'Lê thị riêng , an thới q12',
+                    symptoms: 'Đau nhức răng hàm dưới bên phải, ê buốt khi ăn nhai',
+                  });
+                  setTreatmentRecords(SAMPLE_MEDICAL_RECORDS);
+                  toast.success('Đã tải hồ sơ bệnh án mẫu demo: Nguyễn Anh Khôi');
+                }}
+              />
             )}
           </div>
         </div>
@@ -510,7 +645,10 @@ export default function MedicalRecords() {
         {/* RIGHT COLUMN (4 cols): LỊCH SỬ ĐIỀU TRỊ (TIMELINE MEDICALRECORDS) */}
         {/* ========================================================================= */}
         <div className="lg:col-span-4">
-          <TreatmentHistoryTimeline records={SAMPLE_MEDICAL_RECORDS} />
+          <TreatmentHistoryTimeline
+            records={treatmentRecords}
+            onStartExam={hasPatientData ? handleNavigateTreatment : null}
+          />
         </div>
       </div>
 

@@ -17,8 +17,14 @@ import {
   Pill,
   Stethoscope,
   Info,
+  Building2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import {
+  DEFAULT_DENTAL_CLINIC_NAME,
+  DEFAULT_DENTAL_CLINIC_ADDRESS,
+  DEFAULT_RECORD_FILE_NAME,
+} from '../../features/medical-record/medicalRecordHelpers';
 
 const COMMON_SYSTEMIC_DISEASES = [
   'Huyết áp cao',
@@ -64,6 +70,9 @@ export default function PatientModal({
     currentMedications: '',
     surgicalHistory: '',
     notes: '',
+    dentalClinicName: DEFAULT_DENTAL_CLINIC_NAME,
+    clinicAddress: DEFAULT_DENTAL_CLINIC_ADDRESS,
+    fileName: DEFAULT_RECORD_FILE_NAME,
   });
 
   useEffect(() => {
@@ -84,6 +93,9 @@ export default function PatientModal({
         currentMedications: payload.currentMedications || '',
         surgicalHistory: payload.surgicalHistory || payload.pastSurgeries || '',
         notes: payload.notes || '',
+        dentalClinicName: payload.dentalClinicName || DEFAULT_DENTAL_CLINIC_NAME,
+        clinicAddress: payload.clinicAddress || DEFAULT_DENTAL_CLINIC_ADDRESS,
+        fileName: payload.fileName || DEFAULT_RECORD_FILE_NAME,
       });
     } else if (type === 'CREATE') {
       setFormData({
@@ -98,6 +110,9 @@ export default function PatientModal({
         currentMedications: '',
         surgicalHistory: '',
         notes: '',
+        dentalClinicName: DEFAULT_DENTAL_CLINIC_NAME,
+        clinicAddress: DEFAULT_DENTAL_CLINIC_ADDRESS,
+        fileName: DEFAULT_RECORD_FILE_NAME,
       });
     }
   }, [open, type, payload]);
@@ -146,6 +161,9 @@ export default function PatientModal({
       if (onSave) {
         await onSave({
           ...formData,
+          dentalClinicName: DEFAULT_DENTAL_CLINIC_NAME,
+          clinicAddress: DEFAULT_DENTAL_CLINIC_ADDRESS,
+          fileName: DEFAULT_RECORD_FILE_NAME,
           id: payload?.id,
           patientCode: payload?.patientCode,
         });
@@ -391,6 +409,36 @@ export default function PatientModal({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[78vh] overflow-y-auto">
+          {/* Clinic Information & Medical Record Header Banner */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-gradient-to-r from-teal-50 via-slate-50 to-emerald-50/50 border border-teal-200/80 rounded-xl shadow-2xs">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-700 text-white shadow-2xs shrink-0">
+                <Building2 size={20} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-black text-teal-950 uppercase tracking-wide">
+                    {DEFAULT_DENTAL_CLINIC_NAME}
+                  </h4>
+                  <span className="text-[10px] font-extrabold text-teal-800 bg-teal-100 px-2 py-0.5 rounded-full border border-teal-200">
+                    Bệnh án điện tử
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5 pt-0.5">
+                  <MapPin size={12} className="text-rose-500 shrink-0" />
+                  <span>{DEFAULT_DENTAL_CLINIC_ADDRESS}</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex sm:flex-col items-center sm:items-end justify-between border-t sm:border-t-0 pt-2 sm:pt-0 border-teal-100/80">
+              <span className="text-[11px] text-slate-400 font-semibold">Tên hồ sơ khởi tạo:</span>
+              <span className="text-xs font-bold text-teal-900 bg-white px-2.5 py-1 rounded-md border border-teal-200 shadow-2xs">
+                {DEFAULT_RECORD_FILE_NAME}
+              </span>
+            </div>
+          </div>
+
           {/* Personal Info Grid */}
           <div className="space-y-4">
             <h4 className="text-xs font-bold text-teal-800 uppercase tracking-wide flex items-center gap-1.5">

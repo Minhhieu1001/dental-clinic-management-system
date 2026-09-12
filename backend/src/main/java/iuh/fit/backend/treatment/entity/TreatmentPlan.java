@@ -1,5 +1,6 @@
 package iuh.fit.backend.treatment.entity;
 
+import iuh.fit.backend.medicalrecord.entity.ExaminationResult;
 import iuh.fit.backend.medicalrecord.entity.TreatmentHistorys;
 import iuh.fit.backend.patient.entity.Patient;
 import iuh.fit.backend.user.entity.Dentist;
@@ -31,6 +32,10 @@ public class TreatmentPlan {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dentist_id")
     private Dentist dentist;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "examination_result_id", unique = true)
+    private ExaminationResult examinationResult;
 
     @Column(length = 255)
     private String planName;

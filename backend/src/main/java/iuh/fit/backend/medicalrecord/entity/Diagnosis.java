@@ -21,8 +21,8 @@ public class Diagnosis {
     @Column(length = 255)
     private String toothPosition;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "examination_result_id", unique = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "examination_result_id")
     private ExaminationResult examinationResult;
 
     @Column(columnDefinition = "TEXT")

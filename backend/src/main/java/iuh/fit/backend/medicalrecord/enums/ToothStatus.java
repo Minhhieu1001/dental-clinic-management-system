@@ -7,5 +7,5 @@ public enum ToothStatus {
     MISSING,
     GINGIVITIS,
     ATTENTION_REQUIRE,
-    MARROW
+    ROOT_CANAL
 }
