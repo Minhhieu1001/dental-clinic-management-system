@@ -21,6 +21,11 @@ import {
   deletePatient,
 } from '../../services/patient.service';
 import PatientModal from '../../components/ui/PatientModal';
+import {
+  DEFAULT_DENTAL_CLINIC_NAME,
+  DEFAULT_DENTAL_CLINIC_ADDRESS,
+  DEFAULT_RECORD_FILE_NAME,
+} from '../medical-record/medicalRecordHelpers';
 
 // Fallback initial patient list
 const INITIAL_PATIENTS = [
@@ -179,6 +184,12 @@ export default function EmployeePatients() {
         currentMedications: formData.currentMedications,
         surgicalHistory: formData.surgicalHistory,
         notes: formData.notes,
+        // 3 biến FE: Tên cơ sở/bệnh viện, Địa chỉ bệnh viện, Tên hồ sơ
+        dentalClinicName: DEFAULT_DENTAL_CLINIC_NAME,
+        clinicAddress: DEFAULT_DENTAL_CLINIC_ADDRESS,
+        fileName: DEFAULT_RECORD_FILE_NAME,
+        // Lễ tân tạo bệnh nhân -> để trống doctorId (null)
+        doctorId: null,
       };
 
       if (modalConfig.type === 'EDIT' && formData.id) {
@@ -187,7 +198,7 @@ export default function EmployeePatients() {
       } else {
         const res = await createPatient(payloadData);
         const createdCode = res?.patientCode || res?.data?.patientCode || '';
-        toast.success(`Đã thêm thành công hồ sơ bệnh nhân ${createdCode ? `(${createdCode})` : ''}!`);
+        toast.success(`Đã thêm thành công bệnh nhân ${createdCode ? `(${createdCode})` : ''} & tự động tạo hồ sơ bệnh án!`);
       }
       await fetchPatientData();
     } catch (error) {

@@ -26,8 +26,14 @@ public class TreatmentService {
     @JoinColumn(name = "treatment_phase_id")
     private TreatmentPhase treatmentPhase;
 
+    @Column(name = "tooth_number", length = 50)
+    private String toothNumber;
+
     private Integer quantity;
 
     @Column(precision = 15, scale = 2)
     private BigDecimal price;
+
+    @Column(name = "total_amount", precision = 15, scale = 2)
+    private BigDecimal totalAmount;
 }

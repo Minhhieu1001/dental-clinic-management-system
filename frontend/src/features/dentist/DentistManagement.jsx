@@ -305,7 +305,7 @@ export default function DentistManagement() {
                                         <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Thông tin bác sĩ</th>
                                         <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Chuyên khoa</th>
                                         <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Kinh nghiệm</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Ca làm việc</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Số điện thoại</th>
                                         <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Trạng thái</th>
                                         <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Thao tác</th>
                                     </tr>
@@ -336,7 +336,6 @@ export default function DentistManagement() {
                                                                 {dentist.name}
                                                             </p>
                                                             <p className="text-xs text-slate-400 truncate">{dentist.email}</p>
-                                                            <p className="text-xs text-slate-500">{dentist.phone || '—'}</p>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -344,7 +343,7 @@ export default function DentistManagement() {
                                                     <SpecialtyBadge labels={dentist.displaySpecializations} />
                                                 </td>
                                                 <td className="px-4 py-3 text-sm text-slate-600">{dentist.displayExperience}</td>
-                                                <td className="px-4 py-3 text-sm text-slate-600">{dentist.displayShift}</td>
+                                                <td className="px-4 py-3 text-sm text-slate-600">{dentist.phone || '—'}</td>
                                                 <td className="px-4 py-3">
                                                     <DentistStatusDot status={dentist.displayStatus} compact />
                                                 </td>

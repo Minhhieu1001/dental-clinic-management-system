@@ -17,6 +17,12 @@ import {
 import toast from 'react-hot-toast';
 import { getPatients, createPatient, updatePatient } from '../../services/patient.service';
 import PatientModal from '../../components/ui/PatientModal';
+import { useAuthStore } from '../../store/authStore';
+import {
+  DEFAULT_DENTAL_CLINIC_NAME,
+  DEFAULT_DENTAL_CLINIC_ADDRESS,
+  DEFAULT_RECORD_FILE_NAME,
+} from '../medical-record/medicalRecordHelpers';
 
 // Fallback initial patient list
 const INITIAL_PATIENTS = [
@@ -142,6 +148,7 @@ export default function DentistPatients() {
 
   const handleSaveModal = async (formData) => {
     try {
+      const currentUser = useAuthStore.getState().user;
       const payloadData = {
         fullName: formData.fullName,
         phone: formData.phone,
@@ -156,6 +163,12 @@ export default function DentistPatients() {
         currentMedications: formData.currentMedications,
         surgicalHistory: formData.surgicalHistory,
         notes: formData.notes,
+        // 3 biến FE: Tên cơ sở/bệnh viện, Địa chỉ bệnh viện, Tên hồ sơ
+        dentalClinicName: DEFAULT_DENTAL_CLINIC_NAME,
+        clinicAddress: DEFAULT_DENTAL_CLINIC_ADDRESS,
+        fileName: DEFAULT_RECORD_FILE_NAME,
+        // Bác sĩ tạo bệnh nhân -> cập nhật luôn ID bác sĩ
+        doctorId: currentUser?.id || null,
       };
 
       if (modalConfig.type === 'EDIT' && formData.id) {
@@ -164,7 +177,7 @@ export default function DentistPatients() {
       } else {
         const res = await createPatient(payloadData);
         const createdCode = res?.patientCode || res?.data?.patientCode || '';
-        toast.success(`Đã thêm thành công hồ sơ bệnh nhân ${createdCode ? `(${createdCode})` : ''}!`);
+        toast.success(`Đã thêm thành công bệnh nhân ${createdCode ? `(${createdCode})` : ''} & tự động tạo hồ sơ bệnh án!`);
       }
       await fetchPatientData();
     } catch (error) {

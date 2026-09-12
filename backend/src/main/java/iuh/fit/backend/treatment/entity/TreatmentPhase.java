@@ -30,13 +30,23 @@ public class TreatmentPhase {
     @Column(length = 255)
     private String phaseOrder;
 
+    @Column(length = 255)
+    private String treatmentType;
+
     @Column(columnDefinition = "TEXT")
     private String description;
 
     @Enumerated(EnumType.STRING)
     private StatusPhase status;
 
+    @Column(name = "estimated_duration", length = 100)
+    private String estimatedDuration;
+
     @Builder.Default
     @OneToMany(mappedBy = "treatmentPhase", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<TreatmentService> treatmentServices = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "treatmentPhase", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    private List<TreatmentVisits> treatmentVisits = new ArrayList<>();
 }

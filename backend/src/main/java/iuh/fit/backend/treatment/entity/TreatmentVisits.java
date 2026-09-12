@@ -1,0 +1,50 @@
+package iuh.fit.backend.treatment.entity;
+
+import iuh.fit.backend.treatment.enums.StatusPhase;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.util.UUID;
+
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name = "treatment_visits")
+public class TreatmentVisits {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "visit_id")
+    private UUID visitId;
+
+    @Column(name = "visit_name", length = 255)
+    private String visitName;
+
+    @Column(name = "visit_order")
+    private Integer visitOrder;
+
+    @Column(name = "start_date")
+    private String startDate;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    private StatusPhase status;
+
+    @Column(name = "clinical_notes", columnDefinition = "TEXT")
+    private String clinicalNotes;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "treatment_phase_id")
+    private TreatmentPhase treatmentPhase;
+
+    public UUID getId() {
+        return visitId;
+    }
+
+    public void setId(UUID id) {
+        this.visitId = id;
+    }
+}

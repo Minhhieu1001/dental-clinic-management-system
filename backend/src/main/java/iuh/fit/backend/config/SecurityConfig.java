@@ -79,10 +79,16 @@ public class SecurityConfig {
                                 "/api/appointments/**",
                                 "/api/v1/appointments/**",
                                 "/api/v1/patients/**",
+                                "/api/v1/medical-records/**",
+                                "/api/v1/examination-results/**",
+                                "/api/v1/tooth-records/**",
+                                "/api/v1/treatment-plans/**",
                                 "/v3/api-docs/**",
-
                                 "/swagger-ui/**",
-                                "/swagger-ui.html"
+                                "/swagger-ui.html",
+                                "/version.json",
+                                "/favicon.ico",
+                                "/icon/**"
                         ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/appointmentrequest").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/dentists/**")

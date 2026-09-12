@@ -3,13 +3,15 @@ import {
   Mail,
   Calendar,
   HeartPulse,
-  Activity,
   AlertTriangle,
   Pill,
   Stethoscope,
-  Info,
+  RefreshCw,
   Edit2,
+  Activity,
+  Info,
 } from 'lucide-react';
+import { COMMON_SYMPTOMS_OPTIONS } from '../medicalRecordHelpers';
 
 const COMMON_SYSTEMIC_DISEASES = [
   'Huyết áp cao',
@@ -23,12 +25,16 @@ const COMMON_SYSTEMIC_DISEASES = [
 ];
 
 export default function PatientGeneralInfoForm({
-  patientData,
+  patientData = {},
   setPatientData,
-  systemicDiseases,
+  medicalRecordData = {},
+  setMedicalRecordData,
+  systemicDiseases = [],
   handleToggleDisease,
   isEditing,
   onToggleEdit,
+  onNavigateTreatment,
+  navigatingExam = false,
 }) {
   const calculateAge = (dob) => {
     if (!dob) return '--';
@@ -109,21 +115,36 @@ export default function PatientGeneralInfoForm({
           </div>
         </div>
 
-        {/* Chỉnh sửa button on the right side across from profile summary */}
-        {onToggleEdit && (
-          <button
-            type="button"
-            onClick={onToggleEdit}
-            className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-md transition-all shadow-xs shrink-0 cursor-pointer ${
-              isEditing
-                ? 'bg-amber-500 hover:bg-amber-600 text-white ring-2 ring-amber-300'
-                : 'bg-teal-700 hover:bg-teal-800 text-white shadow-sm'
-            }`}
-          >
-            <Edit2 size={14} />
-            <span>{isEditing ? 'Đang sửa (Hủy)' : 'Chỉnh sửa'}</span>
-          </button>
-        )}
+        {/* Action buttons on the right side: Chỉnh sửa & Vào khám */}
+        <div className="flex items-center gap-2 shrink-0">
+          {onToggleEdit && (
+            <button
+              type="button"
+              onClick={onToggleEdit}
+              className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg transition-all shadow-xs cursor-pointer ${
+                isEditing
+                  ? 'bg-amber-500 hover:bg-amber-600 text-white ring-2 ring-amber-300'
+                  : 'bg-teal-700 hover:bg-teal-800 text-white shadow-sm'
+              }`}
+            >
+              <Edit2 size={14} />
+              <span>{isEditing ? 'Đang sửa (Hủy)' : 'Chỉnh sửa'}</span>
+            </button>
+          )}
+
+          {onNavigateTreatment && (
+            <button
+              type="button"
+              disabled={navigatingExam}
+              onClick={onNavigateTreatment}
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-extrabold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all cursor-pointer disabled:opacity-50"
+              title="Chuyển sang màn hình khám bệnh & điều trị"
+            >
+              {navigatingExam ? <RefreshCw size={14} className="animate-spin" /> : <Stethoscope size={14} />}
+              <span>{navigatingExam ? 'Đang vào khám...' : 'Vào khám →'}</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Patient Fields Form Grid */}
@@ -241,6 +262,56 @@ export default function PatientGeneralInfoForm({
                 : 'bg-slate-100/80 border border-slate-200 text-slate-800 font-semibold disabled:opacity-100'
             }`}
           />
+        </div>
+
+        {/* Lý do khám bệnh / Triệu chứng ban đầu (symptoms) */}
+        <div className="pt-3 border-t border-slate-100 space-y-2">
+          <label className="block text-xs font-bold text-teal-800 uppercase tracking-wide flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <Stethoscope size={15} className="text-teal-700" />
+              Lý do khám bệnh / Triệu chứng ban đầu{' '}
+              <span className="text-[11px] font-normal text-slate-400 normal-case">(symptoms)</span>
+            </span>
+            {isEditing && (
+              <span className="text-[11px] text-teal-700 font-normal normal-case">Chọn nhanh gợi ý bên dưới</span>
+            )}
+          </label>
+          <textarea
+            rows={2}
+            disabled={!isEditing}
+            placeholder="Nhập lý do đến khám, triệu chứng bệnh nhân mô tả..."
+            value={medicalRecordData?.symptoms || ''}
+            onChange={(e) =>
+              setMedicalRecordData &&
+              setMedicalRecordData({ ...medicalRecordData, symptoms: e.target.value })
+            }
+            className={`w-full rounded px-3 py-2 text-xs font-bold transition-all ${
+              isEditing
+                ? 'bg-white border-2 border-teal-500 text-slate-900 shadow-2xs focus:outline-none'
+                : 'bg-slate-100/80 border border-slate-200 text-slate-800 font-semibold disabled:opacity-100'
+            }`}
+          />
+
+          {/* Gợi ý lý do khám phổ biến */}
+          {isEditing && (
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {COMMON_SYMPTOMS_OPTIONS.map((sym) => (
+                <button
+                  type="button"
+                  key={sym}
+                  onClick={() => {
+                    const current = medicalRecordData?.symptoms || '';
+                    const next = current ? `${current}, ${sym}` : sym;
+                    setMedicalRecordData &&
+                      setMedicalRecordData({ ...medicalRecordData, symptoms: next });
+                  }}
+                  className="rounded bg-teal-50 border border-teal-200 px-2 py-0.5 text-[11px] font-medium text-teal-800 hover:bg-teal-100 transition-colors cursor-pointer"
+                >
+                  + {sym}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Section Title: Tiền sử Y tế & Bệnh lý toàn thân Checkbox Checklist */}

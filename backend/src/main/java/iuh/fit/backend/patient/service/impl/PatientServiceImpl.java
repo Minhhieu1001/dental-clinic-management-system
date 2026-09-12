@@ -2,15 +2,22 @@ package iuh.fit.backend.patient.service.impl;
 
 import iuh.fit.backend.common.exception.AppException;
 import iuh.fit.backend.common.exception.ErrorCode;
+import iuh.fit.backend.medicalrecord.entity.MedicalRecord;
+import iuh.fit.backend.medicalrecord.repository.MedicalRecordRepository;
 import iuh.fit.backend.patient.dto.PatientCreateDTO;
 import iuh.fit.backend.patient.dto.PatientDTO;
 import iuh.fit.backend.patient.entity.Patient;
 import iuh.fit.backend.patient.repository.PatientRepository;
 import iuh.fit.backend.patient.service.PatientService;
+import iuh.fit.backend.user.entity.Dentist;
 import iuh.fit.backend.user.entity.User;
+import iuh.fit.backend.user.enums.Role;
+import iuh.fit.backend.user.repository.DentistRepository;
 import iuh.fit.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +34,8 @@ public class PatientServiceImpl implements PatientService {
 
     private final PatientRepository patientRepository;
     private final UserRepository userRepository;
+    private final DentistRepository dentistRepository;
+    private final MedicalRecordRepository medicalRecordRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -78,6 +87,76 @@ public class PatientServiceImpl implements PatientService {
 
         patient = patientRepository.save(patient);
         log.info("Successfully created patient: {} ({})", patient.getFullName(), patient.getPatientCode());
+
+        // Tự động tạo hồ sơ bệnh án (MedicalRecord) mặc định cho bệnh nhân mới
+        try {
+            // Xác định bác sĩ phụ trách (Dentist):
+            // - Nếu là Lễ tân (EMPLOYEE) -> để trống doctorId (assignedDentist = null)
+            // - Nếu là Bác sĩ (DENTIST) -> cập nhật luôn ID của bác sĩ đó
+            Dentist assignedDentist = null;
+
+            // 1. Kiểm tra doctorId truyền từ FE (nếu có)
+            if (dto.getDoctorId() != null) {
+                assignedDentist = dentistRepository.findById(dto.getDoctorId())
+                        .orElseGet(() -> dentistRepository.findByUserId(dto.getDoctorId()).orElse(null));
+            }
+
+            // 2. Nếu FE không truyền doctorId, tự động phát hiện từ người dùng đăng nhập hiện tại
+            if (assignedDentist == null) {
+                try {
+                    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+                    if (auth != null && auth.getName() != null && !auth.getName().equalsIgnoreCase("anonymousUser")) {
+                        String username = auth.getName();
+                        User currentUser = userRepository.findByUsername(username)
+                                .orElseGet(() -> userRepository.findByEmail(username).orElse(null));
+                        if (currentUser != null && currentUser.getRole() == Role.DENTIST) {
+                            assignedDentist = dentistRepository.findByUserId(currentUser.getId()).orElse(null);
+                        }
+                        // Nếu là EMPLOYEE (Lễ tân) thì assignedDentist vẫn là null -> để trống doctorId
+                    }
+                } catch (Exception ex) {
+                    log.warn("Không thể xác định thông tin người dùng đang đăng nhập: {}", ex.getMessage());
+                }
+            }
+
+            // 3 biến truyền từ FE: tên bệnh viện/phòng khám, địa chỉ bệnh viện, tên hồ sơ
+            String clinicName = (dto.getDentalClinicName() != null && !dto.getDentalClinicName().trim().isEmpty())
+                    ? dto.getDentalClinicName().trim()
+                    : "Nha Khoa Quốc Tế Crown Dental";
+
+            String clinicAddress = (dto.getClinicAddress() != null && !dto.getClinicAddress().trim().isEmpty())
+                    ? dto.getClinicAddress().trim()
+                    : (patient.getAddress() != null && !patient.getAddress().trim().isEmpty()
+                            ? patient.getAddress().trim()
+                            : "12 Nguyễn Văn Bảo, Phường 4, Quận Gò Vấp, TP. Hồ Chí Minh");
+
+            String defaultFileName = "Hồ sơ điện tử răng hàm mặt";
+
+            String fileName = (dto.getFileName() != null && !dto.getFileName().trim().isEmpty())
+                    ? dto.getFileName().trim()
+                    : defaultFileName;
+
+            String symptoms = (dto.getNotes() != null && !dto.getNotes().trim().isEmpty())
+                    ? dto.getNotes().trim()
+                    : "Khám sức khỏe răng miệng ban đầu";
+
+            MedicalRecord medicalRecord = MedicalRecord.builder()
+                    .patient(patient)
+                    .dentist(assignedDentist)
+                    .fileName(fileName)
+                    .dentalClinicName(clinicName)
+                    .address(clinicAddress)
+                    .symptoms(symptoms)
+                    .recordDate(LocalDateTime.now())
+                    .build();
+
+            medicalRecordRepository.save(medicalRecord);
+            log.info("Successfully created default medical record for patient: {} (File: {}, Dentist: {})",
+                    patient.getPatientCode(), fileName, (assignedDentist != null ? assignedDentist.getId() : "NONE (Receptionist)"));
+        } catch (Exception e) {
+            log.error("Failed to create default medical record for patient {}: {}", patient.getPatientCode(), e.getMessage(), e);
+        }
+
         return mapToDTO(patient);
     }
 

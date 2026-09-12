@@ -1,5 +1,6 @@
 package iuh.fit.backend.medicalrecord.entity;
 
+import iuh.fit.backend.treatment.entity.TreatmentPlan;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -29,12 +30,16 @@ public class ExaminationResult {
 
     private LocalDateTime examinationDate;
 
-    @OneToOne(mappedBy = "examinationResult", fetch = FetchType.LAZY,
-            cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    private Diagnosis diagnosis;
+    @Builder.Default
+    @OneToMany(mappedBy = "examinationResult", fetch = FetchType.LAZY,
+            cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Diagnosis> diagnoses = new ArrayList<>();
 
     @Builder.Default
     @OneToMany(mappedBy = "examinationResult", fetch = FetchType.LAZY,
             cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    private List<Tooth_Record> toothRecords = new ArrayList<>();
+    private List<ToothRecord> toothRecords = new ArrayList<>();
+
+    @OneToOne(mappedBy = "examinationResult", fetch = FetchType.LAZY)
+    private TreatmentPlan treatmentPlan;
 }

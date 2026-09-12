@@ -4,5 +4,9 @@ public enum CariesLocation {
     OCCLUSAL,
     MESIAL,
     DISTAL,
-    BUCCAL
+    BUCCAL,
+    LINGUAL,
+    PALATAL,
+    CERVICAL,
+    WHOLE_CROWN
 }

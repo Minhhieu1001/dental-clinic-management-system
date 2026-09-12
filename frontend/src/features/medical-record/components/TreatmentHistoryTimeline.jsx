@@ -1,7 +1,14 @@
-import { Clock, CalendarCheck, Stethoscope, ChevronRight, Sparkles } from 'lucide-react';
+import {
+  Clock,
+  CalendarCheck,
+  Stethoscope,
+  ChevronRight,
+  ClipboardList,
+  Sparkles,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 
-export default function TreatmentHistoryTimeline({ records = [] }) {
+export default function TreatmentHistoryTimeline({ records = [], onStartExam }) {
   const formatDateDisplay = (dateStr) => {
     if (!dateStr) return '';
     const clean = dateStr.split('T')[0];
@@ -27,28 +34,55 @@ export default function TreatmentHistoryTimeline({ records = [] }) {
             <CalendarCheck size={16} />
           </div>
           <h2 className="text-base font-extrabold text-slate-900 tracking-tight">Lịch Sử Điều Trị</h2>
-          <span className="rounded-full bg-teal-100 px-2 py-0.5 text-[11px] font-extrabold text-teal-800">
+          <span
+            className={`rounded-full px-2 py-0.5 text-[11px] font-extrabold ${
+              records.length > 0 ? 'bg-teal-100 text-teal-800' : 'bg-slate-100 text-slate-500'
+            }`}
+          >
             {records.length}
           </span>
         </div>
-        <button
-          type="button"
-          onClick={() => toast.info('Đang tải toàn bộ lịch sử bệnh án')}
-          className="text-xs font-bold text-teal-700 hover:text-teal-900 hover:underline cursor-pointer transition-colors flex items-center gap-0.5"
-        >
-          <span>Xem tất cả</span>
-          <ChevronRight size={13} />
-        </button>
+        {records.length > 0 && (
+          <button
+            type="button"
+            onClick={() => toast.info('Đang tải toàn bộ lịch sử bệnh án')}
+            className="text-xs font-bold text-teal-700 hover:text-teal-900 hover:underline cursor-pointer transition-colors flex items-center gap-0.5"
+          >
+            <span>Xem tất cả</span>
+            <ChevronRight size={13} />
+          </button>
+        )}
       </div>
 
-      {/* Vertical Timeline List */}
-      <div className="relative pl-6 space-y-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-gradient-to-b before:from-teal-600 before:via-slate-200 before:to-slate-100">
-        {records.length === 0 ? (
-          <div className="text-xs text-slate-500 py-6 italic text-center bg-slate-50/60 rounded-xl border border-dashed border-slate-200">
-            Chưa có lịch sử khám & điều trị trước đây.
+      {/* When Empty: Dedicated Beautiful Empty State */}
+      {records.length === 0 ? (
+        <div className="flex flex-col items-center justify-center text-center p-8 space-y-3 bg-gradient-to-b from-slate-50/70 via-slate-50/30 to-white rounded-2xl border border-dashed border-slate-200/90 shadow-2xs">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-teal-50 text-teal-700 border border-teal-100 shadow-2xs">
+            <ClipboardList size={30} className="stroke-[1.6]" />
           </div>
-        ) : (
-          records.map((rec) => {
+          <div className="space-y-1 max-w-xs">
+            <h4 className="text-sm font-extrabold text-slate-800 tracking-tight">
+              Chưa có ca điều trị nào
+            </h4>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Bệnh nhân chưa có lịch sử khám chữa răng hoặc thủ thuật nha khoa nào tại phòng khám.
+            </p>
+          </div>
+          {onStartExam && (
+            <button
+              type="button"
+              onClick={onStartExam}
+              className="mt-1 flex items-center gap-1.5 rounded-lg bg-teal-700 hover:bg-teal-800 text-white px-3.5 py-1.5 text-xs font-bold shadow-2xs transition-all cursor-pointer"
+            >
+              <Stethoscope size={13} />
+              <span>Bắt đầu phiên khám mới &rarr;</span>
+            </button>
+          )}
+        </div>
+      ) : (
+        /* Vertical Timeline List when records exist */
+        <div className="relative pl-6 space-y-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-gradient-to-b before:from-teal-600 before:via-slate-200 before:to-slate-100">
+          {records.map((rec) => {
             const isCompleted = rec.status === 'COMPLETED';
 
             return (
@@ -105,9 +139,9 @@ export default function TreatmentHistoryTimeline({ records = [] }) {
                 </div>
               </div>
             );
-          })
-        )}
-      </div>
+          })}
+        </div>
+      )}
     </div>
   );
 }
