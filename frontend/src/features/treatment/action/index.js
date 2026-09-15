@@ -1,4 +1,16 @@
 export { AddServiceModal } from './AddServiceModal';
 export { TreatmentVisitModal } from './TreatmentVisitModal';
+export { CreatePlanModal } from './CreatePlanModal';
+export { PhaseModal } from './PhaseModal';
+export { PhaseDetailModal } from './PhaseDetailModal';
+export { DiagnosisModal } from './DiagnosisModal';
+export { default as DiagnosisModalDefault } from './DiagnosisModal';
+export { default as CreateTreatmentSessionModal } from './CreateTreatmentSessionModal';
 export { default as AddServiceModalDefault } from './AddServiceModal';
 export { default as TreatmentVisitModalDefault } from './TreatmentVisitModal';
+export { default as CreatePlanModalDefault } from './CreatePlanModal';
+export { default as PhaseModalDefault } from './PhaseModal';
+export { default as PhaseDetailModalDefault } from './PhaseDetailModal';
+export { default as CreateTreatmentSessionModalDefault } from './CreateTreatmentSessionModal';
+export { ConfirmSaveDiagnosisModal } from './ConfirmSaveDiagnosisModal';
+export { default as ConfirmSaveDiagnosisModalDefault } from './ConfirmSaveDiagnosisModal';

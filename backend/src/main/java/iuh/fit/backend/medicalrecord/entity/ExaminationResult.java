@@ -25,10 +25,18 @@ public class ExaminationResult {
     @JoinColumn(name = "medical_record_id")
     private MedicalRecord medicalRecord;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "dentist_id")
+    private iuh.fit.backend.user.entity.Dentist dentist;
+
     @Column(columnDefinition = "TEXT")
     private String chiefComplaint;
 
     private LocalDateTime examinationDate;
+
+    @Builder.Default
+    @Column(name = "disabled")
+    private Boolean disabled = true;
 
     @Builder.Default
     @OneToMany(mappedBy = "examinationResult", fetch = FetchType.LAZY,

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
@@ -18,6 +18,7 @@ import {
   getExaminationResultById,
 } from '../../services/examinationResult.service';
 import { useAuth } from '../../hooks/useAuth';
+import { getDentistsList } from '../../services/dentist.service';
 import {
   createToothRecord,
   batchSaveToothRecords,
@@ -180,19 +181,56 @@ export function ClinicalExamProvider({ children }) {
   });
 
   const { user } = useAuth();
-  const currentDoctorName = user?.fullName || user?.name || 'BS. Nguyễn Trần Phúc Đại';
-  const [treatingDoctor, setTreatingDoctor] = useState(currentDoctorName);
+  const [resolvedDoctorId, setResolvedDoctorId] = useState(user?.dentistId || user?.id || null);
+  const [treatingDoctor, setTreatingDoctor] = useState(user?.fullName || user?.name || 'BS. Nguyễn Trần Phúc Đại');
 
   useEffect(() => {
-    if (user?.fullName || user?.name) {
-      setTreatingDoctor(user.fullName || user.name);
+    let isMounted = true;
+    if (user?.id) {
+      getDentistsList()
+        .then((res) => {
+          if (!isMounted) return;
+          const list = Array.isArray(res) ? res : res?.data || [];
+          const currentDentist = list.find(
+            (d) =>
+              String(d.userId) === String(user.id) ||
+              String(d.user?.id) === String(user.id) ||
+              String(d.id) === String(user.id)
+          );
+          if (currentDentist) {
+            setResolvedDoctorId(currentDentist.id);
+            if (currentDentist.name || currentDentist.fullName) {
+              setTreatingDoctor(currentDentist.name || currentDentist.fullName);
+            }
+          } else {
+            setResolvedDoctorId(user.id);
+            if (user.fullName || user.username) {
+              setTreatingDoctor(user.fullName || user.username);
+            }
+          }
+        })
+        .catch(() => {
+          if (isMounted) {
+            setResolvedDoctorId(user.id);
+          }
+        });
     }
+    return () => {
+      isMounted = false;
+    };
   }, [user]);
+
+  const currentDoctorId = resolvedDoctorId || user?.dentistId || user?.id || null;
 
   // Quản lý mở/đóng Modal xác nhận khởi tạo đợt điều trị mới
   const [createSessionModalOpen, setCreateSessionModalOpen] = useState(false);
   const openCreateSessionModal = () => setCreateSessionModalOpen(true);
   const closeCreateSessionModal = () => setCreateSessionModalOpen(false);
+
+  // Quản lý mở/đóng Modal xác nhận lưu chẩn đoán & khóa đợt khám (hoặc cảnh báo chưa có chẩn đoán)
+  const [confirmSaveModalOpen, setConfirmSaveModalOpen] = useState(false);
+  const openConfirmSaveModal = () => setConfirmSaveModalOpen(true);
+  const closeConfirmSaveModal = () => setConfirmSaveModalOpen(false);
 
   const [isSavingDiagnosis, setIsSavingDiagnosis] = useState(false);
 
@@ -378,18 +416,22 @@ export function ClinicalExamProvider({ children }) {
           const dateObj = exam.examinationDate ? new Date(exam.examinationDate) : new Date();
           const dateDisplay = dateObj.toLocaleDateString('vi-VN');
           const isCurrent = index === 0;
+          // QUAN TRỌNG: Chỉ khóa khi exam.disabled === false. Loại bỏ hoàn toàn logic ép xem theo !isCurrent.
+          const isLocked = exam.disabled === false || exam.disabled === 'false';
           const diagText = exam.diagnosis?.primaryDiagnosis || exam.chiefComplaint || 'Thăm khám răng hàm mặt';
           const orderNum = totalExams - index;
 
           return {
             id: String(exam.id),
-            label: isCurrent ? `Đợt ${orderNum} (Hiện tại)` : `Đợt ${orderNum}`,
+            label: `Đợt ${orderNum}`,
             date: dateDisplay,
             recordDate: exam.examinationDate,
             diagnosis: diagText,
             symptoms: exam.chiefComplaint || 'Khám răng hàm mặt',
             dentistName: treatingDoctor,
             isCurrent: isCurrent,
+            isLocked: isLocked,
+            disabled: exam.disabled,
             isRealDb: true,
             medicalRecord: fetchedRecord,
             examinationResultId: String(exam.id),
@@ -422,13 +464,21 @@ export function ClinicalExamProvider({ children }) {
           }
 
           setSelectedSessionId(String(activeSession.id));
-          setIsHistoricalSession(!activeSession.isCurrent);
+          const isSessionLocked =
+            activeSession.disabled === false ||
+            activeSession.disabled === 'false' ||
+            activeSession.examinationResult?.disabled === false ||
+            activeSession.examinationResult?.disabled === 'false';
+          setIsHistoricalSession(isSessionLocked);
           setExaminationResultId(activeSession.examinationResultId ? String(activeSession.examinationResultId) : null);
 
           if (activeSession.examinationResult) {
             setExaminationResult(activeSession.examinationResult);
             if (activeSession.examinationResult.chiefComplaint) {
               setExamReason(activeSession.examinationResult.chiefComplaint);
+            }
+            if (activeSession.examinationResult.dentistName) {
+              setTreatingDoctor(activeSession.examinationResult.dentistName);
             }
             if (activeSession.examinationResult.diagnosis) {
               const diag = activeSession.examinationResult.diagnosis;
@@ -458,17 +508,30 @@ export function ClinicalExamProvider({ children }) {
         setLoadingPatient(false);
       }
     },
-    [treatingDoctor, fetchToothRecords]
+    [fetchToothRecords]
   );
+
+  const initialLoadDoneRef = useRef(false);
+  const prevLocationKeyRef = useRef(location.key);
+
+  useEffect(() => {
+    if (prevLocationKeyRef.current !== location.key) {
+      prevLocationKeyRef.current = location.key;
+      initialLoadDoneRef.current = false;
+    }
+  }, [location.key]);
 
   // Tải dữ liệu ban đầu nếu được truyền qua location.state
   useEffect(() => {
+    if (initialLoadDoneRef.current) return;
+
     const passedPatient = location.state?.patient;
     const pCode = location.state?.patientCode || passedPatient?.patientCode;
     const mrId = location.state?.medicalRecordId || location.state?.medicalRecord?.id;
     const passedExamId = location.state?.examinationResultId;
 
     if (passedPatient || pCode || mrId || passedExamId) {
+      initialLoadDoneRef.current = true;
       const targetP = passedPatient || (pCode ? { patientCode: pCode } : null);
       if (targetP) {
         loadPatientDataAndSessions(targetP, mrId, passedExamId);
@@ -558,7 +621,11 @@ export function ClinicalExamProvider({ children }) {
     );
     if (!session) return;
 
-    const isHistorical = !session.isCurrent;
+    const isHistorical =
+      session.disabled === false ||
+      session.disabled === 'false' ||
+      session.examinationResult?.disabled === false ||
+      session.examinationResult?.disabled === 'false';
     setIsHistoricalSession(isHistorical);
 
     // Khi chuyển sang đợt lịch sử, tắt công cụ tô màu nếu đang bật
@@ -662,50 +729,27 @@ export function ClinicalExamProvider({ children }) {
         examDateTimeIso = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
       }
 
-      // Tạo ExaminationResult mới trong CSDL
+      // Tạo ExaminationResult mới trong CSDL (mới tạo: disabled = true, tức mở để khám)
       const examRes = await createExaminationResult({
         medicalRecordId: currentMrId,
+        dentistId: currentDoctorId,
         chiefComplaint: formData.chiefComplaint?.trim() || 'Khám theo dõi điều trị đợt tiếp theo',
         examinationDate: examDateTimeIso,
+        disabled: true,
       });
+
+      if (!examRes || !examRes.id) {
+        throw new Error('Máy chủ không phản hồi ID kết quả khám mới');
+      }
 
       if (assignedDoctor) {
         setTreatingDoctor(assignedDoctor);
       }
 
-      // Tải lại danh sách toàn bộ ExaminationResult của MedicalRecord từ CSDL
-      const updatedExams = await getExaminationResultsByMedicalRecordId(currentMrId).catch(() => []);
+      // Tải lại toàn bộ danh sách đợt khám thật từ CSDL và chọn đợt mới vừa tạo
+      await loadPatientDataAndSessions(patient, currentMrId, String(examRes.id));
 
-      // LUÔN ĐẢM BẢO examRes ĐỨNG Ở VỊ TRÍ ĐẦU TIÊN (Index 0 - Đợt khám mới nhất hiện tại!)
-      const otherExams = updatedExams.filter((e) => String(e.id) !== String(examRes.id));
-      otherExams.sort((a, b) => new Date(b.examinationDate || 0).getTime() - new Date(a.examinationDate || 0).getTime());
-      const allSortedExams = [examRes, ...otherExams];
-
-      const totalExams = allSortedExams.length;
-      const updatedSessions = allSortedExams.map((exam, index) => {
-        const dateObj = exam.examinationDate ? new Date(exam.examinationDate) : new Date();
-        const dateDisplay = dateObj.toLocaleDateString('vi-VN');
-        const isCurrent = index === 0;
-        const diagText = exam.diagnosis?.primaryDiagnosis || exam.chiefComplaint || 'Thăm khám răng hàm mặt';
-        const orderNum = totalExams - index;
-
-        return {
-          id: String(exam.id),
-          label: isCurrent ? `Đợt ${orderNum} (Hiện tại)` : `Đợt ${orderNum}`,
-          date: dateDisplay,
-          recordDate: exam.examinationDate,
-          diagnosis: diagText,
-          symptoms: exam.chiefComplaint || 'Khám răng hàm mặt',
-          dentistName: assignedDoctor,
-          isCurrent: isCurrent,
-          isRealDb: true,
-          medicalRecord: medicalRecord,
-          examinationResultId: String(exam.id),
-          examinationResult: exam,
-        };
-      });
-
-      setTreatmentSessions(updatedSessions);
+      // Thiết lập trạng thái phiên khám mới hoàn toàn sạch sẽ
       setSelectedSessionId(String(examRes.id));
       setIsHistoricalSession(false);
       setActiveMarkingTool(null);
@@ -718,7 +762,7 @@ export function ClinicalExamProvider({ children }) {
       setDiagnosisNotes(formData.notes || '');
       setActiveTab('clinical');
 
-      // Cập nhật history state ngầm mà không kích hoạt re-render hoặc reload effect
+      // Cập nhật history state ngầm
       try {
         window.history.replaceState(
           {
@@ -976,6 +1020,7 @@ export function ClinicalExamProvider({ children }) {
         }
         const createdExam = await createExaminationResult({
           medicalRecordId: currentMrId,
+          dentistId: currentDoctorId,
           chiefComplaint: examReason || 'Khám răng hàm mặt định kỳ',
           examinationDate: new Date().toISOString(),
         });
@@ -1035,6 +1080,11 @@ export function ClinicalExamProvider({ children }) {
 
       // Bước 3: Lấy danh sách răng theo examinationResultId từ CSDL để cập nhật bảng danh sách bên dưới
       await fetchToothRecords(currentExamResultId);
+
+      // Đưa sơ đồ răng về trạng thái "Chọn & Xem răng" sau khi lưu
+      setActiveMarkingTool(null);
+      setIsMultiToothMode(false);
+      setMultiSelectedTeeth([]);
 
     } catch (error) {
       console.error('Lỗi khi lưu thông tin răng:', error);
@@ -1155,6 +1205,80 @@ export function ClinicalExamProvider({ children }) {
     }
   };
 
+  // Lưu hoặc cập nhật chẩn đoán từ Modal (hỗ trợ cả mode ADD và EDIT)
+  const handleSaveDiagnosisFromModal = async (item, mode = 'ADD') => {
+    if (isHistoricalSession) {
+      toast.error('Không thể thao tác chẩn đoán trong đợt khám lịch sử!');
+      return false;
+    }
+
+    let updatedList;
+    if (mode === 'EDIT' && item.id) {
+      updatedList = diagnosisList.map((d) => (d.id === item.id ? { ...d, ...item } : d));
+    } else {
+      const newItem = {
+        ...item,
+        id: item.id || `diag-${Date.now()}`,
+        createdAt: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      };
+      const existingIdx = diagnosisList.findIndex(
+        (d) => d.toothPosition === newItem.toothPosition && d.primaryDiagnosis === newItem.primaryDiagnosis
+      );
+      if (existingIdx >= 0) {
+        updatedList = diagnosisList.map((d, i) => (i === existingIdx ? { ...d, ...newItem, id: d.id } : d));
+      } else {
+        updatedList = [...diagnosisList, newItem];
+      }
+    }
+
+    setDiagnosisList(updatedList);
+
+    if (examinationResultId) {
+      try {
+        const allDiagnosesPayload = updatedList.map((d) => ({
+          id: d.id && !String(d.id).startsWith('diag-') ? d.id : null,
+          toothPosition: d.toothPosition || 'Toàn hàm',
+          primaryDiagnosis: d.primaryDiagnosis || d.code,
+          level: mapSeverityToLevelEnum(d.severity),
+          sourceOfInformation: Array.isArray(d.sources) ? d.sources.join(', ') : (d.sources || ''),
+          diagnosticNotes: d.notes || d.diagnosticNotes || '',
+        }));
+
+        const res = await updateExaminationResult(examinationResultId, {
+          chiefComplaint: examReason,
+          diagnoses: allDiagnosesPayload,
+        });
+
+        setTreatmentSessions((prevSessions) =>
+          prevSessions.map((s) => {
+            if (s.examinationResultId === examinationResultId || s.id === examinationResultId) {
+              return {
+                ...s,
+                examinationResult: {
+                  ...s.examinationResult,
+                  diagnoses: res?.diagnoses || allDiagnosesPayload,
+                },
+              };
+            }
+            return s;
+          })
+        );
+
+        toast.success(mode === 'EDIT' ? 'Đã cập nhật chẩn đoán thành công!' : 'Đã thêm chẩn đoán vào đợt khám thành công!');
+        return true;
+      } catch (err) {
+        console.error('Lỗi khi lưu chẩn đoán vào CSDL:', err);
+        toast.error('Không thể lưu chẩn đoán vào CSDL');
+        return false;
+      }
+    } else {
+      toast.success(mode === 'EDIT' ? 'Đã cập nhật chẩn đoán thành công!' : 'Đã thêm chẩn đoán thành công!');
+      return true;
+    }
+  };
+
+  const handleUpdateDiagnosisItem = (item) => handleSaveDiagnosisFromModal(item, 'EDIT');
+
   // Reset toàn bộ form chẩn đoán về trạng thái ban đầu
   const resetDiagnosisForm = () => {
     setDiagnosisScope('MULTI_TEETH');
@@ -1175,101 +1299,67 @@ export function ClinicalExamProvider({ children }) {
     // Không map tự động
   };
 
-  // Xác nhận và lưu chẩn đoán vào CSDL Backend cho đợt điều trị hiện tại
-  const handleConfirmDiagnosis = async () => {
+  // Bấm nút "Lưu chẩn đoán" trên giao diện: Kích hoạt kiểm tra và mở modal tương ứng
+  const handleConfirmDiagnosis = () => {
+    if (isHistoricalSession) {
+      toast.info('Đợt khám này đã được lưu và khóa kết quả trước đó!');
+      return;
+    }
+    if (!examinationResultId) {
+      toast.error('Chưa có thông tin đợt khám (ExaminationResultId) để lưu chẩn đoán!');
+      return;
+    }
+    // Mở modal: nếu diagnosisList rỗng -> hiện cảnh báo không thể lưu; nếu có -> hiện xác nhận lưu & khóa
+    setConfirmSaveModalOpen(true);
+  };
+
+  // Bác sĩ xác nhận lưu chẩn đoán trong Modal: Gọi API lưu CSDL Backend & khóa đợt khám vĩnh viễn
+  const executeSaveDiagnosisAndLock = async () => {
     try {
       if (isHistoricalSession) {
-        toast.error('Bạn đang xem lịch sử đợt khám (chế độ chỉ xem). Vui lòng chọn đợt hiện tại để lưu chẩn đoán!');
+        toast.info('Đợt khám này đã được lưu và khóa kết quả trước đó!');
         return;
       }
       if (!examinationResultId) {
         toast.error('Chưa có thông tin đợt khám (ExaminationResultId) để lưu chẩn đoán!');
         return;
       }
-
-      if (diagnosisScope === 'MULTI_TEETH' && (!selectedTeethList || selectedTeethList.length === 0)) {
-        toast.warning('Vui lòng chọn ít nhất 1 răng trên sơ đồ răng để lưu chẩn đoán!');
+      if (!diagnosisList || diagnosisList.length === 0) {
+        toast.error('Chưa có kết luận chẩn đoán nào, không thể lưu đợt khám!');
         return;
       }
 
       setIsSavingDiagnosis(true);
 
-      // Xác định chuỗi vị trí răng (nếu chọn nhiều răng thì gộp thành 1 dòng vd: R14, R23)
-      let positionText = 'Toàn hàm';
-      if (diagnosisScope === 'MULTI_TEETH') {
-        const sortedTeeth = [...selectedTeethList].sort((a, b) => a - b);
-        if (sortedTeeth.length > 0) {
-          positionText = sortedTeeth.map((n) => `R${n}`).join(', ');
-        } else {
-          positionText = `R${selectedTooth}`;
+      // Regex kiểm tra UUID hợp lệ chuẩn 36 ký tự
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+      // 1. Chuyển đổi danh sách chẩn đoán sang payload cho Backend
+      const allDiagnosesPayload = diagnosisList.map((item) => {
+        const validId = item.id && uuidRegex.test(String(item.id)) ? String(item.id) : null;
+        let srcStr = 'Khám lâm sàng';
+        if (Array.isArray(item.sources)) {
+          srcStr = item.sources.join(', ');
+        } else if (typeof item.sources === 'string' && item.sources.trim()) {
+          srcStr = item.sources;
         }
-      } else if (diagnosisScope === 'UPPER_JAW') {
-        positionText = 'Hàm trên';
-      } else if (diagnosisScope === 'LOWER_JAW') {
-        positionText = 'Hàm dưới';
-      }
 
-      const activeSources = [];
-      if (sources.clinicalExam) activeSources.push('Khám lâm sàng');
-      if (sources.xray) activeSources.push('X-quang');
-      if (sources.photos) activeSources.push('Hình ảnh');
-      if (sources.aiSuggestion) activeSources.push('AI gợi ý');
+        return {
+          id: validId,
+          toothPosition: item.toothPosition || 'Toàn hàm',
+          primaryDiagnosis: item.primaryDiagnosis || item.code || 'K02.1',
+          level: mapSeverityToLevelEnum(item.severity || item.level || severity),
+          sourceOfInformation: srcStr,
+          diagnosticNotes: item.notes || item.diagnosticNotes || diagnosisNotes || '',
+        };
+      });
 
-      const selectedIcdObj = ICD10_DIAGNOSES.find((d) => d.code === mainDiagnosis) || {
-        code: mainDiagnosis,
-        label: mainDiagnosis,
-        indication: '',
-      };
-
-      const newItem = {
-        id: `diag-${Date.now()}`,
-        scope: diagnosisScope,
-        toothPosition: positionText,
-        primaryDiagnosis: mainDiagnosis,
-        label: selectedIcdObj.label,
-        indication: selectedIcdObj.indication,
-        severity,
+      const singlePayload = allDiagnosesPayload[0] || {
+        toothPosition: 'Toàn hàm',
+        primaryDiagnosis: mainDiagnosis || 'K02.1',
         level: mapSeverityToLevelEnum(severity),
-        notes: diagnosisNotes,
-        sources: activeSources,
-        createdAt: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-      };
-
-      // Upsert vào diagnosisList thành 1 dòng duy nhất
-      let updatedList;
-      const existingIdx = diagnosisList.findIndex(
-        (d) => d.toothPosition === positionText && d.primaryDiagnosis === mainDiagnosis
-      );
-
-      if (existingIdx >= 0) {
-        updatedList = diagnosisList.map((d, i) => (i === existingIdx ? { ...d, ...newItem, id: d.id } : d));
-      } else {
-        const samePositionIdx =
-          positionText !== 'Toàn hàm'
-            ? diagnosisList.findIndex((d) => d.toothPosition === positionText)
-            : -1;
-        if (samePositionIdx >= 0) {
-          updatedList = diagnosisList.map((d, i) => (i === samePositionIdx ? { ...newItem, id: d.id } : d));
-        } else {
-          updatedList = [...diagnosisList, newItem];
-        }
-      }
-
-      const allDiagnosesPayload = updatedList.map((item) => ({
-        id: item.id && !String(item.id).startsWith('diag-') ? item.id : null,
-        toothPosition: item.toothPosition || 'Toàn hàm',
-        primaryDiagnosis: item.primaryDiagnosis || item.code || mainDiagnosis,
-        level: mapSeverityToLevelEnum(item.severity || severity),
-        sourceOfInformation: item.sources ? item.sources.join(', ') : activeSources.join(', '),
-        diagnosticNotes: item.notes || diagnosisNotes,
-      }));
-
-      const singlePayload = {
-        toothPosition: positionText,
-        primaryDiagnosis: mainDiagnosis,
-        level: mapSeverityToLevelEnum(severity),
-        sourceOfInformation: activeSources.join(', '),
-        diagnosticNotes: diagnosisNotes,
+        sourceOfInformation: 'Khám lâm sàng',
+        diagnosticNotes: diagnosisNotes || '',
       };
 
       let res;
@@ -1302,10 +1392,12 @@ export function ClinicalExamProvider({ children }) {
 
         const createdExam = await createExaminationResult({
           medicalRecordId: currentMrId,
+          dentistId: currentDoctorId,
           chiefComplaint: examReason || 'Khám răng hàm mặt định kỳ',
           examinationDate: new Date().toISOString(),
           diagnosis: singlePayload,
           diagnoses: allDiagnosesPayload,
+          disabled: false,
         });
 
         activeExamId = String(createdExam.id);
@@ -1314,13 +1406,15 @@ export function ClinicalExamProvider({ children }) {
         res = createdExam;
       } else {
         res = await updateExaminationResult(activeExamId, {
+          dentistId: currentDoctorId,
           chiefComplaint: examReason,
           diagnosis: singlePayload,
           diagnoses: allDiagnosesPayload,
+          disabled: false,
         });
       }
 
-      // Cập nhật treatmentSessions trong bộ nhớ để khi đổi session qua lại dữ liệu được giữ nguyên
+      // Cập nhật treatmentSessions trong bộ nhớ với trạng thái đã khóa (disabled = false)
       setTreatmentSessions((prevSessions) =>
         prevSessions.map((s) => {
           if (
@@ -1334,13 +1428,15 @@ export function ClinicalExamProvider({ children }) {
               id: activeExamId,
               examinationResultId: activeExamId,
               isRealDb: true,
-              diagnosis: selectedIcdObj.label || mainDiagnosis,
+              isLocked: true,
+              disabled: false,
               examinationResult: {
                 ...s.examinationResult,
                 id: activeExamId,
                 chiefComplaint: examReason,
                 diagnosis: singlePayload,
                 diagnoses: res?.diagnoses && res.diagnoses.length > 0 ? res.diagnoses : allDiagnosesPayload,
+                disabled: false,
               },
             };
           }
@@ -1348,27 +1444,28 @@ export function ClinicalExamProvider({ children }) {
         })
       );
 
+      // Chuyển ngay lập tức sang chế độ khóa chỉ xem (không cho mở lại lưu là lưu luôn)
+      setIsHistoricalSession(true);
+
       if (res?.diagnoses && res.diagnoses.length > 0) {
         setDiagnosisList(mapBackendDiagnosesToFrontend(res));
-      } else {
-        setDiagnosisList(updatedList);
       }
 
       toast.success(
-        diagnosisScope === 'FULL_MOUTH'
-          ? 'Đã xác nhận & lưu chẩn đoán TOÀN HÀM vào CSDL đợt điều trị!'
-          : `Đã xác nhận & lưu chẩn đoán cho ${positionText} vào CSDL đợt điều trị!`,
+        'Đã lưu kết luận chẩn đoán & khóa đợt khám thành công! Hồ sơ này đã được chốt và không thể chỉnh sửa lại.',
         {
-          icon: '🩺',
-          duration: 3500,
+          icon: '🔒',
+          duration: 4000,
         }
       );
 
-      // Reset form chẩn đoán về trạng thái ban đầu sau khi lưu thành công
+      // Reset form chẩn đoán và đóng modal
       resetDiagnosisForm();
+      setConfirmSaveModalOpen(false);
     } catch (err) {
-      console.error('Lỗi khi lưu chẩn đoán:', err);
-      toast.error(err.response?.data?.message || 'Không thể lưu chẩn đoán vào CSDL');
+      console.error('Lỗi khi lưu kết luận chẩn đoán và khóa đợt khám:', err);
+      const backendMsg = err.response?.data?.message || err.message;
+      toast.error(backendMsg || 'Không thể lưu chẩn đoán vào CSDL');
     } finally {
       setIsSavingDiagnosis(false);
     }
@@ -1518,6 +1615,8 @@ export function ClinicalExamProvider({ children }) {
     isSavingDiagnosis,
     handleAddDiagnosisItem,
     handleRemoveDiagnosisItem,
+    handleSaveDiagnosisFromModal,
+    handleUpdateDiagnosisItem,
     mainDiagnosis,
     setMainDiagnosis,
     subDiagnosis,
@@ -1530,7 +1629,12 @@ export function ClinicalExamProvider({ children }) {
     setSources,
     treatingDoctor,
     setTreatingDoctor,
+    confirmSaveModalOpen,
+    setConfirmSaveModalOpen,
+    openConfirmSaveModal,
+    closeConfirmSaveModal,
     handleConfirmDiagnosis,
+    executeSaveDiagnosisAndLock,
     resetDiagnosisForm,
     handleSelectDiagnosisRow,
     handleCreateTreatmentPlan,

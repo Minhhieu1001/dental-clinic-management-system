@@ -55,6 +55,10 @@ public class ToothRecordServiceImpl implements ToothRecordService {
         ExaminationResult examResult = examinationResultRepository.findById(request.getExaminationResultId())
                 .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy kết quả khám ID: " + request.getExaminationResultId()));
 
+        if (Boolean.FALSE.equals(examResult.getDisabled())) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Đợt khám này đã được xác nhận và khóa hồ sơ. Không thể thêm/sửa ghi nhận răng!");
+        }
+
         Optional<ToothRecord> existingOpt = toothRecordRepository.findByExaminationResultIdAndToothNumber(
                 request.getExaminationResultId(), request.getToothNumber()
         );
@@ -94,6 +98,10 @@ public class ToothRecordServiceImpl implements ToothRecordService {
         ToothRecord record = toothRecordRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy ghi nhận răng với ID: " + id));
 
+        if (record.getExaminationResult() != null && Boolean.FALSE.equals(record.getExaminationResult().getDisabled())) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Đợt khám này đã được xác nhận và khóa hồ sơ. Không thể chỉnh sửa ghi nhận răng!");
+        }
+
         if (request.getToothNumber() != null && !request.getToothNumber().trim().isEmpty()) {
             record.setToothNumber(request.getToothNumber().trim());
         }
@@ -129,6 +137,10 @@ public class ToothRecordServiceImpl implements ToothRecordService {
     public List<ToothRecordDTO> batchSaveToothRecords(UUID examinationResultId, List<ToothRecordRequest> requests) {
         ExaminationResult examResult = examinationResultRepository.findById(examinationResultId)
                 .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy kết quả khám ID: " + examinationResultId));
+
+        if (Boolean.FALSE.equals(examResult.getDisabled())) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Đợt khám này đã được xác nhận và khóa hồ sơ. Không thể thêm/sửa ghi nhận răng!");
+        }
 
         if (requests == null || requests.isEmpty()) {
             return new ArrayList<>();
@@ -175,6 +187,11 @@ public class ToothRecordServiceImpl implements ToothRecordService {
     public void deleteToothRecord(UUID id) {
         ToothRecord record = toothRecordRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy ghi nhận răng với ID: " + id));
+
+        if (record.getExaminationResult() != null && Boolean.FALSE.equals(record.getExaminationResult().getDisabled())) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Đợt khám này đã được xác nhận và khóa hồ sơ. Không thể xóa ghi nhận răng!");
+        }
+
         toothRecordRepository.delete(record);
         log.info("Đã xóa ghi nhận răng ID: {}", id);
     }

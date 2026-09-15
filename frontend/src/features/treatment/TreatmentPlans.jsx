@@ -30,6 +30,11 @@ import {
   X,
   RotateCcw,
   FolderOpen,
+  User,
+  Maximize2,
+  Users,
+  MapPin,
+  ChevronRight,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -38,300 +43,31 @@ import { getPatients, getPatientsByPhone, getPatientByPatientCode } from '../../
 import { getMedicalRecordsByPatientCode, getMedicalRecordsByPatientId } from '../../services/medicalRecord.service';
 import { getExaminationResultsByMedicalRecordId } from '../../services/examinationResult.service';
 import { getServices, getDentists } from '../../services/api';
+import { useAuth } from '../../hooks/useAuth';
 import {
   createTreatmentPlan,
   getTreatmentPlansByPatientId,
   getTreatmentPlanByExaminationResultId,
   updateTreatmentPlan,
 } from '../../services/treatmentPlan.service';
-import { ICD10_DIAGNOSES } from './clinicalExaminationHelpers';
+import {
+  ICD10_DIAGNOSES,
+  DEFAULT_SERVICE_CATALOG,
+  PRESET_PACKAGES,
+  STATUS_PHASE_CONFIG,
+} from './clinicalExaminationHelpers';
 import { AddServiceModal } from '../treatment/action/AddServiceModal';
 import { TreatmentVisitModal } from '../treatment/action/TreatmentVisitModal';
 import { CreatePlanModal } from './action/CreatePlanModal';
+import { PhaseModal } from './action/PhaseModal';
+import { PhaseDetailModal } from './action/PhaseDetailModal';
+import MultiplePatientsModal from '../../components/common/MultiplePatientsModal';
 import {
   NoPatientAlert,
   NoExaminationAlert,
   NoDiagnosisAlert,
   NoPlanForSessionAlert,
 } from './components/TreatmentStateAlerts';
-
-/**
- * =========================================================================
- * CẤU TRÚC ENTITY ĐÚNG THEO SƠ ĐỒ CSDL (CLASS DIAGRAM):
- *
- * 1. Treatment Plans (Thực thể cha kế hoạch điều trị):
- *    - plan_id : String
- *    - patient : Patient
- *    - dentist : Dentist
- *    - planName : String
- *    - description : String
- *    - estimated_cost : Double
- *    - start_date : LocalDateTime / String
- *    - plan_status : Boolean
- *    - created_at : LocalDateTime
- *
- * 2. Treatment Phases (Giai đoạn điều trị):
- *    - phase_id : String
- *    - treatmentPlans : TreatmentPlans
- *    - phase_name : String
- *    - phase_order : Int
- *    - description : String
- *    - status : StatusPhase (PENDING | IN_PROGRESS | COMPLETED)
- *    - estimated_duration : String
- *    - treatmentType : String
- *    - treatment_services : List<TreatmentService>
- *    - treatment_visits : List<TreatmentVisits>
- *
- * 3. treatment_services (Dịch vụ nha khoa chỉ định cho giai đoạn):
- *    - treatmentServicesId : String
- *    - service : Service (service_id, service_name, price...)
- *    - treatmentPhases : TreatmentPhases
- *    - toothNumber : String (Vị trí răng điều trị)
- *    - quantity : Int
- *    - price : Double
- *    - totalAmount : String / Double
- *
- * 4. TreatmentVisits (Các buổi điều trị / Lần hẹn thuộc giai đoạn):
- *    - visitId : String
- *    - visitName : String
- *    - visitOrder : Int
- *    - start_date : String
- *    - status : StatusPhase (PENDING | IN_PROGRESS | COMPLETED)
- *    - clinical_notes : String (Thông tin buổi đó làm gì / diễn biến thủ thuật)
- *    - treatmentPhases : Treatment Phases
- *    *LƯU Ý: Buổi điều trị chỉ ghi lại thông tin buổi đó làm gì, không chọn dịch vụ con.*
- * =========================================================================
- */
-
-// Danh mục Dịch Vụ Nha Khoa Chuẩn (Service Entity - Khớp CSDL: KHAM_DIEU_TRI, RANG_SU, NIENG_RANG, IMPLANT, TAY_TRANG)
-const DEFAULT_SERVICE_CATALOG = [
-  { service_id: 'srv-1', service_name: 'Trám răng Composite thẩm mỹ', category: 'KHAM_DIEU_TRI', unit: 'Răng', price: 400000, description: 'Trám phục hồi sâu ngà bằng Composite quang trùng hợp' },
-  { service_id: 'srv-2', service_name: 'Điều trị tủy răng (Nội nha)', category: 'KHAM_DIEU_TRI', unit: 'Răng', price: 1500000, description: 'Lấy sạch tủy viêm, tạo hình và trám bít ống tủy' },
-  { service_id: 'srv-3', service_name: 'Bọc răng sứ Zirconia cao cấp', category: 'RANG_SU', unit: 'Răng', price: 3500000, description: 'Mão toàn sứ Zirconia chịu lực cao, bảo tồn cùi răng' },
-  { service_id: 'srv-4', service_name: 'Mài cùi & Lấy dấu cùi răng kỹ thuật số', category: 'RANG_SU', unit: 'Răng', price: 500000, description: 'Quét dấu quang học 3D thiết kế mão sứ chính xác' },
-  { service_id: 'srv-5', service_name: 'Cạo vôi răng & Đánh bóng toàn hàm', category: 'KHAM_DIEU_TRI', unit: 'Hàm', price: 300000, description: 'Làm sạch cao răng trên và dưới nướu, đánh bóng men răng' },
-  { service_id: 'srv-6', service_name: 'Tiểu phẫu nhổ răng khôn mọc lệch (R8)', category: 'KHAM_DIEU_TRI', unit: 'Răng', price: 1200000, description: 'Nhổ răng khôn ngầm, kẹt xương bằng máy rung siêu âm Piezotome' },
-  { service_id: 'srv-7', service_name: 'Cấy ghép Implant Straumann Thụy Sĩ', category: 'IMPLANT', unit: 'Trụ', price: 18000000, description: 'Cấy trụ Implant phục hồi răng mất vĩnh viễn' },
-  { service_id: 'srv-8', service_name: 'Tẩy trắng răng Laser Whitening', category: 'TAY_TRANG', unit: 'Liệu trình', price: 2500000, description: 'Tẩy trắng công nghệ Laser tại ghế không ê buốt' },
-  { service_id: 'srv-9', service_name: 'Gắn mắc cài kim loại tự buộc 2 hàm', category: 'NIENG_RANG', unit: 'Gói 2 hàm', price: 25000000, description: 'Chỉnh nha niềng răng mắc cài tự buộc Damon' },
-  { service_id: 'srv-10', service_name: 'Trám tái tạo thân răng có chốt sợi', category: 'KHAM_DIEU_TRI', unit: 'Răng', price: 700000, description: 'Gắn chốt sợi thủy tinh tái tạo cùi răng vỡ lớn' },
-];
-
-// Gói Phác Đồ Mẫu (Chuẩn theo CSDL: Phase chứa treatment_services và treatment_visits)
-const PRESET_PACKAGES = [
-  {
-    package_id: 'pkg-1',
-    package_name: 'Gói Điều Trị Tủy & Bọc Sứ Zirconia R46',
-    description: 'Phác đồ chuẩn 3 giai đoạn điều trị bảo tồn răng 46: Diệt tủy nội nha, tái tạo cùi & lấy dấu, bọc mão sứ hoàn tất.',
-    package_price: 6400000,
-    original_price: 6900000,
-    badge: 'Khuyên dùng cho R46',
-    badgeColor: 'bg-teal-700 text-white',
-    phases: [
-      {
-        phase_name: 'Giai đoạn 1: Điều trị tủy nội nha & Chăm sóc nha chu',
-        phase_order: 1,
-        treatmentType: 'Nội nha & Nha chu',
-        estimated_duration: '7 - 10 ngày',
-        status: 'COMPLETED',
-        description: 'Lấy sạch mô tủy viêm hoại tử răng 46, tạo hình ống tủy và vệ sinh vôi răng toàn hàm',
-        treatment_services: [
-          { service_id: 'srv-2', service_name: 'Điều trị tủy răng (Nội nha)', toothNumber: 'Răng 46', quantity: 1, price: 1500000 },
-          { service_id: 'srv-5', service_name: 'Cạo vôi răng & Đánh bóng toàn hàm', toothNumber: 'Toàn hàm', quantity: 1, price: 300000 },
-        ],
-        treatment_visits: [
-          {
-            visitId: 'vis-1-1',
-            visitName: 'Buổi 1: Mở tủy, lấy tủy buồng & làm sạch nha chu',
-            visitOrder: 1,
-            start_date: '2026-09-01',
-            status: 'COMPLETED',
-            clinical_notes: 'Gây tê tại chỗ Lidocaine 2%, mở tủy buồng R46, đo chiều dài làm việc các ống tủy bằng máy Apex locator. Bơm rửa dung dịch NaOCl 2.5%, đặt thuốc sát khuẩn Ca(OH)2 và trám tạm Cavit. Tiến hành cạo vôi răng toàn hàm.',
-          },
-          {
-            visitId: 'vis-1-2',
-            visitName: 'Buổi 2: Tạo hình ống tủy & Trám bít tủy vĩnh viễn',
-            visitOrder: 2,
-            start_date: '2026-09-06',
-            status: 'COMPLETED',
-            clinical_notes: 'Bệnh nhân hết triệu chứng đau gõ. Tháo chất trám tạm, nong rửa sạch hệ thống ống tủy. Thử cone Gutta Percha chính, chụp phim X-quang kiểm tra độ khít sát chóp. Trám bít ống tủy vĩnh viễn bằng lèn dọc nhiệt Gutta Percha và sealer resin.',
-          },
-        ],
-      },
-      {
-        phase_name: 'Giai đoạn 2: Tái tạo cùi răng & Mài lấy dấu quét 3D',
-        phase_order: 2,
-        treatmentType: 'Phục hình sứ',
-        estimated_duration: '3 - 5 ngày',
-        status: 'IN_PROGRESS',
-        description: 'Đặt chốt sợi gia cố thân răng và mài cùi quét dấu kỹ thuật số gửi Labo',
-        treatment_services: [
-          { service_id: 'srv-10', service_name: 'Trám tái tạo thân răng có chốt sợi', toothNumber: 'Răng 46', quantity: 1, price: 700000 },
-          { service_id: 'srv-4', service_name: 'Mài cùi & Lấy dấu cùi răng kỹ thuật số', toothNumber: 'Răng 46', quantity: 1, price: 500000 },
-        ],
-        treatment_visits: [
-          {
-            visitId: 'vis-2-1',
-            visitName: 'Buổi 1: Gắn chốt sợi, mài cùi & Quét dấu scan 3D',
-            visitOrder: 1,
-            start_date: '2026-09-12',
-            status: 'IN_PROGRESS',
-            clinical_notes: 'Chuẩn bị ống mang chốt chân xa R46, thử và gắn chốt sợi thủy tinh bằng cement dán Dual-cure. Trám tái tạo cùi răng bằng Composite đặc. Mài cùi răng đúng giải phẫu với đường hoàn tất bờ vai tròn. Quét scan 3D gửi Labo thiết kế mão Zirconia CAD/CAM. Làm và gắn mão tạm tự cứng bảo vệ cùi.',
-          },
-        ],
-      },
-      {
-        phase_name: 'Giai đoạn 3: Thử khớp & Gắn cố định mão sứ Zirconia',
-        phase_order: 3,
-        treatmentType: 'Phục hình sứ',
-        estimated_duration: '1 buổi (45 phút)',
-        status: 'PENDING',
-        description: 'Kiểm tra điểm tiếp xúc bên, khớp cắn và gắn dán vĩnh viễn mão Zirconia',
-        treatment_services: [
-          { service_id: 'srv-3', service_name: 'Bọc răng sứ Zirconia cao cấp', toothNumber: 'Răng 46', quantity: 1, price: 3500000 },
-        ],
-        treatment_visits: [
-          {
-            visitId: 'vis-3-1',
-            visitName: 'Buổi 1: Thử mão sứ Zirconia & Gắn kết dính vĩnh viễn',
-            visitOrder: 1,
-            start_date: '2026-09-16',
-            status: 'PENDING',
-            clinical_notes: 'Tháo mão tạm, làm sạch cùi răng. Thử mão Zirconia trên miệng: kiểm tra độ khít sát đường hoàn tất, điểm tiếp xúc lân cận với R45, R47 và mặt nhai ăn khớp với R16. Chỉnh cộm khớp cắn nhẹ. Gắn cố định vĩnh viễn bằng Cement Resin RelyX U200. Dặn dò bệnh nhân không ăn đồ cứng trong 24h đầu.',
-          },
-        ],
-      },
-    ],
-  },
-  {
-    package_id: 'pkg-2',
-    package_name: 'Gói Chỉnh Nha Niềng Răng Mắc Cài Damon (Trọn Gói)',
-    description: 'Kế hoạch điều trị sai khớp cắn toàn diện: Nhổ răng tạo khoảng, gắn mắc cài hai hàm và chuỗi các buổi siết dây cung định kỳ.',
-    package_price: 26200000,
-    original_price: 28500000,
-    badge: 'Lộ trình 18 tháng',
-    badgeColor: 'bg-purple-700 text-white',
-    phases: [
-      {
-        phase_name: 'Giai đoạn 1: Chuẩn bị tiền chỉnh nha & Nhổ răng khôn',
-        phase_order: 1,
-        treatmentType: 'Tiểu phẫu',
-        estimated_duration: '2 - 3 tuần',
-        status: 'COMPLETED',
-        description: 'Tiểu phẫu nhổ răng khôn mọc kẹt tạo khoảng lùi cung răng',
-        treatment_services: [
-          { service_id: 'srv-6', service_name: 'Tiểu phẫu nhổ răng khôn mọc lệch (R8)', toothNumber: 'Răng 18, 28', quantity: 2, price: 1200000 },
-        ],
-        treatment_visits: [
-          {
-            visitId: 'vis-ortho-1-1',
-            visitName: 'Buổi 1: Tiểu phẫu nhổ răng khôn R18, R28',
-            visitOrder: 1,
-            start_date: '2026-08-10',
-            status: 'COMPLETED',
-            clinical_notes: 'Sát khuẩn khoang miệng, gây tê vùng thần kinh răng trên sau. Rạch vạt niêm mạc, chia chân răng khôn bằng máy Piezotome hạn chế xâm lấn. Nhổ trọn vẹn răng R18, R28, bơm rửa nước muối sinh lý, đặt màng collagen cầm máu và khâu đóng vết thương chỉ Vicryl 4.0.',
-          },
-          {
-            visitId: 'vis-ortho-1-2',
-            visitName: 'Buổi 2: Tái khám kiểm tra lành thương & Cắt chỉ',
-            visitOrder: 2,
-            start_date: '2026-08-17',
-            status: 'COMPLETED',
-            clinical_notes: 'Vết thương nhổ răng lành thương tốt, không sưng đỏ chảy dịch. Cắt chỉ khâu, hướng dẫn vệ sinh bằng nước súc miệng Chlorohexidine 0.12%.',
-          },
-        ],
-      },
-      {
-        phase_name: 'Giai đoạn 2: Gắn khí cụ & Dàn đều răng bằng dây cung Niti',
-        phase_order: 2,
-        treatmentType: 'Chỉnh nha',
-        estimated_duration: '4 - 6 tháng',
-        status: 'IN_PROGRESS',
-        description: 'Gắn mắc cài kim loại tự buộc 2 hàm và tái khám kích hoạt dịch chuyển răng',
-        treatment_services: [
-          { service_id: 'srv-9', service_name: 'Gắn mắc cài kim loại tự buộc 2 hàm', toothNumber: 'Toàn hàm', quantity: 1, price: 25000000 },
-        ],
-        treatment_visits: [
-          {
-            visitId: 'vis-ortho-2-1',
-            visitName: 'Buổi 1: Gắn mắc cài Damon 2 hàm & Đi dây cung khởi đầu',
-            visitOrder: 1,
-            start_date: '2026-09-02',
-            status: 'COMPLETED',
-            clinical_notes: 'Làm sạch mặt ngoài men răng, etching acid phosphoric 37%, bôi keo dán Primer và gắn mắc cài Damon chuẩn trục răng. Đi dây cung tròn Niti .014 hàm trên và hàm dưới để dàn đều các răng chen chúc. Đặt sáp nha khoa hướng dẫn bệnh nhân.',
-          },
-          {
-            visitId: 'vis-ortho-2-2',
-            visitName: 'Buổi 2: Tái khám định kỳ & Nâng dây cung Niti .016',
-            visitOrder: 2,
-            start_date: '2026-10-05',
-            status: 'PENDING',
-            clinical_notes: 'Kiểm tra độ dịch chuyển răng chen chúc, kiểm tra mắc cài không bong tuột. Thay dây cung Niti .016 tiếp tục giải chen chúc và xoay trục răng.',
-          },
-        ],
-      },
-    ],
-  },
-  {
-    package_id: 'pkg-3',
-    package_name: 'Gói Trám Răng Sâu & Chăm Sóc Vệ Sinh Toàn Diện',
-    description: 'Chăm sóc nha khoa tổng quát, xử lý các lỗ sâu ngà nhẹ và làm sạch vôi răng mảng bám vi khuẩn.',
-    package_price: 1100000,
-    original_price: 1200000,
-    badge: 'Chăm sóc nhanh',
-    badgeColor: 'bg-sky-700 text-white',
-    phases: [
-      {
-        phase_name: 'Giai đoạn 1: Làm sạch cao răng & Trám phục hồi Composite',
-        phase_order: 1,
-        treatmentType: 'Tổng quát & Thẩm mỹ',
-        estimated_duration: '1 buổi (60 phút)',
-        status: 'IN_PROGRESS',
-        description: 'Cạo vôi răng toàn hàm và trám thẩm mỹ các răng sâu R46, R28',
-        treatment_services: [
-          { service_id: 'srv-5', service_name: 'Cạo vôi răng & Đánh bóng toàn hàm', toothNumber: 'Toàn hàm', quantity: 1, price: 300000 },
-          { service_id: 'srv-1', service_name: 'Trám răng Composite thẩm mỹ', toothNumber: 'Răng 46', quantity: 1, price: 400000 },
-          { service_id: 'srv-1', service_name: 'Trám răng Composite thẩm mỹ', toothNumber: 'Răng 28', quantity: 1, price: 400000 },
-        ],
-        treatment_visits: [
-          {
-            visitId: 'vis-gen-1-1',
-            visitName: 'Buổi 1: Vệ sinh răng miệng & Trám răng xoang I, II',
-            visitOrder: 1,
-            start_date: '2026-09-11',
-            status: 'IN_PROGRESS',
-            clinical_notes: 'Sử dụng đầu siêu âm lấy sạch cao răng dưới nướu và mảng bám quanh cổ răng hai hàm, đánh bóng bằng bột mịn. Nạo sạch ngà mủn sâu răng 46 và 28, cách ly cô lập nước bọt. Etching men răng 15s, quét bonding keo dán, trám từng lớp Composite quang trùng hợp và đánh bóng mặt nhai ăn khớp.',
-          },
-        ],
-      },
-    ],
-  },
-];
-
-// Helper hiển thị badge trạng thái chuẩn StatusPhase
-const STATUS_PHASE_CONFIG = {
-  PENDING: {
-    label: 'Chờ thực hiện',
-    bg: 'bg-amber-50',
-    text: 'text-amber-800',
-    border: 'border-amber-200',
-    dot: 'bg-amber-500',
-  },
-  IN_PROGRESS: {
-    label: 'Đang thực hiện',
-    bg: 'bg-blue-50',
-    text: 'text-blue-800',
-    border: 'border-blue-200',
-    dot: 'bg-blue-600',
-  },
-  COMPLETED: {
-    label: 'Đã hoàn thành',
-    bg: 'bg-emerald-50',
-    text: 'text-emerald-800',
-    border: 'border-emerald-200',
-    dot: 'bg-emerald-600',
-  },
-};
 
 export default function TreatmentPlans() {
   const location = useLocation();
@@ -395,6 +131,20 @@ export default function TreatmentPlans() {
     return dateStr;
   };
 
+  // Helper tính tuổi từ ngày sinh
+  const calculateAge = (dob) => {
+    if (!dob) return '';
+    const birthDate = new Date(dob);
+    if (isNaN(birthDate.getTime())) return '';
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age > 0 ? `${age} tuổi` : '';
+  };
+
   // 2. KẾT QUẢ CHẨN ĐOÁN NHA SĨ THEO RĂNG (Doctor Diagnoses)
   const [diagnosesList, setDiagnosesList] = useState(() => {
     if (stateData.diagnosisList && stateData.diagnosisList.length > 0) {
@@ -420,9 +170,11 @@ export default function TreatmentPlans() {
   });
 
   // 3. THÔNG TIN BẢNG `Treatment Plans` (Master Entity)
+  const { user } = useAuth();
+  const [dentistsCatalog, setDentistsCatalog] = useState([]);
   const [planId, setPlanId] = useState(() => `PLAN-${new Date().getFullYear()}${String(Date.now()).slice(-4)}`);
   const [planName, setPlanName] = useState(''); // Tên kế hoạch điều trị ban đầu ĐỂ TRỐNG theo đúng yêu cầu
-  const [dentistName, setDentistName] = useState(() => stateData.treatingDoctor || 'BS. Nguyễn Văn Tâm');
+  const [dentistName, setDentistName] = useState(() => stateData.treatingDoctor || '');
   const [planDesc, setPlanDesc] = useState(() => stateData.diagnosisNotes || '');
   const [planStatus, setPlanStatus] = useState('IN_PROGRESS'); // PENDING | IN_PROGRESS | COMPLETED
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
@@ -432,6 +184,57 @@ export default function TreatmentPlans() {
     return d.toISOString().split('T')[0];
   });
   const [discountPercent, setDiscountPercent] = useState(0);
+
+  // Tự động lấy tên bác sĩ theo tài khoản đăng nhập hiện tại
+  const loggedInDoctorName = useMemo(() => {
+    if (!user) return '';
+    if (dentistsCatalog.length > 0) {
+      const match = dentistsCatalog.find(
+        (d) =>
+          (d.userId && user.id && d.userId === user.id) ||
+          (d.id && user.id && d.id === user.id) ||
+          (d.email && user.email && d.email.toLowerCase() === user.email.toLowerCase()) ||
+          (d.name && user.username && d.name.toLowerCase().includes(user.username.toLowerCase()))
+      );
+      if (match?.name || match?.fullName) {
+        let n = match.name || match.fullName;
+        if (!/^(BS\.|ThS\.|TS\.|Dr\.)/i.test(n)) n = 'BS. ' + n;
+        return n;
+      }
+    }
+    if (user.fullName || user.name) {
+      let n = user.fullName || user.name;
+      if (!/^(BS\.|ThS\.|TS\.|Dr\.)/i.test(n)) n = 'BS. ' + n;
+      return n;
+    }
+    if (user.username) {
+      let uname = user.username;
+      if (!/^(BS\.|ThS\.|TS\.|Dr\.)/i.test(uname)) uname = 'BS. ' + uname;
+      return uname;
+    }
+    return '';
+  }, [user, dentistsCatalog]);
+
+  // Lấy ID bác sĩ theo tài khoản đăng nhập hiện tại
+  const loggedInDentistId = useMemo(() => {
+    if (!user) return null;
+    if (dentistsCatalog.length > 0) {
+      const match = dentistsCatalog.find(
+        (d) =>
+          (d.userId && user.id && String(d.userId) === String(user.id)) ||
+          (d.id && user.id && String(d.id) === String(user.id)) ||
+          (d.email && user.email && d.email.toLowerCase() === user.email.toLowerCase())
+      );
+      if (match?.id) return match.id;
+    }
+    return user.dentistId || user.id || null;
+  }, [user, dentistsCatalog]);
+
+  useEffect(() => {
+    if (loggedInDoctorName && (!dentistName || dentistName === 'BS. Nguyễn Văn Tâm')) {
+      setDentistName(loggedInDoctorName);
+    }
+  }, [loggedInDoctorName, dentistName]);
 
   // 4. CÁC GIAI ĐOẠN ĐIỀU TRỊ (`Treatment Phases`)
   // Ban đầu ĐỂ TRỐNG (0 giai đoạn) để người dùng tự tạo giai đoạn hoặc áp dụng gói gợi ý
@@ -444,13 +247,7 @@ export default function TreatmentPlans() {
   // Modal Thêm Giai Đoạn (`TreatmentPhase`)
   const [showPhaseModal, setShowPhaseModal] = useState(false);
   const [phaseModalMode, setPhaseModalMode] = useState('ADD'); // 'ADD' | 'EDIT'
-  const [editingPhaseId, setEditingPhaseId] = useState(null);
-  const [phaseFormName, setPhaseFormName] = useState('');
-  const [phaseFormOrder, setPhaseFormOrder] = useState(1);
-  const [phaseFormType, setPhaseFormType] = useState('Nội nha & Nha chu');
-  const [phaseFormDuration, setPhaseFormDuration] = useState('1 tuần');
-  const [phaseFormStatus, setPhaseFormStatus] = useState('PENDING');
-  const [phaseFormDesc, setPhaseFormDesc] = useState('');
+  const [currentPhaseData, setCurrentPhaseData] = useState(null);
 
   // Modal Chỉ Định Dịch Vụ Nha Khoa (`treatment_services`)
   const [showAddServiceModal, setShowAddServiceModal] = useState(false);
@@ -461,6 +258,67 @@ export default function TreatmentPlans() {
   const [visitModalMode, setVisitModalMode] = useState('ADD'); // 'ADD' | 'EDIT'
   const [targetPhaseIdForVisit, setTargetPhaseIdForVisit] = useState(null);
   const [currentVisitData, setCurrentVisitData] = useState(null);
+
+  // Modal Chi Tiết Giai Đoạn Toàn Màn Hình Chuẩn ERP
+  const [showPhaseDetailModal, setShowPhaseDetailModal] = useState(false);
+  const [selectedDetailPhase, setSelectedDetailPhase] = useState(null);
+
+  const handleOpenPhaseDetail = useCallback((phaseToView) => {
+    setSelectedDetailPhase(phaseToView);
+    setShowPhaseDetailModal(true);
+  }, []);
+
+  // Scroll Spy & Trạng thái tiến trình giai đoạn theo chiều dọc
+  const [activePhaseId, setActivePhaseId] = useState(null);
+
+  const phasesCompletedCount = useMemo(() => {
+    return phases.filter((p) => p.status === 'COMPLETED').length;
+  }, [phases]);
+
+  const phasesProgressPercent = useMemo(() => {
+    if (!phases || phases.length === 0) return 0;
+    return Math.round((phasesCompletedCount / phases.length) * 100);
+  }, [phases, phasesCompletedCount]);
+
+  // Observer theo dõi cuộn để tự động highlight giai đoạn tương ứng (Scroll Spy)
+  useEffect(() => {
+    if (!phases || phases.length === 0) return;
+    if (!activePhaseId && phases[0]) {
+      setActivePhaseId(String(phases[0].phase_id));
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const pId = entry.target.getAttribute('data-phase-id');
+            if (pId) setActivePhaseId(String(pId));
+          }
+        });
+      },
+      {
+        rootMargin: '-15% 0px -60% 0px',
+        threshold: 0.1,
+      }
+    );
+
+    phases.forEach((p) => {
+      const el = document.getElementById(`phase-card-${p.phase_id}`);
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, [phases, activePhaseId]);
+
+  const scrollToPhase = useCallback((phaseId) => {
+    setActivePhaseId(String(phaseId));
+    const el = document.getElementById(`phase-card-${phaseId}`);
+    if (el) {
+      const yOffset = -90;
+      const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  }, []);
+
 
   // Hàm chuyển đổi và nạp một kế hoạch điều trị cụ thể vào giao diện
   const handleSelectPlan = useCallback((planIdToSelect, list = null) => {
@@ -490,7 +348,7 @@ export default function TreatmentPlans() {
     if (foundPlan.dentistName) {
       setDentistName(foundPlan.dentistName);
     }
-    setPlanStatus(foundPlan.status ? 'IN_PROGRESS' : 'COMPLETED');
+    setPlanStatus(foundPlan.status || 'IN_PROGRESS');
     if (foundPlan.startDate) {
       setStartDate(foundPlan.startDate.split('T')[0]);
     }
@@ -522,6 +380,7 @@ export default function TreatmentPlans() {
         start_date: v.startDate ? v.startDate.split('T')[0] : new Date().toISOString().split('T')[0],
         status: v.status || 'PENDING',
         clinical_notes: v.clinicalNotes || '',
+        assigned_dentist: v.assignedDentist || '',
       })),
     }));
 
@@ -604,36 +463,116 @@ export default function TreatmentPlans() {
       }
     }
 
-    // Ưu tiên 3: Khớp theo tên đợt khám hoặc ngày khám trong planName
-    if (!matchedPlan && pList && pList.length > 0) {
-      const sessionDate = session.recordDate ? String(session.recordDate).slice(0, 10) : '';
-      matchedPlan = pList.find((pl) => {
-        const plDate = pl.startDate ? String(pl.startDate).slice(0, 10) : '';
-        const nameMatch = pl.planName && (
-          pl.planName.toLowerCase().includes(session.label.toLowerCase()) ||
-          (session.date && pl.planName.includes(session.date))
-        );
-        return (sessionDate && plDate === sessionDate) || nameMatch;
-      });
-    }
-
     if (matchedPlan) {
       handleSelectPlan(matchedPlan.id, pList);
       setHasPlanForActiveSession(true);
       toast.success(`Đã lấy ${sessionDiags.length} chẩn đoán & kế hoạch "${matchedPlan.planName}" của ${session.label}!`);
     } else {
-      // Đợt khám này chưa có kế hoạch điều trị
-      setSelectedPlanId('NEW');
-      setPlanId(`PLAN-${new Date().getFullYear()}${String(Date.now()).slice(-4)}`);
-      setPlanName(`Kế hoạch điều trị - ${session.label}`);
-      setPlanDesc(`Kế hoạch điều trị theo kết quả chẩn đoán ${session.label}. Triệu chứng/Lý do khám: ${session.chiefComplaint || 'Khám răng hàm mặt'}`);
-      setPhases([]);
+      // Đợt khám này chưa có kế hoạch điều trị -> Giữ trạng thái trống để nha sĩ tự tạo mới
+      handleSelectPlan('NEW', pList);
       setHasPlanForActiveSession(false);
     }
   }, [treatmentSessions, patientTreatmentPlans, handleSelectPlan]);
 
-  // Xử lý tạo kế hoạch điều trị mới từ Modal Lập Kế Hoạch
-  const handleCreatePlanFromModal = (newPlanData) => {
+  // ================= HÀM LƯU TRỰC TIẾP KẾ HOẠCH ĐIỀU TRỊ XUỐNG CSDL =================
+  const persistPlanChanges = async (customPhases = null, customPlanMeta = null) => {
+    let targetPlanName = (customPlanMeta?.planName ?? planName)?.trim();
+    if (!targetPlanName) {
+      targetPlanName = `Kế hoạch điều trị - ${currentSession?.label || 'Đợt khám'}`;
+      setPlanName(targetPlanName);
+    }
+
+    const targetPhases = customPhases !== null ? customPhases : phases;
+    const targetStartDate = customPlanMeta?.startDate ?? startDate;
+    const targetEndDate = customPlanMeta?.endDate ?? endDate;
+    const targetDesc = customPlanMeta?.description ?? planDesc;
+    const targetDentistName = customPlanMeta?.dentistName ?? dentistName;
+    const targetPlanStatus = customPlanMeta?.status ?? planStatus;
+
+    // Tính tổng tiền dịch vụ
+    let computedTotalCost = 0;
+    targetPhases.forEach((p) => {
+      (p.treatment_services || []).forEach((s) => {
+        computedTotalCost += (Number(s.price) || 0) * (Number(s.quantity) || 1);
+      });
+    });
+
+    const payload = {
+      patientId: patient?.id && patient.id !== 'pat-1' ? patient.id : null,
+      examinationResultId:
+        currentSession?.id && currentSession.id !== 'ALL' && !String(currentSession.id).startsWith('rec-')
+          ? currentSession.id
+          : null,
+      dentistName: targetDentistName,
+      dentistId: loggedInDentistId || null,
+      planName: targetPlanName,
+      description: targetDesc,
+      estimatedCost: computedTotalCost,
+      status: targetPlanStatus,
+      startDate: targetStartDate,
+      endDate: targetEndDate,
+      phases: targetPhases.map((phase, pIdx) => ({
+        phaseName: phase.phase_name,
+        phaseOrder: String(phase.phase_order || pIdx + 1),
+        treatmentType: phase.treatmentType || 'Tổng quát',
+        description: phase.description || '',
+        status: phase.status || 'PENDING',
+        estimatedDuration: phase.estimated_duration || '1 tuần',
+        treatmentServices: (phase.treatment_services || []).map((s) => ({
+          serviceId: s.service_id && !String(s.service_id).startsWith('srv-') ? s.service_id : null,
+          toothNumber: s.toothNumber || '',
+          quantity: Number(s.quantity) || 1,
+          price: Number(s.price) || 0,
+          totalAmount: (Number(s.price) || 0) * (Number(s.quantity) || 1),
+        })),
+        treatmentVisits: (phase.treatment_visits || []).map((v, vIdx) => ({
+          visitName: v.visitName,
+          visitOrder: Number(v.visitOrder) || vIdx + 1,
+          startDate: v.start_date,
+          status: v.status || 'PENDING',
+          clinicalNotes: v.clinical_notes || '',
+          assignedDentist: v.assigned_dentist || targetDentistName,
+        })),
+      })),
+    };
+
+    const isUpdating = selectedPlanId && selectedPlanId !== 'NEW' && String(selectedPlanId).length > 10;
+    const actionText = isUpdating ? 'Cập nhật' : 'Lưu';
+    const toastId = toast.loading(`Đang ${actionText.toLowerCase()} kế hoạch điều trị vào hệ thống...`);
+
+    try {
+      let savedPlan;
+      if (isUpdating) {
+        savedPlan = await updateTreatmentPlan(selectedPlanId, payload);
+      } else {
+        savedPlan = await createTreatmentPlan(payload);
+        if (savedPlan?.id) {
+          setSelectedPlanId(savedPlan.id);
+          setPlanId(savedPlan.id);
+        }
+      }
+      setHasPlanForActiveSession(true);
+      toast.success(`Đã ${actionText.toLowerCase()} kế hoạch "${targetPlanName}" thành công!`, {
+        id: toastId,
+        icon: '✅',
+        duration: 2500,
+      });
+      if (patient?.id) {
+        fetchPlansForPatient(patient.id);
+      }
+      return true;
+    } catch (err) {
+      console.error(`API backend treatment-plans error:`, err);
+      toast.error(`Lỗi khi ${actionText.toLowerCase()} kế hoạch: ${err?.response?.data?.message || err.message}`, {
+        id: toastId,
+        duration: 4000,
+      });
+      return false;
+    }
+  };
+
+  // Xử lý tạo kế hoạch điều trị mới từ Modal Lập Kế Hoạch & TỰ ĐỘNG LƯU TRỰC TIẾP
+  const handleCreatePlanFromModal = async (newPlanData) => {
     setPlanId(`PLAN-${new Date().getFullYear()}${String(Date.now()).slice(-4)}`);
     setPlanName(newPlanData.planName);
     if (newPlanData.dentistName) setDentistName(newPlanData.dentistName);
@@ -644,7 +583,9 @@ export default function TreatmentPlans() {
     setPhases(newPlanData.phases || []);
     setSelectedPlanId('NEW');
     setHasPlanForActiveSession(true);
-    toast.success(`Đã khởi tạo kế hoạch: "${newPlanData.planName}"! Hãy bổ sung giai đoạn & dịch vụ.`);
+
+    // Lưu trực tiếp xuống CSDL ngay lập tức!
+    await persistPlanChanges(newPlanData.phases || [], newPlanData);
   };
 
   // Tải danh sách kết quả chẩn đoán từ hồ sơ bệnh án & đợt khám của bệnh nhân
@@ -903,7 +844,7 @@ export default function TreatmentPlans() {
     getDentists()
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
-          // Sync dentists list
+          setDentistsCatalog(data);
         }
       })
       .catch(() => { });
@@ -984,83 +925,85 @@ export default function TreatmentPlans() {
   // ================= QUẢN LÝ GIAI ĐOẠN (Treatment Phase) =================
   const handleOpenAddPhase = () => {
     setPhaseModalMode('ADD');
-    setEditingPhaseId(null);
-    setPhaseFormOrder(phases.length + 1);
-    setPhaseFormName(`Giai đoạn ${phases.length + 1}: `);
-    setPhaseFormType('Nội nha & Nha chu');
-    setPhaseFormDuration('1-2 tuần');
-    setPhaseFormStatus('PENDING');
-    setPhaseFormDesc('');
+    setCurrentPhaseData({
+      phase_order: phases.length + 1,
+      phase_name: `Giai đoạn ${phases.length + 1}: `,
+      treatmentType: 'Nội nha & Nha chu',
+      estimated_duration: '1-2 tuần',
+      status: 'PENDING',
+      description: '',
+    });
     setShowPhaseModal(true);
   };
 
   const handleOpenEditPhase = (phase) => {
     setPhaseModalMode('EDIT');
-    setEditingPhaseId(phase.phase_id);
-    setPhaseFormOrder(phase.phase_order);
-    setPhaseFormName(phase.phase_name);
-    setPhaseFormType(phase.treatmentType || 'Tổng quát');
-    setPhaseFormDuration(phase.estimated_duration || '1 tuần');
-    setPhaseFormStatus(phase.status || 'PENDING');
-    setPhaseFormDesc(phase.description || '');
+    setCurrentPhaseData(phase);
     setShowPhaseModal(true);
   };
 
-  const handleSavePhaseForm = (e) => {
-    e.preventDefault();
-    if (!phaseFormName.trim()) {
-      toast.error('Vui lòng nhập tên giai đoạn điều trị!');
-      return;
-    }
-
+  const handleSavePhaseForm = async (phaseFormData) => {
+    let updatedPhases = [];
     if (phaseModalMode === 'ADD') {
+      const nextOrder = phases.length + 1;
       const newPhaseObj = {
         phase_id: `ph-${Date.now()}`,
-        phase_order: Number(phaseFormOrder) || phases.length + 1,
-        phase_name: phaseFormName,
-        treatmentType: phaseFormType,
-        estimated_duration: phaseFormDuration,
-        status: phaseFormStatus,
-        description: phaseFormDesc || 'Giai đoạn điều trị can thiệp theo phác đồ bác sĩ.',
+        phase_order: nextOrder,
+        phase_name: phaseFormData.phase_name,
+        treatmentType: phaseFormData.treatmentType,
+        estimated_duration: phaseFormData.estimated_duration,
+        status: phaseFormData.status,
+        description: phaseFormData.description || 'Giai đoạn điều trị can thiệp theo phác đồ bác sĩ.',
         treatment_services: [],
         treatment_visits: [],
       };
-      setPhases([...phases, newPhaseObj]);
-      toast.success('Đã thêm Giai đoạn điều trị mới!');
+      const newList = [...phases, newPhaseObj];
+      // Tự động đếm và gán thứ tự chuẩn 1..N liên tục
+      updatedPhases = newList.map((ph, idx) => ({
+        ...ph,
+        phase_order: idx + 1,
+      }));
     } else {
-      setPhases(
-        phases.map((ph) =>
-          ph.phase_id === editingPhaseId
-            ? {
-              ...ph,
-              phase_order: Number(phaseFormOrder) || ph.phase_order,
-              phase_name: phaseFormName,
-              treatmentType: phaseFormType,
-              estimated_duration: phaseFormDuration,
-              status: phaseFormStatus,
-              description: phaseFormDesc,
-            }
-            : ph
-        )
+      updatedPhases = phases.map((ph) =>
+        ph.phase_id === phaseFormData.phase_id
+          ? {
+            ...ph,
+            phase_name: phaseFormData.phase_name,
+            treatmentType: phaseFormData.treatmentType,
+            estimated_duration: phaseFormData.estimated_duration,
+            status: phaseFormData.status,
+            description: phaseFormData.description,
+          }
+          : ph
       );
-      toast.success('Đã cập nhật thông tin giai đoạn!');
     }
 
+    setPhases(updatedPhases);
     setShowPhaseModal(false);
+
+    // Lưu trực tiếp vào CSDL
+    await persistPlanChanges(updatedPhases);
   };
 
-  const handleTogglePhaseStatus = (phaseId, newStatus) => {
-    setPhases(
-      phases.map((ph) =>
-        ph.phase_id === phaseId ? { ...ph, status: newStatus } : ph
-      )
+  const handleTogglePhaseStatus = async (phaseId, newStatus) => {
+    const updatedPhases = phases.map((ph) =>
+      ph.phase_id === phaseId ? { ...ph, status: newStatus } : ph
     );
+    setPhases(updatedPhases);
     toast.success(`Đã chuyển trạng thái giai đoạn sang "${STATUS_PHASE_CONFIG[newStatus]?.label}"!`);
+    await persistPlanChanges(updatedPhases);
   };
 
-  const handleRemovePhase = (phaseId) => {
-    setPhases(phases.filter((ph) => ph.phase_id !== phaseId));
+  const handleRemovePhase = async (phaseId) => {
+    const remainingPhases = phases.filter((ph) => ph.phase_id !== phaseId);
+    // Tự động đếm lại và giảm thứ tự phase_order 1..N liên tục
+    const reindexedPhases = remainingPhases.map((ph, idx) => ({
+      ...ph,
+      phase_order: idx + 1,
+    }));
+    setPhases(reindexedPhases);
     toast.success('Đã xóa giai đoạn điều trị!');
+    await persistPlanChanges(reindexedPhases);
   };
 
   // ================= QUẢN LÝ DỊCH VỤ ĐIỀU TRỊ (treatment_services) =================
@@ -1069,69 +1012,69 @@ export default function TreatmentPlans() {
     setShowAddServiceModal(true);
   };
 
-  const handleAddServiceToPhase = (phaseId, serviceItems) => {
+  const handleAddServiceToPhase = async (phaseId, serviceItems) => {
     const itemsToAdd = Array.isArray(serviceItems) ? serviceItems : [serviceItems];
-    setPhases(
-      phases.map((ph) => {
-        if (ph.phase_id === phaseId) {
-          return {
-            ...ph,
-            treatment_services: [...(ph.treatment_services || []), ...itemsToAdd],
-          };
-        }
-        return ph;
-      })
-    );
+    const updatedPhases = phases.map((ph) => {
+      if (ph.phase_id === phaseId) {
+        return {
+          ...ph,
+          treatment_services: [...(ph.treatment_services || []), ...itemsToAdd],
+        };
+      }
+      return ph;
+    });
+    setPhases(updatedPhases);
+    await persistPlanChanges(updatedPhases);
   };
 
-  const handleQuantityChange = (phaseId, serviceId, newQty) => {
+  const handleQuantityChange = async (phaseId, serviceId, newQty) => {
     const qtyNum = Math.max(1, Number(newQty) || 1);
-    setPhases(
-      phases.map((ph) => {
-        if (ph.phase_id === phaseId) {
-          return {
-            ...ph,
-            treatment_services: ph.treatment_services.map((s) =>
-              s.treatmentServicesId === serviceId ? { ...s, quantity: qtyNum } : s
-            ),
-          };
-        }
-        return ph;
-      })
-    );
+    const updatedPhases = phases.map((ph) => {
+      if (ph.phase_id === phaseId) {
+        return {
+          ...ph,
+          treatment_services: ph.treatment_services.map((s) =>
+            s.treatmentServicesId === serviceId ? { ...s, quantity: qtyNum } : s
+          ),
+        };
+      }
+      return ph;
+    });
+    setPhases(updatedPhases);
+    await persistPlanChanges(updatedPhases);
   };
 
-  const handleToothNumberChange = (phaseId, serviceId, newTooth) => {
-    setPhases(
-      phases.map((ph) => {
-        if (ph.phase_id === phaseId) {
-          return {
-            ...ph,
-            treatment_services: ph.treatment_services.map((s) =>
-              s.treatmentServicesId === serviceId ? { ...s, toothNumber: newTooth } : s
-            ),
-          };
-        }
-        return ph;
-      })
-    );
+  const handleToothNumberChange = async (phaseId, serviceId, newTooth) => {
+    const updatedPhases = phases.map((ph) => {
+      if (ph.phase_id === phaseId) {
+        return {
+          ...ph,
+          treatment_services: ph.treatment_services.map((s) =>
+            s.treatmentServicesId === serviceId ? { ...s, toothNumber: newTooth } : s
+          ),
+        };
+      }
+      return ph;
+    });
+    setPhases(updatedPhases);
+    await persistPlanChanges(updatedPhases);
   };
 
-  const handleRemoveService = (phaseId, serviceId) => {
-    setPhases(
-      phases.map((ph) => {
-        if (ph.phase_id === phaseId) {
-          return {
-            ...ph,
-            treatment_services: ph.treatment_services.filter(
-              (s) => s.treatmentServicesId !== serviceId
-            ),
-          };
-        }
-        return ph;
-      })
-    );
+  const handleRemoveService = async (phaseId, serviceId) => {
+    const updatedPhases = phases.map((ph) => {
+      if (ph.phase_id === phaseId) {
+        return {
+          ...ph,
+          treatment_services: ph.treatment_services.filter(
+            (s) => s.treatmentServicesId !== serviceId
+          ),
+        };
+      }
+      return ph;
+    });
+    setPhases(updatedPhases);
     toast.success('Đã xóa dịch vụ khỏi giai đoạn!');
+    await persistPlanChanges(updatedPhases);
   };
 
   // ================= QUẢN LÝ BUỔI ĐIỀU TRỊ (TreatmentVisits - Chỉ ghi chép việc làm) =================
@@ -1139,12 +1082,14 @@ export default function TreatmentPlans() {
     setVisitModalMode('ADD');
     setTargetPhaseIdForVisit(phase.phase_id);
     const nextOrder = (phase.treatment_visits?.length || 0) + 1;
+    const currentDoctor = loggedInDoctorName || dentistName || '';
     setCurrentVisitData({
       visitOrder: nextOrder,
       visitName: `Buổi ${nextOrder}: `,
       start_date: new Date().toISOString().split('T')[0],
       status: 'PENDING',
       clinical_notes: '',
+      assigned_dentist: currentDoctor,
     });
     setShowVisitModal(true);
   };
@@ -1156,150 +1101,89 @@ export default function TreatmentPlans() {
     setShowVisitModal(true);
   };
 
-  const handleSaveVisit = (phaseId, visitObj, mode) => {
+  const handleSaveVisit = async (phaseId, visitObj, mode) => {
+    let updatedPhases = [];
     if (mode === 'ADD') {
-      setPhases(
-        phases.map((ph) => {
-          if (ph.phase_id === phaseId) {
-            return {
-              ...ph,
-              treatment_visits: [...(ph.treatment_visits || []), visitObj],
-            };
-          }
-          return ph;
-        })
-      );
+      updatedPhases = phases.map((ph) => {
+        if (ph.phase_id === phaseId) {
+          const currentVisitsList = ph.treatment_visits || [];
+          const nextOrder = currentVisitsList.length + 1;
+          const newVisitWithOrder = {
+            ...visitObj,
+            visitOrder: nextOrder,
+          };
+          const newList = [...currentVisitsList, newVisitWithOrder];
+          // Tự động đếm và gán thứ tự chuẩn 1..N
+          const reindexedList = newList.map((v, idx) => ({
+            ...v,
+            visitOrder: idx + 1,
+          }));
+          return {
+            ...ph,
+            treatment_visits: reindexedList,
+          };
+        }
+        return ph;
+      });
     } else {
-      setPhases(
-        phases.map((ph) => {
-          if (ph.phase_id === phaseId) {
-            return {
-              ...ph,
-              treatment_visits: ph.treatment_visits.map((v) =>
-                v.visitId === visitObj.visitId ? visitObj : v
-              ),
-            };
-          }
-          return ph;
-        })
-      );
-    }
-  };
-
-  const handleToggleVisitStatus = (phaseId, visitId, newStatus) => {
-    setPhases(
-      phases.map((ph) => {
+      updatedPhases = phases.map((ph) => {
         if (ph.phase_id === phaseId) {
           return {
             ...ph,
             treatment_visits: ph.treatment_visits.map((v) =>
-              v.visitId === visitId ? { ...v, status: newStatus } : v
+              v.visitId === visitObj.visitId ? visitObj : v
             ),
           };
         }
         return ph;
-      })
-    );
+      });
+    }
+    setPhases(updatedPhases);
+    setShowVisitModal(false);
+    await persistPlanChanges(updatedPhases);
+  };
+
+  const handleToggleVisitStatus = async (phaseId, visitId, newStatus) => {
+    const updatedPhases = phases.map((ph) => {
+      if (ph.phase_id === phaseId) {
+        return {
+          ...ph,
+          treatment_visits: ph.treatment_visits.map((v) =>
+            v.visitId === visitId ? { ...v, status: newStatus } : v
+          ),
+        };
+      }
+      return ph;
+    });
+    setPhases(updatedPhases);
     toast.success(`Đã chuyển trạng thái buổi sang "${STATUS_PHASE_CONFIG[newStatus]?.label}"!`);
+    await persistPlanChanges(updatedPhases);
   };
 
-  const handleRemoveVisit = (phaseId, visitId) => {
-    setPhases(
-      phases.map((ph) => {
-        if (ph.phase_id === phaseId) {
-          return {
-            ...ph,
-            treatment_visits: ph.treatment_visits.filter((v) => v.visitId !== visitId),
-          };
-        }
-        return ph;
-      })
-    );
+  const handleRemoveVisit = async (phaseId, visitId) => {
+    const updatedPhases = phases.map((ph) => {
+      if (ph.phase_id === phaseId) {
+        const remainingVisits = (ph.treatment_visits || []).filter((v) => v.visitId !== visitId);
+        // Tự động đếm lại và giảm thứ tự visitOrder theo số buổi còn lại
+        const reindexedVisits = remainingVisits.map((v, idx) => ({
+          ...v,
+          visitOrder: idx + 1,
+        }));
+        return {
+          ...ph,
+          treatment_visits: reindexedVisits,
+        };
+      }
+      return ph;
+    });
+    setPhases(updatedPhases);
     toast.success('Đã xóa buổi điều trị!');
+    await persistPlanChanges(updatedPhases);
   };
 
-  // LƯU KẾ HOẠCH ĐIỀU TRỊ CHUẨN ĐÚNG CSDL
+  // LƯU KẾ HOẠCH ĐIỀU TRỊ THỦ CÔNG (NÚT LƯU TRÊN THANH HEADER)
   const handleSavePlan = async () => {
-    if (!planName.trim()) {
-      toast.error('Vui lòng nhập tên kế hoạch điều trị!');
-      return;
-    }
-
-    if (phases.length === 0) {
-      toast.error('Kế hoạch điều trị cần có ít nhất 1 giai đoạn! Hãy bấm "+ Thêm giai đoạn mới" hoặc áp dụng gói gợi ý.');
-      return;
-    }
-
-    const payload = {
-      patientId: patient?.id && patient.id !== 'pat-1' ? patient.id : null,
-      examinationResultId:
-        currentSession?.id && currentSession.id !== 'ALL' && !String(currentSession.id).startsWith('rec-')
-          ? currentSession.id
-          : null,
-      dentistName: dentistName,
-      planName: planName.trim(),
-      description: planDesc,
-      estimatedCost: estimatedCost,
-      status: planStatus === 'COMPLETED' || planStatus === 'IN_PROGRESS',
-      startDate: startDate,
-      endDate: endDate,
-      phases: phases.map((phase) => ({
-        phaseName: phase.phase_name,
-        phaseOrder: String(phase.phase_order || 1),
-        treatmentType: phase.treatmentType,
-        description: phase.description,
-        status: phase.status,
-        estimatedDuration: phase.estimated_duration,
-        treatmentServices: (phase.treatment_services || []).map((s) => ({
-          serviceId: s.service_id && !String(s.service_id).startsWith('srv-') ? s.service_id : null,
-          toothNumber: s.toothNumber,
-          quantity: Number(s.quantity) || 1,
-          price: s.price,
-          totalAmount: s.price * (Number(s.quantity) || 1),
-        })),
-        treatmentVisits: (phase.treatment_visits || []).map((v) => ({
-          visitName: v.visitName,
-          visitOrder: Number(v.visitOrder) || 1,
-          startDate: v.start_date,
-          status: v.status,
-          clinicalNotes: v.clinical_notes,
-        })),
-      })),
-    };
-
-    const isUpdating = selectedPlanId && selectedPlanId !== 'NEW' && String(selectedPlanId).length > 10;
-    const actionText = isUpdating ? 'Cập nhật' : 'Lưu';
-    const toastId = toast.loading(`Đang ${actionText.toLowerCase()} kế hoạch điều trị vào hệ thống...`);
-    try {
-      let savedPlan;
-      if (isUpdating) {
-        savedPlan = await updateTreatmentPlan(selectedPlanId, payload);
-      } else {
-        savedPlan = await createTreatmentPlan(payload);
-        if (savedPlan?.id) {
-          setSelectedPlanId(savedPlan.id);
-        }
-      }
-      setHasPlanForActiveSession(true);
-      toast.success(`Đã ${actionText.toLowerCase()} kế hoạch "${planName}" thành công!`, {
-        id: toastId,
-        icon: '✅',
-        duration: 3500,
-      });
-      if (patient?.id) {
-        fetchPlansForPatient(patient.id);
-      }
-    } catch (err) {
-      console.warn(`API backend treatment-plans:`, err);
-      toast.success(`Đã ${actionText.toLowerCase()} kế hoạch "${planName}" thành công!`, {
-        id: toastId,
-        icon: '✅',
-        duration: 3500,
-      });
-      if (patient?.id) {
-        fetchPlansForPatient(patient.id);
-      }
-    }
+    await persistPlanChanges();
   };
 
   return (
@@ -1355,881 +1239,996 @@ export default function TreatmentPlans() {
         </div>
       </div>
 
-      {/* ================= 1.5. TÌM KIẾM & CHỌN BỆNH NHÂN THEO SỐ ĐIỆN THOẠI ================= */}
-      <div className="rounded-xl border border-slate-200/90 bg-gradient-to-r from-slate-50 via-white to-teal-50/30 p-3 shadow-2xs">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-          {/* Selectbox chọn nhanh bệnh nhân kèm SĐT */}
-          <div className="w-full sm:w-[320px] md:w-[380px] shrink-0">
-            <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1">
-              <Phone size={12} className="text-teal-700" />
-              <span>Chọn nhanh bệnh nhân theo Số điện thoại:</span>
-              {loadingPatientOptions && (
-                <RefreshCw size={11} className="animate-spin text-teal-700 ml-1" />
-              )}
-            </label>
-            <select
-              value={patient?.id || patient?.patientCode || ''}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (!val) {
-                  handleClearPatient();
-                  return;
-                }
-                const selected = patientOptions.find(
-                  (p) => String(p.id) === String(val) || String(p.patientCode) === String(val)
-                );
-                if (selected) {
-                  handleSelectPatient(selected);
-                }
-              }}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 focus:border-teal-600 focus:ring-1 focus:ring-teal-500 cursor-pointer shadow-2xs truncate"
-            >
-              <option value="">-- Chọn bệnh nhân từ danh sách (SĐT — Họ tên) --</option>
-              {patientOptions.map((p) => {
-                const phoneStr = p.phone || p.phoneNumber || 'Chưa có SĐT';
-                const codeStr = p.patientCode ? ` (${p.patientCode})` : '';
-                return (
-                  <option key={p.id || p.patientCode} value={p.id || p.patientCode}>
-                    {phoneStr} — {p.fullName}{codeStr}
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-
-          {/* Ô nhập SĐT tìm kiếm trực tiếp */}
-          <form onSubmit={handleSearchPatientByPhone} className="flex items-end gap-2 shrink-0">
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                Hoặc nhập số điện thoại cần tìm:
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={phoneSearchQuery}
-                  onChange={(e) => setPhoneSearchQuery(e.target.value)}
-                  placeholder="Nhập SĐT..."
-                  className="w-44 sm:w-52 rounded-lg border border-slate-300 bg-white pl-8 pr-7 py-1.5 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:ring-1 focus:ring-teal-500 shadow-2xs"
-                />
-                <Phone size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-teal-700" />
-                {phoneSearchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setPhoneSearchQuery('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                  >
-                    <X size={12} />
-                  </button>
+      {/* ================= 1. BẢNG ĐIỀU HÀNH TỔNG THỂ PHÁC ĐỒ & KẾ HOẠCH ĐIỀU TRỊ (UNIFIED MASTER ERP CARD) ================= */}
+      <div className="rounded-xl border border-slate-200 bg-white shadow-2xs overflow-hidden">
+        {/* TẦNG 1: TOOLBAR TÌM KIẾM & CHỌN BỆNH NHÂN THEO SỐ ĐIỆN THOẠI */}
+        <div className="bg-slate-50/80 px-4 py-2.5 border-b border-slate-200/80">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+            {/* Selectbox chọn nhanh bệnh nhân kèm SĐT */}
+            <div className="w-full sm:w-[320px] md:w-[380px] shrink-0">
+              <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1">
+                <Phone size={12} className="text-teal-700" />
+                <span>Chọn nhanh bệnh nhân theo Số điện thoại:</span>
+                {loadingPatientOptions && (
+                  <RefreshCw size={11} className="animate-spin text-teal-700 ml-1" />
                 )}
-              </div>
+              </label>
+              <select
+                value={patient?.id || patient?.patientCode || ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (!val) {
+                    handleClearPatient();
+                    return;
+                  }
+                  const selected = patientOptions.find(
+                    (p) => String(p.id) === String(val) || String(p.patientCode) === String(val)
+                  );
+                  if (selected) {
+                    handleSelectPatient(selected);
+                  }
+                }}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 focus:border-teal-600 focus:ring-1 focus:ring-teal-500 cursor-pointer shadow-2xs truncate"
+              >
+                <option value="">-- Chọn bệnh nhân từ danh sách (SĐT — Họ tên) --</option>
+                {patientOptions.map((p) => {
+                  const phoneStr = p.phone || p.phoneNumber || 'Chưa có SĐT';
+                  const codeStr = p.patientCode ? ` (${p.patientCode})` : '';
+                  return (
+                    <option key={p.id || p.patientCode} value={p.id || p.patientCode}>
+                      {phoneStr} — {p.fullName}{codeStr}
+                    </option>
+                  );
+                })}
+              </select>
             </div>
 
-            <button
-              type="submit"
-              disabled={searchingPhone}
-              className="flex items-center gap-1.5 rounded-lg bg-teal-700 hover:bg-teal-800 px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs disabled:opacity-50 transition-colors cursor-pointer whitespace-nowrap h-[32px]"
-            >
-              {searchingPhone ? <RefreshCw size={13} className="animate-spin" /> : <Search size={13} />}
-              <span>{searchingPhone ? 'Đang tìm...' : 'Tìm kiếm'}</span>
-            </button>
-
-            {hasPatient && (
-              <button
-                type="button"
-                onClick={handleClearPatient}
-                className="flex items-center gap-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs transition-colors cursor-pointer h-[32px]"
-                title="Đóng bệnh nhân hiện tại để tìm bệnh nhân khác"
-              >
-                <RotateCcw size={12} />
-                <span>Đổi BN</span>
-              </button>
-            )}
-          </form>
-        </div>
-      </div>
-
-      {/* ================= NẾU CHƯA CHỌN BỆNH NHÂN ================= */}
-      {!hasPatient && <NoPatientAlert />}
-
-      {/* ================= NẾU ĐÃ CHỌN BỆNH NHÂN ================= */}
-      {hasPatient && (
-        <>
-          {treatmentSessions.length === 0 ? (
-            /* TRƯỜNG HỢP 1: BỆNH NHÂN CHƯA CÓ ĐỢT KHÁM NÀO -> QUAY LẠI HỒ SƠ BỆNH ÁN */
-            <div className="space-y-4">
-              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-start gap-3.5">
-                  <div className="relative shrink-0">
-                    <img
-                      src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=256"
-                      alt={patient.fullName}
-                      className="h-14 w-14 rounded-full object-cover border-2 border-teal-200 shadow-xs"
-                    />
-                    <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-emerald-500 border-2 border-white" />
-                  </div>
-                  <div className="space-y-1 text-xs">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="text-base font-bold text-slate-900 truncate">{patient.fullName}</h2>
-                      <span className="rounded bg-teal-100 text-teal-800 text-[11px] font-extrabold px-2 py-0.5">
-                        {patient.patientCode}
-                      </span>
-                    </div>
-                    <p className="text-slate-500 font-medium">
-                      {patient.gender === 'FEMALE' ? '♀ Nữ' : '♂ Nam'}
-                      {patient.dateOfBirth ? ` · ${formatDateDisplay(patient.dateOfBirth)}` : ''}
-                      {patient.phone ? ` · SĐT: ${patient.phone}` : ''}
-                    </p>
-                  </div>
+            {/* Ô nhập SĐT tìm kiếm trực tiếp */}
+            <form onSubmit={handleSearchPatientByPhone} className="flex items-end gap-2 shrink-0">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  Hoặc nhập số điện thoại cần tìm:
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={phoneSearchQuery}
+                    onChange={(e) => setPhoneSearchQuery(e.target.value)}
+                    placeholder="Nhập SĐT..."
+                    className="w-44 sm:w-52 rounded-lg border border-slate-300 bg-white pl-8 pr-7 py-1.5 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:ring-1 focus:ring-teal-500 shadow-2xs"
+                  />
+                  <Phone size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-teal-700" />
+                  {phoneSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setPhoneSearchQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
                 </div>
               </div>
 
+              <button
+                type="submit"
+                disabled={searchingPhone}
+                className="flex items-center gap-1.5 rounded-lg bg-teal-700 hover:bg-teal-800 px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs disabled:opacity-50 transition-colors cursor-pointer whitespace-nowrap h-[32px]"
+              >
+                {searchingPhone ? <RefreshCw size={13} className="animate-spin" /> : <Search size={13} />}
+                <span>{searchingPhone ? 'Đang tìm...' : 'Tìm kiếm'}</span>
+              </button>
+
+              {hasPatient && (
+                <button
+                  type="button"
+                  onClick={handleClearPatient}
+                  className="flex items-center gap-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs transition-colors cursor-pointer h-[32px]"
+                  title="Đóng bệnh nhân hiện tại để tìm bệnh nhân khác"
+                >
+                  <RotateCcw size={12} />
+                  <span>Đổi BN</span>
+                </button>
+              )}
+            </form>
+          </div>
+        </div>
+
+        {/* NỘI DUNG MASTER: TÙY THEO TÌNH TRẠNG BỆNH NHÂN */}
+        {!hasPatient ? (
+          <div className="p-5">
+            <NoPatientAlert />
+          </div>
+        ) : treatmentSessions.length === 0 ? (
+          <div className="divide-y divide-slate-100">
+            {/* Thông tin BN */}
+            <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-3.5">
+                <div className="relative shrink-0">
+                  <img
+                    src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=256"
+                    alt={patient.fullName}
+                    className="h-12 w-12 rounded-full object-cover border-2 border-teal-200 shadow-2xs"
+                  />
+                  <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-emerald-500 border-2 border-white" />
+                </div>
+                <div className="space-y-1 text-xs">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-base font-bold text-slate-900 truncate">{patient.fullName}</h2>
+                    <span className="rounded bg-teal-100 text-teal-800 text-[11px] font-extrabold px-2 py-0.5">
+                      {patient.patientCode}
+                    </span>
+                  </div>
+                  <p className="text-slate-500 font-medium">
+                    {patient.gender === 'FEMALE' ? '♀ Nữ' : '♂ Nam'}
+                    {patient.dateOfBirth ? ` · ${formatDateDisplay(patient.dateOfBirth)}` : ''}
+                    {patient.phone ? ` · SĐT: ${patient.phone}` : ''}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="p-5 bg-slate-50/50">
               <NoExaminationAlert patient={patient} />
             </div>
-          ) : (
-            <div className="space-y-4">
-              {/* ================= 1.8. THANH CHỌN ĐỢT ĐIỀU TRỊ / ĐỢT KHÁM ================= */}
-              <div className="rounded-xl border border-teal-200 bg-linear-to-r from-teal-50/60 via-white to-teal-50/40 p-3 shadow-2xs">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-700 text-white shadow-xs">
-                        <CalendarCheck size={16} />
-                      </div>
-                      <div>
-                        <span className="font-extrabold text-teal-900 text-xs tracking-wide uppercase block">
-                          Đợt điều trị & Chẩn đoán
-                        </span>
-                        <span className="text-[11px] text-slate-500">
-                          Lọc chẩn đoán và kế hoạch theo từng đợt khám
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="relative min-w-[240px]">
-                      <select
-                        value={selectedSessionId}
-                        onChange={(e) => handleSelectTreatmentSession(e.target.value)}
-                        className="w-full rounded-lg border border-teal-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-2xs focus:border-teal-600 focus:outline-hidden focus:ring-1 focus:ring-teal-600 cursor-pointer"
-                      >
-                        <option value="ALL">
-                          -- Tất cả các đợt ({treatmentSessions.length} đợt khám) --
-                        </option>
-                        {treatmentSessions.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.label} — {s.date || 'Chưa rõ ngày'} ({s.diagnoses?.length || 0} chẩn đoán)
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {/* TẦNG 2: THÔNG TIN BỆNH NHÂN & ĐỢT KHÁM */}
+            <div className="p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+              {/* Bệnh nhân Entity */}
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="relative shrink-0">
+                  <img
+                    src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=256"
+                    alt={patient.fullName}
+                    className="h-12 w-12 rounded-full object-cover border-2 border-teal-200 shadow-2xs"
+                  />
+                  <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-emerald-500 border-2 border-white" />
                 </div>
-              </div>
-
-              {/* ================= 2. TOP SECTION: PATIENT PROFILE & DOCTOR DIAGNOSES ================= */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                {/* BÊN TRÁI: THÔNG TIN BỆNH NHÂN (Patient Entity - 4 cols) */}
-                <div className="lg:col-span-4 rounded-xl border border-slate-200 bg-white p-4 shadow-2xs flex flex-col justify-between space-y-3">
-                  <div className="flex items-start gap-3.5">
-                    <div className="relative shrink-0">
-                      <img
-                        src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=256"
-                        alt={patient.fullName}
-                        className="h-16 w-16 rounded-full object-cover border-2 border-teal-200 shadow-xs"
-                      />
-                      <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full bg-emerald-500 border-2 border-white" />
-                    </div>
-
-                    <div className="space-y-1 text-xs flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h2 className="text-base font-bold text-slate-900 truncate">{patient.fullName}</h2>
-                        <span className="rounded bg-teal-100 text-teal-800 text-[11px] font-extrabold px-2 py-0.5">
-                          {patient.patientCode}
-                        </span>
-                      </div>
-                      <p className="text-slate-500 font-medium">
-                        {patient.gender === 'FEMALE' ? '♀ Nữ' : '♂ Nam'}{patient.dateOfBirth ? ` · ${formatDateDisplay(patient.dateOfBirth)}` : ''}
-                      </p>
-                      <p className="text-slate-600 flex items-center gap-1 font-medium">
-                        <Phone size={13} className="text-slate-400 shrink-0" />
-                        <span>{patient.phone || 'Chưa có SĐT'}</span>
-                      </p>
-
-                    </div>
+                <div className="space-y-0.5 text-xs min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-base font-bold text-slate-900 truncate">{patient.fullName}</h2>
+                    <span className="rounded bg-teal-50 text-teal-800 border border-teal-200 text-[11px] font-extrabold px-2 py-0.5">
+                      {patient.patientCode}
+                    </span>
+                    <span className="text-slate-500 font-medium">
+                      {patient.gender === 'FEMALE' ? '♀ Nữ' : '♂ Nam'}
+                      {patient.dateOfBirth ? ` · ${formatDateDisplay(patient.dateOfBirth)}` : ''}
+                    </span>
                   </div>
-
-                  <div className="pt-2 border-t border-slate-100 flex flex-wrap gap-1.5 text-[11px]">
+                  <div className="flex items-center gap-3 text-slate-600 flex-wrap text-[11px]">
+                    <span className="flex items-center gap-1 font-medium">
+                      <Phone size={11} className="text-slate-400" />
+                      <span>{patient.phone || 'Chưa có SĐT'}</span>
+                    </span>
                     {patient.allergies ? (
                       <span className="inline-flex items-center gap-1 rounded bg-rose-50 border border-rose-200 text-rose-700 px-2 py-0.5 font-bold">
-                        <AlertCircle size={12} className="text-rose-600" />
+                        <AlertCircle size={11} className="text-rose-600" />
                         Dị ứng: {patient.allergies}
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 rounded bg-slate-50 border border-slate-200 text-slate-500 px-2 py-0.5 font-medium">
-                        Không dị ứng thuốc
-                      </span>
+                      <span className="text-slate-400 font-normal">Không dị ứng thuốc</span>
                     )}
                     {patient.systemicDisease && (
                       <span className="inline-flex items-center gap-1 rounded bg-amber-50 border border-amber-200 text-amber-800 px-2 py-0.5 font-bold">
-                        <Activity size={12} className="text-amber-600" />
+                        <Activity size={11} className="text-amber-600" />
                         Bệnh nền: {patient.systemicDisease}
                       </span>
                     )}
                   </div>
                 </div>
-
-                {/* BÊN PHẢI: KẾT QUẢ CHẨN ĐOÁN NHA SĨ THEO RĂNG (8 cols) */}
-                <div className="lg:col-span-8 rounded-xl border border-teal-200 bg-linear-to-br from-white to-teal-50/30 p-4 shadow-2xs text-xs space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-teal-100">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-100 text-teal-800">
-                        <Stethoscope size={16} />
-                      </div>
-                      <div>
-                        <span className="font-extrabold text-teal-900 text-xs tracking-wide uppercase">
-                          CÁC KẾT QUẢ CHẨN ĐOÁN CỦA NHA SĨ
-                        </span>
-                        <span className="text-[11px] text-slate-500 block font-normal">
-                          Căn cứ lâm sàng theo từng vị trí răng để xác lập giai đoạn và dịch vụ điều trị
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {currentSession ? (
-                        <span className="rounded bg-teal-200/80 text-teal-950 font-bold text-[11px] px-2.5 py-0.5 border border-teal-300">
-                          {currentSession.label}
-                        </span>
-                      ) : treatmentSessions.length > 0 ? (
-                        <span className="rounded bg-slate-100 text-slate-700 font-bold text-[11px] px-2.5 py-0.5 border border-slate-200">
-                          Tất cả các đợt ({treatmentSessions.length})
-                        </span>
-                      ) : stateData.examinationResultId ? (
-                        <span className="rounded bg-teal-200/60 text-teal-900 font-mono text-[10px] px-2 py-0.5">
-                          Đợt khám #{String(stateData.examinationResultId).slice(0, 8)}
-                        </span>
-                      ) : null}
-                      <span className="rounded-full bg-teal-100 text-teal-800 font-extrabold text-[11px] px-2.5 py-0.5">
-                        {diagnosesList.length} chẩn đoán xác định
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Grid danh sách các chẩn đoán theo từng răng */}
-                  {diagnosesList.length === 0 ? (
-                    <div className="text-center py-6 text-slate-400 italic text-xs">
-                      {currentSession
-                        ? `Đợt khám này (${currentSession.label}) chưa có kết quả chẩn đoán nào được ghi nhận.`
-                        : 'Chưa có kết quả chẩn đoán nào được ghi nhận từ đợt khám.'}
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 max-h-40 overflow-y-auto pr-1">
-                      {diagnosesList.map((diag, index) => (
-                        <motion.div
-                          whileHover={{ y: -2 }}
-                          transition={{ duration: 0.15 }}
-                          key={diag.id || index}
-                          className="rounded-lg border border-slate-200 bg-white p-2.5 space-y-1 shadow-2xs hover:border-teal-400 transition-colors"
-                        >
-                          <div className="flex items-center justify-between gap-1">
-                            <div className="flex items-center gap-1.5">
-                              <span className="rounded bg-amber-500 text-white font-extrabold text-[10px] px-2 py-0.5">
-                                {diag.toothPosition}
-                              </span>
-                              <span className="font-bold text-slate-900 text-xs truncate" title={diag.label || diag.primaryDiagnosis}>
-                                {diag.label || diag.primaryDiagnosis}
-                              </span>
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  )}
-                </div>
               </div>
 
-              {/* PHÂN NHÁNH TRẠNG THÁI: CHẨN ĐOÁN & KẾ HOẠCH ĐIỀU TRỊ */}
+              {/* Bộ chọn Đợt khám (Treatment Session Selector) */}
+              <div className="flex items-center gap-2 self-start lg:self-auto shrink-0 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs">
+                <span className="text-xs font-bold text-slate-700 whitespace-nowrap flex items-center gap-1.5">
+                  <CalendarCheck size={14} className="text-teal-700" />
+                  <span>Đợt khám:</span>
+                </span>
+                <select
+                  value={selectedSessionId}
+                  onChange={(e) => handleSelectTreatmentSession(e.target.value)}
+                  className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 shadow-2xs focus:border-teal-600 outline-none cursor-pointer"
+                >
+                  <option value="ALL">-- Tất cả các đợt ({treatmentSessions.length} đợt) --</option>
+                  {treatmentSessions.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label} — {s.date || 'Chưa rõ ngày'} ({s.diagnoses?.length || 0} chẩn đoán)
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* TẦNG 2.5: KẾT QUẢ CHẨN ĐOÁN LÂM SÀNG CỦA ĐỢT KHÁM */}
+            <div className="px-4 py-3 bg-slate-50/30 space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-md bg-teal-100 text-teal-800">
+                    <Stethoscope size={13} />
+                  </div>
+                  <span className="font-extrabold text-teal-900 text-xs uppercase tracking-wide">
+                    Chẩn đoán lâm sàng theo răng ({diagnosesList.length}):
+                  </span>
+                </div>
+
+                <span className="rounded-full bg-teal-50 text-teal-800 border border-teal-200 font-extrabold text-[11px] px-2.5 py-0.5 shrink-0">
+                  {currentSession ? currentSession.label : `Tất cả đợt`} · {diagnosesList.length} chẩn đoán xác định
+                </span>
+              </div>
+
+              {/* Danh sách thẻ chẩn đoán */}
               {diagnosesList.length === 0 ? (
-                /* TRƯỜNG HỢP 2: CHƯA CÓ CHẨN ĐOÁN -> QUAY LẠI MÀN HÌNH KHÁM BỆNH */
+                <div className="text-center py-3 text-slate-400 italic text-xs bg-white rounded-lg border border-dashed border-slate-200">
+                  {currentSession
+                    ? `Đợt khám này (${currentSession.label}) chưa có kết quả chẩn đoán nào được ghi nhận.`
+                    : 'Chưa có kết quả chẩn đoán nào được ghi nhận từ đợt khám.'}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+                  {diagnosesList.map((diag, index) => (
+                    <div
+                      key={diag.id || index}
+                      className="rounded-lg border border-slate-200 bg-white hover:bg-slate-50/50 p-2 flex items-center gap-2 shadow-2xs hover:border-teal-400 transition-all min-w-0"
+                    >
+                      <span className="rounded bg-amber-500 text-white font-extrabold text-[10.5px] px-2 py-0.5 shadow-2xs shrink-0 tracking-wide">
+                        {diag.toothPosition || 'R--'}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <span
+                          className="font-bold text-slate-900 text-xs block truncate leading-snug"
+                          title={diag.label || diag.primaryDiagnosis}
+                        >
+                          {diag.label || diag.primaryDiagnosis}
+                        </span>
+                        {diag.secondaryDiagnosis && (
+                          <span
+                            className="text-[10px] text-slate-500 block truncate mt-0.5 font-normal"
+                            title={diag.secondaryDiagnosis}
+                          >
+                            {diag.secondaryDiagnosis}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* TẦNG 3: THÔNG TIN PHÁC ĐỒ HOẶC CẢNH BÁO */}
+            {diagnosesList.length === 0 ? (
+              <div className="p-4 bg-white">
                 <NoDiagnosisAlert patient={patient} session={currentSession} />
-              ) : !hasPlanForActiveSession ? (
-                /* TRƯỜNG HỢP 3: CÓ CHẨN ĐOÁN NHƯNG CHƯA CÓ KẾ HOẠCH -> NÚT LÊN KẾ HOẠCH ĐIỀU TRỊ */
+              </div>
+            ) : !hasPlanForActiveSession ? (
+              <div className="p-4 bg-white">
                 <NoPlanForSessionAlert
                   session={currentSession}
                   diagnosesCount={diagnosesList.length}
                   onOpenCreatePlan={() => setShowCreatePlanModal(true)}
                 />
-              ) : (
-                /* TRƯỜNG HỢP 4: ĐÃ CÓ KẾ HOẠCH -> HIỂN THỊ CHI TIẾT MỤC 3 & 4 */
-                <>
-
-                  {/* ================= 3. THÔNG TIN THỰC THỂ `Treatment Plans` ================= */}
-                  <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-700 text-white shadow-2xs">
-                          <FileText size={16} />
-                        </div>
-                        <div>
-                          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                            Thông Tin Kế Hoạch Điều Trị
-
-                          </h3>
-                          <p className="text-[11px] text-slate-500">
-                            Hồ sơ phác đồ điều trị tổng thể của bệnh nhân
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-slate-600">Trạng thái kế hoạch:</span>
-                        <select
-                          value={planStatus}
-                          onChange={(e) => setPlanStatus(e.target.value)}
-                          className="rounded-lg px-3.5 py-1.5 text-xs font-bold border border-teal-300 bg-teal-50 text-teal-900 outline-none cursor-pointer shadow-2xs transition-all"
-                        >
-                          <option value="PENDING">Chờ duyệt</option>
-                          <option value="IN_PROGRESS">Đang thực hiện</option>
-                          <option value="COMPLETED">Đã hoàn tất</option>
-                        </select>
-                      </div>
+              </div>
+            ) : (
+              /* TẦNG 3: THÔNG TIN THỰC THỂ KẾ HOẠCH ĐIỀU TRỊ */
+              <div className="p-4 space-y-3 bg-white">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2.5 border-b border-slate-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-700 text-white shadow-2xs">
+                      <FileText size={15} />
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3 text-xs">
-                      {/* planName */}
-                      <div className="md:col-span-5 space-y-1">
-                        <label className="block font-semibold text-slate-700">
-                          Tên kế hoạch điều trị <span className="text-rose-500 font-bold">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={planName}
-                          onChange={(e) => setPlanName(e.target.value)}
-                          placeholder="Nhập tên kế hoạch điều trị (VD: Điều trị sâu răng 46 & Chăm sóc phục hình...)"
-                          className="w-full rounded-lg border border-slate-300 px-3 py-1.5 font-bold text-slate-900 outline-none focus:border-teal-600 placeholder:font-normal placeholder:text-slate-400"
-                        />
-                      </div>
-
-                      {/* dentist */}
-                      <div className="md:col-span-3 space-y-1">
-                        <label className="block font-semibold text-slate-700">Bác sĩ phụ trách</label>
-                        <input
-                          type="text"
-                          value={dentistName}
-                          onChange={(e) => setDentistName(e.target.value)}
-                          className="w-full rounded-lg border border-slate-300 px-3 py-1.5 font-semibold text-slate-800 outline-none focus:border-teal-600"
-                        />
-                      </div>
-
-                      {/* start_date */}
-                      <div className="md:col-span-2 space-y-1">
-                        <label className="block font-semibold text-slate-700">Ngày bắt đầu</label>
-                        <input
-                          type="date"
-                          value={startDate}
-                          onChange={(e) => setStartDate(e.target.value)}
-                          className="w-full rounded-lg border border-slate-300 px-3 py-1.5 font-semibold text-slate-800 outline-none focus:border-teal-600"
-                        />
-                      </div>
-
-                      {/* end_date */}
-                      <div className="md:col-span-2 space-y-1">
-                        <label className="block font-semibold text-slate-700">Dự kiến kết thúc</label>
-                        <input
-                          type="date"
-                          value={endDate}
-                          onChange={(e) => setEndDate(e.target.value)}
-                          className="w-full rounded-lg border border-slate-300 px-3 py-1.5 font-semibold text-slate-800 outline-none focus:border-teal-600"
-                        />
-                      </div>
-
-                      {/* description */}
-                      <div className="md:col-span-12 space-y-1">
-                        <label className="block font-semibold text-slate-700">Mô tả kế hoạch</label>
-                        <input
-                          type="text"
-                          value={planDesc}
-                          onChange={(e) => setPlanDesc(e.target.value)}
-                          placeholder="Mục tiêu điều trị, hướng tiếp cận và lưu ý phục hình..."
-                          className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-slate-700 outline-none focus:border-teal-600"
-                        />
-                      </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">
+                        Thông Tin Phác Đồ & Kế Hoạch Điều Trị
+                      </h3>
                     </div>
                   </div>
 
-
-                  {/* ================= 5. CÁC GIAI ĐOẠN ĐIỀU TRỊ ================= */}
-                  <div className="space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-700 text-white shadow-2xs">
-                          <Layers size={16} />
-                        </div>
-                        <div>
-                          <h3 className="text-base font-bold text-slate-900">
-                            Các Giai Đoạn Điều Trị
-                          </h3>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs font-semibold text-slate-600">
-                          Tổng số: <strong className="text-teal-800">{phases.length} giai đoạn</strong>
-                        </span>
-                        <motion.button
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.96 }}
+                  {/* Bộ nút trạng thái kế hoạch (Không dùng select box) */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-slate-500">Trạng thái:</span>
+                    <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5 shadow-2xs">
+                      {[
+                        { value: 'PENDING', label: 'Chờ duyệt', active: 'bg-amber-100 text-amber-900 border-amber-300 font-bold' },
+                        { value: 'IN_PROGRESS', label: 'Đang thực hiện', active: 'bg-teal-700 text-white border-teal-700 font-bold' },
+                        { value: 'COMPLETED', label: 'Đã hoàn tất', active: 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold' },
+                      ].map((st) => (
+                        <button
+                          key={st.value}
                           type="button"
-                          onClick={handleOpenAddPhase}
-                          className="flex items-center gap-1.5 rounded-lg border border-teal-300 bg-white px-3 py-1.5 text-xs font-bold text-teal-800 hover:bg-teal-50 cursor-pointer shadow-2xs"
+                          onClick={() => setPlanStatus(st.value)}
+                          className={`px-2.5 py-1 text-xs rounded-md border transition-all cursor-pointer ${planStatus === st.value
+                            ? `${st.active} shadow-2xs`
+                            : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-white'
+                            }`}
                         >
-                          <Plus size={14} />
-                          <span>+ Thêm giai đoạn mới</span>
-                        </motion.button>
-                      </div>
-                    </div>
-
-                    {/* RENDER TỪNG GIAI ĐOẠN ĐIỀU TRỊ */}
-                    <div className="space-y-6">
-                      {phases.length === 0 ? (
-                        <div className="rounded-xl border border-dashed border-teal-300 bg-white p-8 text-center space-y-3 shadow-2xs">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-teal-50 text-teal-700 mx-auto">
-                            <Layers size={24} />
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-sm font-bold text-slate-800">Kế hoạch điều trị mới chưa có giai đoạn nào!</p>
-                            <p className="text-xs text-slate-500 max-w-md mx-auto">
-                              Bạn có thể bấm <strong>"+ Thêm giai đoạn mới"</strong> để tự thiết lập giai đoạn và chỉ định dịch vụ, hoặc chọn một <strong>Gói phác đồ gợi ý</strong> ở trên theo kết quả khám lâm sàng.
-                            </p>
-                          </div>
-                          <div className="pt-2 flex items-center justify-center gap-2">
-                            <motion.button
-                              whileHover={{ scale: 1.02 }}
-                              whileTap={{ scale: 0.96 }}
-                              type="button"
-                              onClick={handleOpenAddPhase}
-                              className="flex items-center gap-1.5 rounded-lg bg-teal-700 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-teal-800 cursor-pointer"
-                            >
-                              <Plus size={14} />
-                              <span>+ Thêm giai đoạn đầu tiên</span>
-                            </motion.button>
-                          </div>
-                        </div>
-                      ) : (
-                        <AnimatePresence mode="popLayout">
-                          {phases.map((phase) => {
-                            const phaseServices = phase.treatment_services || [];
-                            const phaseVisits = phase.treatment_visits || [];
-
-                            // Tổng tiền dịch vụ của giai đoạn
-                            const phaseServicesTotal = phaseServices.reduce(
-                              (sum, s) => sum + (Number(s.price) || 0) * (Number(s.quantity) || 1),
-                              0
-                            );
-
-                            const statusCfg = STATUS_PHASE_CONFIG[phase.status] || STATUS_PHASE_CONFIG.PENDING;
-
-                            return (
-                              <motion.div
-                                layout
-                                initial={{ opacity: 0, y: 15 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.96 }}
-                                transition={{ duration: 0.25 }}
-                                key={phase.phase_id}
-                                className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5 shadow-2xs space-y-4 hover:border-teal-300 transition-colors"
-                              >
-                                {/* HEADER GIAI ĐOẠN (`TreatmentPhase`) */}
-                                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-200">
-                                  <div className="flex items-start sm:items-center gap-3">
-                                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-teal-700 text-white font-extrabold text-sm shadow-xs shrink-0">
-                                      {phase.phase_order}
-                                    </span>
-
-                                    <div>
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        <h4 className="text-base font-bold text-slate-900">{phase.phase_name}</h4>
-
-                                        {/* Treatment Type badge */}
-                                        <span className="rounded-md bg-teal-50 border border-teal-200 text-teal-800 text-xs font-bold px-3 py-1 shadow-2xs">
-                                          {phase.treatmentType || 'Tổng quát'}
-                                        </span>
-
-                                        {/* Estimated Duration */}
-                                        {phase.estimated_duration && (
-                                          <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-1 shadow-2xs">
-                                            <Clock4 size={13} />
-                                            {phase.estimated_duration}
-                                          </span>
-                                        )}
-
-                                        {/* Status Phase Badge / Dropdown */}
-                                        <div className="relative inline-block">
-                                          <select
-                                            value={phase.status}
-                                            onChange={(e) => handleTogglePhaseStatus(phase.phase_id, e.target.value)}
-                                            className={`rounded-full px-4 py-1.5 text-xs font-bold border cursor-pointer outline-none transition-all shadow-2xs ${statusCfg.bg} ${statusCfg.text} ${statusCfg.border}`}
-                                          >
-                                            <option value="PENDING">Chờ thực hiện</option>
-                                            <option value="IN_PROGRESS">Đang thực hiện</option>
-                                            <option value="COMPLETED">Đã hoàn thành</option>
-                                          </select>
-                                        </div>
-                                      </div>
-
-                                      <p className="text-xs text-slate-500 mt-0.5">{phase.description}</p>
-                                    </div>
-                                  </div>
-
-                                  {/* Action buttons của Phase */}
-                                  <div className="flex flex-wrap items-center gap-2 self-end lg:self-auto">
-                                    <motion.button
-                                      whileHover={{ scale: 1.02 }}
-                                      whileTap={{ scale: 0.96 }}
-                                      type="button"
-                                      onClick={() => handleOpenAddService(phase.phase_id)}
-                                      className="flex items-center gap-1.5 rounded-lg border border-teal-300 bg-teal-50 px-2.5 py-1.5 text-xs font-bold text-teal-800 hover:bg-teal-100 cursor-pointer shadow-2xs"
-                                      title="Chỉ định dịch vụ nha khoa vào giai đoạn"
-                                    >
-                                      <Plus size={13} />
-                                      <span>+ Thêm dịch vụ</span>
-                                    </motion.button>
-
-                                    <motion.button
-                                      whileHover={{ scale: 1.02 }}
-                                      whileTap={{ scale: 0.96 }}
-                                      type="button"
-                                      onClick={() => handleOpenAddVisit(phase)}
-                                      className="flex items-center gap-1.5 rounded-lg border border-indigo-300 bg-indigo-50 px-2.5 py-1.5 text-xs font-bold text-indigo-800 hover:bg-indigo-100 cursor-pointer shadow-2xs"
-                                      title="Thêm buổi điều trị mới"
-                                    >
-                                      <CalendarCheck size={13} />
-                                      <span>+ Thêm buổi điều trị</span>
-                                    </motion.button>
-
-                                    <motion.button
-                                      whileHover={{ scale: 1.08 }}
-                                      whileTap={{ scale: 0.92 }}
-                                      type="button"
-                                      onClick={() => handleOpenEditPhase(phase)}
-                                      className="text-slate-400 hover:text-slate-700 p-1.5 rounded-md hover:bg-slate-100 cursor-pointer transition-colors"
-                                      title="Chỉnh sửa giai đoạn"
-                                    >
-                                      <Edit3 size={15} />
-                                    </motion.button>
-
-                                    <motion.button
-                                      whileHover={{ scale: 1.08 }}
-                                      whileTap={{ scale: 0.92 }}
-                                      type="button"
-                                      onClick={() => handleRemovePhase(phase.phase_id)}
-                                      className="text-slate-400 hover:text-rose-600 p-1.5 rounded-md hover:bg-rose-50 cursor-pointer transition-colors"
-                                      title="Xóa toàn bộ giai đoạn này"
-                                    >
-                                      <Trash2 size={15} />
-                                    </motion.button>
-                                  </div>
-                                </div>
-
-                                {/* ================= PHẦN 1: BẢNG DỊCH VỤ ĐIỀU TRỊ (`treatment_services`) ================= */}
-                                <div className="space-y-2">
-                                  <div className="flex items-center justify-between">
-                                    <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                                      <Tag size={13} className="text-teal-600" />
-                                      <span>1. Danh mục dịch vụ nha khoa chỉ định:</span>
-                                      <span className="text-[11px] font-semibold text-slate-400">
-                                        ({phaseServices.length} dịch vụ)
-                                      </span>
-                                    </div>
-
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenAddService(phase.phase_id)}
-                                      className="text-teal-700 hover:text-teal-800 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
-                                    >
-                                      <Plus size={12} />
-                                      Thêm dịch vụ
-                                    </button>
-                                  </div>
-
-                                  {phaseServices.length === 0 ? (
-                                    <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50/60 p-3 text-center text-xs text-slate-400">
-                                      Chưa có dịch vụ nào được chỉ định trong giai đoạn này. Nhấp "+ Thêm dịch vụ" để chọn từ danh mục.
-                                    </div>
-                                  ) : (
-                                    <div className="rounded-lg border border-slate-200 overflow-hidden text-xs shadow-2xs bg-white">
-                                      <table className="w-full text-left border-collapse">
-                                        <thead>
-                                          <tr className="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase border-b border-slate-200">
-                                            <th className="p-2.5 text-center w-10">STT</th>
-                                            <th className="p-2.5 text-center w-32">Vị trí răng</th>
-                                            <th className="p-2.5 min-w-[220px]">Dịch vụ nha khoa</th>
-                                            <th className="p-2.5 text-center w-28">Số lượng</th>
-                                            <th className="p-2.5 text-right w-32">Đơn giá</th>
-                                            <th className="p-2.5 text-right w-36">Thành tiền</th>
-                                            <th className="p-2.5 text-center w-14">Xóa</th>
-                                          </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100">
-                                          {phaseServices.map((srv, sIndex) => {
-                                            const itemTotal = (Number(srv.price) || 0) * (Number(srv.quantity) || 1);
-                                            return (
-                                              <tr key={srv.treatmentServicesId} className="hover:bg-slate-50/80 transition-colors">
-                                                <td className="p-2.5 text-center font-bold text-slate-400">{sIndex + 1}</td>
-                                                <td className="p-2.5 text-center">
-                                                  <input
-                                                    type="text"
-                                                    value={srv.toothNumber}
-                                                    onChange={(e) =>
-                                                      handleToothNumberChange(phase.phase_id, srv.treatmentServicesId, e.target.value)
-                                                    }
-                                                    className="w-28 text-center rounded border border-amber-200 bg-amber-50 px-1.5 py-1 font-extrabold text-amber-900 text-xs outline-none focus:border-amber-400"
-                                                  />
-                                                </td>
-                                                <td className="p-2.5 font-bold text-slate-900">{srv.service_name}</td>
-                                                <td className="p-2.5 text-center">
-                                                  <div className="inline-flex items-center border border-slate-300 rounded overflow-hidden bg-white shadow-2xs">
-                                                    <button
-                                                      type="button"
-                                                      onClick={() =>
-                                                        handleQuantityChange(phase.phase_id, srv.treatmentServicesId, srv.quantity - 1)
-                                                      }
-                                                      className="px-2 py-0.5 text-slate-500 hover:bg-slate-100 font-bold cursor-pointer"
-                                                    >
-                                                      -
-                                                    </button>
-                                                    <input
-                                                      type="number"
-                                                      min={1}
-                                                      value={srv.quantity}
-                                                      onChange={(e) =>
-                                                        handleQuantityChange(phase.phase_id, srv.treatmentServicesId, e.target.value)
-                                                      }
-                                                      className="w-10 text-center font-extrabold text-slate-800 text-xs outline-none py-0.5"
-                                                    />
-                                                    <button
-                                                      type="button"
-                                                      onClick={() =>
-                                                        handleQuantityChange(phase.phase_id, srv.treatmentServicesId, srv.quantity + 1)
-                                                      }
-                                                      className="px-2 py-0.5 text-slate-500 hover:bg-slate-100 font-bold cursor-pointer"
-                                                    >
-                                                      +
-                                                    </button>
-                                                  </div>
-                                                </td>
-                                                <td className="p-2.5 text-right font-medium text-slate-600">
-                                                  {Number(srv.price).toLocaleString('vi-VN')} đ
-                                                </td>
-                                                <td className="p-2.5 text-right font-extrabold text-teal-800 text-xs">
-                                                  {itemTotal.toLocaleString('vi-VN')} đ
-                                                </td>
-                                                <td className="p-2.5 text-center">
-                                                  <button
-                                                    type="button"
-                                                    onClick={() => handleRemoveService(phase.phase_id, srv.treatmentServicesId)}
-                                                    className="text-slate-400 hover:text-rose-600 p-1 cursor-pointer transition-colors"
-                                                    title="Xóa dịch vụ"
-                                                  >
-                                                    <Trash2 size={14} />
-                                                  </button>
-                                                </td>
-                                              </tr>
-                                            );
-                                          })}
-                                        </tbody>
-                                        <tfoot>
-                                          <tr className="bg-slate-50/80 font-bold border-t border-slate-200 text-[11px]">
-                                            <td colSpan={5} className="p-2.5 text-right text-slate-600">
-                                              Tổng chi phí dịch vụ Giai đoạn {phase.phase_order}:
-                                            </td>
-                                            <td className="p-2.5 text-right text-teal-900 font-extrabold text-xs">
-                                              {phaseServicesTotal.toLocaleString('vi-VN')} đ
-                                            </td>
-                                            <td />
-                                          </tr>
-                                        </tfoot>
-                                      </table>
-                                    </div>
-                                  )}
-                                </div>
-
-                                {/* ================= PHẦN 2: CÁC BUỔI ĐIỀU TRỊ (`TreatmentVisits` - Chỉ ghi chép việc cần làm) ================= */}
-                                <div className="space-y-2 pt-1 border-t border-slate-100">
-                                  <div className="flex items-center justify-between">
-                                    <div className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
-                                      <CalendarCheck size={14} className="text-indigo-600" />
-                                      <span>2. Lộ trình các buổi điều trị lâm sàng:</span>
-                                    </div>
-
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenAddVisit(phase)}
-                                      className="text-indigo-700 hover:text-indigo-800 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
-                                    >
-                                      <Plus size={12} />
-                                      Thêm buổi khám
-                                    </button>
-                                  </div>
-
-                                  {phaseVisits.length === 0 ? (
-                                    <div className="rounded-lg border border-dashed border-indigo-200 bg-indigo-50/30 p-3.5 text-center text-xs text-indigo-600">
-                                      Chưa có buổi điều trị nào được lên lịch cho giai đoạn này. Nhấp "+ Thêm buổi điều trị" để ghi lại kế hoạch thao tác lâm sàng.
-                                    </div>
-                                  ) : (
-                                    <div className="space-y-2.5">
-                                      <AnimatePresence mode="popLayout">
-                                        {phaseVisits.map((visit) => {
-                                          const vStatusCfg = STATUS_PHASE_CONFIG[visit.status] || STATUS_PHASE_CONFIG.PENDING;
-
-                                          return (
-                                            <motion.div
-                                              layout
-                                              initial={{ opacity: 0, y: 10 }}
-                                              animate={{ opacity: 1, y: 0 }}
-                                              exit={{ opacity: 0, scale: 0.96 }}
-                                              transition={{ duration: 0.2 }}
-                                              key={visit.visitId}
-                                              className="rounded-xl border border-slate-200 bg-linear-to-r from-slate-50/80 to-indigo-50/20 p-3.5 shadow-2xs space-y-2.5 hover:border-indigo-300 transition-all"
-                                            >
-                                              {/* Header của Buổi điều trị */}
-                                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
-                                                <div className="flex items-center gap-2.5 flex-wrap">
-                                                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-700 text-white font-extrabold text-[11px] shadow-2xs shrink-0">
-                                                    {visit.visitOrder}
-                                                  </span>
-
-                                                  <h5 className="font-bold text-slate-900 text-xs sm:text-sm">
-                                                    {visit.visitName}
-                                                  </h5>
-
-                                                  {/* Ngày hẹn */}
-                                                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-200 px-2.5 py-1 rounded-md shadow-2xs">
-                                                    <Calendar size={12} className="text-slate-400" />
-                                                    <span>Ngày: {visit.start_date || 'Chưa đặt'}</span>
-                                                  </span>
-
-                                                  {/* Dropdown / Badge trạng thái của buổi */}
-                                                  <select
-                                                    value={visit.status}
-                                                    onChange={(e) =>
-                                                      handleToggleVisitStatus(phase.phase_id, visit.visitId, e.target.value)
-                                                    }
-                                                    className={`rounded-full px-3 py-1 text-xs font-bold border cursor-pointer outline-none transition-all shadow-2xs ${vStatusCfg.bg} ${vStatusCfg.text} ${vStatusCfg.border}`}
-                                                  >
-                                                    <option value="PENDING">Chờ khám</option>
-                                                    <option value="IN_PROGRESS">Đang thực hiện</option>
-                                                    <option value="COMPLETED">Đã hoàn thành</option>
-                                                  </select>
-                                                </div>
-
-                                                <div className="flex items-center gap-1 self-end sm:self-auto">
-                                                  <button
-                                                    type="button"
-                                                    onClick={() => handleOpenEditVisit(phase.phase_id, visit)}
-                                                    className="p-1 text-slate-400 hover:text-indigo-700 rounded hover:bg-white cursor-pointer transition-colors"
-                                                    title="Sửa thông tin buổi khám"
-                                                  >
-                                                    <Edit3 size={13} />
-                                                  </button>
-                                                  <button
-                                                    type="button"
-                                                    onClick={() => handleRemoveVisit(phase.phase_id, visit.visitId)}
-                                                    className="p-1 text-slate-400 hover:text-rose-600 rounded hover:bg-white cursor-pointer transition-colors"
-                                                    title="Xóa buổi khám này"
-                                                  >
-                                                    <Trash2 size={13} />
-                                                  </button>
-                                                </div>
-                                              </div>
-
-                                              {/* THÔNG TIN BUỔI ĐÓ LÀM GÌ (clinical_notes) */}
-                                              <div className="bg-white rounded-lg border border-slate-200 p-2.5 text-xs space-y-1 shadow-2xs">
-                                                <div className="flex items-center gap-1.5 text-[11px] font-bold text-teal-800 uppercase tracking-wide">
-                                                  <Stethoscope size={13} className="text-teal-600" />
-                                                  <span>Nội dung thực hiện trong buổi điều trị:</span>
-                                                </div>
-                                                <p className="text-slate-700 leading-relaxed pl-5 whitespace-pre-wrap font-normal">
-                                                  {visit.clinical_notes || (
-                                                    <span className="text-slate-400 italic">
-                                                      Chưa ghi nhận nội dung thao tác. Nhấp icon sửa để bổ sung ghi chú thủ thuật.
-                                                    </span>
-                                                  )}
-                                                </p>
-                                              </div>
-                                            </motion.div>
-                                          );
-                                        })}
-                                      </AnimatePresence>
-                                    </div>
-                                  )}
-                                </div>
-                              </motion.div>
-                            );
-                          })}
-                        </AnimatePresence>
-                      )}
+                          {st.label}
+                        </button>
+                      ))}
                     </div>
                   </div>
+                </div>
 
-                  {/* ================= 6. TỔNG HỢP TÀI CHÍNH (`estimated_cost : Double`) ================= */}
-                  <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs space-y-3">
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                      <div className="space-y-1">
-                        <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                          <Calculator size={18} className="text-teal-700" />
-                          Tổng Hợp Chi Phí Dự Kiến Toàn Kế Hoạch
-                        </h4>
-                        <p className="text-xs text-slate-500">
-                          Chi phí tổng hợp realtime từ tất cả các dịch vụ nha khoa chỉ định trong từng giai đoạn điều trị.
-                        </p>
+                {/* Form thông tin chi tiết */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 text-xs">
+                  {/* Tên kế hoạch */}
+                  <div className="lg:col-span-5 space-y-1">
+                    <label className="block font-bold text-slate-700">
+                      Tên kế hoạch điều trị <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={planName}
+                      onChange={(e) => setPlanName(e.target.value)}
+                      placeholder="VD: Điều trị nội nha & Phục hình răng sứ toàn hàm..."
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 font-bold text-slate-900 text-xs outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-500/20 bg-white shadow-2xs"
+                    />
+                  </div>
+
+                  {/* Bác sĩ phụ trách */}
+                  <div className="lg:col-span-3 space-y-1">
+                    <label className="block font-bold text-slate-700 flex items-center gap-1">
+                      <User size={12} className="text-teal-700" />
+                      <span>Bác sĩ phụ trách</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={dentistName}
+                      onChange={(e) => setDentistName(e.target.value)}
+                      placeholder="Họ tên bác sĩ phụ trách"
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 font-semibold text-slate-800 text-xs outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-500/20 bg-white shadow-2xs"
+                    />
+                  </div>
+
+                  {/* Ngày bắt đầu */}
+                  <div className="lg:col-span-2 space-y-1">
+                    <label className="block font-bold text-slate-700 flex items-center gap-1">
+                      <Calendar size={12} className="text-slate-500" />
+                      <span>Bắt đầu</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="w-full rounded-lg border border-slate-300 px-2.5 py-2 font-semibold text-slate-800 text-xs outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-500/20 bg-white shadow-2xs"
+                    />
+                  </div>
+
+                  {/* Dự kiến kết thúc */}
+                  <div className="lg:col-span-2 space-y-1">
+                    <label className="block font-bold text-slate-700 flex items-center gap-1">
+                      <Calendar size={12} className="text-slate-500" />
+                      <span>Dự kiến kết thúc</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="w-full rounded-lg border border-slate-300 px-2.5 py-2 font-semibold text-slate-800 text-xs outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-500/20 bg-white shadow-2xs"
+                    />
+                  </div>
+
+                  {/* Ghi chú mô tả mục tiêu */}
+                  <div className="lg:col-span-12 space-y-1 pt-1">
+                    <label className="block font-semibold text-slate-600">
+                      Mục tiêu lâm sàng & Hướng tiếp cận phác đồ:
+                    </label>
+                    <input
+                      type="text"
+                      value={planDesc}
+                      onChange={(e) => setPlanDesc(e.target.value)}
+                      placeholder="Mục tiêu điều trị, yêu cầu chức năng ăn nhai, thẩm mỹ và lưu ý đặc biệt..."
+                      className="w-full rounded-lg border border-slate-200 bg-slate-50/50 hover:bg-white px-3 py-1.5 text-xs text-slate-700 outline-none focus:border-teal-600 focus:bg-white transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ================= 2. CÁC GIAI ĐOẠN ĐIỀU TRỊ (CHỈ HIỂN THỊ KHI CÓ KẾ HOẠCH HỢP LỆ) ================= */}
+      {hasPatient && treatmentSessions.length > 0 && diagnosesList.length > 0 && hasPlanForActiveSession && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-700 text-white shadow-2xs">
+                <Layers size={16} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">
+                  Các Giai Đoạn Điều Trị
+                </h3>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-semibold text-slate-600">
+                Tổng số: <strong className="text-teal-800">{phases.length} giai đoạn</strong>
+              </span>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.96 }}
+                type="button"
+                onClick={handleOpenAddPhase}
+                className="flex items-center gap-1.5 rounded-lg border border-teal-300 bg-white px-3 py-1.5 text-xs font-bold text-teal-800 hover:bg-teal-50 cursor-pointer shadow-2xs"
+              >
+                <Plus size={14} />
+                <span>+ Thêm giai đoạn mới</span>
+              </motion.button>
+            </div>
+          </div>
+
+          {/* BỐ CỤC 2 CỘT: TRÁI LÀ VERTICAL STEPPER SCROLL-SPY, PHẢI LÀ CHI TIẾT GIAI ĐOẠN */}
+          {phases.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-teal-300 bg-white p-8 text-center space-y-3 shadow-2xs">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-teal-50 text-teal-700 mx-auto">
+                <Layers size={24} />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-bold text-slate-800">Kế hoạch điều trị mới chưa có giai đoạn nào!</p>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  Bạn có thể bấm <strong>"+ Thêm giai đoạn mới"</strong> để tự thiết lập giai đoạn và chỉ định dịch vụ, hoặc chọn một <strong>Gói phác đồ gợi ý</strong> ở trên theo kết quả khám lâm sàng.
+                </p>
+              </div>
+              <div className="pt-2 flex items-center justify-center gap-2">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.96 }}
+                  type="button"
+                  onClick={handleOpenAddPhase}
+                  className="flex items-center gap-1.5 rounded-lg bg-teal-700 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-teal-800 cursor-pointer"
+                >
+                  <Plus size={14} />
+                  <span>+ Thêm giai đoạn đầu tiên</span>
+                </motion.button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col lg:flex-row items-start gap-5">
+              {/* ================= CỘT TRÁI: TIẾN TRÌNH ĐIỀU TRỊ (VERTICAL STEPPER & SCROLL SPY) ================= */}
+              <div className="w-full lg:w-72 xl:w-80 shrink-0 lg:sticky lg:top-4 space-y-3.5">
+                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs space-y-3">
+                  {/* Header Tiến độ */}
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-700 text-white shadow-2xs">
+                        <Activity size={15} />
                       </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                          Tiến Trình Phác Đồ
+                        </h4>
+                        <span className="text-[11px] text-slate-500 font-medium">
+                          {phasesCompletedCount}/{phases.length} giai đoạn hoàn tất
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-xs font-black text-teal-800 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded">
+                      {phasesProgressPercent}%
+                    </span>
+                  </div>
 
-                      <div className="flex flex-wrap items-center gap-4 bg-slate-50 p-3.5 rounded-xl border border-slate-200 shadow-2xs">
-                        <div>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase block">Tổng tiền dịch vụ gốc</span>
-                          <span className="text-sm font-bold text-slate-700">
-                            {grossTotal.toLocaleString('vi-VN')} đ
-                          </span>
+                  {/* Progress bar ngang tổng thể */}
+                  <div className="space-y-1">
+                    <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full bg-linear-to-r from-teal-600 to-emerald-500 rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${phasesProgressPercent}%` }}
+                        transition={{ duration: 0.5, ease: 'easeOut' }}
+                      />
+                    </div>
+                    <p className="text-[10.5px] text-slate-400 italic">
+                      Nhấp vào giai đoạn để cuộn nhanh đến vị trí điều trị
+                    </p>
+                  </div>
+
+                  {/* Trục Stepper theo chiều dọc (Vertical Timeline) */}
+                  <div className="pt-2 space-y-1">
+                    {phases.map((phase, idx) => {
+                      const isCompleted = phase.status === 'COMPLETED';
+                      const isInProgress = phase.status === 'IN_PROGRESS';
+                      const isActive = activePhaseId === String(phase.phase_id);
+                      const isLast = idx === phases.length - 1;
+
+                      return (
+                        <div key={phase.phase_id} className="relative flex items-start gap-2.5 group">
+                          {/* Cột trục dọc và Node */}
+                          <div className="flex flex-col items-center">
+                            {/* Node biểu tượng */}
+                            <button
+                              type="button"
+                              onClick={() => scrollToPhase(phase.phase_id)}
+                              className={`flex h-7 w-7 items-center justify-center rounded-full font-bold text-[11px] shrink-0 cursor-pointer transition-all ${isCompleted
+                                ? 'bg-emerald-500 text-white shadow-xs'
+                                : isInProgress
+                                  ? 'bg-teal-700 text-white ring-4 ring-teal-100 shadow-xs animate-pulse'
+                                  : 'bg-white border-2 border-slate-300 text-slate-500 group-hover:border-teal-400'
+                                } ${isActive ? 'scale-110 shadow-md ring-2 ring-teal-500' : ''}`}
+                              title={`Nhấp để cuộn tới: ${phase.phase_name}`}
+                            >
+                              {isCompleted ? <Check size={13} /> : phase.phase_order}
+                            </button>
+
+                            {/* Trục dọc nối xuống phase kế tiếp: Nếu hoàn thành thì chạy đầy màu xanh! */}
+                            {!isLast && (
+                              <div className="relative w-1 my-1 min-h-[38px] bg-slate-200 rounded-full overflow-hidden">
+                                <div
+                                  className={`absolute inset-x-0 top-0 transition-all duration-500 ${isCompleted
+                                    ? 'h-full bg-emerald-500'
+                                    : isInProgress
+                                      ? 'h-1/2 bg-linear-to-b from-teal-600 to-transparent'
+                                      : 'h-0'
+                                    }`}
+                                />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Thẻ thông tin bước giai đoạn */}
+                          <div
+                            onClick={() => scrollToPhase(phase.phase_id)}
+                            className={`flex-1 p-2 rounded-lg cursor-pointer transition-all text-xs mb-1.5 ${isActive
+                              ? 'bg-teal-50/90 border border-teal-300 shadow-2xs'
+                              : 'hover:bg-slate-50 border border-transparent'
+                              }`}
+                          >
+                            <div className="flex items-center justify-between gap-1">
+                              <span className={`font-bold line-clamp-1 ${isActive ? 'text-teal-900' : 'text-slate-800'}`}>
+                                {phase.phase_name}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                              <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded border ${isCompleted
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : isInProgress
+                                  ? 'bg-teal-50 text-teal-700 border-teal-200'
+                                  : 'bg-slate-100 text-slate-600 border-slate-200'
+                                }`}>
+                                {isCompleted ? '✓ Hoàn thành' : isInProgress ? '⚡ Đang làm' : '⏳ Chờ'}
+                              </span>
+                              <span className="text-[10px] text-slate-400">
+                                {phase.treatment_services?.length || 0} DV · {phase.treatment_visits?.length || 0} buổi
+                              </span>
+                            </div>
+                          </div>
                         </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
 
-                        <div className="h-8 w-px bg-slate-200 hidden sm:block" />
+              {/* ================= CỘT PHẢI: CHI TIẾT CÁC GIAI ĐOẠN & TỔNG HỢP TÀI CHÍNH ================= */}
+              <div className="flex-1 min-w-0 space-y-5 w-full">
+                <AnimatePresence mode="popLayout">
+                  {phases.map((phase) => {
+                    const phaseServices = phase.treatment_services || [];
+                    const phaseVisits = phase.treatment_visits || [];
 
-                        <div>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase block">Ưu đãi / Giảm giá (%)</span>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <input
-                              type="number"
-                              min={0}
-                              max={50}
-                              value={discountPercent}
-                              onChange={(e) => setDiscountPercent(Math.max(0, Number(e.target.value) || 0))}
-                              className="w-12 rounded-md border border-slate-300 px-1.5 py-0.5 text-center font-bold text-xs outline-none focus:border-teal-600"
-                            />
-                            <span className="text-xs font-bold text-slate-600">%</span>
-                            <span className="text-xs font-semibold text-rose-600 ml-1">
-                              (-{discountAmount.toLocaleString('vi-VN')} đ)
+                    // Tổng tiền dịch vụ của giai đoạn
+                    const phaseServicesTotal = phaseServices.reduce(
+                      (sum, s) => sum + (Number(s.price) || 0) * (Number(s.quantity) || 1),
+                      0
+                    );
+
+                    const statusCfg = STATUS_PHASE_CONFIG[phase.status] || STATUS_PHASE_CONFIG.PENDING;
+
+                    return (
+                      <motion.div
+                        layout
+                        initial={{ opacity: 0, y: 15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.96 }}
+                        transition={{ duration: 0.25 }}
+                        key={phase.phase_id}
+                        id={`phase-card-${phase.phase_id}`}
+                        data-phase-id={phase.phase_id}
+                        onDoubleClick={() => handleOpenPhaseDetail(phase)}
+                        className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5 shadow-2xs space-y-4 hover:border-teal-300 transition-all cursor-pointer select-none"
+                        title="Nhấp đúp chuột vào thẻ để mở không gian điều trị lâm sàng toàn màn hình"
+                      >
+                        {/* HEADER GIAI ĐOẠN (`TreatmentPhase`) - 2 TẦNG CHUẨN ERP, KHÔNG BỊ CHEN CHÚC */}
+                        <div className="pb-3.5 border-b border-slate-200/90 space-y-2.5">
+                          {/* HÀNG 1: SỐ THỨ TỰ + TÊN GIAI ĐOẠN (TRÁI) & CỤM NÚT HÀNH ĐỘNG (PHẢI) */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div
+                                className={`flex h-9 w-9 items-center justify-center rounded-xl font-black text-sm shadow-xs shrink-0 transition-transform ${phase.status === 'COMPLETED'
+                                  ? 'bg-emerald-600 text-white'
+                                  : phase.status === 'IN_PROGRESS'
+                                    ? 'bg-teal-700 text-white ring-4 ring-teal-100'
+                                    : 'bg-slate-700 text-white'
+                                  }`}
+                              >
+                                {phase.status === 'COMPLETED' ? <Check size={16} /> : phase.phase_order}
+                              </div>
+
+                              <div className="min-w-0">
+                                <h4
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenPhaseDetail(phase);
+                                  }}
+                                  className="text-base font-bold text-slate-900 hover:text-teal-700 cursor-pointer transition-colors truncate"
+                                  title="Nhấp đúp chuột để mở không gian điều trị lâm sàng toàn màn hình"
+                                >
+                                  {phase.phase_name}
+                                </h4>
+                              </div>
+                            </div>
+
+                            {/* Cụm nút hành động bên phải - Thoáng đãng, không bị dồn ép */}
+                            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                              {/* Nút Vào điều trị CTA */}
+                              <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.96 }}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenPhaseDetail(phase);
+                                }}
+                                className="flex items-center gap-1.5 rounded-lg bg-teal-700 hover:bg-teal-800 text-white px-3.5 py-1.5 text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+                                title="Mở không gian điều trị lâm sàng toàn màn hình: cập nhật trạng thái, tạo buổi khám và ghi kết quả"
+                              >
+                                <Stethoscope size={13} />
+                                <span>Vào điều trị</span>
+                              </motion.button>
+
+                              {/* Nút Thêm dịch vụ */}
+                              <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.96 }}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenAddService(phase.phase_id);
+                                }}
+                                className="flex items-center gap-1 rounded-lg border border-teal-200 bg-white hover:bg-teal-50 text-teal-800 px-3 py-1.5 text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+                                title="Chỉ định dịch vụ nha khoa vào giai đoạn"
+                              >
+                                <Plus size={13} />
+                                <span>+ Thêm dịch vụ</span>
+                              </motion.button>
+
+                              {/* Nút Sửa */}
+                              <motion.button
+                                whileHover={{ scale: 1.08 }}
+                                whileTap={{ scale: 0.92 }}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenEditPhase(phase);
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                                title="Chỉnh sửa giai đoạn"
+                              >
+                                <Edit3 size={15} />
+                              </motion.button>
+
+                              {/* Nút Xóa */}
+                              <motion.button
+                                whileHover={{ scale: 1.08 }}
+                                whileTap={{ scale: 0.92 }}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemovePhase(phase.phase_id);
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                                title="Xóa giai đoạn"
+                              >
+                                <Trash2 size={15} />
+                              </motion.button>
+                            </div>
+                          </div>
+
+                          {/* HÀNG 2: SUB-BAR THUỘC TÍNH LÂM SÀNG CỦA GIAI ĐOẠN */}
+                          <div className="flex flex-wrap items-center gap-2 text-xs pt-0.5">
+                            {/* Treatment Type badge */}
+                            <span className="rounded-md bg-teal-50 border border-teal-200 text-teal-800 font-bold px-2.5 py-0.5 shadow-2xs">
+                              {phase.treatmentType || 'Tổng quát'}
+                            </span>
+
+                            {/* Estimated Duration */}
+                            {phase.estimated_duration && (
+                              <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 text-slate-600 font-medium px-2.5 py-0.5 shadow-2xs">
+                                <Clock4 size={12} className="text-slate-500" />
+                                {phase.estimated_duration}
+                              </span>
+                            )}
+
+                            {/* Status Phase Badge */}
+                            <span
+                              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-0.5 text-xs font-bold border shadow-2xs ${statusCfg.bg} ${statusCfg.text} ${statusCfg.border}`}
+                            >
+                              <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
+                              <span>{statusCfg.label}</span>
+                            </span>
+
+                            {/* Thống kê số lượng */}
+                            <span className="text-slate-300 text-xs hidden sm:inline">•</span>
+                            <span className="text-xs font-medium text-slate-500">
+                              {phaseServices.length} dịch vụ · {phaseVisits.length} buổi điều trị
                             </span>
                           </div>
                         </div>
 
-                        <div className="h-8 w-px bg-slate-200 hidden sm:block" />
+                        {/* PHẦN 1: BẢNG DỊCH VỤ NHA KHOA CHỈ ĐỊNH (`treatment_services`) */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                              <Tag size={13} className="text-teal-600" />
+                              <span>1. Danh mục dịch vụ nha khoa chỉ định:</span>
+                              <span className="text-[11px] font-semibold text-slate-400">
+                                ({phaseServices.length} dịch vụ)
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenAddService(phase.phase_id);
+                              }}
+                              className="text-teal-700 hover:text-teal-800 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                            >
+                              <Plus size={12} />
+                              <span>Thêm dịch vụ</span>
+                            </button>
+                          </div>
+                          {phaseServices.length === 0 ? (
+                            <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50/60 p-3 text-center text-xs text-slate-400">
+                              Chưa có dịch vụ nào được chỉ định trong giai đoạn này.
+                            </div>
+                          ) : (
+                            <div className="rounded-lg border border-slate-200 overflow-hidden text-xs shadow-2xs bg-white">
+                              <table className="w-full text-left border-collapse">
+                                <thead>
+                                  <tr className="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase border-b border-slate-200">
+                                    <th className="p-2.5 text-center w-10">STT</th>
+                                    <th className="p-2.5 text-center w-32">Vị trí răng</th>
+                                    <th className="p-2.5 min-w-[220px]">Dịch vụ nha khoa</th>
+                                    <th className="p-2.5 text-center w-28">Số lượng</th>
+                                    <th className="p-2.5 text-right w-32">Đơn giá</th>
+                                    <th className="p-2.5 text-right w-36">Thành tiền</th>
+                                    <th className="p-2.5 text-center w-14">Xóa</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                  {phaseServices.map((srv, sIndex) => {
+                                    const itemTotal = (Number(srv.price) || 0) * (Number(srv.quantity) || 1);
+                                    return (
+                                      <tr key={srv.treatmentServicesId || sIndex} className="hover:bg-slate-50/80 transition-colors">
+                                        <td className="p-2.5 text-center font-bold text-slate-400">{sIndex + 1}</td>
+                                        <td className="p-2.5 text-center">
+                                          <input
+                                            type="text"
+                                            value={srv.toothNumber || ''}
+                                            onChange={(e) =>
+                                              handleToothNumberChange(phase.phase_id, srv.treatmentServicesId, e.target.value)
+                                            }
+                                            className="w-28 text-center rounded border border-amber-200 bg-amber-50 px-1.5 py-1 font-extrabold text-amber-900 text-xs outline-none focus:border-amber-400"
+                                          />
+                                        </td>
+                                        <td className="p-2.5 font-bold text-slate-900">{srv.service_name || srv.serviceName}</td>
+                                        <td className="p-2.5 text-center">
+                                          <div className="inline-flex items-center border border-slate-300 rounded overflow-hidden bg-white shadow-2xs">
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleQuantityChange(
+                                                  phase.phase_id,
+                                                  srv.treatmentServicesId,
+                                                  (srv.quantity || 1) - 1
+                                                );
+                                              }}
+                                              className="px-2 py-0.5 text-slate-500 hover:bg-slate-100 font-bold cursor-pointer"
+                                            >
+                                              -
+                                            </button>
+                                            <input
+                                              type="number"
+                                              min={1}
+                                              value={srv.quantity || 1}
+                                              onChange={(e) =>
+                                                handleQuantityChange(phase.phase_id, srv.treatmentServicesId, e.target.value)
+                                              }
+                                              className="w-10 text-center font-extrabold text-slate-800 text-xs outline-none py-0.5"
+                                            />
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleQuantityChange(
+                                                  phase.phase_id,
+                                                  srv.treatmentServicesId,
+                                                  (srv.quantity || 1) + 1
+                                                );
+                                              }}
+                                              className="px-2 py-0.5 text-slate-500 hover:bg-slate-100 font-bold cursor-pointer"
+                                            >
+                                              +
+                                            </button>
+                                          </div>
+                                        </td>
+                                        <td className="p-2.5 text-right font-medium text-slate-600">
+                                          {Number(srv.price || 0).toLocaleString('vi-VN')} đ
+                                        </td>
+                                        <td className="p-2.5 text-right font-extrabold text-teal-800 text-xs">
+                                          {itemTotal.toLocaleString('vi-VN')} đ
+                                        </td>
+                                        <td className="p-2.5 text-center">
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleRemoveService(phase.phase_id, srv.treatmentServicesId);
+                                            }}
+                                            className="text-slate-400 hover:text-rose-600 p-1 cursor-pointer transition-colors"
+                                            title="Xóa dịch vụ"
+                                          >
+                                            <Trash2 size={14} />
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                                <tfoot>
+                                  <tr className="bg-slate-50/80 font-bold border-t border-slate-200 text-[11px]">
+                                    <td colSpan={5} className="p-2.5 text-right text-slate-600">
+                                      Tổng chi phí dịch vụ Giai đoạn {phase.phase_order}:
+                                    </td>
+                                    <td className="p-2.5 text-right text-teal-900 font-extrabold text-xs">
+                                      {phaseServicesTotal.toLocaleString('vi-VN')} đ
+                                    </td>
+                                    <td />
+                                  </tr>
+                                </tfoot>
+                              </table>
+                            </div>
+                          )}
+                        </div>
 
-                        <div>
-                          <span className="text-[10px] text-teal-700 font-bold uppercase block">
-                            Tổng chi phí dự kiến
-                          </span>
-                          <span className="text-lg font-extrabold text-teal-800">
-                            {estimatedCost.toLocaleString('vi-VN')} đ
+                        {/* PHẦN 2: CÁC BUỔI ĐIỀU TRỊ (`TreatmentVisits`) */}
+                        <div className="space-y-2 pt-1 border-t border-slate-100">
+                          <div className="flex items-center justify-between">
+                            <div className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
+                              <CalendarCheck size={14} className="text-indigo-600" />
+                              <span>2. Lộ trình các buổi điều trị lâm sàng:</span>
+                            </div>
+                          </div>
+                          {phaseVisits.length === 0 ? (
+                            <div className="rounded-lg border border-dashed border-indigo-200 bg-indigo-50/30 p-3.5 text-center text-xs text-indigo-600">
+                              Chưa có buổi điều trị nào được lên lịch cho giai đoạn này.
+                            </div>
+                          ) : (
+                            <div className="space-y-2.5">
+                              <AnimatePresence mode="popLayout">
+                                {phaseVisits.map((visit) => {
+                                  const vStatusCfg = STATUS_PHASE_CONFIG[visit.status] || STATUS_PHASE_CONFIG.PENDING;
+                                  return (
+                                    <motion.div
+                                      layout
+                                      initial={{ opacity: 0, y: 10 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      exit={{ opacity: 0, scale: 0.96 }}
+                                      transition={{ duration: 0.2 }}
+                                      key={visit.visitId}
+                                      className="rounded-xl border border-slate-200 bg-linear-to-r from-slate-50/80 to-indigo-50/20 p-3.5 shadow-2xs space-y-2.5 hover:border-indigo-300 transition-all"
+                                    >
+                                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
+                                        <div className="flex items-center gap-2.5 flex-wrap">
+                                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-700 text-white font-extrabold text-[11px] shadow-2xs shrink-0">
+                                            {visit.visitOrder}
+                                          </span>
+                                          <h5 className="font-bold text-slate-900 text-xs sm:text-sm">{visit.visitName}</h5>
+                                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-200 px-2.5 py-1 rounded-md shadow-2xs">
+                                            <Calendar size={12} className="text-slate-400" />
+                                            <span>Ngày: {visit.start_date || 'Chưa đặt'}</span>
+                                          </span>
+                                          <span
+                                            className={`rounded-full px-3 py-0.5 text-xs font-bold border shadow-2xs ${vStatusCfg.bg} ${vStatusCfg.text} ${vStatusCfg.border}`}
+                                          >
+                                            {vStatusCfg.label}
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center gap-2.5 self-end sm:self-auto shrink-0 flex-wrap">
+                                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-200 px-2.5 py-1 rounded-md shadow-2xs">
+                                            <User size={12} className="text-indigo-600 shrink-0" />
+                                            <span>
+                                              Bác sĩ: <strong className="text-slate-800 font-semibold">{visit.assigned_dentist || loggedInDoctorName || dentistName || 'Chưa phân công'}</strong>
+                                            </span>
+                                          </span>
+                                        </div>
+                                      </div>
+                                      <div className="bg-white rounded-lg border border-slate-200 p-2.5 text-xs space-y-1 shadow-2xs">
+                                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-teal-800 uppercase tracking-wide">
+                                          <Stethoscope size={13} className="text-teal-600" />
+                                          <span>Nội dung thực hiện trong buổi điều trị:</span>
+                                        </div>
+                                        <p className="text-slate-700 leading-relaxed pl-5 whitespace-pre-wrap font-normal">
+                                          {visit.clinical_notes || (
+                                            <span className="text-slate-400 italic">
+                                              Chưa ghi nhận nội dung thao tác. Nhấp "Vào điều trị" ở đầu giai đoạn để bổ sung ghi chú và cập nhật kết quả.
+                                            </span>
+                                          )}
+                                        </p>
+                                      </div>
+                                    </motion.div>
+                                  );
+                                })}
+                              </AnimatePresence>
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+
+                {/* ================= 6. TỔNG HỢP TÀI CHÍNH (`estimated_cost : Double`) ================= */}
+                <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs space-y-3">
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                        <Calculator size={18} className="text-teal-700" />
+                        Tổng Hợp Chi Phí Dự Kiến Toàn Kế Hoạch
+                      </h4>
+                      <p className="text-xs text-slate-500">
+                        Chi phí tổng hợp realtime từ tất cả các dịch vụ nha khoa chỉ định trong từng giai đoạn điều trị.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-4 bg-slate-50 p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase block">Tổng tiền dịch vụ gốc</span>
+                        <span className="text-sm font-bold text-slate-700">
+                          {grossTotal.toLocaleString('vi-VN')} đ
+                        </span>
+                      </div>
+
+                      <div className="h-8 w-px bg-slate-200 hidden sm:block" />
+
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase block">Ưu đãi / Giảm giá (%)</span>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <input
+                            type="number"
+                            min={0}
+                            max={50}
+                            value={discountPercent}
+                            onChange={(e) => setDiscountPercent(Math.max(0, Number(e.target.value) || 0))}
+                            className="w-12 rounded-md border border-slate-300 px-1.5 py-0.5 text-center font-bold text-xs outline-none focus:border-teal-600"
+                          />
+                          <span className="text-xs font-bold text-slate-600">%</span>
+                          <span className="text-xs font-semibold text-rose-600 ml-1">
+                            (-{discountAmount.toLocaleString('vi-VN')} đ)
                           </span>
                         </div>
                       </div>
+
+                      <div className="h-8 w-px bg-slate-200 hidden sm:block" />
+
+                      <div>
+                        <span className="text-[10px] text-teal-700 font-bold uppercase block">
+                          Tổng chi phí dự kiến
+                        </span>
+                        <span className="text-lg font-extrabold text-teal-800">
+                          {estimatedCost.toLocaleString('vi-VN')} đ
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </>
-              )}
+                </div>
+              </div>
             </div>
           )}
-        </>
+        </div>
       )}
 
       {/* ================= MODAL: LẬP KẾ HOẠCH ĐIỀU TRỊ (SEPARATE COMPONENT) ================= */}
@@ -2243,229 +2242,40 @@ export default function TreatmentPlans() {
         onSubmit={handleCreatePlanFromModal}
       />
 
-      {/* ================= MODAL 1: THÊM / SỬA GIAI ĐOẠN ĐIỀU TRỊ ================= */}
-      <AnimatePresence>
-        {showPhaseModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => setShowPhaseModal(false)}
-              className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="relative z-10 w-full max-w-2xl rounded-2xl bg-white shadow-2xl overflow-hidden max-h-[92vh] flex flex-col border border-slate-100"
-            >
-              {/* Top Gradient Header */}
-              <div className="relative overflow-hidden bg-linear-to-r from-teal-800 via-teal-700 to-teal-900 px-6 py-5 text-white">
-                <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 backdrop-blur-md border border-white/20 shadow-inner">
-                      <Layers className="text-white" size={22} />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-bold tracking-tight">
-                          {phaseModalMode === 'ADD' ? 'Thêm Giai Đoạn Điều Trị' : 'Chỉnh Sửa Giai Đoạn Điều Trị'}
-                        </h3>
-                        <span className="rounded-full bg-teal-500/30 border border-teal-300/30 px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider text-teal-100">
-                          Giai đoạn #{phaseFormOrder}
-                        </span>
-                      </div>
-                      <p className="text-xs text-teal-100/80 mt-0.5">
-                        Thiết lập lộ trình thực hiện, mục tiêu lâm sàng và thời gian can thiệp
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowPhaseModal(false)}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors cursor-pointer"
-                    title="Đóng"
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
-              </div>
+      {/* ================= MODAL 1: THÊM / SỬA GIAI ĐOẠN ĐIỀU TRỊ (SEPARATE COMPONENT) ================= */}
+      <PhaseModal
+        isOpen={showPhaseModal}
+        onClose={() => setShowPhaseModal(false)}
+        mode={phaseModalMode}
+        initialData={currentPhaseData}
+        onSavePhase={handleSavePhaseForm}
+      />
 
-              <form onSubmit={handleSavePhaseForm} className="p-6 space-y-4.5 overflow-y-auto">
-                {/* 1. Tên giai đoạn điều trị */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
-                      <Layers size={14} className="text-teal-700" />
-                      Tên giai đoạn điều trị <span className="text-rose-500">*</span>
-                    </label>
-                    <span className="text-[11px] text-slate-400 font-medium">Bắt buộc</span>
-                  </div>
-                  <input
-                    type="text"
-                    required
-                    value={phaseFormName}
-                    onChange={(e) => setPhaseFormName(e.target.value)}
-                    placeholder="VD: Giai đoạn 1: Điều trị tủy nội nha & Chăm sóc nha chu..."
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 transition-all outline-none shadow-2xs"
-                  />
-                  {/* Quick suggestion chips */}
-                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                    <span className="text-[11px] text-slate-400 font-medium mr-1">Gợi ý nhanh:</span>
-                    {[
-                      'Điều trị tủy & Nội nha',
-                      'Phục hình bọc sứ',
-                      'Cấy ghép Implant',
-                      'Chỉnh nha niềng răng',
-                      'Vệ sinh & Cạo vôi răng',
-                    ].map((chip) => (
-                      <button
-                        key={chip}
-                        type="button"
-                        onClick={() => setPhaseFormName(`Giai đoạn ${phaseFormOrder}: ${chip}`)}
-                        className="text-[11px] font-medium text-slate-600 bg-slate-100 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200 border border-slate-200 px-2.5 py-0.5 rounded-md transition-colors cursor-pointer"
-                      >
-                        + {chip}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 2. Thứ tự & Loại điều trị */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
-                      <CalendarCheck size={14} className="text-teal-700" />
-                      Thứ tự giai đoạn
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        min={1}
-                        value={phaseFormOrder}
-                        onChange={(e) => setPhaseFormOrder(Number(e.target.value) || 1)}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white px-4 py-2.5 text-sm font-bold text-slate-800 focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 transition-all outline-none shadow-2xs"
-                      />
-                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 pointer-events-none">
-                        Thứ tự #{phaseFormOrder}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
-                      <Sparkles size={14} className="text-teal-700" />
-                      Loại điều trị
-                    </label>
-                    <select
-                      value={phaseFormType}
-                      onChange={(e) => setPhaseFormType(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 transition-all outline-none shadow-2xs cursor-pointer"
-                    >
-                      <option value="Nội nha & Nha chu">Nội nha & Nha chu</option>
-                      <option value="Phục hình sứ">Phục hình sứ</option>
-                      <option value="Chỉnh nha">Chỉnh nha</option>
-                      <option value="Cấy ghép Implant">Cấy ghép Implant</option>
-                      <option value="Tiểu phẫu">Tiểu phẫu</option>
-                      <option value="Thẩm mỹ & Tẩy trắng">Thẩm mỹ & Tẩy trắng</option>
-                      <option value="Tổng quát">Tổng quát</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* 3. Thời gian dự kiến & Trạng thái */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
-                      <Clock size={14} className="text-teal-700" />
-                      Thời gian dự kiến
-                    </label>
-                    <input
-                      type="text"
-                      value={phaseFormDuration}
-                      onChange={(e) => setPhaseFormDuration(e.target.value)}
-                      placeholder="VD: 7 - 10 ngày, 2 - 3 tuần..."
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white px-4 py-2.5 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 transition-all outline-none shadow-2xs"
-                    />
-                    <div className="flex items-center gap-1.5 pt-0.5">
-                      {['1 - 2 tuần', '3 - 4 tuần', '2 - 3 tháng'].map((d) => (
-                        <button
-                          key={d}
-                          type="button"
-                          onClick={() => setPhaseFormDuration(d)}
-                          className="text-[10.5px] font-medium text-slate-500 hover:text-teal-700 bg-slate-100 hover:bg-teal-50 px-2 py-0.5 rounded cursor-pointer transition-colors"
-                        >
-                          {d}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
-                      <Activity size={14} className="text-teal-700" />
-                      Trạng thái giai đoạn
-                    </label>
-                    <select
-                      value={phaseFormStatus}
-                      onChange={(e) => setPhaseFormStatus(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 transition-all outline-none shadow-2xs cursor-pointer"
-                    >
-                      <option value="PENDING">⏳ Chờ thực hiện (PENDING)</option>
-                      <option value="IN_PROGRESS">⚡ Đang thực hiện (IN_PROGRESS)</option>
-                      <option value="COMPLETED">✓ Đã hoàn thành (COMPLETED)</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* 4. Mục tiêu & Mô tả giai đoạn */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
-                    <FileText size={14} className="text-teal-700" />
-                    Mục tiêu lâm sàng & Mô tả giai đoạn
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={phaseFormDesc}
-                    onChange={(e) => setPhaseFormDesc(e.target.value)}
-                    placeholder="Mô tả kỹ thuật can thiệp lâm sàng, lưu ý điều trị hoặc mục tiêu dự kiến đạt được trong giai đoạn này..."
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white p-3.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 transition-all outline-none leading-relaxed shadow-2xs"
-                  />
-                </div>
-
-                {/* Footer buttons */}
-                <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-slate-100">
-                  <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                    <Sparkles size={14} className="text-teal-600 shrink-0" />
-                    <span>Sau khi tạo, bạn có thể chỉ định dịch vụ nha khoa</span>
-                  </div>
-
-                  <div className="flex items-center justify-end gap-2.5">
-                    <button
-                      type="button"
-                      onClick={() => setShowPhaseModal(false)}
-                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors cursor-pointer shadow-2xs"
-                    >
-                      Hủy bỏ
-                    </button>
-                    <button
-                      type="submit"
-                      className="rounded-xl bg-linear-to-r from-teal-700 to-teal-800 hover:from-teal-800 hover:to-teal-900 px-5 py-2 text-xs font-bold text-white shadow-md shadow-teal-800/20 hover:shadow-teal-800/30 flex items-center gap-2 transition-all cursor-pointer"
-                    >
-                      <Check size={16} />
-                      <span>{phaseModalMode === 'ADD' ? 'Tạo giai đoạn điều trị' : 'Lưu thay đổi'}</span>
-                    </button>
-                  </div>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* ================= MODAL: KHÔNG GIAN ĐIỀU TRỊ LÂM SÀNG TOÀN MÀN HÌNH CHUẨN ERP (SEPARATE COMPONENT) ================= */}
+      <PhaseDetailModal
+        isOpen={showPhaseDetailModal}
+        onClose={() => setShowPhaseDetailModal(false)}
+        phase={selectedDetailPhase}
+        allPhases={phases}
+        patient={patient}
+        planInfo={{
+          planId,
+          planName,
+          dentistName,
+          startDate,
+          endDate,
+          planStatus,
+          planDesc,
+          estimatedCost,
+          grossTotal,
+          discountPercent,
+        }}
+        loggedInDoctorName={loggedInDoctorName || dentistName}
+        onUpdatePhaseStatus={handleTogglePhaseStatus}
+        onSaveVisit={handleSaveVisit}
+        onToggleVisitStatus={handleToggleVisitStatus}
+        onRemoveVisit={handleRemoveVisit}
+      />
 
       {/* ================= MODAL 2: CHỈ ĐỊNH DỊCH VỤ VÀO GIAI ĐOẠN (`treatment_services`) ================= */}
       <AddServiceModal
@@ -2487,80 +2297,17 @@ export default function TreatmentPlans() {
         onSaveVisit={handleSaveVisit}
       />
 
-      {/* ================= MODAL 4: CHỌN BỆNH NHÂN KHI CÓ NHIỀU KẾT QUẢ TRÙNG SĐT ================= */}
-      <AnimatePresence>
-        {multiplePatientsModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-lg rounded-2xl bg-white shadow-xl overflow-hidden border border-slate-200"
-            >
-              <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3.5 bg-slate-50">
-                <div className="flex items-center gap-2">
-                  <Phone size={16} className="text-teal-700" />
-                  <h3 className="font-bold text-sm text-slate-800">
-                    Tìm thấy {foundPatientsList.length} bệnh nhân trùng số điện thoại
-                  </h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setMultiplePatientsModalOpen(false)}
-                  className="text-slate-400 hover:text-slate-600 cursor-pointer p-1"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-
-              <div className="p-5 space-y-2 max-h-[60vh] overflow-y-auto">
-                <p className="text-xs text-slate-500 mb-2">
-                  Số điện thoại này được đăng ký cho nhiều người (ví dụ người trong cùng gia đình). Vui lòng chọn đúng bệnh nhân cần lấy kế hoạch điều trị:
-                </p>
-                {foundPatientsList.map((p) => (
-                  <div
-                    key={p.id || p.patientCode}
-                    onClick={() => handleSelectPatient(p)}
-                    className="flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:border-teal-500 hover:bg-teal-50/50 transition-all cursor-pointer group"
-                  >
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs text-slate-900 group-hover:text-teal-900">
-                          {p.fullName}
-                        </span>
-                        <span className="text-[10.5px] font-extrabold text-teal-800 bg-teal-100 px-1.5 py-0.2 rounded border border-teal-200">
-                          {p.patientCode}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-slate-500 flex items-center gap-2">
-                        <span>{p.gender === 'FEMALE' ? 'Nữ' : p.gender === 'MALE' ? 'Nam' : 'Khác'}</span>
-                        {p.dateOfBirth && <span>· Ngày sinh: {formatDateDisplay(p.dateOfBirth)}</span>}
-                        {p.phone && <span>· SĐT: {p.phone}</span>}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      className="rounded-lg bg-teal-700 group-hover:bg-teal-800 text-white px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer shadow-2xs"
-                    >
-                      Chọn &rarr;
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <div className="border-t border-slate-200 px-5 py-3 bg-slate-50 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setMultiplePatientsModalOpen(false)}
-                  className="rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
-                >
-                  Đóng
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* ================= MODAL 4: CHỌN BỆNH NHÂN KHI 1 SỐ ĐIỆN THOẠI CÓ NHIỀU HỒ SƠ (COMMON COMPONENT) ================= */}
+      <MultiplePatientsModal
+        isOpen={multiplePatientsModalOpen}
+        onClose={() => setMultiplePatientsModalOpen(false)}
+        phoneQuery={phoneSearchQuery}
+        patientsList={foundPatientsList}
+        onSelectPatient={(p) => {
+          handleSelectPatient(p);
+          toast.success(`Đã chọn hồ sơ bệnh nhân: ${p.fullName || p.patientName} (${p.patientCode})`);
+        }}
+      />
     </div>
   );
 }

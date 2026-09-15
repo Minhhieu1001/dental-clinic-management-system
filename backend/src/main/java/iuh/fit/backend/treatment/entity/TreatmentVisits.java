@@ -36,6 +36,9 @@ public class TreatmentVisits {
     @Column(name = "clinical_notes", columnDefinition = "TEXT")
     private String clinicalNotes;
 
+    @Column(name = "assigned_dentist", length = 255)
+    private String assignedDentist;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "treatment_phase_id")
     private TreatmentPhase treatmentPhase;

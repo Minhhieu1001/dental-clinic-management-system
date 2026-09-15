@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
   Layers,
@@ -11,6 +12,7 @@ import {
   ShieldAlert,
   Loader2,
 } from 'lucide-react';
+import { CHIEF_COMPLAINT_SUGGESTIONS } from '../clinicalExaminationHelpers';
 
 /**
  * Modal form xác nhận tạo đợt điều trị mới
@@ -45,8 +47,6 @@ export default function CreateTreatmentSessionModal({
     }
   }, [isOpen, currentDoctor, initialReason, patient]);
 
-  if (!isOpen) return null;
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isSubmitting) return;
@@ -75,10 +75,29 @@ export default function CreateTreatmentSessionModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
-      <div className="relative w-full max-w-xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-auto">
-        {/* 1. Modal Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3.5 bg-gradient-to-r from-teal-50 via-teal-50/50 to-white">
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          {/* Backdrop mờ mượt mà */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={!isSubmitting ? onClose : undefined}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs"
+          />
+
+          {/* Hộp thoại Modal với hiệu ứng spring nảy nhẹ mượt mà */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.94, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.94, y: 16 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+            className="relative w-full max-w-xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-auto z-10"
+          >
+            {/* 1. Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3.5 bg-gradient-to-r from-teal-50 via-teal-50/50 to-white">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-700 text-white shadow-xs">
               <Layers size={18} />
@@ -106,22 +125,6 @@ export default function CreateTreatmentSessionModal({
         {/* 2. Modal Body */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs text-slate-700">
           {/* Cảnh báo tránh tạo trùng lặp */}
-          <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-amber-900">
-            <ShieldAlert size={18} className="text-amber-600 shrink-0 mt-0.5" />
-            <div className="space-y-1 text-[11.5px] leading-relaxed">
-              <span className="font-bold text-amber-950 block">
-                Lưu ý quan trọng nhằm tránh tạo nhiều đợt điều trị trùng lặp:
-              </span>
-              <p className="text-amber-900">
-                Mỗi đợt điều trị tương ứng với một lần khám độc lập, có sơ đồ 32 răng và kế hoạch phác đồ riêng.
-                {existingSessionsCount > 0 ? (
-                  <> Hiện tại bệnh nhân đã có <strong>{existingSessionsCount} đợt điều trị</strong> trước đó. Chỉ xác nhận khi bệnh nhân thực sự đến khám đợt mới.</>
-                ) : (
-                  <> Đây sẽ là <strong>Đợt 1 (Đợt điều trị khởi đầu)</strong> của bệnh nhân này.</>
-                )}
-              </p>
-            </div>
-          </div>
 
           {/* Thẻ tóm tắt thông tin bệnh nhân */}
           {patient && (
@@ -198,6 +201,7 @@ export default function CreateTreatmentSessionModal({
               </label>
               <input
                 type="text"
+                readOnly
                 value={doctorName}
                 onChange={(e) => setDoctorName(e.target.value)}
                 placeholder="Nhập tên nha sĩ phụ trách..."
@@ -221,6 +225,20 @@ export default function CreateTreatmentSessionModal({
               placeholder="Ví dụ: Đau nhức răng hàm 46, viêm nướu, khám định kỳ..."
               className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:border-teal-600 focus:ring-1 focus:ring-teal-500 outline-none shadow-2xs"
             />
+            {/* Quick chips gợi ý lý do khám */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+
+              {CHIEF_COMPLAINT_SUGGESTIONS.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setChiefComplaint(item)}
+                  className="text-[10.5px] font-medium text-slate-600 bg-slate-100 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200 border border-slate-200 px-2 py-0.5 rounded cursor-pointer transition-colors"
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Ghi chú ban đầu */}
@@ -267,8 +285,10 @@ export default function CreateTreatmentSessionModal({
               )}
             </button>
           </div>
-        </form>
+          </form>
+        </motion.div>
       </div>
-    </div>
+    )}
+  </AnimatePresence>
   );
 }

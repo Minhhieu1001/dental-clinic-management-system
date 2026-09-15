@@ -23,7 +23,7 @@ public class TreatmentPlanResponse {
     private String planName;
     private String description;
     private BigDecimal estimatedCost;
-    private Boolean status;
+    private StatusPhase status;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
     private List<PhaseResponse> phases;
@@ -69,5 +69,6 @@ public class TreatmentPlanResponse {
         private String startDate;
         private StatusPhase status;
         private String clinicalNotes;
+        private String assignedDentist;
     }
 }

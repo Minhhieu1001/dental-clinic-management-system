@@ -1,16 +1,7 @@
 import React from 'react';
 import { AlertCircle, FileQuestion, Search, Sparkles, UserPlus } from 'lucide-react';
 
-export interface MedicalRecordEmptyStateProps {
-  /** Callback to focus phone search input on header */
-  onFocusSearch?: () => void;
-  /** Callback to navigate to patients list */
-  onNavigatePatients?: () => void;
-  /** Callback to load demo sample patient data */
-  onLoadSample?: () => void;
-}
-
-export const MedicalRecordEmptyState: React.FC<MedicalRecordEmptyStateProps> = ({
+export const MedicalRecordEmptyState = ({
   onFocusSearch,
   onNavigatePatients,
   onLoadSample,
@@ -43,9 +34,7 @@ export const MedicalRecordEmptyState: React.FC<MedicalRecordEmptyStateProps> = (
         <h3 className="text-lg sm:text-xl font-black text-slate-800 tracking-tight pt-1">
           Chưa Chọn Hồ Sơ Bệnh Nhân
         </h3>
-        <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
-          Hiện tại chưa có dữ liệu bệnh án nào được mở. Vui lòng nhập số điện thoại vào ô tìm kiếm ở thanh Header phía trên để tra cứu bệnh án, hoặc tiếp nhận bệnh nhân mới.
-        </p>
+
       </div>
 
       {/* Quick Action Suggestion Cards */}
@@ -88,20 +77,6 @@ export const MedicalRecordEmptyState: React.FC<MedicalRecordEmptyStateProps> = (
           </div>
         )}
       </div>
-
-      {/* Demo sample patient quick-load button */}
-      {onLoadSample && (
-        <div className="pt-2">
-          <button
-            type="button"
-            onClick={onLoadSample}
-            className="flex items-center gap-1.5 text-xs text-teal-700 hover:text-teal-900 font-bold hover:underline cursor-pointer transition-colors"
-          >
-            <Sparkles size={13} />
-            <span>Xem hồ sơ bệnh án mẫu (Demo Nguyễn Anh Khôi)</span>
-          </button>
-        </div>
-      )}
     </div>
   );
 };

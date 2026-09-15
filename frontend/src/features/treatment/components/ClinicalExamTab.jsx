@@ -175,11 +175,10 @@ export default function ClinicalExamTab() {
                   type="button"
                   disabled={isHistoricalSession}
                   onClick={() => handleToggleMultiToothMode(false)}
-                  className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
-                    !isMultiToothMode
-                      ? 'bg-white text-teal-900 shadow-2xs border border-slate-200'
-                      : 'text-slate-500 hover:text-slate-900'
-                  } ${isHistoricalSession ? 'cursor-not-allowed opacity-40' : ''}`}
+                  className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${!isMultiToothMode
+                    ? 'bg-white text-teal-900 shadow-2xs border border-slate-200'
+                    : 'text-slate-500 hover:text-slate-900'
+                    } ${isHistoricalSession ? 'cursor-not-allowed opacity-40' : ''}`}
                   title="Chế độ chọn 1 răng (mặc định): Chọn trạng thái rồi chọn răng"
                 >
                   Chọn 1 răng
@@ -188,11 +187,10 @@ export default function ClinicalExamTab() {
                   type="button"
                   disabled={isHistoricalSession}
                   onClick={() => handleToggleMultiToothMode(true)}
-                  className={`px-2.5 py-1 rounded-md font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                    isMultiToothMode
-                      ? 'bg-teal-700 text-white shadow-2xs'
-                      : 'text-slate-500 hover:text-slate-900'
-                  } ${isHistoricalSession ? 'cursor-not-allowed opacity-40' : ''}`}
+                  className={`px-2.5 py-1 rounded-md font-bold transition-all flex items-center gap-1.5 cursor-pointer ${isMultiToothMode
+                    ? 'bg-teal-700 text-white shadow-2xs'
+                    : 'text-slate-500 hover:text-slate-900'
+                    } ${isHistoricalSession ? 'cursor-not-allowed opacity-40' : ''}`}
                   title="Chế độ chọn nhiều răng: Chọn trạng thái rồi click các răng để gán và lưu cùng lúc"
                 >
                   <span>Chọn nhiều răng</span>
@@ -217,7 +215,7 @@ export default function ClinicalExamTab() {
                   }`}
               >
                 {isHistoricalSession
-                  ? 'Chỉ xem (Lịch sử)'
+                  ? 'Chỉ xem (Đã khóa)'
                   : !activeMarkingTool
                     ? (isMultiToothMode ? 'Chọn nhiều răng' : 'Chọn & Xem răng')
                     : `${isMultiToothMode ? 'Tô nhiều răng' : 'Tô'}: ${TOOTH_CONDITIONS.find((c) => c.key === activeMarkingTool)?.label}`}
@@ -246,16 +244,6 @@ export default function ClinicalExamTab() {
                   Bỏ chọn tất cả
                 </button>
               )}
-            </div>
-          )}
-
-          {/* Banner thông báo chế độ xem lịch sử đợt khám */}
-          {isHistoricalSession && (
-            <div className="flex items-center gap-2.5 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs font-bold text-amber-900">
-              <Lock size={15} className="text-amber-600 shrink-0" />
-              <span>
-                Đang xem đợt khám: <strong>{currentSession?.label || 'Đợt cũ'}</strong> (ngày {currentSession?.date || 'lịch sử'}). Chế độ chỉ xem — sơ đồ răng và kết quả khám đã được khóa, không thể chỉnh sửa.
-              </span>
             </div>
           )}
 
@@ -644,29 +632,8 @@ export default function ClinicalExamTab() {
                   </tr>
                 );
               })}
-
-              {!isLoadingTeeth && examinedTeeth.length === 0 && (
-                <tr>
-                  <td colSpan={10} className="px-4 py-8 text-center text-slate-400">
-                    Chưa có răng nào được lưu vào CSDL cho kết quả khám này. Vui lòng chọn răng trên sơ đồ và nhấn <strong>"Lưu thông tin răng"</strong>.
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
-        </div>
-
-        {/* Chuyển bước nhanh sang Phân tích AI */}
-        <div className="pt-3 border-t border-slate-100 flex items-center justify-end">
-          <button
-            type="button"
-            onClick={() => setActiveTab('ai')}
-            className="flex items-center gap-2 rounded-lg bg-teal-700 px-4 py-2 text-xs font-bold text-white shadow hover:bg-teal-800 transition-colors cursor-pointer"
-          >
-            <Sparkles size={14} />
-            <span>Tiếp tục: Phân tích X-quang & AI</span>
-            <ArrowRight size={14} />
-          </button>
         </div>
       </div>
     </div>

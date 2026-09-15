@@ -16,6 +16,6 @@ public interface TreatmentPlanRepository extends JpaRepository<TreatmentPlan, UU
     @Query("SELECT tp FROM TreatmentPlan tp WHERE tp.examinationResult.id = :examinationResultId")
     Optional<TreatmentPlan> findByExaminationResultId(@Param("examinationResultId") UUID examinationResultId);
 
-    @Query("SELECT tp FROM TreatmentPlan tp WHERE tp.patient.id = :patientId ORDER BY tp.startDate DESC")
+    @Query("SELECT tp FROM TreatmentPlan tp WHERE tp.examinationResult.medicalRecord.patient.id = :patientId ORDER BY tp.startDate DESC")
     List<TreatmentPlan> findByPatientId(@Param("patientId") UUID patientId);
 }
