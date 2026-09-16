@@ -15,6 +15,8 @@ import java.util.UUID;
 public class ExaminationResultDTO {
     private UUID id;
     private UUID medicalRecordId;
+    private UUID dentistId;
+    private String dentistName;
     private String chiefComplaint;
     private LocalDateTime examinationDate;
     private DiagnosisDTO diagnosis;
@@ -23,4 +25,5 @@ public class ExaminationResultDTO {
     @Builder.Default
     private List<ToothRecordDTO> toothRecords = new ArrayList<>();
     private UUID treatmentPlanId;
+    private Boolean disabled;
 }

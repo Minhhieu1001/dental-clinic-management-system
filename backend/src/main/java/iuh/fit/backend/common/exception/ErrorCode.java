@@ -34,7 +34,8 @@ public enum ErrorCode {
     // Generic
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Lỗi hệ thống. Vui lòng thử lại sau"),
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "Dữ liệu không hợp lệ"),
-    RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy tài nguyên");
+    RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy tài nguyên"),
+    INVALID_REQUEST(HttpStatus.BAD_REQUEST, "Đợt khám này đã được xác nhận và khóa hồ sơ. Không thể thêm/sửa ghi nhận răng!");
 
     private final HttpStatus httpStatus;
     private final String message;

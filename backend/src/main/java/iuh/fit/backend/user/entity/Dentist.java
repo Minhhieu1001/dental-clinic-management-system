@@ -74,7 +74,7 @@ public class Dentist {
 
     @Builder.Default
     @OneToMany(mappedBy = "dentist", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    private List<TreatmentPlan> treatmentPlans = new ArrayList<>();
+    private List<iuh.fit.backend.medicalrecord.entity.ExaminationResult> examinationResults = new ArrayList<>();
 
     @Builder.Default
     @OneToMany(mappedBy = "dentist", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})

@@ -249,6 +249,8 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         return ExaminationResultDTO.builder()
                 .id(exam.getId())
                 .medicalRecordId(exam.getMedicalRecord() != null ? exam.getMedicalRecord().getId() : null)
+                .dentistId(exam.getDentist() != null ? exam.getDentist().getId() : null)
+                .dentistName(exam.getDentist() != null ? exam.getDentist().getFullName() : null)
                 .chiefComplaint(exam.getChiefComplaint())
                 .examinationDate(exam.getExaminationDate())
                 .diagnosis(primaryDiagnosisDTO)

@@ -83,9 +83,4 @@ public class Patient {
     @Builder.Default
     @OneToMany(mappedBy = "patient", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<Invoice> invoices = new ArrayList<>();
-
-    @Builder.Default
-    @OneToMany(mappedBy = "patient", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    private List<TreatmentPlan> treatmentPlans = new ArrayList<>();
-
 }

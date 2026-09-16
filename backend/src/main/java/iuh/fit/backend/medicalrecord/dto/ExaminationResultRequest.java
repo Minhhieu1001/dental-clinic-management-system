@@ -17,6 +17,7 @@ public class ExaminationResultRequest {
     @NotNull(message = "medicalRecordId không được để trống")
     private UUID medicalRecordId;
 
+    private UUID dentistId;
     private String chiefComplaint;
     private LocalDateTime examinationDate;
     private DiagnosisRequest diagnosis;
@@ -25,4 +26,6 @@ public class ExaminationResultRequest {
 
     @Builder.Default
     private List<ToothRecordRequest> toothRecords = new ArrayList<>();
+
+    private Boolean disabled;
 }

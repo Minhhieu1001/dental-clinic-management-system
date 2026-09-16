@@ -18,40 +18,14 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-
-// 5 Loại danh mục dịch vụ chuẩn xác theo CSDL Postgres
-export const SERVICE_CATEGORIES = [
-  { key: 'ALL', label: 'Tất cả loại dịch vụ', icon: Sparkles, color: 'bg-slate-100 text-slate-800' },
-  { key: 'KHAM_DIEU_TRI', label: 'Khám & Điều trị', icon: Stethoscope, color: 'bg-teal-50 text-teal-800 border-teal-200' },
-  { key: 'RANG_SU', label: 'Răng sứ thẩm mỹ', icon: Shield, color: 'bg-blue-50 text-blue-800 border-blue-200' },
-  { key: 'NIENG_RANG', label: 'Niềng răng - Chỉnh nha', icon: Smile, color: 'bg-indigo-50 text-indigo-800 border-indigo-200' },
-  { key: 'IMPLANT', label: 'Cấy ghép Implant', icon: Anchor, color: 'bg-purple-50 text-purple-800 border-purple-200' },
-  { key: 'TAY_TRANG', label: 'Tẩy trắng răng', icon: Sun, color: 'bg-amber-50 text-amber-800 border-amber-200' },
-];
-
-// Helper hiển thị badge loại dịch vụ
-const getCategoryBadge = (categoryKey) => {
-  switch (categoryKey?.toUpperCase()) {
-    case 'KHAM_DIEU_TRI':
-      return { label: 'Khám & Điều trị', cls: 'bg-teal-50 text-teal-700 border-teal-200' };
-    case 'RANG_SU':
-      return { label: 'Răng sứ', cls: 'bg-blue-50 text-blue-700 border-blue-200' };
-    case 'NIENG_RANG':
-      return { label: 'Niềng răng', cls: 'bg-indigo-50 text-indigo-700 border-indigo-200' };
-    case 'IMPLANT':
-      return { label: 'Implant', cls: 'bg-purple-50 text-purple-700 border-purple-200' };
-    case 'TAY_TRANG':
-      return { label: 'Tẩy trắng', cls: 'bg-amber-50 text-amber-700 border-amber-200' };
-    default:
-      return { label: categoryKey || 'Nha khoa', cls: 'bg-slate-100 text-slate-700 border-slate-200' };
-  }
-};
-
-// Sơ đồ răng người lớn (FDI 32 răng chuẩn quốc tế)
-const UPPER_JAW_RIGHT = ['18', '17', '16', '15', '14', '13', '12', '11']; // Cung 1
-const UPPER_JAW_LEFT = ['21', '22', '23', '24', '25', '26', '27', '28'];  // Cung 2
-const LOWER_JAW_RIGHT = ['48', '47', '46', '45', '44', '43', '42', '41']; // Cung 4
-const LOWER_JAW_LEFT = ['31', '32', '33', '34', '35', '36', '37', '38'];  // Cung 3
+import {
+  SERVICE_CATEGORIES,
+  getCategoryBadge,
+  UPPER_JAW_RIGHT,
+  UPPER_JAW_LEFT,
+  LOWER_JAW_RIGHT,
+  LOWER_JAW_LEFT,
+} from '../clinicalExaminationHelpers';
 
 export function AddServiceModal({
   isOpen,
@@ -373,7 +347,7 @@ export function AddServiceModal({
                           : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
                           }`}
                       >
-                        <IconComp size={13} className={isActive ? 'text-white' : 'text-slate-500'} />
+                        {IconComp && <IconComp size={13} className={isActive ? 'text-white' : 'text-slate-500'} />}
                         <span>{cat.label}</span>
                         <span
                           className={`rounded-full px-1.5 py-0.2 text-[10px] ${isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'

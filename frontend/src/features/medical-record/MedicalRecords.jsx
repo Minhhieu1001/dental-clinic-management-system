@@ -18,68 +18,25 @@ import {
 } from '../../services/patient.service';
 import {
   getMedicalRecordsByPatientCode,
+  getMedicalRecordsByPatientId,
   createMedicalRecord,
   updateMedicalRecord,
 } from '../../services/medicalRecord.service';
+import { getExaminationResultsByMedicalRecordId } from '../../services/examinationResult.service';
+import { getTreatmentPlansByPatientId } from '../../services/treatmentPlan.service';
+import { getDentistsList } from '../../services/dentist.service';
 
 import MedicalRecordHeader from './components/MedicalRecordHeader';
 import PatientGeneralInfoForm from './components/PatientGeneralInfoForm';
 import TreatmentHistoryTimeline from './components/TreatmentHistoryTimeline';
 import MedicalRecordEmptyState from './components/MedicalRecordEmptyState';
+import MultiplePatientsModal from '../../components/common/MultiplePatientsModal';
 import {
   createDefaultMedicalRecord,
   DEFAULT_DENTAL_CLINIC_NAME,
   DEFAULT_DENTAL_CLINIC_ADDRESS,
   generateRecordFileName,
 } from './medicalRecordHelpers';
-
-// Sample Treatment History mapped 100% to MedicalRecord.java entity fields
-const SAMPLE_MEDICAL_RECORDS = [
-  {
-    id: 'mr-101',
-    recordDate: '2024-05-12T09:30:00',
-    status: 'COMPLETED',
-    statusLabel: 'Đã hoàn thành',
-    diagnosis: 'Khám tổng quát & Cạo vôi răng',
-    dentistName: 'BS. Nguyễn Thị An',
-    treatmentNotes: 'Khám tổng quát, cạo vôi răng hàm trên và hàm dưới',
-    symptoms: 'Răng nhiều cao răng, nướu viêm nhẹ',
-    cost: '500.000 đ',
-  },
-  {
-    id: 'mr-102',
-    recordDate: '2024-04-15T14:00:00',
-    status: 'COMPLETED',
-    statusLabel: 'Đã hoàn thành',
-    diagnosis: 'Trám răng số 46 (Sâu mặt nhai)',
-    dentistName: 'BS. Nguyễn Thị An',
-    treatmentNotes: 'Trám răng sâu mặt nhai bằng Composite thẩm mỹ',
-    symptoms: 'Răng 46 đau ê buốt khi ăn đồ ngọt',
-    cost: '800.000 đ',
-  },
-  {
-    id: 'mr-103',
-    recordDate: '2024-03-20T10:00:00',
-    status: 'COMPLETED',
-    statusLabel: 'Đã hoàn thành',
-    diagnosis: 'Nhổ răng số 48 (Răng khôn mọc lệch)',
-    dentistName: 'BS. Trần Văn Minh',
-    treatmentNotes: 'Nhổ răng khôn hàm dưới bên phải, khâu 2 mũi',
-    symptoms: 'Răng khôn 48 mọc lệch 90 độ gây đau nhức',
-    cost: '1.200.000 đ',
-  },
-  {
-    id: 'mr-104',
-    recordDate: '2024-03-10T09:00:00',
-    status: 'CANCELLED',
-    statusLabel: 'Đã hủy',
-    diagnosis: 'Lấy cao răng toàn hàm',
-    dentistName: 'BS. Nguyễn Thị An',
-    treatmentNotes: 'Lấy cao răng toàn hàm',
-    symptoms: 'Vôi răng tích tụ',
-    cost: '300.000 đ',
-  },
-];
 
 export default function MedicalRecords() {
   const location = useLocation();
@@ -132,17 +89,9 @@ export default function MedicalRecords() {
     )
   );
 
-  // Treatment History Records state
-  const [treatmentRecords, setTreatmentRecords] = useState(() => {
-    if (
-      passedPatient?.fullName === 'Nguyễn Anh Khôi' ||
-      location.state?.fullName === 'Nguyễn Anh Khôi' ||
-      location.state?.patientCode === 'PA-234820'
-    ) {
-      return SAMPLE_MEDICAL_RECORDS;
-    }
-    return [];
-  });
+  // Treatment History Records state & Loading
+  const [treatmentRecords, setTreatmentRecords] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   // Patient State matching PatientDTO.java entity properties 100%
   const [patientData, setPatientData] = useState({
@@ -168,6 +117,177 @@ export default function MedicalRecords() {
     (patientData.fullName && patientData.fullName.trim()) ||
     (patientData.phone && patientData.phone.trim())
   );
+
+  // Tải toàn bộ Lịch sử điều trị THỰC TẾ của bệnh nhân từ Backend
+  const fetchRealTreatmentHistory = async (patientObj) => {
+    if (!patientObj || (!patientObj.id && !patientObj.patientCode)) {
+      setTreatmentRecords([]);
+      return;
+    }
+
+    setLoadingHistory(true);
+    try {
+      const pCode = patientObj.patientCode;
+      const pId = patientObj.id;
+
+      // 1. Fetch song song MedicalRecords, TreatmentPlans và Dentists List
+      const [recordsRes, plansRes, dentistsRes] = await Promise.allSettled([
+        pCode ? getMedicalRecordsByPatientCode(pCode) : (pId ? getMedicalRecordsByPatientId(pId) : Promise.resolve([])),
+        pId ? getTreatmentPlansByPatientId(pId) : Promise.resolve([]),
+        getDentistsList().catch(() => []),
+      ]);
+
+      const mRecords = recordsRes.status === 'fulfilled' && Array.isArray(recordsRes.value) ? recordsRes.value : [];
+      const tPlans = plansRes.status === 'fulfilled' && Array.isArray(plansRes.value) ? plansRes.value : [];
+      const rawDentists = dentistsRes.status === 'fulfilled' && Array.isArray(dentistsRes.value?.data || dentistsRes.value)
+        ? (dentistsRes.value?.data || dentistsRes.value)
+        : [];
+
+      // Bảng map tra cứu tên bác sĩ theo ID
+      const dentistMap = new Map();
+      rawDentists.forEach((d) => {
+        const dName = d.fullName || d.name || d.user?.fullName || d.user?.username;
+        if (d.id) dentistMap.set(String(d.id), dName);
+        if (d.user?.id) dentistMap.set(String(d.user?.id), dName);
+      });
+
+      // Map plans theo examinationResultId và id
+      const planByExamId = new Map();
+      const planById = new Map();
+      tPlans.forEach((plan) => {
+        if (plan.id) planById.set(String(plan.id), plan);
+        if (plan.examinationResultId) planByExamId.set(String(plan.examinationResultId), plan);
+      });
+
+      const usedPlanIds = new Set();
+      const historyList = [];
+
+      // Duyệt qua từng Medical Record để trích xuất ExaminationResults
+      for (const mr of mRecords) {
+        let exams = mr.examinationResults || [];
+
+        // Nếu exams rỗng nhưng có mr.id, gọi thêm API lấy kết quả khám
+        if (exams.length === 0 && mr.id) {
+          try {
+            const fetchedExams = await getExaminationResultsByMedicalRecordId(mr.id);
+            if (Array.isArray(fetchedExams) && fetchedExams.length > 0) {
+              exams = fetchedExams;
+            }
+          } catch (e) {
+            // Không ngắt luồng nếu lỗi đơn lẻ
+          }
+        }
+
+        if (exams.length > 0) {
+          for (const exam of exams) {
+            const examIdStr = String(exam.id || '');
+            const matchedPlan =
+              (examIdStr && planByExamId.get(examIdStr)) ||
+              (exam.treatmentPlanId && planById.get(String(exam.treatmentPlanId))) ||
+              null;
+
+            if (matchedPlan?.id) {
+              usedPlanIds.add(String(matchedPlan.id));
+            }
+
+            // Bác sĩ phụ trách: ưu tiên theo kết quả khám examinationResult -> kế hoạch -> các buổi hẹn -> hồ sơ bệnh án
+            const examDoctorId = exam.dentistId || exam.dentist?.id;
+            const dentistName =
+              exam.dentistName ||
+              exam.dentist?.fullName ||
+              (examDoctorId && dentistMap.get(String(examDoctorId))) ||
+              matchedPlan?.dentistName ||
+              (matchedPlan?.dentistId && dentistMap.get(String(matchedPlan.dentistId))) ||
+              matchedPlan?.phases?.[0]?.treatmentVisits?.[0]?.assignedDentist ||
+              mr.dentistName ||
+              (mr.dentistId && dentistMap.get(String(mr.dentistId))) ||
+              'Chưa phân công';
+
+
+            // 1. Thời gian bắt đầu: thời gian khởi tạo examinationResult
+            const startDate = exam.examinationDate || exam.createdAt || matchedPlan?.startDate || mr.recordDate;
+
+            // 2. Trạng thái: trạng thái của bảng treatmentPlan
+            const status = matchedPlan?.status || 'PENDING';
+
+            // 3. Lý do khám bệnh: chiefComplaint của examinationResult
+            const chiefComplaint = exam.chiefComplaint || mr.symptoms || 'Khám răng hàm mặt';
+
+            // 4. Chuẩn đoán là gì: diagnoses của examinationResult
+            const diagnoses = Array.isArray(exam.diagnoses) && exam.diagnoses.length > 0
+              ? exam.diagnoses
+              : (exam.diagnosis ? [exam.diagnosis] : []);
+
+            // 5. Tên kế hoạch điều trị: planName của treatmentPlan
+            const planName = matchedPlan?.planName || (matchedPlan ? 'Kế hoạch điều trị' : 'Chưa lập kế hoạch điều trị');
+
+            // 6. Tên các giai đoạn và trạng thái giai đoạn
+            const phases = matchedPlan?.phases || [];
+
+            historyList.push({
+              id: exam.id || matchedPlan?.id || mr.id,
+              examinationResultId: exam.id,
+              treatmentPlanId: matchedPlan?.id,
+              startDate,
+              recordDate: startDate,
+              status,
+              chiefComplaint,
+              dentistName,
+              diagnoses,
+              toothRecords: exam.toothRecords || [],
+              planName,
+              planDescription: matchedPlan?.description || '',
+              estimatedCost: matchedPlan?.estimatedCost,
+              phases,
+              rawExam: exam,
+              rawPlan: matchedPlan,
+              medicalRecordId: mr.id,
+            });
+          }
+        }
+        // Nếu MedicalRecord rỗng (chưa có đợt khám examinationResult nào), không tự sinh ca khám giả
+      }
+
+      // Đưa thêm các TreatmentPlan của bệnh nhân chưa được gắn vào examinationResult nào vào timeline
+      for (const plan of tPlans) {
+        if (plan.id && !usedPlanIds.has(String(plan.id))) {
+          const startDate = plan.startDate || plan.createdAt;
+          const dentistName =
+            plan.dentistName ||
+            (plan.dentistId && dentistMap.get(String(plan.dentistId))) ||
+            plan.phases?.[0]?.treatmentVisits?.[0]?.assignedDentist ||
+            'Bác sĩ phụ trách';
+
+
+          historyList.push({
+            id: plan.id,
+            treatmentPlanId: plan.id,
+            startDate,
+            recordDate: startDate,
+            status: plan.status || 'PENDING',
+            chiefComplaint: plan.description || 'Kế hoạch điều trị tổng thể',
+            dentistName,
+            diagnoses: [],
+            toothRecords: [],
+            planName: plan.planName || 'Kế hoạch điều trị',
+            planDescription: plan.description || '',
+            estimatedCost: plan.estimatedCost,
+            phases: plan.phases || [],
+            rawPlan: plan,
+          });
+        }
+      }
+
+      // Sắp xếp giảm dần theo thời gian bắt đầu (mới nhất lên đầu)
+      historyList.sort((a, b) => new Date(b.startDate || 0) - new Date(a.startDate || 0));
+      setTreatmentRecords(historyList);
+    } catch (err) {
+      console.error('Lỗi khi tải lịch sử điều trị thật của bệnh nhân:', err);
+      setTreatmentRecords([]);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
 
   // Apply chosen patient object onto form
   const applyPatientToForm = (patientObj) => {
@@ -217,21 +337,11 @@ export default function MedicalRecords() {
             }));
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }
 
-    // Set treatment history records
-    if (patientObj.treatmentHistory && Array.isArray(patientObj.treatmentHistory)) {
-      setTreatmentRecords(patientObj.treatmentHistory);
-    } else if (
-      patientObj.fullName === 'Nguyễn Anh Khôi' ||
-      patientObj.patientCode === 'PA-234820' ||
-      (patientObj.phone && patientObj.phone.includes('0369852147'))
-    ) {
-      setTreatmentRecords(SAMPLE_MEDICAL_RECORDS);
-    } else {
-      setTreatmentRecords([]);
-    }
+    // Tải dữ liệu thật lịch sử điều trị cho bệnh nhân
+    fetchRealTreatmentHistory(patientObj);
 
     let diseases = [];
     if (Array.isArray(patientObj.systemicDisease)) {
@@ -623,18 +733,22 @@ export default function MedicalRecords() {
                 }}
                 onNavigatePatients={() => navigate('/dentist/patients')}
                 onLoadSample={() => {
-                  applyPatientToForm({
-                    patientCode: 'PA-234820',
-                    fullName: 'Nguyễn Anh Khôi',
-                    phone: '0369852147',
-                    gender: 'MALE',
-                    dateOfBirth: '2009-02-03',
-                    nationality: 'Việt Nam',
-                    address: 'Lê thị riêng , an thới q12',
-                    symptoms: 'Đau nhức răng hàm dưới bên phải, ê buốt khi ăn nhai',
-                  });
-                  setTreatmentRecords(SAMPLE_MEDICAL_RECORDS);
-                  toast.success('Đã tải hồ sơ bệnh án mẫu demo: Nguyễn Anh Khôi');
+                  if (patientOptions.length > 0) {
+                    applyPatientToForm(patientOptions[0]);
+                    toast.success(`Đã mở hồ sơ bệnh nhân: ${patientOptions[0].fullName || patientOptions[0].patientName}`);
+                  } else {
+                    applyPatientToForm({
+                      patientCode: 'PA-206880',
+                      fullName: 'Phạm Minh Hiếu',
+                      phone: '0378995155',
+                      gender: 'MALE',
+                      dateOfBirth: '2004-10-01',
+                      nationality: 'Việt Nam',
+                      address: '59C Nguyễn Đình Chiểu, P. Xuân Hòa, TP. HCM',
+                      symptoms: 'Trám răng và khám tổng quát',
+                    });
+                    toast.success('Đã tải hồ sơ bệnh nhân Phạm Minh Hiếu');
+                  }
                 }}
               />
             )}
@@ -647,127 +761,37 @@ export default function MedicalRecords() {
         <div className="lg:col-span-4">
           <TreatmentHistoryTimeline
             records={treatmentRecords}
+            loading={loadingHistory}
+            patient={patientData}
+            onRefresh={() => fetchRealTreatmentHistory(patientData)}
             onStartExam={hasPatientData ? handleNavigateTreatment : null}
+            onOpenPlan={(record) => {
+              navigate('/dentist/treatment-plans', {
+                state: {
+                  patient: patientData,
+                  planId: record.treatmentPlanId,
+                  examinationResultId: record.examinationResultId,
+                  examinationResult: record.rawExam,
+                },
+              });
+            }}
           />
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* MODAL: CHỌN HỒ SƠ BỆNH NHÂN KHI 1 SỐ ĐIỆN THOẠI CÓ NHIỀU HỒ SƠ */}
+      {/* MODAL: CHỌN HỒ SƠ BỆNH NHÂN KHI 1 SỐ ĐIỆN THOẠI CÓ NHIỀU HỒ SƠ (COMMON COMPONENT) */}
       {/* ========================================================================= */}
-      {multiplePatientsModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-2xl rounded-xl bg-white shadow-2xl overflow-hidden border border-slate-200 animate-scaleUp">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between bg-gradient-to-r from-teal-800 to-teal-900 px-6 py-4 text-white">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-700/60 border border-teal-500/30 text-teal-200">
-                  <Users size={22} />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold leading-tight">
-                    Phát Hiện Nhiều Hồ Sơ Bệnh Nhân
-                  </h3>
-                  <p className="text-xs text-teal-200/90 font-medium pt-0.5">
-                    Số điện thoại <span className="font-bold text-white">{phoneSearchQuery}</span> có {foundPatientsList.length} hồ sơ trùng khớp
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setMultiplePatientsModalOpen(false)}
-                className="rounded-lg p-1.5 text-teal-200 hover:bg-teal-700 hover:text-white transition-colors cursor-pointer"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* Modal Body: List of matching patients */}
-            <div className="p-6 space-y-3 max-h-[70vh] overflow-y-auto">
-              <p className="text-xs font-semibold text-slate-600">
-                Vui lòng chọn đúng bệnh nhân bên dưới để tải dữ liệu lên form:
-              </p>
-
-              <div className="space-y-3 pt-1">
-                {foundPatientsList.map((p) => {
-                  const pName = p.fullName || p.patientName || p.user?.fullName || 'Bệnh nhân';
-                  const pCode = p.patientCode || 'Chưa có mã';
-                  const pPhone = p.phone || p.phoneNumber || p.user?.phone || 'N/A';
-                  const pDob = p.dateOfBirth ? String(p.dateOfBirth).split('T')[0] : '';
-                  const pGender = p.gender === 'FEMALE' ? '♀ Nữ' : '♂ Nam';
-                  const pAddr = p.address || 'Chưa cập nhật địa chỉ';
-
-                  return (
-                    <div
-                      key={p.id || pCode}
-                      className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-teal-50/50 hover:border-teal-300 transition-all gap-4"
-                    >
-                      <div className="flex items-center gap-3.5">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-teal-700 text-white font-extrabold text-lg shrink-0 shadow-xs">
-                          {pName.charAt(0)}
-                        </div>
-                        <div className="space-y-0.5">
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-bold text-slate-900 text-sm sm:text-base">{pName}</h4>
-                            <span className="rounded bg-teal-50 px-2 py-0.5 text-[11px] font-extrabold text-teal-800 border border-teal-200">
-                              {pCode}
-                            </span>
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600 font-medium">
-                            <span className="flex items-center gap-1">
-                              <Phone size={12} className="text-teal-700" /> {pPhone}
-                            </span>
-                            <span>•</span>
-                            <span>{pGender}</span>
-                            {pDob && (
-                              <>
-                                <span>•</span>
-                                <span className="flex items-center gap-1">
-                                  <Calendar size={12} className="text-teal-700" /> {formatDateDisplay(pDob)} ({calculateAge(pDob)})
-                                </span>
-                              </>
-                            )}
-                          </div>
-
-                          <p className="text-[11px] text-slate-500 flex items-center gap-1 pt-0.5 truncate max-w-md">
-                            <MapPin size={11} className="text-slate-400 shrink-0" />
-                            <span className="truncate">{pAddr}</span>
-                          </p>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          applyPatientToForm(p);
-                          setMultiplePatientsModalOpen(false);
-                          toast.success(`Đã chọn hồ sơ bệnh nhân: ${pName} (${pCode})`);
-                        }}
-                        className="flex items-center gap-1.5 rounded-lg bg-teal-700 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-teal-800 transition-colors shrink-0 cursor-pointer w-full sm:w-auto justify-center"
-                      >
-                        <CheckCircle2 size={15} />
-                        <span>Chọn hồ sơ này &rarr;</span>
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="flex justify-end bg-slate-50 px-6 py-3.5 border-t border-slate-200">
-              <button
-                type="button"
-                onClick={() => setMultiplePatientsModalOpen(false)}
-                className="rounded-lg border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
-              >
-                Đóng cửa sổ
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <MultiplePatientsModal
+        isOpen={multiplePatientsModalOpen}
+        onClose={() => setMultiplePatientsModalOpen(false)}
+        phoneQuery={phoneSearchQuery}
+        patientsList={foundPatientsList}
+        onSelectPatient={(p) => {
+          applyPatientToForm(p);
+          toast.success(`Đã chọn hồ sơ bệnh nhân: ${p.fullName || p.patientName} (${p.patientCode})`);
+        }}
+      />
     </div>
   );
 }

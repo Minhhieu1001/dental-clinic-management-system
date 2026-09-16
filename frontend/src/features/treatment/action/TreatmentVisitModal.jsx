@@ -1,30 +1,45 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CalendarCheck, Calendar, Stethoscope, Check } from 'lucide-react';
+import {
+  CalendarCheck,
+  Calendar,
+  Stethoscope,
+  Save,
+  User,
+  X,
+  Clock,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
-
-const CLINICAL_PROCEDURE_TEMPLATES = [
-  'Gây tê tại chỗ, mở tủy, đo chiều dài làm việc, bơm rửa NaOCl và đặt thuốc sát khuẩn Ca(OH)2.',
-  'Thử cone Gutta Percha chính, chụp X-quang kiểm tra chóp và trám bít ống tủy vĩnh viễn.',
-  'Mài cùi răng đúng giải phẫu, quét dấu kỹ thuật số 3D gửi Labo, làm răng tạm bảo vệ.',
-  'Thử mão sứ Zirconia trên miệng, kiểm tra điểm chạm khớp cắn và dán cố định bằng Cement Resin.',
-  'Tháo chun, kiểm tra độ dịch chuyển răng, thay dây cung Niti mới và tăng lực kéo.',
-  'Cạo sạch cao răng trên và dưới nướu, đánh bóng men răng toàn hàm bằng bột mịn.',
-];
+import { useAuth } from '../../../hooks/useAuth';
+import {
+  CLINICAL_PROCEDURE_TEMPLATES,
+  VISIT_STATUS_BUTTON_OPTIONS,
+} from '../clinicalExaminationHelpers';
 
 export function TreatmentVisitModal({
   isOpen,
   onClose,
   mode = 'ADD', // 'ADD' | 'EDIT'
   targetPhaseId,
+  phaseName,
+  phaseOrder,
+  currentPhase = null,
   initialData = null,
+  loggedInDoctorName = '',
   onSaveVisit,
 }) {
+  const { user } = useAuth();
   const [visitFormName, setVisitFormName] = useState('');
   const [visitFormOrder, setVisitFormOrder] = useState(1);
   const [visitFormDate, setVisitFormDate] = useState(new Date().toISOString().split('T')[0]);
   const [visitFormStatus, setVisitFormStatus] = useState('PENDING');
   const [visitFormNotes, setVisitFormNotes] = useState('');
+  const [visitFormDoctor, setVisitFormDoctor] = useState('');
+
+  // Tên và số thứ tự giai đoạn
+  const resolvedPhaseId = currentPhase?.phase_id || targetPhaseId || '';
+  const resolvedPhaseName = currentPhase?.phase_name || phaseName || 'Giai đoạn điều trị';
+  const resolvedPhaseOrder = currentPhase?.phase_order || phaseOrder || 1;
 
   // Đồng bộ form theo dữ liệu truyền vào khi mở modal
   useEffect(() => {
@@ -35,198 +50,244 @@ export function TreatmentVisitModal({
         setVisitFormDate(initialData.start_date || new Date().toISOString().split('T')[0]);
         setVisitFormStatus(initialData.status || 'PENDING');
         setVisitFormNotes(initialData.clinical_notes || '');
+        setVisitFormDoctor(initialData.assigned_dentist || loggedInDoctorName || '');
       } else {
-        const nextOrder = initialData?.visitOrder || 1;
+        const nextOrder = Number(initialData?.visitOrder) || 1;
         setVisitFormName(initialData?.visitName || `Buổi ${nextOrder}: `);
         setVisitFormOrder(nextOrder);
         setVisitFormDate(new Date().toISOString().split('T')[0]);
         setVisitFormStatus('PENDING');
         setVisitFormNotes('');
+
+        // Tự động lấy tên bác sĩ
+        let doctorName = loggedInDoctorName || initialData?.assigned_dentist || '';
+        if (!doctorName || doctorName === 'BS. Nguyễn Văn Tâm') {
+          if (user?.fullName || user?.name) {
+            doctorName = user.fullName || user.name;
+          } else if (user?.username) {
+            doctorName = user.username;
+          }
+          if (doctorName && !/^(BS\.|ThS\.|TS\.|Dr\.)/i.test(doctorName)) {
+            doctorName = 'BS. ' + doctorName;
+          }
+        }
+        setVisitFormDoctor(doctorName || '');
       }
     }
-  }, [isOpen, mode, initialData]);
+  }, [isOpen, mode, initialData, loggedInDoctorName, user]);
 
   const handleSubmit = (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     if (!visitFormName.trim()) {
       toast.error('Vui lòng nhập tên buổi điều trị!');
       return;
     }
-    if (!targetPhaseId) {
-      toast.error('Không tìm thấy giai đoạn điều trị tương ứng!');
-      return;
-    }
 
     const visitData = {
-      visitId: mode === 'EDIT' && initialData?.visitId ? initialData.visitId : `vis-${Date.now()}`,
+      ...(initialData || {}),
+      visitId: mode === 'EDIT' && initialData?.visitId ? initialData.visitId : `vis-${Date.now()}-${visitFormOrder}`,
       visitName: visitFormName.trim(),
       visitOrder: Number(visitFormOrder) || 1,
       start_date: visitFormDate,
       status: visitFormStatus,
-      clinical_notes: visitFormNotes.trim() || 'Thực hiện thủ thuật điều trị theo chỉ định bác sĩ.',
+      clinical_notes: visitFormNotes.trim(),
+      assigned_dentist: visitFormDoctor.trim(),
     };
 
-    onSaveVisit(targetPhaseId, visitData, mode);
-    toast.success(
-      mode === 'ADD'
-        ? `Đã thêm "${visitData.visitName}" vào giai đoạn!`
-        : 'Đã cập nhật thông tin buổi điều trị!'
-    );
+    if (onSaveVisit) {
+      onSaveVisit(resolvedPhaseId, visitData, mode);
+      toast.success(
+        mode === 'ADD'
+          ? `Đã tạo "${visitData.visitName}" thành công!`
+          : `Đã cập nhật kết quả lâm sàng cho "${visitData.visitName}"!`
+      );
+    }
     onClose();
   };
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-          {/* Backdrop */}
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          {/* Backdrop mờ êm ái */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs"
+            className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs"
           />
 
-          {/* Modal Card - Rộng rãi max-w-3xl, không bị cắt chữ */}
+          {/* Modal Container chuẩn ERP - Bo góc và đổ bóng cao cấp */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 15 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="relative z-10 w-full max-w-4xl rounded-2xl bg-white p-6 sm:p-8 shadow-2xl space-y-5 max-h-[92vh] overflow-y-auto"
+            className="relative z-10 w-full max-w-2xl rounded-2xl bg-white shadow-2xl overflow-hidden max-h-[92vh] flex flex-col border border-slate-200"
           >
-            <div className="flex items-center justify-between border-b pb-3.5">
-              <h3 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2.5">
-                <CalendarCheck className="text-indigo-600" size={22} />
-                {mode === 'ADD' ? 'Thêm Buổi Điều Trị' : 'Cập Nhật Buổi Điều Trị'}
-              </h3>
+            {/* Header Modal */}
+            <div className="bg-linear-to-r from-indigo-900 via-indigo-800 to-indigo-950 px-5 py-4 text-white flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-white/15 flex items-center justify-center text-white shadow-inner">
+                  {mode === 'ADD' ? <CalendarCheck size={20} /> : <Stethoscope size={20} />}
+                </div>
+                <div>
+                  <h3 className="text-base font-bold tracking-tight text-white">
+                    {mode === 'ADD' ? 'Tạo Buổi Điều Trị Mới' : 'Cập Nhật Kết Quả Buổi Khám'}
+                  </h3>
+                  <p className="text-xs text-indigo-200 font-normal">
+                    {resolvedPhaseName} · Giai đoạn #{resolvedPhaseOrder}
+                  </p>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={onClose}
-                className="text-slate-400 hover:text-slate-600 text-2xl font-bold cursor-pointer leading-none"
+                className="h-8 w-8 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                title="Đóng (Esc)"
               >
-                ✕
+                <X size={17} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4 text-sm">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1.5">
-                  Tên buổi điều trị
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={visitFormName}
-                  onChange={(e) => setVisitFormName(e.target.value)}
-                  placeholder="VD: Buổi 1: Mở tủy, lấy tủy buồng & đặt thuốc diệt khuẩn..."
-                  className="w-full h-10 rounded-lg border border-slate-300 px-3.5 text-sm font-bold text-slate-800 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10"
-                />
-              </div>
-
-              {/* 3 cột rộng rãi: Thứ tự, Ngày hẹn, Trạng thái (hiển thị trọn vẹn văn bản) */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1.5">Thứ tự buổi</label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={visitFormOrder}
-                    onChange={(e) => setVisitFormOrder(Number(e.target.value) || 1)}
-                    className="w-full h-10 rounded-lg border border-slate-300 px-3.5 text-sm font-bold text-slate-800 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10"
-                  />
+            {/* Form Body */}
+            <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto text-xs">
+              {/* Hàng 1: Thứ tự buổi (Tự động, khóa không cho sửa) & Tên buổi điều trị */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                <div className="sm:col-span-4 space-y-1.5">
+                  <label className="block font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1">
+                    <span>Thứ tự buổi</span>
+                    <span className="text-[10px] text-indigo-600 font-medium normal-case">(Tự động)</span>
+                  </label>
+                  <div
+                    className="w-full h-9 rounded-lg border border-slate-200 bg-slate-100 px-3 flex items-center justify-between font-bold text-slate-800 text-xs cursor-not-allowed select-none shadow-inner"
+                    title="Thứ tự buổi tự động tăng/giảm theo số buổi, không được sửa"
+                  >
+                    <span>{visitFormOrder}</span>
+                    <span className="text-[10px] text-slate-400 font-medium">Khóa tự động</span>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1.5">Ngày hẹn</label>
+                <div className="sm:col-span-8 space-y-1.5">
+                  <label className="block font-bold text-slate-700 uppercase tracking-wide">
+                    Tên buổi điều trị <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={visitFormName}
+                    onChange={(e) => setVisitFormName(e.target.value)}
+                    placeholder="VD: Buổi 1: Mở tủy, bơm rửa sát khuẩn..."
+                    className="w-full h-9 rounded-lg border border-slate-300 px-3 font-bold text-slate-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/10 bg-white shadow-2xs"
+                  />
+                </div>
+              </div>
+
+              {/* Hàng 2: Ngày hẹn, Bác sĩ phụ trách, Trạng thái (Không dùng select box) */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                <div className="sm:col-span-4 space-y-1.5">
+                  <label className="block font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1">
+                    <Calendar size={13} className="text-slate-500" />
+                    <span>Ngày thực hiện</span>
+                  </label>
                   <input
                     type="date"
                     value={visitFormDate}
                     onChange={(e) => setVisitFormDate(e.target.value)}
-                    className="w-full h-10 rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-800 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10"
+                    className="w-full h-9 rounded-lg border border-slate-300 px-2.5 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/10 bg-white shadow-2xs"
                   />
                 </div>
 
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1.5">Trạng thái</label>
-                  <select
-                    value={visitFormStatus}
-                    onChange={(e) => setVisitFormStatus(e.target.value)}
-                    className="w-full h-10 rounded-lg border border-slate-300 px-3 text-sm font-bold text-slate-800 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10 cursor-pointer"
-                  >
-                    <option value="PENDING">⏳ Chờ khám</option>
-                    <option value="IN_PROGRESS">🔵 Đang thực hiện</option>
-                    <option value="COMPLETED">✅ Đã hoàn thành</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Thông tin buổi đó làm gì / Ghi chú lâm sàng */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block font-bold text-slate-800">
-                    Thông tin buổi đó làm gì / Ghi chú thủ thuật:
+                <div className="sm:col-span-4 space-y-1.5">
+                  <label className="block font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1">
+                    <User size={13} className="text-slate-500" />
+                    <span>Bác sĩ thực hiện</span>
                   </label>
-                  <span className="text-xs text-indigo-600 font-bold">
-                    *Không chọn dịch vụ con
-                  </span>
+                  <input
+                    type="text"
+                    value={visitFormDoctor}
+                    onChange={(e) => setVisitFormDoctor(e.target.value)}
+                    placeholder="Họ tên bác sĩ"
+                    className="w-full h-9 rounded-lg border border-slate-300 px-3 text-xs font-medium text-slate-800 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/10 bg-white shadow-2xs"
+                  />
                 </div>
-                <textarea
-                  rows={5}
-                  required
-                  value={visitFormNotes}
-                  onChange={(e) => setVisitFormNotes(e.target.value)}
-                  placeholder="Ghi lại chi tiết buổi điều trị này bác sĩ làm gì: thủ thuật thực hiện, vật liệu sử dụng, diễn biến lâm sàng, hướng dẫn dặn dò bệnh nhân..."
-                  className="w-full rounded-lg border border-slate-300 p-3.5 text-sm text-slate-800 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10 leading-relaxed font-medium"
-                />
 
-                {/* Các mẫu gợi ý nhanh thao tác thủ thuật */}
-                <div className="space-y-2 mt-3">
-                  <span className="text-xs text-slate-500 font-bold uppercase tracking-wider block">
-                    Gợi ý nhanh nội dung thủ thuật lâm sàng (nhấp để chèn):
-                  </span>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {CLINICAL_PROCEDURE_TEMPLATES.map((templateText, tIdx) => (
-                      <motion.button
-                        whileHover={{ scale: 1.01, x: 2 }}
-                        whileTap={{ scale: 0.98 }}
-                        key={tIdx}
+                <div className="sm:col-span-4 space-y-1.5">
+                  <label className="block font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1">
+                    <Clock size={13} className="text-slate-500" />
+                    <span>Trạng thái buổi</span>
+                  </label>
+                  <div className="grid grid-cols-3 gap-1 h-9 items-center">
+                    {VISIT_STATUS_BUTTON_OPTIONS.map((st) => (
+                      <button
+                        key={st.value}
                         type="button"
-                        onClick={() =>
-                          setVisitFormNotes((prev) =>
-                            prev ? `${prev}\n- ${templateText}` : templateText
-                          )
-                        }
-                        className="rounded-lg border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-900 text-xs font-medium p-2.5 cursor-pointer transition-colors text-left flex items-start gap-2"
+                        onClick={() => setVisitFormStatus(st.value)}
+                        className={`h-full text-[11px] rounded border transition-all cursor-pointer text-center font-medium ${visitFormStatus === st.value
+                          ? st.active
+                          : 'border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100'
+                          }`}
                       >
-                        <span className="text-indigo-600 font-bold shrink-0">+</span>
-                        <span className="leading-snug">{templateText}</span>
-                      </motion.button>
+                        {st.label}
+                      </button>
                     ))}
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-4 border-t">
-                <motion.button
-                  whileTap={{ scale: 0.96 }}
+              {/* Hàng 3: Ghi chép lâm sàng & Diễn biến thủ thuật */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+                    <Stethoscope size={14} className="text-indigo-600" />
+                    <span>{mode === 'ADD' ? 'Kế hoạch thao tác kỹ thuật:' : 'Kết quả thao tác & Diễn biến lâm sàng:'}</span>
+                    <span className="text-rose-500">*</span>
+                  </label>
+                  <span className="text-[11px] text-slate-400">Ghi chú diễn biến, thuốc, vật liệu và dặn dò</span>
+                </div>
+                <textarea
+                  rows={4}
+                  required
+                  value={visitFormNotes}
+                  onChange={(e) => setVisitFormNotes(e.target.value)}
+                  placeholder="Ghi nhận chi tiết kết quả thực hiện, tình trạng răng bệnh nhân và dặn dò chăm sóc sau can thiệp..."
+                  className="w-full rounded-lg border border-slate-300 p-3 text-xs text-slate-900 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/10 leading-relaxed font-normal bg-white resize-y shadow-2xs"
+                />
+
+                {/* Gợi ý mẫu nhanh */}
+                <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                  <span className="text-[11px] text-slate-500 font-medium">Gợi ý mẫu:</span>
+                  {CLINICAL_PROCEDURE_TEMPLATES.map((tmpl, tIdx) => (
+                    <button
+                      key={tIdx}
+                      type="button"
+                      onClick={() => setVisitFormNotes(tmpl)}
+                      className="text-[11px] text-slate-700 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 px-2 py-0.5 rounded border border-slate-200 transition-colors cursor-pointer"
+                    >
+                      {tmpl.slice(0, 32)}...
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Footer buttons */}
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200">
+                <button
                   type="button"
                   onClick={onClose}
-                  className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                  className="px-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50 cursor-pointer transition-colors"
                 >
                   Hủy
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.96 }}
+                </button>
+                <button
                   type="submit"
-                  className="rounded-lg bg-indigo-700 px-6 py-2.5 text-sm font-bold text-white shadow hover:bg-indigo-800 cursor-pointer flex items-center gap-2"
+                  className="inline-flex items-center gap-1.5 px-5 py-2 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold cursor-pointer transition-colors shadow-xs"
                 >
-                  <Check size={16} />
-                  <span>{mode === 'ADD' ? 'Thêm buổi điều trị' : 'Lưu cập nhật'}</span>
-                </motion.button>
+                  <Save size={14} />
+                  <span>{mode === 'ADD' ? 'Lưu buổi điều trị' : 'Lưu kết quả lâm sàng'}</span>
+                </button>
               </div>
             </form>
           </motion.div>
@@ -237,4 +298,3 @@ export function TreatmentVisitModal({
 }
 
 export default TreatmentVisitModal;
-

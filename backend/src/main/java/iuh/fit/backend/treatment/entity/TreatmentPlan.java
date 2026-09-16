@@ -3,6 +3,7 @@ package iuh.fit.backend.treatment.entity;
 import iuh.fit.backend.medicalrecord.entity.ExaminationResult;
 import iuh.fit.backend.medicalrecord.entity.TreatmentHistorys;
 import iuh.fit.backend.patient.entity.Patient;
+import iuh.fit.backend.treatment.enums.StatusPhase;
 import iuh.fit.backend.user.entity.Dentist;
 import jakarta.persistence.*;
 import lombok.*;
@@ -25,14 +26,6 @@ public class TreatmentPlan {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "patient_id")
-    private Patient patient;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "dentist_id")
-    private Dentist dentist;
-
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "examination_result_id", unique = true)
     private ExaminationResult examinationResult;
@@ -46,7 +39,8 @@ public class TreatmentPlan {
     @Column(precision = 15, scale = 2)
     private BigDecimal estimatedCost;
 
-    private Boolean status;
+    @Enumerated(EnumType.STRING)
+    private StatusPhase status;
 
     private LocalDateTime startDate;
 

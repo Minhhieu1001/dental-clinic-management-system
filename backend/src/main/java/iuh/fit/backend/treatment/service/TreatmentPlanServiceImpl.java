@@ -16,6 +16,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import iuh.fit.backend.treatment.enums.StatusPhase;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
@@ -40,19 +42,20 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
     @Override
     @Transactional
     public TreatmentPlanResponse createTreatmentPlan(TreatmentPlanRequest request) {
-        Patient patient = null;
-        if (request.getPatientId() != null) {
-            patient = patientRepository.findById(request.getPatientId()).orElse(null);
-        }
-
         Dentist dentist = null;
         if (request.getDentistId() != null) {
-            dentist = dentistRepository.findById(request.getDentistId()).orElse(null);
+            dentist = dentistRepository.findById(request.getDentistId())
+                    .or(() -> dentistRepository.findByUserId(request.getDentistId()))
+                    .orElse(null);
         }
 
         ExaminationResult examinationResult = null;
         if (request.getExaminationResultId() != null) {
             examinationResult = examinationResultRepository.findById(request.getExaminationResultId()).orElse(null);
+            if (examinationResult != null && examinationResult.getDentist() == null && dentist != null) {
+                examinationResult.setDentist(dentist);
+                examinationResultRepository.save(examinationResult);
+            }
             // Quan hệ 1-1: Nếu đợt khám này đã có kế hoạch điều trị, cập nhật kế hoạch hiện có
             Optional<TreatmentPlan> existingPlan = treatmentPlanRepository.findByExaminationResultId(request.getExaminationResultId());
             if (existingPlan.isPresent()) {
@@ -64,13 +67,11 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
         LocalDateTime endDate = parseDateTime(request.getEndDate());
 
         TreatmentPlan plan = TreatmentPlan.builder()
-                .patient(patient)
-                .dentist(dentist)
                 .examinationResult(examinationResult)
                 .planName(request.getPlanName())
                 .description(request.getDescription())
                 .estimatedCost(request.getEstimatedCost())
-                .status(request.getStatus() != null ? request.getStatus() : Boolean.TRUE)
+                .status(request.getStatus() != null ? request.getStatus() : StatusPhase.IN_PROGRESS)
                 .startDate(startDate != null ? startDate : LocalDateTime.now())
                 .endDate(endDate)
                 .treatmentPhases(new ArrayList<>())
@@ -78,58 +79,12 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
 
         TreatmentPlan savedPlan = treatmentPlanRepository.save(plan);
 
+        Dentist assignedDoctor = examinationResult != null && examinationResult.getDentist() != null
+                ? examinationResult.getDentist()
+                : dentist;
+
         if (request.getPhases() != null && !request.getPhases().isEmpty()) {
-            for (TreatmentPlanRequest.PhaseRequest phaseReq : request.getPhases()) {
-                TreatmentPhase phase = TreatmentPhase.builder()
-                        .treatmentPlan(savedPlan)
-                        .phaseName(phaseReq.getPhaseName())
-                        .phaseOrder(phaseReq.getPhaseOrder())
-                        .treatmentType(phaseReq.getTreatmentType())
-                        .description(phaseReq.getDescription())
-                        .status(phaseReq.getStatus())
-                        .estimatedDuration(phaseReq.getEstimatedDuration())
-                        .treatmentServices(new ArrayList<>())
-                        .treatmentVisits(new ArrayList<>())
-                        .build();
-
-                TreatmentPhase savedPhase = treatmentPhaseRepository.save(phase);
-
-                if (phaseReq.getTreatmentServices() != null) {
-                    for (TreatmentPlanRequest.ServiceItemRequest sReq : phaseReq.getTreatmentServices()) {
-                        iuh.fit.backend.treatment.entity.Service service = null;
-                        if (sReq.getServiceId() != null) {
-                            service = serviceRepository.findById(sReq.getServiceId()).orElse(null);
-                        }
-                        TreatmentService ts = TreatmentService.builder()
-                                .treatmentPhase(savedPhase)
-                                .service(service)
-                                .toothNumber(sReq.getToothNumber())
-                                .quantity(sReq.getQuantity())
-                                .price(sReq.getPrice())
-                                .totalAmount(sReq.getTotalAmount())
-                                .build();
-                        treatmentServiceRepository.save(ts);
-                        savedPhase.getTreatmentServices().add(ts);
-                    }
-                }
-
-                if (phaseReq.getTreatmentVisits() != null) {
-                    for (TreatmentPlanRequest.VisitItemRequest vReq : phaseReq.getTreatmentVisits()) {
-                        TreatmentVisits tv = TreatmentVisits.builder()
-                                .treatmentPhase(savedPhase)
-                                .visitName(vReq.getVisitName())
-                                .visitOrder(vReq.getVisitOrder())
-                                .startDate(vReq.getStartDate())
-                                .status(vReq.getStatus())
-                                .clinicalNotes(vReq.getClinicalNotes())
-                                .build();
-                        treatmentVisitsRepository.save(tv);
-                        savedPhase.getTreatmentVisits().add(tv);
-                    }
-                }
-
-                savedPlan.getTreatmentPhases().add(savedPhase);
-            }
+            savePhases(savedPlan, request.getPhases(), assignedDoctor, request.getDentistName());
         }
 
         return mapToResponse(savedPlan);
@@ -174,9 +129,110 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
             ExaminationResult exam = examinationResultRepository.findById(request.getExaminationResultId()).orElse(null);
             if (exam != null) plan.setExaminationResult(exam);
         }
+        if (request.getDentistId() != null) {
+            Dentist dentist = dentistRepository.findById(request.getDentistId())
+                    .or(() -> dentistRepository.findByUserId(request.getDentistId()))
+                    .orElse(null);
+            if (dentist != null && plan.getExaminationResult() != null) {
+                plan.getExaminationResult().setDentist(dentist);
+                examinationResultRepository.save(plan.getExaminationResult());
+            }
+        }
+
+        if (request.getPhases() != null) {
+            // Xóa các phase cũ và các child service / visit thuộc về phase đó
+            List<TreatmentPhase> currentPhases = plan.getTreatmentPhases();
+            if (currentPhases != null && !currentPhases.isEmpty()) {
+                for (TreatmentPhase oldPhase : new ArrayList<>(currentPhases)) {
+                    if (oldPhase.getTreatmentServices() != null && !oldPhase.getTreatmentServices().isEmpty()) {
+                        treatmentServiceRepository.deleteAll(oldPhase.getTreatmentServices());
+                        oldPhase.getTreatmentServices().clear();
+                    }
+                    if (oldPhase.getTreatmentVisits() != null && !oldPhase.getTreatmentVisits().isEmpty()) {
+                        treatmentVisitsRepository.deleteAll(oldPhase.getTreatmentVisits());
+                        oldPhase.getTreatmentVisits().clear();
+                    }
+                }
+                treatmentPhaseRepository.deleteAll(currentPhases);
+                plan.getTreatmentPhases().clear();
+                treatmentPlanRepository.saveAndFlush(plan);
+            }
+
+            Dentist assignedDoctor = plan.getExaminationResult() != null && plan.getExaminationResult().getDentist() != null
+                    ? plan.getExaminationResult().getDentist()
+                    : (request.getDentistId() != null ? dentistRepository.findById(request.getDentistId()).orElse(null) : null);
+
+            // Lưu danh sách phases mới kèm services và visits
+            savePhases(plan, request.getPhases(), assignedDoctor, request.getDentistName());
+        }
 
         TreatmentPlan updated = treatmentPlanRepository.save(plan);
         return mapToResponse(updated);
+    }
+
+    private void savePhases(TreatmentPlan plan, List<TreatmentPlanRequest.PhaseRequest> phaseRequests, Dentist dentist, String dentistNameFromRequest) {
+        if (phaseRequests == null || phaseRequests.isEmpty()) {
+            return;
+        }
+        for (TreatmentPlanRequest.PhaseRequest phaseReq : phaseRequests) {
+            TreatmentPhase phase = TreatmentPhase.builder()
+                    .treatmentPlan(plan)
+                    .phaseName(phaseReq.getPhaseName())
+                    .phaseOrder(phaseReq.getPhaseOrder())
+                    .treatmentType(phaseReq.getTreatmentType())
+                    .description(phaseReq.getDescription())
+                    .status(phaseReq.getStatus() != null ? phaseReq.getStatus() : StatusPhase.PENDING)
+                    .estimatedDuration(phaseReq.getEstimatedDuration())
+                    .treatmentServices(new ArrayList<>())
+                    .treatmentVisits(new ArrayList<>())
+                    .build();
+
+            TreatmentPhase savedPhase = treatmentPhaseRepository.save(phase);
+
+            if (phaseReq.getTreatmentServices() != null) {
+                for (TreatmentPlanRequest.ServiceItemRequest sReq : phaseReq.getTreatmentServices()) {
+                    iuh.fit.backend.treatment.entity.Service service = null;
+                    if (sReq.getServiceId() != null) {
+                        service = serviceRepository.findById(sReq.getServiceId()).orElse(null);
+                    }
+                    TreatmentService ts = TreatmentService.builder()
+                            .treatmentPhase(savedPhase)
+                            .service(service)
+                            .toothNumber(sReq.getToothNumber())
+                            .quantity(sReq.getQuantity())
+                            .price(sReq.getPrice())
+                            .totalAmount(sReq.getTotalAmount())
+                            .build();
+                    treatmentServiceRepository.save(ts);
+                    savedPhase.getTreatmentServices().add(ts);
+                }
+            }
+
+            if (phaseReq.getTreatmentVisits() != null) {
+                for (TreatmentPlanRequest.VisitItemRequest vReq : phaseReq.getTreatmentVisits()) {
+                    String visitDentist = vReq.getAssignedDentist();
+                    if ((visitDentist == null || visitDentist.isBlank()) && dentistNameFromRequest != null) {
+                        visitDentist = dentistNameFromRequest;
+                    }
+                    if ((visitDentist == null || visitDentist.isBlank()) && dentist != null) {
+                        visitDentist = dentist.getFullName();
+                    }
+                    TreatmentVisits tv = TreatmentVisits.builder()
+                            .treatmentPhase(savedPhase)
+                            .visitName(vReq.getVisitName())
+                            .visitOrder(vReq.getVisitOrder())
+                            .startDate(vReq.getStartDate())
+                            .status(vReq.getStatus() != null ? vReq.getStatus() : StatusPhase.PENDING)
+                            .clinicalNotes(vReq.getClinicalNotes())
+                            .assignedDentist(visitDentist)
+                            .build();
+                    treatmentVisitsRepository.save(tv);
+                    savedPhase.getTreatmentVisits().add(tv);
+                }
+            }
+
+            plan.getTreatmentPhases().add(savedPhase);
+        }
     }
 
     @Override
@@ -201,14 +257,34 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
     }
 
     private TreatmentPlanResponse mapToResponse(TreatmentPlan plan) {
+        ExaminationResult exam = plan.getExaminationResult();
+        Dentist dentist = exam != null ? exam.getDentist() : null;
+        if (dentist == null && exam != null && exam.getMedicalRecord() != null) {
+            dentist = exam.getMedicalRecord().getDentist();
+        }
+        Patient patient = (exam != null && exam.getMedicalRecord() != null) ? exam.getMedicalRecord().getPatient() : null;
+
+        UUID dentistId = null;
+        String dentistName = null;
+        if (dentist != null) {
+            dentistId = dentist.getId();
+            dentistName = dentist.getFullName();
+            if (dentistName == null || dentistName.isBlank()) {
+                if (dentist.getUser() != null && dentist.getUser().getUsername() != null) {
+                    dentistName = dentist.getUser().getUsername();
+                }
+            }
+        }
+
         return TreatmentPlanResponse.builder()
                 .id(plan.getId())
-                .patientId(plan.getPatient() != null ? plan.getPatient().getId() : null)
-                .examinationResultId(plan.getExaminationResult() != null ? plan.getExaminationResult().getId() : null)
-                .patientName(plan.getPatient() != null ? plan.getPatient().getFullName() : null)
-                .patientCode(plan.getPatient() != null ? plan.getPatient().getPatientCode() : null)
-                .dentistId(plan.getDentist() != null ? plan.getDentist().getId() : null)
-                .dentistName(plan.getDentist() != null ? plan.getDentist().getFullName() : null)
+                .patientId(patient != null ? patient.getId() : null)
+                .examinationResultId(exam != null ? exam.getId() : null)
+                .patientName(patient != null ? patient.getFullName() : null)
+                .patientCode(patient != null ? patient.getPatientCode() : null)
+                .dentistId(dentistId)
+                .dentistName(dentistName)
+
                 .planName(plan.getPlanName())
                 .description(plan.getDescription())
                 .estimatedCost(plan.getEstimatedCost())
@@ -243,6 +319,7 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
                                                 .startDate(tv.getStartDate())
                                                 .status(tv.getStatus())
                                                 .clinicalNotes(tv.getClinicalNotes())
+                                                .assignedDentist(tv.getAssignedDentist())
                                                 .build()
                                 ).toList())
                                 .build()
