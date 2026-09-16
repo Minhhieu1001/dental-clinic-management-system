@@ -3,12 +3,15 @@
 -- =========================================================================
 
 -- Tự động cập nhật thêm các cột mới vào bảng services trong PostgreSQL nếu chưa tồn tại
+ALTER TABLE services ADD COLUMN IF NOT EXISTS service_code VARCHAR(50);
 ALTER TABLE services ADD COLUMN IF NOT EXISTS category VARCHAR(50);
 ALTER TABLE services ADD COLUMN IF NOT EXISTS sub_category VARCHAR(255);
 ALTER TABLE services ADD COLUMN IF NOT EXISTS unit VARCHAR(100);
+ALTER TABLE services ADD COLUMN IF NOT EXISTS warranty_period VARCHAR(100);
 ALTER TABLE services ADD COLUMN IF NOT EXISTS image_url VARCHAR(1000);
 ALTER TABLE services ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0;
 ALTER TABLE services ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE;
+ALTER TABLE services ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
 
 -- Sử dụng cú pháp ON CONFLICT DO UPDATE để tránh lỗi khóa ngoại (Foreign Key Constraint) với hóa đơn cũ
 INSERT INTO services (id, service_name, description, price, category, sub_category, unit, image_url, sort_order, is_featured)
@@ -512,3 +515,28 @@ ON CONFLICT (id) DO UPDATE SET
   image_url = EXCLUDED.image_url,
   sort_order = EXCLUDED.sort_order,
   is_featured = EXCLUDED.is_featured;
+
+
+WITH numbered AS (
+  SELECT id, category, ROW_NUMBER() OVER (
+    PARTITION BY category ORDER BY sort_order ASC, service_name ASC, id ASC
+  ) as seq
+  FROM services
+)
+UPDATE services s
+SET service_code = CONCAT(
+  CASE s.category
+    WHEN 'IMPLANT' THEN 'IMP'
+    WHEN 'NIENG_RANG' THEN 'NR'
+    WHEN 'RANG_SU' THEN 'RS'
+    WHEN 'TAY_TRANG' THEN 'TT'
+    WHEN 'KHAM_DIEU_TRI' THEN 'KDT'
+    WHEN 'NHA_KHOA_TRE_EM' THEN 'TE'
+    ELSE 'DV'
+  END,
+  '-',
+  LPAD(n.seq::text, 3, '0')
+)
+FROM numbered n
+WHERE s.id = n.id AND (s.service_code IS NULL OR s.service_code = '' OR s.service_code LIKE 'DV-%');
+

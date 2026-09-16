@@ -12,7 +12,7 @@ const topLinks = [
 const navItems = [
   { label: 'Trang Chủ', to: '/' },
   { label: 'Giới Thiệu', to: '/about' },
-  { label: 'Ưu Đãi', to: '/promotions' },
+  { label: 'Ưu Đãi', to: '/promotions', hasDropdown: true },
   { label: 'Bảng Giá', to: '/pricing' },
   { label: 'Dịch Vụ', to: '/services', hasDropdown: true },
   { label: 'Người Nổi Tiếng', to: '/celebrities' },
@@ -130,36 +130,73 @@ export default function PublicLayout() {
                       </NavLink>
                       {/* Dropdown Menu */}
                       <div className="absolute left-0 top-full pt-1 w-64 rounded-2xl bg-white border border-slate-100 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 py-3">
-                        <Link
-                          to="/services?tab=IMPLANT"
-                          className="block px-6 py-3.5 text-[15px] font-bold text-[#1f4fb2] hover:text-[#0f3a9e] hover:bg-slate-50 transition-colors"
-                        >
-                          Trồng Răng Implant
-                        </Link>
-                        <Link
-                          to="/services?tab=NIENG_RANG"
-                          className="block px-6 py-3.5 text-[15px] font-bold text-[#1f4fb2] hover:text-[#0f3a9e] hover:bg-slate-50 transition-colors"
-                        >
-                          Niềng Răng
-                        </Link>
-                        <Link
-                          to="/services?tab=KHAM_DIEU_TRI"
-                          className="block px-6 py-3.5 text-[15px] font-bold text-[#1f4fb2] hover:text-[#0f3a9e] hover:bg-slate-50 transition-colors"
-                        >
-                          Nha Khoa Tổng Quát
-                        </Link>
-                        <Link
-                          to="/services?tab=RANG_SU"
-                          className="block px-6 py-3.5 text-[15px] font-bold text-[#1f4fb2] hover:text-[#0f3a9e] hover:bg-slate-50 transition-colors"
-                        >
-                          Nha Khoa Thẩm Mỹ
-                        </Link>
-                        <Link
-                          to="/services?tab=NIENG_RANG&filter=KIDS"
-                          className="block px-6 py-3.5 text-[15px] font-bold text-[#1f4fb2] hover:text-[#0f3a9e] hover:bg-slate-50 transition-colors"
-                        >
-                          Nha Khoa Trẻ Em
-                        </Link>
+                        {item.to === '/promotions' ? (
+                          <>
+                            <Link
+                              to="/promotions?category=implant"
+                              className="block px-6 py-3 text-[15px] font-bold text-[#1f4fb2] hover:text-[#0f3a9e] hover:bg-slate-50 transition-colors"
+                            >
+                              Trồng Răng Implant
+                            </Link>
+                            <Link
+                              to="/promotions?category=nieng_rang"
+                              className="block px-6 py-3 text-[15px] font-bold text-[#1f4fb2] hover:text-[#0f3a9e] hover:bg-slate-50 transition-colors"
+                            >
+                              Niềng Răng
+                            </Link>
+                            <Link
+                              to="/promotions?category=tong_quat"
+                              className="block px-6 py-3 text-[15px] font-bold text-[#1f4fb2] hover:text-[#0f3a9e] hover:bg-slate-50 transition-colors"
+                            >
+                              Nha Khoa Tổng Quát
+                            </Link>
+                            <Link
+                              to="/promotions?category=tham_my"
+                              className="block px-6 py-3 text-[15px] font-bold text-[#1f4fb2] hover:text-[#0f3a9e] hover:bg-slate-50 transition-colors"
+                            >
+                              Nha Khoa Thẩm Mỹ
+                            </Link>
+                            <Link
+                              to="/promotions?category=tre_em"
+                              className="block px-6 py-3 text-[15px] font-bold text-[#1f4fb2] hover:text-[#0f3a9e] hover:bg-slate-50 transition-colors"
+                            >
+                              Nha Khoa Trẻ Em
+                            </Link>
+                          </>
+                        ) : (
+                          <>
+                            <Link
+                              to="/services?tab=IMPLANT"
+                              className="block px-6 py-3.5 text-[15px] font-bold text-[#1f4fb2] hover:text-[#0f3a9e] hover:bg-slate-50 transition-colors"
+                            >
+                              Trồng Răng Implant
+                            </Link>
+                            <Link
+                              to="/services?tab=NIENG_RANG"
+                              className="block px-6 py-3.5 text-[15px] font-bold text-[#1f4fb2] hover:text-[#0f3a9e] hover:bg-slate-50 transition-colors"
+                            >
+                              Niềng Răng
+                            </Link>
+                            <Link
+                              to="/services?tab=KHAM_DIEU_TRI"
+                              className="block px-6 py-3.5 text-[15px] font-bold text-[#1f4fb2] hover:text-[#0f3a9e] hover:bg-slate-50 transition-colors"
+                            >
+                              Nha Khoa Tổng Quát
+                            </Link>
+                            <Link
+                              to="/services?tab=RANG_SU"
+                              className="block px-6 py-3.5 text-[15px] font-bold text-[#1f4fb2] hover:text-[#0f3a9e] hover:bg-slate-50 transition-colors"
+                            >
+                              Nha Khoa Thẩm Mỹ
+                            </Link>
+                            <Link
+                              to="/services?tab=NIENG_RANG&filter=KIDS"
+                              className="block px-6 py-3.5 text-[15px] font-bold text-[#1f4fb2] hover:text-[#0f3a9e] hover:bg-slate-50 transition-colors"
+                            >
+                              Nha Khoa Trẻ Em
+                            </Link>
+                          </>
+                        )}
                       </div>
                     </div>
                   )

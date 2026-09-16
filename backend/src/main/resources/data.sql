@@ -27,6 +27,18 @@ ALTER TABLE diagnoses DROP CONSTRAINT IF EXISTS diagnoses_examination_result_id_
 -- Đảm bảo quan hệ 1-1 giữa ExaminationResult và TreatmentPlans
 ALTER TABLE treatment_plans ADD COLUMN IF NOT EXISTS examination_result_id UUID;
 CREATE UNIQUE INDEX IF NOT EXISTS uk_treatment_plans_examination_result ON treatment_plans (examination_result_id);
+-- Tự động cập nhật các cột mới nếu chưa tồn tại
+ALTER TABLE services ADD COLUMN IF NOT EXISTS service_code VARCHAR(50);
+ALTER TABLE services ADD COLUMN IF NOT EXISTS category VARCHAR(50);
+ALTER TABLE services ADD COLUMN IF NOT EXISTS sub_category VARCHAR(255);
+ALTER TABLE services ADD COLUMN IF NOT EXISTS unit VARCHAR(100);
+ALTER TABLE services ADD COLUMN IF NOT EXISTS warranty_period VARCHAR(100);
+ALTER TABLE services ADD COLUMN IF NOT EXISTS image_url VARCHAR(1000);
+ALTER TABLE services ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0;
+ALTER TABLE services ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE;
+ALTER TABLE services ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+
+UPDATE services SET is_active = true WHERE is_active IS NULL;
 
 -- ============================================================
 -- BẢNG 1: SERVICES (Dịch vụ nha khoa)

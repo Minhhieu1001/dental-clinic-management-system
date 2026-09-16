@@ -43,7 +43,15 @@ public class PromotionController {
     @GetMapping("/api/v1/admin/promotions")
     @Transactional(readOnly = true)
     public List<PromotionResponse> getAdminPromotions() {
-        return promotionRepository.findAll().stream().map(this::toResponse).toList();
+        return promotionRepository.findAll().stream()
+                .sorted((first, second) -> {
+                    if (first.getStartDate() != null && second.getStartDate() != null) {
+                        return second.getStartDate().compareTo(first.getStartDate());
+                    }
+                    return 0;
+                })
+                .map(this::toResponse)
+                .toList();
     }
 
     @PostMapping("/api/v1/admin/promotions")
@@ -79,21 +87,41 @@ public class PromotionController {
 
     private void applyRequest(Promotion promotion, PromotionRequest request) {
         promotion.setTitle(request.title().trim());
-        promotion.setCategory(request.category() != null ? request.category().trim() : null);
         promotion.setDescription(request.description());
         promotion.setImageUrl(request.imageUrl());
         promotion.setDiscountPercent(request.discountPercent());
         promotion.setStartDate(request.startDate());
         promotion.setEndDate(request.endDate());
         promotion.getPromotionServices().clear();
-        if (request.serviceIds() != null) {
-            List<Service> services = serviceRepository.findAllById(request.serviceIds());
+
+        List<Service> services = List.of();
+        if (request.serviceIds() != null && !request.serviceIds().isEmpty()) {
+            services = serviceRepository.findAllById(request.serviceIds());
             if (services.size() != request.serviceIds().stream().distinct().count()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Có dịch vụ ưu đãi không tồn tại");
             }
             services.forEach(service -> promotion.getPromotionServices().add(PromotionService.builder()
                     .promotion(promotion).service(service).build()));
         }
+
+        String cat = request.category() != null ? request.category().trim() : "";
+        if (cat.isEmpty() && !services.isEmpty() && services.get(0).getCategory() != null) {
+            cat = mapEnumCategoryToDisplayName(services.get(0).getCategory());
+        }
+        promotion.setCategory(!cat.isEmpty() ? cat : "Dịch vụ");
+    }
+
+    private String mapEnumCategoryToDisplayName(iuh.fit.backend.treatment.enums.ServiceCategory serviceCat) {
+        if (serviceCat == null) return "Dịch vụ";
+        return switch (serviceCat) {
+            case NIENG_RANG -> "Niềng răng";
+            case RANG_SU -> "Răng sứ thẩm mỹ";
+            case IMPLANT -> "Cấy ghép Implant";
+            case TAY_TRANG -> "Tẩy trắng răng";
+            case KHAM_DIEU_TRI -> "Khám & Điều trị";
+            case NHA_KHOA_TRE_EM -> "Nha khoa trẻ em";
+            default -> "Dịch vụ";
+        };
     }
 
     private void validateDates(PromotionRequest request) {
