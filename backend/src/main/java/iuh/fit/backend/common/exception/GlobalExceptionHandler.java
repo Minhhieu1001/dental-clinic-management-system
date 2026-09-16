@@ -98,6 +98,7 @@ public class GlobalExceptionHandler {
                 "Tài nguyên không tồn tại: " + ex.getResourcePath()
         );
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiResponse<Void>> handleIllegalArgumentException(IllegalArgumentException ex) {
         log.warn("IllegalArgumentException: {}", ex.getMessage());
