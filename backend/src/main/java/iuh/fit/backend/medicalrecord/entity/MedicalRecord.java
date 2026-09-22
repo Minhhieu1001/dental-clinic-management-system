@@ -64,9 +64,6 @@ public class MedicalRecord {
     @OneToMany(mappedBy = "medicalRecord", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<XrayImage> xrayImages = new ArrayList<>();
 
-    @Builder.Default
-    @OneToMany(mappedBy = "medicalRecord", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    private List<Prescription> prescriptions = new ArrayList<>();
 
     @Builder.Default
     @OneToMany(mappedBy = "medicalRecord", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})

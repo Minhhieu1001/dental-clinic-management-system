@@ -1,6 +1,8 @@
 package iuh.fit.backend.medicalrecord.entity;
 
+import iuh.fit.backend.prescription.entity.Prescription;
 import iuh.fit.backend.treatment.entity.TreatmentPlan;
+import iuh.fit.backend.user.entity.Dentist;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -27,7 +29,7 @@ public class ExaminationResult {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dentist_id")
-    private iuh.fit.backend.user.entity.Dentist dentist;
+    private Dentist dentist;
 
     @Column(columnDefinition = "TEXT")
     private String chiefComplaint;
@@ -50,4 +52,8 @@ public class ExaminationResult {
 
     @OneToOne(mappedBy = "examinationResult", fetch = FetchType.LAZY)
     private TreatmentPlan treatmentPlan;
+
+    @Builder.Default
+    @OneToMany(mappedBy = "examinationResult", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    private List<Prescription> prescriptions = new ArrayList<>();
 }

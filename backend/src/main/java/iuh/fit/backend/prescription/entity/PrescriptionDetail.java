@@ -3,6 +3,7 @@ package iuh.fit.backend.prescription.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Getter
@@ -25,17 +26,20 @@ public class PrescriptionDetail {
     @JoinColumn(name = "medicine_id")
     private Medicine medicine;
 
+    @Column(name = "medicine_name", length = 255)
+    private String medicineName;
+
     @Column(length = 255)
     private String dosage;
 
-    @Column(length = 255)
-    private String frequency;
-
-    @Column(length = 255)
-    private String duration;
+    @Column(length = 100)
+    private String unit;
 
     private Integer quantity;
 
-    @Column(columnDefinition = "TEXT")
-    private String instruction;
+    @Column(name = "unit_price", precision = 15, scale = 2)
+    private BigDecimal unitPrice;
+
+
 }
+

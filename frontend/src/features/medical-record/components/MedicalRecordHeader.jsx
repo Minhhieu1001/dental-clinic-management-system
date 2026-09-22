@@ -13,6 +13,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import PatientSearchBar from '../../../components/ui/search/PatientSearchBar';
 
 export default function MedicalRecordHeader({
   patientName,
@@ -170,96 +171,22 @@ export default function MedicalRecordHeader({
 
       {/* Sub-Bar: Patient Selectbox + Phone Search (Left) + Patient & Record Info (Right) */}
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 bg-slate-50 border-t border-slate-200/60 text-xs">
-        {/* Left: Quick Selectbox & Phone Search Bar */}
-        <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
-          {/* Selectbox chọn nhanh bệnh nhân kèm SĐT */}
-          <div className="w-full sm:w-[300px] md:w-[340px] shrink-0">
-            <select
-              value={selectedPatientId || ''}
-              disabled={loadingPatientOptions}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (!val) {
-                  onClearPatient && onClearPatient();
-                  return;
-                }
-                const selected = patientOptions.find(
-                  (p) => String(p.id) === val || String(p.patientCode) === val
-                );
-                if (selected) {
-                  onSelectPatient && onSelectPatient(selected);
-                }
-              }}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 focus:border-teal-600 focus:ring-1 focus:ring-teal-500 cursor-pointer shadow-2xs truncate transition-all disabled:opacity-60"
-            >
-              <option value="">
-                {loadingPatientOptions
-                  ? '-- Đang tải danh sách bệnh nhân... --'
-                  : '-- Chọn bệnh nhân từ danh sách (SĐT — Họ tên) --'}
-              </option>
-              {patientOptions.map((p) => {
-                const phoneStr = p.phone || p.phoneNumber || p.user?.phone || 'Chưa có SĐT';
-                const codeStr = p.patientCode ? ` (${p.patientCode})` : '';
-                const pKey = p.id || p.patientCode;
-                return (
-                  <option key={pKey} value={pKey}>
-                    {phoneStr} — {p.fullName || p.patientName || p.user?.fullName || 'Bệnh nhân'}{codeStr}
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-
-          {/* Ô nhập SĐT tìm kiếm trực tiếp */}
-          {onSearchPhone && (
-            <form
-              onSubmit={onSearchPhone}
-              className="flex items-center gap-2 w-full sm:w-auto"
-            >
-              <div className="relative w-44 sm:w-52">
-                <input
-                  id="header-phone-search-input"
-                  type="text"
-                  value={phoneSearchQuery}
-                  onChange={(e) => setPhoneSearchQuery && setPhoneSearchQuery(e.target.value)}
-                  placeholder="Hoặc nhập SĐT tìm..."
-                  className="w-full rounded-lg border border-slate-300 bg-white pl-8 pr-7 py-1.5 text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:border-teal-600 focus:ring-1 focus:ring-teal-500 shadow-2xs transition-all"
-                />
-                <Phone size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-teal-700" />
-                {phoneSearchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setPhoneSearchQuery && setPhoneSearchQuery('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                  >
-                    <X size={12} />
-                  </button>
-                )}
-              </div>
-              <button
-                type="submit"
-                disabled={searchingPhone}
-                className="flex items-center gap-1.5 rounded-lg bg-teal-700 hover:bg-teal-800 px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs disabled:opacity-50 transition-colors cursor-pointer whitespace-nowrap"
-                title="Tìm kiếm hồ sơ bệnh nhân theo số điện thoại"
-              >
-                {searchingPhone ? <RefreshCw size={13} className="animate-spin" /> : <Search size={13} />}
-                <span>{searchingPhone ? 'Đang tìm...' : 'Tìm kiếm SĐT'}</span>
-              </button>
-
-              {hasPatientData && onClearPatient && (
-                <button
-                  type="button"
-                  onClick={onClearPatient}
-                  className="flex items-center gap-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 px-2.5 py-1.5 text-xs font-bold text-slate-700 shadow-2xs transition-colors cursor-pointer"
-                  title="Đóng hồ sơ bệnh án hiện tại để tìm bệnh nhân khác"
-                >
-                  <RotateCcw size={12} />
-                  <span>Đổi BN</span>
-                </button>
-              )}
-            </form>
-          )}
-        </div>
+        {/* Left: Quick Selectbox & Phone Search Bar dùng chung component PatientSearchBar */}
+        <PatientSearchBar
+          patientOptions={patientOptions}
+          loadingPatientOptions={loadingPatientOptions}
+          selectedPatientId={selectedPatientId}
+          onSelectPatient={onSelectPatient}
+          onClearPatient={onClearPatient}
+          phoneSearchQuery={phoneSearchQuery}
+          setPhoneSearchQuery={setPhoneSearchQuery}
+          onSearchPhone={onSearchPhone}
+          searchingPhone={searchingPhone}
+          hasPatient={hasPatientData}
+          showBorder={false}
+          hideLabels={true}
+          className="p-0 bg-transparent w-full xl:w-auto"
+        />
 
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1.5">

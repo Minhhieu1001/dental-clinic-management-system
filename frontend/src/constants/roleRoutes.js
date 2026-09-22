@@ -7,7 +7,7 @@ export const roleRoutes = {
     tabItems: [
       { label: 'Tổng quan', to: 'dashboard' },
       { label: 'Hóa đơn', to: 'billing' },
-      { label: 'Kho', to: 'inventory' },
+      { label: 'Thuốc', to: 'medicines' },
       { label: 'Bệnh nhân', to: 'patients' },
       { label: 'Nha sĩ', to: 'dentists' },
       { label: 'Nhân viên', to: 'employees' },

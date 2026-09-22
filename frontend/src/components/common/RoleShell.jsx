@@ -4,7 +4,7 @@ import TabBar from './TabBar.jsx'
 
 export default function RoleShell({ config, CustomHeader }) {
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 lg:pl-64">
+    <div className="min-h-screen bg-slate-50 text-slate-900 pl-16 lg:pl-64 transition-all duration-300">
       <TabBar items={config.tabItems} />
 
       {CustomHeader ? (
