@@ -26,7 +26,7 @@ import AdminPatients from '../features/patient/AdminPatients.jsx'
 import AdminDentists from '../features/user/AdminDentists.jsx'
 import EmployeeManagement from '../features/employee/EmployeeManagement.jsx'
 import AdminBilling from '../features/billing/AdminBilling.jsx'
-import AdminInventory from '../features/inventory/AdminInventory.jsx'
+import MedicationManagement from '../features/prescriptions/admin/MedicationManagement.jsx'
 import Promotions from '../features/promotion/Promotions.jsx'
 import AdminNotifications from '../features/notification/AdminNotifications.jsx'
 import AdminSettings from '../features/user/AdminSettings.jsx'
@@ -38,7 +38,7 @@ import DentistAppointments from '../features/appointment/DentistAppointments.jsx
 import TreatmentPlans from '../features/treatment/TreatmentPlans.jsx'
 import ClinicalExamination from '../features/treatment/ClinicalExamination.jsx'
 import MedicalRecords from '../features/medical-record/MedicalRecords.jsx'
-import Prescriptions from '../features/prescription/Prescriptions.jsx'
+import Prescriptions from '../features/prescriptions/dentist/Prescriptions.jsx'
 import XrayAnalysis from '../features/ai-xray/XrayAnalysis.jsx'
 import DentistPatients from '../features/patient/DentistPatients.jsx'
 import DentistNotifications from '../features/notification/DentistNotifications.jsx'
@@ -48,8 +48,8 @@ import EmployeeDashboard from '../features/dashboard/EmployeeDashboard.jsx'
 import EmployeeAppointments from '../features/appointment/EmployeeAppointments.jsx'
 import EmployeePatients from '../features/patient/EmployeePatients.jsx'
 import EmployeeBilling from '../features/billing/EmployeeBilling.jsx'
-import EmployeeInventory from '../features/inventory/EmployeeInventory.jsx'
-import ImportExport from '../features/inventory/ImportExport.jsx'
+import EmployeeInventory from '../features/prescriptions/EmployeeInventory.jsx'
+import ImportExport from '../features/prescriptions/ImportExport.jsx'
 import EmployeeReport from '../features/report/EmployeeReport.jsx'
 import EmployeeNotifications from '../features/notification/EmployeeNotifications.jsx'
 
@@ -57,7 +57,7 @@ import EmployeeNotifications from '../features/notification/EmployeeNotification
 import PatientDashboard from '../features/dashboard/PatientDashboard.jsx'
 import PatientAppointments from '../features/appointment/PatientAppointments.jsx'
 import PatientMedicalRecords from '../features/medical-record/PatientMedicalRecords.jsx'
-import PatientPrescriptions from '../features/prescription/PatientPrescriptions.jsx'
+import PatientPrescriptions from '../features/prescriptions/dentist/PatientPrescriptions.jsx'
 import PatientInvoices from '../features/billing/PatientInvoices.jsx'
 import PatientReviews from '../features/review/PatientReviews.jsx'
 import PatientNotifications from '../features/notification/PatientNotifications.jsx'
@@ -97,7 +97,7 @@ export default function AppRouter() {
             <Route path="dentists" element={<AdminDentists />} />
             <Route path="employees" element={<EmployeeManagement />} />
             <Route path="billing" element={<AdminBilling />} />
-            <Route path="inventory" element={<AdminInventory />} />
+            <Route path="medicines" element={<MedicationManagement />} />
             <Route path="promotions" element={<Promotions />} />
             <Route path="notifications" element={<AdminNotifications />} />
             <Route path="settings" element={<AdminSettings />} />

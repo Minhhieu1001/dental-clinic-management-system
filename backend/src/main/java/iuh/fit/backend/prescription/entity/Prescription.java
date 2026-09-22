@@ -1,5 +1,6 @@
 package iuh.fit.backend.prescription.entity;
 
+import iuh.fit.backend.medicalrecord.entity.ExaminationResult;
 import iuh.fit.backend.medicalrecord.entity.MedicalRecord;
 import iuh.fit.backend.billing.entity.InvoiceDetail;
 import iuh.fit.backend.patient.entity.Patient;
@@ -25,27 +26,29 @@ public class Prescription {
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "medical_record_id")
-    private MedicalRecord medicalRecord;
+    @JoinColumn(name = "examination_result_id")
+    private ExaminationResult examinationResult;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "patient_id")
-    private Patient patient;
+    @Column(name = "prescription_name", length = 255)
+    private String prescriptionName;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "dentist_id")
-    private Dentist dentist;
-
+    @Column(name = "prescription_date")
     private LocalDateTime prescriptionDate;
 
-    @Column(columnDefinition = "TEXT")
-    private String notes;
+
+    @Column(length = 255)
+    private String prescriber;
+
+    @Column(name = "doctor_advice", columnDefinition = "TEXT")
+    private String doctorAdvice;
+
 
     @Builder.Default
-    @OneToMany(mappedBy = "prescription", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @OneToMany(mappedBy = "prescription", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PrescriptionDetail> prescriptionDetails = new ArrayList<>();
 
     @Builder.Default
     @OneToMany(mappedBy = "prescription", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<InvoiceDetail> invoiceDetails = new ArrayList<>();
 }
+

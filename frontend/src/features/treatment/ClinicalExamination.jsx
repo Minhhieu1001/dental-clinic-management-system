@@ -25,6 +25,7 @@ import NoTreatmentSessionsEmptyState from './components/NoTreatmentSessionsEmpty
 import CreateTreatmentSessionModal from './action/CreateTreatmentSessionModal';
 import MultiplePatientsModal from '../../components/common/MultiplePatientsModal';
 import { ConfirmSaveDiagnosisModal } from './action/ConfirmSaveDiagnosisModal';
+import PatientSearchBar from '../../components/ui/search/PatientSearchBar';
 
 function ClinicalExaminationContent() {
   const navigate = useNavigate();
@@ -174,96 +175,20 @@ function ClinicalExaminationContent() {
       {/* KHỐI TỔNG HỢP: TÌM KIẾM BỆNH NHÂN & THÔNG TIN HỒ SƠ LÂM SÀNG (GỘP CHUNG 1 KHỐI) */}
       <div className="rounded-2xl border border-slate-200/90 bg-white shadow-2xs overflow-hidden">
         {/* Hàng 1: Thanh Tìm Kiếm & Selectbox Theo Số Điện Thoại */}
-        <div className={`px-4 py-2.5 bg-slate-50/90 ${hasPatient ? 'border-b border-slate-200/80' : ''}`}>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            {/* Selectbox chọn nhanh bệnh nhân kèm SĐT */}
-            <div className="flex items-center gap-2 flex-1 min-w-0 max-w-md">
-              <label className="text-[13px] font-bold text-slate-700 shrink-0 flex items-center gap-1">
-                <Phone size={12} className="text-teal-700" />
-                <span className="hidden sm:inline">Chọn bệnh nhân:</span>
-                <span className="sm:hidden">Chọn BN:</span>
-                {loadingPatientOptions && (
-                  <RefreshCw size={11} className="animate-spin text-teal-700 ml-0.5" />
-                )}
-              </label>
-              <select
-                value={patient?.id || patient?.patientCode || ''}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (!val) {
-                    handleClearPatient();
-                    return;
-                  }
-                  const selected = patientOptions.find(
-                    (p) => p.id === val || p.patientCode === val
-                  );
-                  if (selected) {
-                    handleSelectPatient(selected);
-                  }
-                }}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 focus:border-teal-600 focus:ring-1 focus:ring-teal-500 cursor-pointer shadow-2xs truncate"
-              >
-                <option value="">-- Chọn bệnh nhân từ danh sách (SĐT — Họ tên) --</option>
-                {patientOptions.map((p) => {
-                  const phoneStr = p.phone || p.phoneNumber || 'Chưa có SĐT';
-                  const codeStr = p.patientCode ? ` (${p.patientCode})` : '';
-                  return (
-                    <option key={p.id || p.patientCode} value={p.id || p.patientCode}>
-                      {phoneStr} — {p.fullName}{codeStr}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-
-            {/* Ô nhập SĐT tìm kiếm trực tiếp */}
-            <form onSubmit={handleSearchPatientByPhone} className="flex items-center gap-2 shrink-0">
-              <label className="text-[13px] font-bold text-slate-700 shrink-0 hidden md:inline">
-                Nhập STĐ
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={phoneSearchQuery}
-                  onChange={(e) => setPhoneSearchQuery(e.target.value)}
-                  placeholder="Nhập SĐT..."
-                  className="w-36 sm:w-48 rounded-lg border border-slate-300 bg-white pl-7 pr-6 py-1.5 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:ring-1 focus:ring-teal-500 shadow-2xs"
-                />
-                <Phone size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-teal-700" />
-                {phoneSearchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setPhoneSearchQuery('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                  >
-                    <X size={12} />
-                  </button>
-                )}
-              </div>
-
-              <button
-                type="submit"
-                disabled={searchingPhone}
-                className="flex items-center gap-1.5 rounded-lg bg-teal-700 hover:bg-teal-800 px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs disabled:opacity-50 transition-colors cursor-pointer whitespace-nowrap h-[32px]"
-              >
-                {searchingPhone ? <RefreshCw size={12} className="animate-spin" /> : <Search size={12} />}
-                <span>{searchingPhone ? 'Đang tìm...' : 'Tìm kiếm'}</span>
-              </button>
-
-              {hasPatient && (
-                <button
-                  type="button"
-                  onClick={handleClearPatient}
-                  className="flex items-center gap-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 px-2.5 py-1.5 text-xs font-bold text-slate-700 shadow-2xs transition-colors cursor-pointer h-[32px]"
-                  title="Đóng phiên khám hiện tại để tìm bệnh nhân khác"
-                >
-                  <RotateCcw size={12} />
-                  <span>Đổi BN</span>
-                </button>
-              )}
-            </form>
-          </div>
-        </div>
+        <PatientSearchBar
+          patientOptions={patientOptions}
+          loadingPatientOptions={loadingPatientOptions}
+          selectedPatient={patient}
+          onSelectPatient={handleSelectPatient}
+          onClearPatient={handleClearPatient}
+          phoneSearchQuery={phoneSearchQuery}
+          setPhoneSearchQuery={setPhoneSearchQuery}
+          onSearchPhone={handleSearchPatientByPhone}
+          searchingPhone={searchingPhone}
+          hasPatient={hasPatient}
+          selectLabel="Chọn bệnh nhân:"
+          inputLabel="Nhập SĐT"
+        />
 
         {/* Hàng 2: Chi tiết thông tin Bệnh Nhân & Lý do khám (Gộp chung trong cùng 1 khối card) */}
         {hasPatient && (

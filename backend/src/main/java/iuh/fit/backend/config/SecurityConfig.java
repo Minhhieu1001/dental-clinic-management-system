@@ -83,6 +83,8 @@ public class SecurityConfig {
                                 "/api/v1/examination-results/**",
                                 "/api/v1/tooth-records/**",
                                 "/api/v1/treatment-plans/**",
+                                "/api/v1/medicines/**",
+                                "/api/v1/prescriptions/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",

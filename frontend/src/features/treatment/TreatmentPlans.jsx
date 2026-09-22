@@ -58,6 +58,14 @@ import {
 } from './clinicalExaminationHelpers';
 import { AddServiceModal } from '../treatment/action/AddServiceModal';
 import { TreatmentVisitModal } from '../treatment/action/TreatmentVisitModal';
+import PatientSearchBar from '../../components/ui/search/PatientSearchBar';
+
+const getInitials = (name) => {
+  if (!name) return 'BN';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+};
 import { CreatePlanModal } from './action/CreatePlanModal';
 import { PhaseModal } from './action/PhaseModal';
 import { PhaseDetailModal } from './action/PhaseDetailModal';
@@ -1242,97 +1250,20 @@ export default function TreatmentPlans() {
       {/* ================= 1. BẢNG ĐIỀU HÀNH TỔNG THỂ PHÁC ĐỒ & KẾ HOẠCH ĐIỀU TRỊ (UNIFIED MASTER ERP CARD) ================= */}
       <div className="rounded-xl border border-slate-200 bg-white shadow-2xs overflow-hidden">
         {/* TẦNG 1: TOOLBAR TÌM KIẾM & CHỌN BỆNH NHÂN THEO SỐ ĐIỆN THOẠI */}
-        <div className="bg-slate-50/80 px-4 py-2.5 border-b border-slate-200/80">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-            {/* Selectbox chọn nhanh bệnh nhân kèm SĐT */}
-            <div className="w-full sm:w-[320px] md:w-[380px] shrink-0">
-              <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1">
-                <Phone size={12} className="text-teal-700" />
-                <span>Chọn nhanh bệnh nhân theo Số điện thoại:</span>
-                {loadingPatientOptions && (
-                  <RefreshCw size={11} className="animate-spin text-teal-700 ml-1" />
-                )}
-              </label>
-              <select
-                value={patient?.id || patient?.patientCode || ''}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (!val) {
-                    handleClearPatient();
-                    return;
-                  }
-                  const selected = patientOptions.find(
-                    (p) => String(p.id) === String(val) || String(p.patientCode) === String(val)
-                  );
-                  if (selected) {
-                    handleSelectPatient(selected);
-                  }
-                }}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 focus:border-teal-600 focus:ring-1 focus:ring-teal-500 cursor-pointer shadow-2xs truncate"
-              >
-                <option value="">-- Chọn bệnh nhân từ danh sách (SĐT — Họ tên) --</option>
-                {patientOptions.map((p) => {
-                  const phoneStr = p.phone || p.phoneNumber || 'Chưa có SĐT';
-                  const codeStr = p.patientCode ? ` (${p.patientCode})` : '';
-                  return (
-                    <option key={p.id || p.patientCode} value={p.id || p.patientCode}>
-                      {phoneStr} — {p.fullName}{codeStr}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-
-            {/* Ô nhập SĐT tìm kiếm trực tiếp */}
-            <form onSubmit={handleSearchPatientByPhone} className="flex items-end gap-2 shrink-0">
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  Hoặc nhập số điện thoại cần tìm:
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={phoneSearchQuery}
-                    onChange={(e) => setPhoneSearchQuery(e.target.value)}
-                    placeholder="Nhập SĐT..."
-                    className="w-44 sm:w-52 rounded-lg border border-slate-300 bg-white pl-8 pr-7 py-1.5 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:ring-1 focus:ring-teal-500 shadow-2xs"
-                  />
-                  <Phone size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-teal-700" />
-                  {phoneSearchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setPhoneSearchQuery('')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                    >
-                      <X size={12} />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={searchingPhone}
-                className="flex items-center gap-1.5 rounded-lg bg-teal-700 hover:bg-teal-800 px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs disabled:opacity-50 transition-colors cursor-pointer whitespace-nowrap h-[32px]"
-              >
-                {searchingPhone ? <RefreshCw size={13} className="animate-spin" /> : <Search size={13} />}
-                <span>{searchingPhone ? 'Đang tìm...' : 'Tìm kiếm'}</span>
-              </button>
-
-              {hasPatient && (
-                <button
-                  type="button"
-                  onClick={handleClearPatient}
-                  className="flex items-center gap-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs transition-colors cursor-pointer h-[32px]"
-                  title="Đóng bệnh nhân hiện tại để tìm bệnh nhân khác"
-                >
-                  <RotateCcw size={12} />
-                  <span>Đổi BN</span>
-                </button>
-              )}
-            </form>
-          </div>
-        </div>
+        <PatientSearchBar
+          patientOptions={patientOptions}
+          loadingPatientOptions={loadingPatientOptions}
+          selectedPatient={patient}
+          onSelectPatient={handleSelectPatient}
+          onClearPatient={handleClearPatient}
+          phoneSearchQuery={phoneSearchQuery}
+          setPhoneSearchQuery={setPhoneSearchQuery}
+          onSearchPhone={handleSearchPatientByPhone}
+          searchingPhone={searchingPhone}
+          hasPatient={hasPatient}
+          selectLabel="Chọn nhanh bệnh nhân theo Số điện thoại:"
+          inputLabel="Hoặc nhập số điện thoại cần tìm:"
+        />
 
         {/* NỘI DUNG MASTER: TÙY THEO TÌNH TRẠNG BỆNH NHÂN */}
         {!hasPatient ? (
@@ -1345,11 +1276,9 @@ export default function TreatmentPlans() {
             <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-start gap-3.5">
                 <div className="relative shrink-0">
-                  <img
-                    src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=256"
-                    alt={patient.fullName}
-                    className="h-12 w-12 rounded-full object-cover border-2 border-teal-200 shadow-2xs"
-                  />
+                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center text-white font-bold text-sm shadow-2xs border-2 border-teal-200">
+                    {getInitials(patient.fullName)}
+                  </div>
                   <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-emerald-500 border-2 border-white" />
                 </div>
                 <div className="space-y-1 text-xs">
@@ -1378,11 +1307,9 @@ export default function TreatmentPlans() {
               {/* Bệnh nhân Entity */}
               <div className="flex items-center gap-3.5 min-w-0">
                 <div className="relative shrink-0">
-                  <img
-                    src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=256"
-                    alt={patient.fullName}
-                    className="h-12 w-12 rounded-full object-cover border-2 border-teal-200 shadow-2xs"
-                  />
+                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center text-white font-bold text-sm shadow-2xs border-2 border-teal-200">
+                    {getInitials(patient.fullName)}
+                  </div>
                   <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-emerald-500 border-2 border-white" />
                 </div>
                 <div className="space-y-0.5 text-xs min-w-0">
