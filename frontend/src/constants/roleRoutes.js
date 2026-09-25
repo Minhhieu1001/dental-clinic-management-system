@@ -37,7 +37,14 @@ export const roleRoutes = {
     footer: 'Giao diện dành cho nha sĩ',
     tabItems: [
       { label: 'Tổng quan', to: 'dashboard' },
-      { label: 'Lịch hẹn', to: 'appointments' },
+      {
+        label: 'Lịch hẹn',
+        to: 'appointments',
+        children: [
+          { label: 'Lịch hẹn', to: 'appointments' },
+          { label: 'Lịch tái khám', to: 'follow-up' },
+        ],
+      },
       { label: 'Khám bệnh', to: 'clinical-exam' },
       { label: 'Kế hoạch điều trị', to: 'treatment-plans' },
       { label: 'Hồ sơ bệnh án', to: 'medical-records' },
@@ -49,6 +56,7 @@ export const roleRoutes = {
     pages: [
       { path: 'dashboard', title: 'Trang tổng quan Dentist' },
       { path: 'appointments', title: 'Lịch hẹn nha sĩ' },
+      { path: 'follow-up', title: 'Lịch tái khám nha sĩ' },
       { path: 'treatment-plans', title: 'Kế hoạch điều trị' },
       { path: 'medical-records', title: 'Hồ sơ bệnh án' },
       { path: 'prescriptions', title: 'Đơn thuốc' },
@@ -64,7 +72,14 @@ export const roleRoutes = {
     footer: 'Giao diện dành cho nhân viên',
     tabItems: [
       { label: 'Tổng quan', to: 'dashboard' },
-      { label: 'Lịch hẹn', to: 'appointments' },
+      {
+        label: 'Lịch hẹn',
+        to: 'appointments',
+        children: [
+          { label: 'Lịch hẹn', to: 'appointments' },
+          { label: 'Lịch tái khám', to: 'follow-up' },
+        ],
+      },
       { label: 'Bệnh nhân', to: 'patients' },
       { label: 'Thanh toán', to: 'billing' },
       { label: 'Kho', to: 'inventory' },
@@ -74,6 +89,7 @@ export const roleRoutes = {
     pages: [
       { path: 'dashboard', title: 'Trang tổng quan Employee' },
       { path: 'appointments', title: 'Tiếp nhận lịch hẹn' },
+      { path: 'follow-up', title: 'Lịch tái khám' },
       { path: 'patients', title: 'Tra cứu bệnh nhân' },
       { path: 'billing', title: 'Thanh toán hóa đơn' },
       { path: 'inventory', title: 'Quản lý kho' },

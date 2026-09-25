@@ -1,6 +1,7 @@
 package iuh.fit.backend.user.entity;
 
 import iuh.fit.backend.appointment.entity.Appointment;
+import iuh.fit.backend.appointment.entity.FollowUpAppointment;
 import iuh.fit.backend.appointment.entity.Shift;
 import iuh.fit.backend.medicalrecord.entity.ExaminationResult;
 import iuh.fit.backend.medicalrecord.entity.MedicalRecord;
@@ -77,5 +78,9 @@ public class Dentist {
     @Builder.Default
     @OneToMany(mappedBy = "dentist", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<TreatmentHistorys> treatmentHistorys = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "dentist", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    private List<FollowUpAppointment> followUpAppointments = new ArrayList<>();
 
 }

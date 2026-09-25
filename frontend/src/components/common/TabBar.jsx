@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Calendar,
@@ -19,12 +20,17 @@ import {
   Settings,
   Sparkles,
   ShieldCheck,
+  ChevronDown,
+  ChevronRight,
+  RotateCcw,
+  CalendarCheck,
 } from 'lucide-react';
 
 const getTabIcon = (to, label) => {
   const key = (to || '').toLowerCase();
   const lbl = (label || '').toLowerCase();
 
+  if (key.includes('follow-up') || lbl.includes('tái khám')) return RotateCcw;
   if (key.includes('dashboard') || lbl.includes('tổng quan')) return LayoutDashboard;
   if (key.includes('appointment') || lbl.includes('lịch hẹn')) return Calendar;
   if (key.includes('exam') || lbl.includes('khám')) return Stethoscope;
@@ -47,6 +53,38 @@ const getTabIcon = (to, label) => {
 };
 
 export default function TabBar({ items = [] }) {
+  const location = useLocation();
+  const [openItems, setOpenItems] = useState({});
+
+  // Auto expand menu items if current location matches any child path
+  useEffect(() => {
+    const nextState = { ...openItems };
+    let changed = false;
+
+    items.forEach((item) => {
+      if (item.children && item.children.length > 0) {
+        const isChildActive = item.children.some((child) =>
+          location.pathname.endsWith(`/${child.to}`) || location.pathname.includes(`/${child.to}`)
+        );
+        if (isChildActive && !nextState[item.to]) {
+          nextState[item.to] = true;
+          changed = true;
+        }
+      }
+    });
+
+    if (changed) {
+      setOpenItems(nextState);
+    }
+  }, [location.pathname, items]);
+
+  const toggleSubMenu = (key) => {
+    setOpenItems((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
   return (
     <nav className="fixed left-0 top-0 z-30 flex h-screen w-16 lg:w-64 flex-col border-r border-slate-200/90 bg-white shadow-xs transition-all duration-300">
       {/* Top Header Logo Banner */}
@@ -78,6 +116,102 @@ export default function TabBar({ items = [] }) {
       <div className="flex flex-1 flex-col gap-1 px-2 lg:px-3 py-2 overflow-y-auto custom-scrollbar">
         {items.map((item) => {
           const IconComponent = getTabIcon(item.to, item.label);
+          const hasChildren = item.children && item.children.length > 0;
+
+          if (hasChildren) {
+            const isChildActive = item.children.some((child) =>
+              location.pathname.endsWith(`/${child.to}`) || location.pathname.includes(`/${child.to}`)
+            );
+            const isOpen = openItems[item.to] ?? isChildActive;
+
+            return (
+              <div key={item.to} className="flex flex-col gap-1">
+                {/* Parent Button */}
+                <div
+                  onClick={() => toggleSubMenu(item.to)}
+                  className={`group relative flex items-center justify-between rounded-xl p-2.5 lg:px-3.5 lg:py-2.5 text-xs font-bold transition-all duration-200 select-none cursor-pointer ${
+                    isChildActive
+                      ? 'bg-teal-50/90 text-teal-900 border border-teal-200/80 font-extrabold'
+                      : 'text-slate-600 hover:bg-teal-50/70 hover:text-teal-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                        isChildActive
+                          ? 'bg-teal-700 text-white shadow-xs'
+                          : 'text-slate-400 group-hover:bg-teal-100/60 group-hover:text-teal-800'
+                      }`}
+                    >
+                      <IconComponent size={18} />
+                    </div>
+                    <span className="hidden lg:inline truncate whitespace-nowrap">{item.label}</span>
+                  </div>
+
+                  {/* Toggle Chevron Icon on Desktop with smooth rotation */}
+                  <div className="hidden lg:flex items-center justify-center text-slate-400 group-hover:text-teal-800">
+                    <ChevronDown
+                      size={15}
+                      className={`transition-transform duration-300 ease-in-out ${
+                        isOpen ? 'rotate-180 text-teal-700' : 'rotate-0 text-slate-400'
+                      }`}
+                    />
+                  </div>
+
+                  {/* Floating tooltip & Popover on collapsed sidebar */}
+                  <div className="pointer-events-none absolute left-full ml-3 hidden rounded-xl bg-slate-900/95 backdrop-blur-sm p-2 text-xs font-semibold text-white shadow-xl opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-hover:block lg:group-hover:hidden z-50 whitespace-nowrap">
+                    <p className="px-2 py-1 font-bold text-teal-300 border-b border-slate-700/60 mb-1">{item.label}</p>
+                    <div className="flex flex-col gap-1">
+                      {item.children.map((c) => (
+                        <div key={c.to} className="px-2 py-1 text-slate-200 hover:text-white">
+                          • {c.label}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sub-menu Children list with Smooth Height Expansion Animation */}
+                <div
+                  className={`grid transition-all duration-300 ease-in-out ${
+                    isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0 pointer-events-none'
+                  }`}
+                >
+                  <div className="overflow-hidden">
+                    <div className="flex flex-col gap-1 pl-3 lg:pl-5 pr-1 border-l-2 border-teal-100/80 ml-5 lg:ml-6 my-1">
+                      {item.children.map((child) => {
+                        const ChildIcon = getTabIcon(child.to, child.label);
+                        return (
+                          <NavLink
+                            key={child.to}
+                            to={child.to}
+                            className={({ isActive }) =>
+                              [
+                                'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-bold transition-all duration-200 select-none transform hover:translate-x-1',
+                                isActive
+                                  ? 'bg-teal-700 text-white shadow-md shadow-teal-700/20'
+                                  : 'text-slate-600 hover:bg-teal-50 hover:text-teal-900',
+                              ].join(' ')
+                            }
+                          >
+                            {({ isActive }) => (
+                              <>
+                                <ChildIcon
+                                  size={15}
+                                  className={isActive ? 'text-white' : 'text-slate-400 group-hover:text-teal-700'}
+                                />
+                                <span className="hidden lg:inline truncate">{child.label}</span>
+                              </>
+                            )}
+                          </NavLink>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          }
 
           return (
             <NavLink

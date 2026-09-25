@@ -35,6 +35,7 @@ import ServicesAdmin from '../features/treatment/Services.jsx'
 // Feature Components - Dentist
 import DentistDashboard from '../features/dashboard/DentistDashboard.jsx'
 import DentistAppointments from '../features/appointment/DentistAppointments.jsx'
+import FollowUpAppointment from '../features/appointment/dentist/FollowUpAppointment.jsx'
 import TreatmentPlans from '../features/treatment/TreatmentPlans.jsx'
 import ClinicalExamination from '../features/treatment/ClinicalExamination.jsx'
 import MedicalRecords from '../features/medical-record/MedicalRecords.jsx'
@@ -111,6 +112,7 @@ export default function AppRouter() {
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<DentistDashboard />} />
             <Route path="appointments" element={<DentistAppointments />} />
+            <Route path="follow-up" element={<FollowUpAppointment />} />
             <Route path="treatment-plans" element={<TreatmentPlans />} />
             <Route path="clinical-exam" element={<ClinicalExamination />} />
             <Route path="medical-records" element={<MedicalRecords />} />
@@ -127,6 +129,7 @@ export default function AppRouter() {
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<EmployeeDashboard />} />
             <Route path="appointments" element={<EmployeeAppointments />} />
+            <Route path="follow-up" element={<FollowUpAppointment />} />
             <Route path="patients" element={<EmployeePatients />} />
             <Route path="billing" element={<EmployeeBilling />} />
             <Route path="inventory" element={<EmployeeInventory />} />
