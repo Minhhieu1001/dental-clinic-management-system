@@ -14,6 +14,7 @@ import {
 import toast from 'react-hot-toast';
 import { appointmentStatusConfig } from './receptionistData';
 import { updateAppointmentStatus, getAppointmentById } from '../../../services/appointment.service';
+import AppointmentDetail from './action/AppointmentDetail';
 
 const filterTabs = [
   { key: 'all', label: 'Tất cả' },
@@ -40,6 +41,20 @@ export default function AppointmentTable({ appointments, onRefresh, onOpenEditMo
 
   // Selected row state for header reschedule action
   const [selectedAptId, setSelectedAptId] = useState(null);
+
+  // Detail Modal state
+  const [detailApt, setDetailApt] = useState(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  const handleOpenDetail = (apt) => {
+    setDetailApt(apt);
+    setIsDetailOpen(true);
+  };
+
+  const handleCloseDetail = () => {
+    setIsDetailOpen(false);
+    setDetailApt(null);
+  };
 
   // Sync state when props change
   useMemo(() => {
@@ -301,30 +316,16 @@ export default function AppointmentTable({ appointments, onRefresh, onOpenEditMo
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full table-fixed min-w-[760px]">
           <thead>
-            <tr className="border-b border-slate-100 bg-slate-50/60">
-              <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                Giờ
-              </th>
-              <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                Bệnh nhân
-              </th>
-              <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                Dịch vụ
-              </th>
-              <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                Bác sĩ
-              </th>
-              <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                Trạng thái
-              </th>
-              <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                Ghi chú
-              </th>
-              <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                Thao tác
-              </th>
+            <tr className="border-b border-slate-100 bg-slate-50/60 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              <th className="w-[65px] px-3 py-2.5 text-left">Giờ</th>
+              <th className="w-[18%] px-3 py-2.5 text-left">Bệnh nhân</th>
+              <th className="w-[24%] px-3 py-2.5 text-left">Dịch vụ</th>
+              <th className="w-[18%] px-3 py-2.5 text-left">Bác sĩ</th>
+              <th className="w-[105px] px-3 py-2.5 text-left">Trạng thái</th>
+              <th className="w-[16%] px-3 py-2.5 text-left">Ghi chú</th>
+              <th className="w-[135px] px-3 py-2.5 text-right">Thao tác</th>
             </tr>
           </thead>
           <tbody>
@@ -332,6 +333,7 @@ export default function AppointmentTable({ appointments, onRefresh, onOpenEditMo
               const statusConf = appointmentStatusConfig[apt.status] || appointmentStatusConfig.CONFIRMED;
               const isConfirmed = apt.status === 'CONFIRMED' || apt.status === 'not-arrived';
               const isCalled = apt.status === 'CALLED' || apt.status === 'called';
+              const isInProgress = apt.status === 'IN_PROGRESS' || apt.status === 'in-progress';
               const isWaiting = apt.status === 'WAITING' || apt.status === 'waiting';
               const isSelected = selectedAptId === apt.id;
 
@@ -339,46 +341,48 @@ export default function AppointmentTable({ appointments, onRefresh, onOpenEditMo
                 <tr
                   key={apt.id}
                   onClick={() => setSelectedAptId(apt.id)}
+                  onDoubleClick={() => handleOpenDetail(apt)}
+                  title="Click 2 lần hoặc bấm nút xem chi tiết để mở giao diện ca khám ERP"
                   className={`border-b border-slate-50 transition-colors cursor-pointer ${isSelected
                     ? 'bg-amber-50/80 font-medium'
                     : 'hover:bg-slate-50/50'
                     } ${idx === paginatedRows.length - 1 ? 'border-b-0' : ''}`}
                 >
                   {/* Time */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3 whitespace-nowrap">
                     <span className="text-[13px] font-semibold text-slate-700">
                       {apt.time}
                     </span>
                   </td>
 
                   {/* Patient */}
-                  <td className="px-4 py-2.5">
+                  <td className="px-3 py-2.5 overflow-hidden">
                     <div className="min-w-0">
-                      <p className="text-[13px] font-semibold text-slate-800 leading-tight">
+                      <p className="text-[13px] font-semibold text-slate-800 leading-tight truncate" title={apt.patientName}>
                         {apt.patientName}
                       </p>
-                      <p className="mt-0.5 text-[11px] text-slate-400 leading-tight">
+                      <p className="mt-0.5 text-[11px] text-slate-400 leading-tight truncate">
                         {apt.phone}
                       </p>
                     </div>
                   </td>
 
                   {/* Service */}
-                  <td className="px-4 py-2.5">
-                    <span className="text-[13px] text-slate-600">
+                  <td className="px-3 py-2.5 overflow-hidden">
+                    <span className="text-[13px] text-slate-600 block truncate" title={apt.service}>
                       {apt.service}
                     </span>
                   </td>
 
                   {/* Dentist */}
-                  <td className="px-4 py-2.5">
-                    <span className="text-[13px] text-slate-600">
+                  <td className="px-3 py-2.5 overflow-hidden">
+                    <span className="text-[13px] text-slate-600 block truncate" title={apt.dentist}>
                       {apt.dentist}
                     </span>
                   </td>
 
                   {/* Status */}
-                  <td className="px-4 py-2.5 whitespace-nowrap">
+                  <td className="px-3 py-2.5 whitespace-nowrap overflow-hidden">
                     <span
                       className={`inline-flex items-center justify-center whitespace-nowrap rounded-[3px] px-2 py-0.5 text-[11px] font-medium leading-tight ${statusConf.className}`}
                     >
@@ -387,60 +391,63 @@ export default function AppointmentTable({ appointments, onRefresh, onOpenEditMo
                   </td>
 
                   {/* Ghi chú */}
-                  <td className="px-4 py-2.5">
-                    {isCalled ? (
-                      <span className="inline-flex items-center rounded bg-purple-50 px-2 py-0.5 text-[11px] font-medium text-purple-700 border border-purple-200">
-                        {apt.calledInfo || `${apt.time} - ${apt.dentist} - ${apt.roomName || 'Phòng 101'}`}
+                  <td className="px-3 py-2.5 overflow-hidden">
+                    {isCalled || isInProgress ? (
+                      <span className="inline-flex items-center rounded bg-purple-50 px-2 py-0.5 text-[11px] font-medium text-purple-700 border border-purple-200 truncate max-w-full" title={apt.roomName || 'Phòng 101'}>
+                        {`${apt.roomName || 'Phòng 101'}`}
                       </span>
                     ) : (
-                      <span className="text-[11px] text-slate-500">
+                      <span className="text-[11px] text-slate-500 block truncate" title={apt.notes || '-'}>
                         {apt.notes || '-'}
                       </span>
                     )}
                   </td>
 
                   {/* Action */}
-                  <td className="px-4 py-2.5 text-right whitespace-nowrap">
-                    {isConfirmed ? (
-                      <button
-                        type="button"
-                        disabled={actionLoadingId === apt.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCheckin(apt);
-                        }}
-                        className="inline-flex items-center gap-1 rounded-[3px] border border-teal-600 bg-teal-600 px-2.5 py-0.5 text-[11px] font-semibold text-white transition-all hover:bg-teal-700 active:bg-teal-800 disabled:opacity-50 cursor-pointer"
-                      >
-                        <UserCheck size={11} strokeWidth={2} />
-                        Check-in
-                      </button>
-                    ) : isWaiting ? (
-                      <button
-                        type="button"
-                        disabled
-                        className="inline-flex items-center gap-1 rounded-[3px] border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-400 cursor-not-allowed"
-                      >
-                        <CheckCircle2 size={11} strokeWidth={1.8} />
-                        Đã Check-in
-                      </button>
-                    ) : isCalled ? (
-                      <button
-                        type="button"
-                        disabled
-                        className="inline-flex items-center gap-1 rounded-[3px] border border-purple-200 bg-purple-50 px-2 py-0.5 text-[11px] font-medium text-purple-700 cursor-not-allowed"
-                      >
-                        <PhoneCall size={11} strokeWidth={1.8} />
-                        Gọi vào
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled
-                        className="inline-flex items-center gap-1 rounded-[3px] border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-500 cursor-not-allowed"
-                      >
-                        {statusConf.action}
-                      </button>
-                    )}
+                  <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                    <div className="inline-flex items-center justify-end gap-1">
+                      {isConfirmed ? (
+                        <button
+                          type="button"
+                          disabled={actionLoadingId === apt.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCheckin(apt);
+                          }}
+                          className="inline-flex items-center gap-1 rounded-[3px] border border-teal-600 bg-teal-600 px-2 py-0.5 text-[11px] font-semibold text-white transition-all hover:bg-teal-700 active:bg-teal-800 disabled:opacity-50 cursor-pointer shadow-2xs"
+                        >
+                          <UserCheck size={11} strokeWidth={2} />
+                          Check-in
+                        </button>
+                      ) : isWaiting ? (
+                        <button
+                          type="button"
+                          disabled
+                          className="inline-flex items-center gap-1 rounded-[3px] bg-emerald-50 text-emerald-700 border border-emerald-200/80 px-2 py-0.5 text-[11px] font-medium cursor-not-allowed"
+                        >
+                          <CheckCircle2 size={11} strokeWidth={1.8} />
+                          Đã Check-in
+                        </button>
+                      ) : isCalled ? (
+                        <button
+                          type="button"
+                          disabled
+                          className="inline-flex items-center gap-1 rounded-[3px] bg-emerald-50 text-emerald-700 border border-emerald-200/80 px-2 py-0.5 text-[11px] font-medium cursor-not-allowed"
+                        >
+                          <CheckCircle2 size={11} strokeWidth={1.8} />
+                          Đã Check-in
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled
+                          className="inline-flex items-center gap-1 rounded-[3px] bg-emerald-50 text-emerald-700 border border-emerald-200/80 px-2 py-0.5 text-[11px] font-medium cursor-not-allowed"
+                        >
+                          <CheckCircle2 size={11} strokeWidth={1.8} />
+                          Đã Check-in
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
@@ -497,6 +504,14 @@ export default function AppointmentTable({ appointments, onRefresh, onOpenEditMo
           </div>
         </div>
       )}
+
+      {/* Appointment Detail Modal (ERP Design) */}
+      <AppointmentDetail
+        isOpen={isDetailOpen}
+        onClose={handleCloseDetail}
+        appointment={detailApt}
+        onCheckin={handleCheckin}
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 package iuh.fit.backend.user.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import iuh.fit.backend.user.enums.Role;
 import iuh.fit.backend.user.enums.StatusUser;
 import iuh.fit.backend.notification.entity.Notification;
@@ -20,6 +21,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
+@ToString(exclude = {"employee", "dentist"})
 @Table(name = "users")
 public class User {
     @Id
@@ -53,12 +55,15 @@ public class User {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
+    @JsonIgnore
     @OneToOne(mappedBy = "user", fetch = FetchType.LAZY)
     private Employee employee;
 
+    @JsonIgnore
     @OneToOne(mappedBy = "user", fetch = FetchType.LAZY)
     private Dentist dentist;
 
+    @JsonIgnore
     @Builder.Default
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<Notification> notifications = new ArrayList<>();

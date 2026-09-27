@@ -1,5 +1,6 @@
 package iuh.fit.backend.user.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import iuh.fit.backend.appointment.entity.Appointment;
 import iuh.fit.backend.appointment.entity.FollowUpAppointment;
 import iuh.fit.backend.appointment.entity.Shift;
@@ -62,6 +63,7 @@ public class Dentist {
     @OneToMany(mappedBy = "dentist", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<Shift> shifts = new ArrayList<>();
 
+    @JsonIgnore
     @Builder.Default
     @OneToMany(mappedBy = "dentist", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<Appointment> appointments = new ArrayList<>();

@@ -516,8 +516,8 @@ export default function CreateAppointmentModal({
                           key={doc.id}
                           onClick={() => handleSelectDoctor(doc)}
                           className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all ${isSelected
-                              ? 'bg-teal-700 text-white font-bold shadow-md shadow-teal-700/20'
-                              : 'hover:bg-slate-50 text-slate-800'
+                            ? 'bg-teal-700 text-white font-bold shadow-md shadow-teal-700/20'
+                            : 'hover:bg-slate-50 text-slate-800'
                             }`}
                         >
                           <div className="flex items-center gap-3">

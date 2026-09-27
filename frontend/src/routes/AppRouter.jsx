@@ -49,6 +49,7 @@ import EmployeeDashboard from '../features/dashboard/EmployeeDashboard.jsx'
 import EmployeeAppointments from '../features/appointment/EmployeeAppointments.jsx'
 import EmployeePatients from '../features/patient/EmployeePatients.jsx'
 import EmployeeBilling from '../features/billing/EmployeeBilling.jsx'
+import CustomerCare from '../features/customer-care/CustomerCare.jsx'
 import EmployeeInventory from '../features/prescriptions/EmployeeInventory.jsx'
 import ImportExport from '../features/prescriptions/ImportExport.jsx'
 import EmployeeReport from '../features/report/EmployeeReport.jsx'
@@ -132,6 +133,7 @@ export default function AppRouter() {
             <Route path="follow-up" element={<FollowUpAppointment />} />
             <Route path="patients" element={<EmployeePatients />} />
             <Route path="billing" element={<EmployeeBilling />} />
+            <Route path="customer-care" element={<CustomerCare />} />
             <Route path="inventory" element={<EmployeeInventory />} />
             <Route path="import-export" element={<ImportExport />} />
             <Route path="report" element={<EmployeeReport />} />

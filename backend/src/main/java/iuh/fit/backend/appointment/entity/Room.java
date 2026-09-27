@@ -1,5 +1,6 @@
 package iuh.fit.backend.appointment.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import iuh.fit.backend.patient.entity.Patient;
 import jakarta.persistence.*;
 import lombok.*;
@@ -26,6 +27,7 @@ public class Room {
     private String floorName;
     private LocalDateTime createAt;
 
+    @JsonIgnore
     @Builder.Default
     @OneToMany(mappedBy = "room", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<Appointment> appointments = new ArrayList<>();

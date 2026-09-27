@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileSpreadsheet,
   ChevronLeft,
+  ChevronDown,
   Phone,
   Calendar,
   Stethoscope,
@@ -247,6 +248,16 @@ export default function TreatmentPlans() {
   // 4. CÁC GIAI ĐOẠN ĐIỀU TRỊ (`Treatment Phases`)
   // Ban đầu ĐỂ TRỐNG (0 giai đoạn) để người dùng tự tạo giai đoạn hoặc áp dụng gói gợi ý
   const [phases, setPhases] = useState([]);
+
+  // Trạng thái thu gọn / mở rộng nội dung từng buổi điều trị lâm sàng
+  const [expandedVisitIds, setExpandedVisitIds] = useState({});
+
+  const toggleVisitExpand = useCallback((visitId) => {
+    setExpandedVisitIds((prev) => ({
+      ...prev,
+      [visitId]: !prev[visitId],
+    }));
+  }, []);
 
   // 5. DANH MỤC DỊCH VỤ NHA KHOA (Service Entity)
   const [servicesCatalog, setServicesCatalog] = useState(DEFAULT_SERVICE_CATALOG);
@@ -2038,6 +2049,7 @@ export default function TreatmentPlans() {
                               <AnimatePresence mode="popLayout">
                                 {phaseVisits.map((visit) => {
                                   const vStatusCfg = STATUS_PHASE_CONFIG[visit.status] || STATUS_PHASE_CONFIG.PENDING;
+                                  const isExpanded = !!expandedVisitIds[visit.visitId];
                                   return (
                                     <motion.div
                                       layout
@@ -2048,7 +2060,11 @@ export default function TreatmentPlans() {
                                       key={visit.visitId}
                                       className="rounded-xl border border-slate-200 bg-linear-to-r from-slate-50/80 to-indigo-50/20 p-3.5 shadow-2xs space-y-2.5 hover:border-indigo-300 transition-all"
                                     >
-                                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
+                                      <div
+                                        onClick={() => toggleVisitExpand(visit.visitId)}
+                                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200 cursor-pointer select-none"
+                                        title="Nhấp để xem hoặc thu gọn nội dung chi tiết buổi điều trị"
+                                      >
                                         <div className="flex items-center gap-2.5 flex-wrap">
                                           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-700 text-white font-extrabold text-[11px] shadow-2xs shrink-0">
                                             {visit.visitOrder}
@@ -2071,21 +2087,48 @@ export default function TreatmentPlans() {
                                               Bác sĩ: <strong className="text-slate-800 font-semibold">{visit.assigned_dentist || loggedInDoctorName || dentistName || 'Chưa phân công'}</strong>
                                             </span>
                                           </span>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              toggleVisitExpand(visit.visitId);
+                                            }}
+                                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-700 bg-white hover:bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-md transition-all cursor-pointer shadow-2xs"
+                                          >
+                                            <span>{isExpanded ? 'Thu gọn' : 'Xem nội dung'}</span>
+                                            <ChevronDown
+                                              size={13}
+                                              className={`transition-transform duration-200 text-indigo-600 ${isExpanded ? 'rotate-180' : ''}`}
+                                            />
+                                          </button>
                                         </div>
                                       </div>
-                                      <div className="bg-white rounded-lg border border-slate-200 p-2.5 text-xs space-y-1 shadow-2xs">
-                                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-teal-800 uppercase tracking-wide">
-                                          <Stethoscope size={13} className="text-teal-600" />
-                                          <span>Nội dung thực hiện trong buổi điều trị:</span>
-                                        </div>
-                                        <p className="text-slate-700 leading-relaxed pl-5 whitespace-pre-wrap font-normal">
-                                          {visit.clinical_notes || (
-                                            <span className="text-slate-400 italic">
-                                              Chưa ghi nhận nội dung thao tác. Nhấp "Vào điều trị" ở đầu giai đoạn để bổ sung ghi chú và cập nhật kết quả.
-                                            </span>
-                                          )}
-                                        </p>
-                                      </div>
+
+                                      <AnimatePresence initial={false}>
+                                        {isExpanded && (
+                                          <motion.div
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                            transition={{ duration: 0.2 }}
+                                            className="overflow-hidden"
+                                          >
+                                            <div className="bg-white rounded-lg border border-slate-200 p-2.5 text-xs space-y-1 shadow-2xs mt-1">
+                                              <div className="flex items-center gap-1.5 text-[11px] font-bold text-teal-800 uppercase tracking-wide">
+                                                <Stethoscope size={13} className="text-teal-600" />
+                                                <span>Nội dung thực hiện trong buổi điều trị:</span>
+                                              </div>
+                                              <p className="text-slate-700 leading-relaxed pl-5 whitespace-pre-wrap font-normal">
+                                                {visit.clinical_notes || (
+                                                  <span className="text-slate-400 italic">
+                                                    Chưa ghi nhận nội dung thao tác. Nhấp "Vào điều trị" ở đầu giai đoạn để bổ sung ghi chú và cập nhật kết quả.
+                                                  </span>
+                                                )}
+                                              </p>
+                                            </div>
+                                          </motion.div>
+                                        )}
+                                      </AnimatePresence>
                                     </motion.div>
                                   );
                                 })}
@@ -2100,7 +2143,7 @@ export default function TreatmentPlans() {
 
                 {/* ================= 6. TỔNG HỢP TÀI CHÍNH (`estimated_cost : Double`) ================= */}
                 <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs space-y-3">
-                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                     <div className="space-y-1">
                       <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                         <Calculator size={18} className="text-teal-700" />
@@ -2111,17 +2154,8 @@ export default function TreatmentPlans() {
                       </p>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-4 bg-slate-50 p-3.5 rounded-xl border border-slate-200 shadow-2xs">
-                      <div>
-                        <span className="text-[10px] text-slate-400 font-bold uppercase block">Tổng tiền dịch vụ gốc</span>
-                        <span className="text-sm font-bold text-slate-700">
-                          {grossTotal.toLocaleString('vi-VN')} đ
-                        </span>
-                      </div>
-
-                      <div className="h-8 w-px bg-slate-200 hidden sm:block" />
-
-                      <div>
+                    <div className="flex flex-nowrap items-center gap-3 sm:gap-4 bg-slate-50 p-3.5 rounded-xl border border-slate-200 shadow-2xs shrink-0 overflow-x-auto">
+                      <div className="shrink-0 whitespace-nowrap">
                         <span className="text-[10px] text-slate-400 font-bold uppercase block">Ưu đãi / Giảm giá (%)</span>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <input
@@ -2139,9 +2173,18 @@ export default function TreatmentPlans() {
                         </div>
                       </div>
 
-                      <div className="h-8 w-px bg-slate-200 hidden sm:block" />
+                      <div className="h-8 w-px bg-slate-200 shrink-0" />
 
-                      <div>
+                      <div className="shrink-0 whitespace-nowrap">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase block">Tổng tiền dịch vụ gốc</span>
+                        <span className="text-sm font-bold text-slate-700">
+                          {grossTotal.toLocaleString('vi-VN')} đ
+                        </span>
+                      </div>
+
+                      <div className="h-8 w-px bg-slate-200 shrink-0" />
+
+                      <div className="shrink-0 whitespace-nowrap">
                         <span className="text-[10px] text-teal-700 font-bold uppercase block">
                           Tổng chi phí dự kiến
                         </span>

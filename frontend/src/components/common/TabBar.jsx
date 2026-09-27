@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Calendar,
@@ -24,6 +24,7 @@ import {
   ChevronRight,
   RotateCcw,
   CalendarCheck,
+  HeartHandshake,
 } from 'lucide-react';
 
 const getTabIcon = (to, label) => {
@@ -39,6 +40,7 @@ const getTabIcon = (to, label) => {
   if (key.includes('medicine') || key.includes('prescription') || lbl.includes('thuốc')) return Pill;
   if (key.includes('xray') || lbl.includes('x-quang')) return ImageIcon;
   if (key.includes('patient') || lbl.includes('bệnh nhân')) return Users;
+  if (key.includes('customer-care') || key.includes('care') || lbl.includes('chăm sóc')) return HeartHandshake;
   if (key.includes('notification') || lbl.includes('thông báo')) return Bell;
   if (key.includes('billing') || key.includes('invoice') || lbl.includes('thanh toán') || lbl.includes('hóa đơn')) return CreditCard;
   if (key.includes('inventory') || key.includes('import') || lbl.includes('kho') || lbl.includes('nhập')) return Package;
@@ -54,6 +56,7 @@ const getTabIcon = (to, label) => {
 
 export default function TabBar({ items = [] }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [openItems, setOpenItems] = useState({});
 
   // Auto expand menu items if current location matches any child path
@@ -83,6 +86,18 @@ export default function TabBar({ items = [] }) {
       ...prev,
       [key]: !prev[key],
     }));
+  };
+
+  const handleParentClick = (item) => {
+    toggleSubMenu(item.to);
+    if (item.children && item.children.length > 0) {
+      const isChildActive = item.children.some((child) =>
+        location.pathname.endsWith(`/${child.to}`) || location.pathname.includes(`/${child.to}`)
+      );
+      if (!isChildActive) {
+        navigate(item.children[0].to);
+      }
+    }
   };
 
   return (
@@ -128,7 +143,7 @@ export default function TabBar({ items = [] }) {
               <div key={item.to} className="flex flex-col gap-1">
                 {/* Parent Button */}
                 <div
-                  onClick={() => toggleSubMenu(item.to)}
+                  onClick={() => handleParentClick(item)}
                   className={`group relative flex items-center justify-between rounded-xl p-2.5 lg:px-3.5 lg:py-2.5 text-xs font-bold transition-all duration-200 select-none cursor-pointer ${
                     isChildActive
                       ? 'bg-teal-50/90 text-teal-900 border border-teal-200/80 font-extrabold'
@@ -159,14 +174,26 @@ export default function TabBar({ items = [] }) {
                   </div>
 
                   {/* Floating tooltip & Popover on collapsed sidebar */}
-                  <div className="pointer-events-none absolute left-full ml-3 hidden rounded-xl bg-slate-900/95 backdrop-blur-sm p-2 text-xs font-semibold text-white shadow-xl opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-hover:block lg:group-hover:hidden z-50 whitespace-nowrap">
+                  <div className="pointer-events-auto absolute left-full ml-2 hidden rounded-xl bg-slate-900/95 backdrop-blur-sm p-2.5 text-xs font-semibold text-white shadow-xl opacity-0 transition-all duration-150 group-hover:opacity-100 group-hover:flex flex-col lg:group-hover:hidden z-50 whitespace-nowrap min-w-[150px]">
                     <p className="px-2 py-1 font-bold text-teal-300 border-b border-slate-700/60 mb-1">{item.label}</p>
                     <div className="flex flex-col gap-1">
-                      {item.children.map((c) => (
-                        <div key={c.to} className="px-2 py-1 text-slate-200 hover:text-white">
-                          • {c.label}
-                        </div>
-                      ))}
+                      {item.children.map((c) => {
+                        const ChildIcon = getTabIcon(c.to, c.label);
+                        return (
+                          <NavLink
+                            key={c.to}
+                            to={c.to}
+                            className={({ isActive }) =>
+                              `flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                                isActive ? 'bg-teal-700 text-white font-bold' : 'text-slate-200 hover:bg-slate-800 hover:text-white'
+                              }`
+                            }
+                          >
+                            <ChildIcon size={14} className="text-teal-400 shrink-0" />
+                            <span>{c.label}</span>
+                          </NavLink>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -178,16 +205,17 @@ export default function TabBar({ items = [] }) {
                   }`}
                 >
                   <div className="overflow-hidden">
-                    <div className="flex flex-col gap-1 pl-3 lg:pl-5 pr-1 border-l-2 border-teal-100/80 ml-5 lg:ml-6 my-1">
+                    <div className="flex flex-col gap-1 items-center lg:items-stretch pl-0 lg:pl-5 pr-0 lg:pr-1 border-l-0 lg:border-l-2 border-teal-100/80 ml-0 lg:ml-6 my-1">
                       {item.children.map((child) => {
                         const ChildIcon = getTabIcon(child.to, child.label);
                         return (
                           <NavLink
                             key={child.to}
                             to={child.to}
+                            title={child.label}
                             className={({ isActive }) =>
                               [
-                                'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-bold transition-all duration-200 select-none transform hover:translate-x-1',
+                                'group relative flex items-center justify-center lg:justify-start gap-2.5 rounded-xl p-2 lg:px-2.5 lg:py-2 text-xs font-bold transition-all duration-200 select-none cursor-pointer w-full',
                                 isActive
                                   ? 'bg-teal-700 text-white shadow-md shadow-teal-700/20'
                                   : 'text-slate-600 hover:bg-teal-50 hover:text-teal-900',
@@ -196,11 +224,21 @@ export default function TabBar({ items = [] }) {
                           >
                             {({ isActive }) => (
                               <>
-                                <ChildIcon
-                                  size={15}
-                                  className={isActive ? 'text-white' : 'text-slate-400 group-hover:text-teal-700'}
-                                />
+                                <div
+                                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                                    isActive
+                                      ? 'bg-white/20 text-white'
+                                      : 'text-slate-400 group-hover:bg-teal-100/60 group-hover:text-teal-800'
+                                  }`}
+                                >
+                                  <ChildIcon size={16} />
+                                </div>
                                 <span className="hidden lg:inline truncate">{child.label}</span>
+
+                                {/* Floating tooltip khi thanh tabbar thu nhỏ */}
+                                <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 hidden rounded-lg bg-slate-900/90 backdrop-blur-sm px-2.5 py-1.5 text-xs font-semibold text-white shadow-xl opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-hover:block lg:group-hover:hidden z-50 whitespace-nowrap">
+                                  {child.label}
+                                </div>
                               </>
                             )}
                           </NavLink>
