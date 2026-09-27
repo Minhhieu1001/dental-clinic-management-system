@@ -54,17 +54,6 @@ export default function DashboardHeader({ staffName, onOpenCreateModal, onRefres
           />
         </div>
 
-        {/* Notification */}
-        <button
-          type="button"
-          className="relative flex h-[36px] w-[36px] items-center justify-center rounded-[4px] border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700"
-        >
-          <Bell size={17} />
-          <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
-            3
-          </span>
-        </button>
-
         {/* Refresh button */}
         <button
           type="button"

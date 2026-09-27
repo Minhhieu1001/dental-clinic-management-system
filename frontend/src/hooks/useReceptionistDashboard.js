@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getAppointmentRequestToday } from '../services/appointmentRequest.service';
 import { getAppointments } from '../services/appointment.service';
-import { statsData as mockStats, todayAppointments as mockAppointments, appointmentRequests as mockRequests } from '../features/dashboard/receptionist/receptionistData';
+import { useWebSocket } from './useWebSocket';
 
 /**
  * Custom Hook: useReceptionistDashboard
@@ -177,6 +177,30 @@ export function useReceptionistDashboard() {
   useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
+
+  // Realtime updates via WebSocket for Receptionist Dashboard (Cập nhật trực tiếp State, không gọi lại API)
+  const handleRealtimeAppointment = useCallback((updatedApt) => {
+    if (!updatedApt || !updatedApt.id) return;
+    const formatted = formatAppointment(updatedApt);
+    setAppointments((prev) => {
+      const exists = prev.some((item) => item.id === formatted.id);
+      if (exists) {
+        return prev.map((item) => (item.id === formatted.id ? { ...item, ...formatted } : item));
+      } else {
+        return [formatted, ...prev];
+      }
+    });
+  }, []);
+
+  const handleRealtimeRequest = useCallback((newReq) => {
+    if (!newReq || !newReq.id) return;
+    setRequests((prev) => {
+      if (prev.some((r) => r.id === newReq.id)) return prev;
+      return [newReq, ...prev];
+    });
+  }, []);
+
+  useWebSocket(handleRealtimeAppointment, null, handleRealtimeRequest);
 
   return {
     stats,

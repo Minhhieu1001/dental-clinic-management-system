@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
+import { useWebSocket } from '../../hooks/useWebSocket';
 import { getDentistsList } from '../../services/dentist.service';
 import { getAppointments, updateAppointmentStatus } from '../../services/appointment.service';
 import { getAppointmentRequestToday, updateAppointmentRequestStatus } from '../../services/appointmentRequest.service';
@@ -160,6 +161,21 @@ export default function EmployeeAppointments() {
   useEffect(() => {
     fetchAppointmentsData();
   }, [fetchAppointmentsData]);
+
+  // Realtime WebSocket for live appointment updates in EmployeeAppointments
+  const handleRealtimeAppointment = useCallback((updatedApt) => {
+    if (!updatedApt || !updatedApt.id) return;
+    setAppointments((prev) => {
+      const exists = prev.some((item) => item.id === updatedApt.id);
+      if (exists) {
+        return prev.map((item) => (item.id === updatedApt.id ? { ...item, ...updatedApt } : item));
+      } else {
+        return [updatedApt, ...prev];
+      }
+    });
+  }, []);
+
+  useWebSocket(handleRealtimeAppointment, null);
 
   // Handle Confirm & Schedule Online Request
   const handleOpenScheduleModal = (apt) => {

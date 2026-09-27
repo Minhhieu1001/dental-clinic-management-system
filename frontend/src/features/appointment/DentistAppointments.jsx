@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
+import { useWebSocket } from '../../hooks/useWebSocket';
 import { getDentistsList } from '../../services/dentist.service';
 import { getMyAppointments, getAppointments, updateAppointmentStatus } from '../../services/appointment.service';
 import ClinicalExamModal from '../../components/ui/ClinicalExamModal';
@@ -146,6 +147,26 @@ export default function DentistAppointments() {
   useEffect(() => {
     fetchAppointments();
   }, [fetchAppointments]);
+
+  // Cập nhật trực tiếp State
+  const handleRealtimeAppt = useCallback((updatedApt) => {
+    if (!updatedApt || !updatedApt.id) return;
+    toast.success('Cập nhật ca khám mới!', { id: 'realtime-appt' });
+    setAppointments((prev) => {
+      const exists = prev.some((item) => item.id === updatedApt.id);
+      if (exists) {
+        return prev.map((item) => (item.id === updatedApt.id ? { ...item, ...updatedApt } : item));
+      } else {
+        return [updatedApt, ...prev];
+      }
+    });
+  }, []);
+
+  const handleRealtimeNotif = useCallback((notif) => {
+    toast(`${notif.title || 'Thông báo'}: ${notif.content || notif.message || ''}`, { id: 'realtime-notif' });
+  }, []);
+
+  useWebSocket(handleRealtimeAppt, handleRealtimeNotif);
 
   // Navigate Date
   const handlePrev = () => {
@@ -501,44 +522,40 @@ export default function DentistAppointments() {
             <button
               type="button"
               onClick={() => setViewMode('DAY')}
-              className={`rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${
-                viewMode === 'DAY'
-                  ? 'bg-white text-teal-800 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${viewMode === 'DAY'
+                ? 'bg-white text-teal-800 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               Ngày
             </button>
             <button
               type="button"
               onClick={() => setViewMode('WEEK')}
-              className={`rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${
-                viewMode === 'WEEK'
-                  ? 'bg-[#E0F2FE] text-teal-900 shadow-xs border border-teal-200'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${viewMode === 'WEEK'
+                ? 'bg-[#E0F2FE] text-teal-900 shadow-xs border border-teal-200'
+                : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               Tuần
             </button>
             <button
               type="button"
               onClick={() => setViewMode('MONTH')}
-              className={`rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${
-                viewMode === 'MONTH'
-                  ? 'bg-white text-teal-800 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${viewMode === 'MONTH'
+                ? 'bg-white text-teal-800 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               Tháng
             </button>
             <button
               type="button"
               onClick={() => setViewMode('LIST')}
-              className={`rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all flex items-center gap-1 ${
-                viewMode === 'LIST'
-                  ? 'bg-teal-700 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all flex items-center gap-1 ${viewMode === 'LIST'
+                ? 'bg-teal-700 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               <ListFilter size={13} />
               Dạng List
@@ -549,11 +566,10 @@ export default function DentistAppointments() {
           <button
             type="button"
             onClick={() => setViewMode(viewMode === 'LIST' ? 'WEEK' : 'LIST')}
-            className={`flex items-center gap-1.5 rounded-[4px] border px-3.5 py-2 text-xs font-bold transition-all shadow-2xs ${
-              viewMode === 'LIST'
-                ? 'border-teal-700 bg-teal-800 text-white'
-                : 'border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100'
-            }`}
+            className={`flex items-center gap-1.5 rounded-[4px] border px-3.5 py-2 text-xs font-bold transition-all shadow-2xs ${viewMode === 'LIST'
+              ? 'border-teal-700 bg-teal-800 text-white'
+              : 'border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100'
+              }`}
           >
             <History size={15} className={viewMode === 'LIST' ? 'text-white' : 'text-teal-700'} />
             <span>Lịch sử 7 ngày</span>
@@ -590,11 +606,10 @@ export default function DentistAppointments() {
           <button
             type="button"
             onClick={() => setStatusFilter('ALL')}
-            className={`flex items-center gap-1.5 rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${
-              statusFilter === 'ALL'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
+            className={`flex items-center gap-1.5 rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${statusFilter === 'ALL'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
           >
             Tất cả <span className="rounded-[4px] bg-white/20 px-1.5 py-0.2 text-[10px]">{weekStats.total}</span>
           </button>
@@ -602,11 +617,10 @@ export default function DentistAppointments() {
           <button
             type="button"
             onClick={() => setStatusFilter('WAITING')}
-            className={`flex items-center gap-1.5 rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${
-              statusFilter === 'WAITING'
-                ? 'bg-sky-600 text-white shadow-xs'
-                : 'bg-sky-50 text-sky-800 border border-sky-200/80 hover:bg-sky-100'
-            }`}
+            className={`flex items-center gap-1.5 rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${statusFilter === 'WAITING'
+              ? 'bg-sky-600 text-white shadow-xs'
+              : 'bg-sky-50 text-sky-800 border border-sky-200/80 hover:bg-sky-100'
+              }`}
           >
             <span className="h-2 w-2 rounded-full bg-sky-400" />
             Chưa khám
@@ -616,11 +630,10 @@ export default function DentistAppointments() {
           <button
             type="button"
             onClick={() => setStatusFilter('IN_PROGRESS')}
-            className={`flex items-center gap-1.5 rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${
-              statusFilter === 'IN_PROGRESS'
-                ? 'bg-purple-600 text-white shadow-xs'
-                : 'bg-purple-50 text-purple-800 border border-purple-200/80 hover:bg-purple-100'
-            }`}
+            className={`flex items-center gap-1.5 rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${statusFilter === 'IN_PROGRESS'
+              ? 'bg-purple-600 text-white shadow-xs'
+              : 'bg-purple-50 text-purple-800 border border-purple-200/80 hover:bg-purple-100'
+              }`}
           >
             <span className="h-2 w-2 rounded-full bg-purple-400" />
             Đang khám
@@ -630,11 +643,10 @@ export default function DentistAppointments() {
           <button
             type="button"
             onClick={() => setStatusFilter('COMPLETED')}
-            className={`flex items-center gap-1.5 rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${
-              statusFilter === 'COMPLETED'
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'bg-emerald-50 text-emerald-800 border border-emerald-200/80 hover:bg-emerald-100'
-            }`}
+            className={`flex items-center gap-1.5 rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${statusFilter === 'COMPLETED'
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'bg-emerald-50 text-emerald-800 border border-emerald-200/80 hover:bg-emerald-100'
+              }`}
           >
             <span className="h-2 w-2 rounded-full bg-emerald-400" />
             Hoàn thành
@@ -644,11 +656,10 @@ export default function DentistAppointments() {
           <button
             type="button"
             onClick={() => setStatusFilter('CANCELLED')}
-            className={`flex items-center gap-1.5 rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${
-              statusFilter === 'CANCELLED'
-                ? 'bg-rose-600 text-white shadow-xs'
-                : 'bg-rose-50 text-rose-800 border border-rose-200/80 hover:bg-rose-100'
-            }`}
+            className={`flex items-center gap-1.5 rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${statusFilter === 'CANCELLED'
+              ? 'bg-rose-600 text-white shadow-xs'
+              : 'bg-rose-50 text-rose-800 border border-rose-200/80 hover:bg-rose-100'
+              }`}
           >
             <span className="h-2 w-2 rounded-full bg-rose-400" />
             Đã hủy
@@ -686,9 +697,8 @@ export default function DentistAppointments() {
                   return (
                     <div
                       key={idx}
-                      className={`p-3 border-r border-slate-200 last:border-r-0 ${
-                        isToday ? 'bg-teal-50/80 text-teal-900 font-extrabold' : ''
-                      }`}
+                      className={`p-3 border-r border-slate-200 last:border-r-0 ${isToday ? 'bg-teal-50/80 text-teal-900 font-extrabold' : ''
+                        }`}
                     >
                       <div className="text-xs font-extrabold uppercase">{WEEKDAYS[idx].short}</div>
                       <div className={`text-xs font-bold mt-0.5 ${isToday ? 'text-teal-700' : 'text-slate-500'}`}>
@@ -909,23 +919,21 @@ export default function DentistAppointments() {
                   return (
                     <div
                       key={idx}
-                      className={`p-2 min-h-[95px] flex flex-col justify-start gap-1 transition-colors ${
-                        !item.isCurrentMonth
-                          ? 'bg-slate-50/50 text-slate-300'
-                          : isToday
+                      className={`p-2 min-h-[95px] flex flex-col justify-start gap-1 transition-colors ${!item.isCurrentMonth
+                        ? 'bg-slate-50/50 text-slate-300'
+                        : isToday
                           ? 'bg-teal-50/70 font-bold'
                           : 'bg-white hover:bg-slate-50/80'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center justify-between text-xs">
                         <span
-                          className={`font-extrabold px-1.5 py-0.2 rounded-[3px] ${
-                            isToday
-                              ? 'bg-teal-700 text-white shadow-2xs'
-                              : item.isCurrentMonth
+                          className={`font-extrabold px-1.5 py-0.2 rounded-[3px] ${isToday
+                            ? 'bg-teal-700 text-white shadow-2xs'
+                            : item.isCurrentMonth
                               ? 'text-slate-800'
                               : 'text-slate-300'
-                          }`}
+                            }`}
                         >
                           {cellDate.getDate()}
                         </span>

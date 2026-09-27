@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
+import { useWebSocket } from '../../hooks/useWebSocket';
 import { getDentistsList } from '../../services/dentist.service';
 import { getMyAppointments, getAppointments, updateAppointmentStatus } from '../../services/appointment.service';
 import { getInventory } from '../../services/inventory.service';
@@ -147,6 +148,21 @@ export default function DentistDashboard() {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
+  // Realtime appointment updates via WebSocket
+  const handleRealtimeAppointment = useCallback((updatedApt) => {
+    if (!updatedApt || !updatedApt.id) return;
+    setAppointments((prev) => {
+      const exists = prev.some((item) => item.id === updatedApt.id);
+      if (exists) {
+        return prev.map((item) => (item.id === updatedApt.id ? { ...item, ...updatedApt } : item));
+      } else {
+        return [updatedApt, ...prev];
+      }
+    });
+  }, []);
+  // update table
+  useWebSocket(handleRealtimeAppointment, null);
+
   // Handle status update
   const handleStatusChange = async (appointmentId, newStatus) => {
     setActionLoadingId(appointmentId);
@@ -160,13 +176,6 @@ export default function DentistDashboard() {
         prev.map((apt) => (apt.id === appointmentId ? { ...apt, status: newStatus } : apt))
       );
 
-      const statusMessages = {
-        CALLED: 'Đã gọi bệnh nhân vào phòng khám!',
-        IN_PROGRESS: 'Đã bắt đầu điều trị ca khám!',
-        COMPLETED: 'Đã hoàn tất ca khám!',
-        CANCELLED: 'Đã hủy lịch khám!',
-      };
-      toast.success(statusMessages[newStatus] || 'Đã cập nhật trạng thái lịch hẹn');
     } catch (err) {
       console.warn('Lỗi khi cập nhật trạng thái:', err);
     } finally {
@@ -186,7 +195,6 @@ export default function DentistDashboard() {
       setAppointments((prev) =>
         prev.map((item) => (item.id === apt.id ? { ...item, status: 'CALLED' } : item))
       );
-      toast.success(`Đã gọi bệnh nhân ${apt.patientName} vào phòng!`);
     } catch (err) {
       console.warn('Lỗi khi gọi bệnh nhân:', err);
     } finally {
@@ -194,7 +202,7 @@ export default function DentistDashboard() {
     }
   };
 
-  // 2. Start Treatment & Open Clinical Exam Modal (CALLED -> IN_PROGRESS)
+  // 2. Start Treatment (CALLED -> IN_PROGRESS)
   const handleStartTreatment = async (apt) => {
     setActionLoadingId(apt.id);
     try {
@@ -206,9 +214,6 @@ export default function DentistDashboard() {
       setAppointments((prev) =>
         prev.map((item) => (item.id === apt.id ? { ...item, status: 'IN_PROGRESS' } : item))
       );
-      setSelectedExamAppt({ ...apt, status: 'IN_PROGRESS' });
-      setIsExamModalOpen(true);
-      toast.success(`Bắt đầu ca điều trị cho ${apt.patientName}`);
     } catch (err) {
       console.warn('Lỗi khi bắt đầu điều trị:', err);
     } finally {

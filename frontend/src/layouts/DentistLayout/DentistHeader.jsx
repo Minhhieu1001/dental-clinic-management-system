@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {Search,Bell,Settings,LogOut,Mail,ShieldAlert,User,ChevronDown,} from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import toast from 'react-hot-toast';
+import NotificationDropdown from '../../components/common/NotificationDropdown';
 
 export default function DentistHeader({ config }) {
   const { roleLabel } = config;
@@ -74,14 +74,8 @@ export default function DentistHeader({ config }) {
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2">
-            {/* Notification */}
-            <button className="relative rounded-full p-2 text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-700 active:scale-95">
-              <Bell className="h-5 w-5" />
-              <span className="absolute right-1.5 top-1.5 flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
-              </span>
-            </button>
+            {/* Notification Dropdown */}
+            <NotificationDropdown role="DENTIST" />
 
             {/* Settings */}
             <button className="rounded-full p-2 text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-700 active:scale-95">

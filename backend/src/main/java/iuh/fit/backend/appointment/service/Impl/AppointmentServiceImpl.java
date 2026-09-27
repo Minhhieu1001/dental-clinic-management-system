@@ -13,6 +13,10 @@ import iuh.fit.backend.appointment.repository.RoomRepository;
 import iuh.fit.backend.appointment.service.AppointmentService;
 import iuh.fit.backend.common.exception.AppException;
 import iuh.fit.backend.common.exception.ErrorCode;
+import iuh.fit.backend.notification.dto.NotificationResponseDTO;
+import iuh.fit.backend.notification.entity.Notification;
+import iuh.fit.backend.notification.enums.NotificationType;
+import iuh.fit.backend.notification.repository.notificationRepository;
 import iuh.fit.backend.patient.entity.Patient;
 import iuh.fit.backend.patient.repository.PatientRepository;
 import iuh.fit.backend.user.entity.Dentist;
@@ -25,6 +29,7 @@ import iuh.fit.backend.user.repository.EmployeeRepository;
 import iuh.fit.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -35,8 +40,10 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -52,6 +59,8 @@ public class AppointmentServiceImpl implements AppointmentService {
     private final DentistRepository dentistRepository;
     private final EmployeeRepository employeeRepository;
     private final RoomRepository roomRepository;
+    private final notificationRepository notificationRepository;
+    private final SimpMessagingTemplate simpMessagingTemplate;
 
     @Override
     @Transactional
@@ -153,7 +162,64 @@ public class AppointmentServiceImpl implements AppointmentService {
             }
         }
 
-        return mapToDTO(appointment);
+        AppointmentDetailDTO resultDto = mapToDTO(appointment);
+
+        // 6.5 Notify assigned dentist and active receptionists about the newly created appointment
+        try {
+            Set<User> recipients = new HashSet<>();
+
+            // 1. Assigned dentist user (must be ACTIVE)
+            if (appointment.getDentist() != null && appointment.getDentist().getUser() != null) {
+                User docUser = appointment.getDentist().getUser();
+                if (docUser.getStatus() == StatusUser.ACTIVE) {
+                    recipients.add(docUser);
+                }
+            }
+
+            // 2. Active receptionists/employees (must be ACTIVE)
+            List<User> activeEmployees = userRepository.findByRoleAndStatus(Role.EMPLOYEE, StatusUser.ACTIVE);
+            recipients.addAll(activeEmployees);
+
+            String doctorNameStr = appointment.getDentist() != null ? appointment.getDentist().getFullName() : "chưa chỉ định";
+
+            for (User recipient : recipients) {
+                String targetUrl = (recipient.getRole() == Role.DENTIST) ? "/dentist/appointments" : "/employee/appointments";
+                Notification notif = Notification.builder()
+                        .user(recipient)
+                        .title("Lịch hẹn mới được xếp")
+                        .content("Lịch khám của bệnh nhân " + appointment.getPatientName() + " (" + appointment.getPhone() + ") đã được tạo cho bác sĩ " + doctorNameStr + ".")
+                        .type(NotificationType.PATIENT_CHECKIN)
+                        .targetUrl(targetUrl)
+                        .isRead(false)
+                        .build();
+                notif = notificationRepository.save(notif);
+
+                NotificationResponseDTO notifDto = NotificationResponseDTO.builder()
+                        .id(notif.getId())
+                        .userId(recipient.getId())
+                        .title(notif.getTitle())
+                        .content(notif.getContent())
+                        .type(notif.getType())
+                        .targetUrl(notif.getTargetUrl())
+                        .isRead(false)
+                        .createdAt(notif.getCreatedAt() != null ? notif.getCreatedAt() : LocalDateTime.now())
+                        .build();
+
+                simpMessagingTemplate.convertAndSendToUser(recipient.getId().toString(), "/queue/notifications", notifDto);
+                simpMessagingTemplate.convertAndSend("/topic/notifications", notifDto);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to create notifications for new appointment: {}", e.getMessage());
+        }
+
+        // 7. Broadcast realtime event when new appointment is created
+        try {
+            simpMessagingTemplate.convertAndSend("/topic/appointments", resultDto);
+        } catch (Exception e) {
+            log.warn("Realtime WebSocket broadcast failed in createAppointment: {}", e.getMessage());
+        }
+
+        return resultDto;
     }
 
     @Override
@@ -259,7 +325,104 @@ public class AppointmentServiceImpl implements AppointmentService {
                 .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy lịch hẹn ID: " + appointmentId));
         appointment.setStatus(status);
         appointment = appointmentRepository.save(appointment);
-        return mapToDTO(appointment);
+
+        AppointmentDetailDTO resultDto = mapToDTO(appointment);
+
+        // Notify active Dentist and active Employees/Admins
+        try {
+            Set<User> recipients = new HashSet<>();
+
+            // 1. Check assigned dentist (must be ACTIVE)
+            if (appointment.getDentist() != null && appointment.getDentist().getUser() != null) {
+                User docUser = appointment.getDentist().getUser();
+                if (docUser.getStatus() == StatusUser.ACTIVE) {
+                    recipients.add(docUser);
+                }
+            }
+
+            // 2. Check active employees/receptionists and admins (must be ACTIVE)
+            List<User> activeEmployees = userRepository.findByRoleAndStatus(Role.EMPLOYEE, StatusUser.ACTIVE);
+            recipients.addAll(activeEmployees);
+
+            List<User> activeAdmins = userRepository.findByRoleAndStatus(Role.ADMIN, StatusUser.ACTIVE);
+            recipients.addAll(activeAdmins);
+
+            String title;
+            String content;
+            NotificationType notifType = NotificationType.STATUS_CHANGE;
+
+            String patientName = appointment.getPatientName() != null ? appointment.getPatientName() : "Bệnh nhân";
+            String roomName = (appointment.getRoom() != null && appointment.getRoom().getRoomName() != null)
+                    ? appointment.getRoom().getRoomName()
+                    : "phòng khám";
+
+            switch (status) {
+                case WAITING:
+                    title = "Bệnh nhân đã check-in";
+                    content = "Bệnh nhân " + patientName + " đã đến quầy check-in, sẵn sàng chờ khám.";
+                    notifType = NotificationType.PATIENT_CHECKIN;
+                    break;
+                case CALLED:
+                    title = "Đã gọi bệnh nhân vào phòng";
+                    content = "Bệnh nhân " + patientName + " đã được gọi vào " + roomName;
+                    break;
+                case IN_PROGRESS:
+                    title = "Bắt đầu ca điều trị";
+                    content = "Bác sĩ đã bắt đầu tiến hành điều trị cho bệnh nhân " + patientName + ".";
+                    break;
+                case COMPLETED:
+                    title = "Hoàn tất ca khám";
+                    content = "Bệnh nhân " + patientName + " đã hoàn thành ca khám.";
+                    break;
+                case CANCELLED:
+                    title = "Ca khám đã bị hủy";
+                    content = "Lịch hẹn của bệnh nhân " + patientName + " đã bị hủy.";
+                    break;
+                default:
+                    title = "Cập nhật ca khám";
+                    content = "Ca khám của bệnh nhân " + patientName + " đã chuyển sang: " + status;
+                    break;
+            }
+
+            for (User recipient : recipients) {
+                String targetUrl = (recipient.getRole() == Role.DENTIST) ? "/dentist/appointments" : "/employee/appointments";
+                Notification notif = Notification.builder()
+                        .user(recipient)
+                        .title(title)
+                        .content(content)
+                        .type(notifType)
+                        .targetUrl(targetUrl)
+                        .isRead(false)
+                        .build();
+                notif = notificationRepository.save(notif);
+
+                NotificationResponseDTO notifDto = NotificationResponseDTO.builder()
+                        .id(notif.getId())
+                        .userId(recipient.getId())
+                        .title(notif.getTitle())
+                        .content(notif.getContent())
+                        .type(notif.getType())
+                        .targetUrl(notif.getTargetUrl())
+                        .isRead(false)
+                        .createdAt(notif.getCreatedAt() != null ? notif.getCreatedAt() : LocalDateTime.now())
+                        .build();
+
+                simpMessagingTemplate.convertAndSendToUser(recipient.getId().toString(), "/queue/notifications", notifDto);
+                simpMessagingTemplate.convertAndSend("/topic/notifications", notifDto);
+            }
+            log.info(">>> [NOTIF SUCCESS] Đã lưu & gửi thông báo đổi trạng thái '{}' cho {} người nhận.", status, recipients.size());
+        } catch (Exception e) {
+            log.warn("Failed to create or send notifications in updateAppointmentStatus: {}", e.getMessage(), e);
+        }
+
+        // Realtime broadcast for appointment table updates
+        try {
+            simpMessagingTemplate.convertAndSend("/topic/appointments", resultDto);
+        } catch (Exception e) {
+            log.warn("Realtime WebSocket broadcast failed in updateAppointmentStatus: {}", e.getMessage());
+        }
+
+        return resultDto;
     }
 
     @Override
@@ -391,7 +554,7 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<iuh.fit.backend.appointment.entity.Room> getAllRooms() {
+    public List<Room> getAllRooms() {
         return roomRepository.findAll();
     }
 }

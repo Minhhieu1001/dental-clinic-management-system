@@ -11,12 +11,12 @@ export default function AppointmentTable({
   appointments = [],
   loading = false,
   activePatientInfo = null,
-  onSelectPatient = () => {},
+  onSelectPatient = () => { },
   actionLoadingId = null,
-  onCallIn = () => {},
-  onStartTreatment = () => {},
-  onOpenExamModal = () => {},
-  onStatusChange = () => {},
+  onCallIn = () => { },
+  onStartTreatment = () => { },
+  onOpenExamModal = () => { },
+  onStatusChange = () => { },
 }) {
   const [dateScope, setDateScope] = useState('today'); // 'today' | 'week'
   const [activeTab, setActiveTab] = useState('ALL'); // ALL, WAITING, CALLED, IN_PROGRESS, COMPLETED
@@ -125,22 +125,20 @@ export default function AppointmentTable({
               <button
                 type="button"
                 onClick={() => setDateScope('today')}
-                className={`rounded-[3px] px-2.5 py-1 text-[11px] font-bold transition-all ${
-                  dateScope === 'today'
-                    ? 'bg-teal-700 text-white shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+                className={`rounded-[3px] px-2.5 py-1 text-[11px] font-bold transition-all ${dateScope === 'today'
+                  ? 'bg-teal-700 text-white shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+                  }`}
               >
                 Hôm nay
               </button>
               <button
                 type="button"
                 onClick={() => setDateScope('week')}
-                className={`rounded-[3px] px-2.5 py-1 text-[11px] font-bold transition-all ${
-                  dateScope === 'week'
-                    ? 'bg-teal-700 text-white shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+                className={`rounded-[3px] px-2.5 py-1 text-[11px] font-bold transition-all ${dateScope === 'week'
+                  ? 'bg-teal-700 text-white shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+                  }`}
               >
                 Tuần này
               </button>
@@ -176,11 +174,10 @@ export default function AppointmentTable({
               key={tab.key}
               type="button"
               onClick={() => setActiveTab(tab.key)}
-              className={`rounded-[4px] px-2.5 py-1 text-[11px] font-bold transition-all ${
-                activeTab === tab.key
-                  ? 'bg-white text-teal-800 shadow-2xs'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
+              className={`rounded-[4px] px-2.5 py-1 text-[11px] font-bold transition-all ${activeTab === tab.key
+                ? 'bg-white text-teal-800 shadow-2xs'
+                : 'text-slate-500 hover:text-slate-800'
+                }`}
             >
               {tab.label}
             </button>
@@ -194,7 +191,7 @@ export default function AppointmentTable({
               <tr className="border-b border-slate-100 text-[11px] font-bold text-slate-400">
                 <th className="pb-2.5 font-semibold pl-1">Giờ</th>
                 <th className="pb-2.5 font-semibold">Bệnh nhân</th>
-                <th className="pb-2.5 font-semibold">Dịch vụ</th>
+                <th className="pb-2.5 font-semibold">Lý do</th>
                 <th className="pb-2.5 font-semibold">Trạng thái</th>
                 <th className="pb-2.5 font-semibold text-right pr-1">Thao tác</th>
               </tr>
@@ -238,11 +235,10 @@ export default function AppointmentTable({
                     <tr
                       key={apt.id}
                       onClick={() => onSelectPatient(apt)}
-                      className={`cursor-pointer transition-colors ${
-                        isSelected
-                          ? 'bg-teal-50/70 border-l-2 border-l-teal-600 font-semibold'
-                          : 'hover:bg-slate-50/70'
-                      }`}
+                      className={`cursor-pointer transition-colors ${isSelected
+                        ? 'bg-teal-50/70 border-l-2 border-l-teal-600 font-semibold'
+                        : 'hover:bg-slate-50/70'
+                        }`}
                     >
                       {/* Time */}
                       <td className="py-2.5 font-semibold text-slate-600 whitespace-nowrap pl-1">{timeStr}</td>
@@ -332,18 +328,11 @@ export default function AppointmentTable({
                           <div className="flex items-center justify-end gap-1">
                             <button
                               type="button"
-                              onClick={() => onOpenExamModal(apt)}
-                              className="rounded-[3px] border border-teal-600 bg-teal-50 px-2 py-0.5 text-[11px] font-bold text-teal-800 hover:bg-teal-100"
-                            >
-                              Hồ sơ
-                            </button>
-                            <button
-                              type="button"
                               onClick={() => onStatusChange(apt.id, 'COMPLETED')}
                               disabled={isExecuting}
-                              className="rounded-[3px] bg-emerald-600 px-2 py-0.5 text-[11px] font-bold text-white hover:bg-emerald-700"
+                              className="rounded-[3px] bg-emerald-600 px-2 py-1 text-[11px] font-bold text-white hover:bg-emerald-700"
                             >
-                              Xong
+                              Chưa xử lý nút này
                             </button>
                           </div>
                         )}

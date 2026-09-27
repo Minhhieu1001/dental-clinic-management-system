@@ -12,6 +12,7 @@ import {
   AlertCircle,
   AlertTriangle,
   X,
+  FileText,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
@@ -42,39 +43,52 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
   // Format single request item and check if doctor appointment already exists
   const formatRequestItem = (dto, apptsData = []) => {
     let formattedDate = 'Hôm nay';
-    let rawDate = 0;
-    if (dto.createAt) {
+    let rawDate = Date.now();
+    const dateVal = dto.createAt || dto.createdAt;
+
+    if (dateVal) {
       try {
-        const d = new Date(dto.createAt);
-        rawDate = d.getTime();
-        formattedDate = `${String(d.getDate()).padStart(2, '0')}/${String(
-          d.getMonth() + 1
-        ).padStart(2, '0')}/${d.getFullYear()} ${String(d.getHours()).padStart(
-          2,
-          '0'
-        )}:${String(d.getMinutes()).padStart(2, '0')}`;
+        let d = null;
+        if (Array.isArray(dateVal)) {
+          const [y, m, dayVal, h = 0, min = 0, s = 0] = dateVal;
+          d = new Date(y, m - 1, dayVal, h, min, s);
+        } else {
+          d = new Date(dateVal);
+        }
+        if (d && !isNaN(d.getTime())) {
+          rawDate = d.getTime();
+          formattedDate = `${String(d.getDate()).padStart(2, '0')}/${String(
+            d.getMonth() + 1
+          ).padStart(2, '0')}/${d.getFullYear()} ${String(d.getHours()).padStart(
+            2,
+            '0'
+          )}:${String(d.getMinutes()).padStart(2, '0')}`;
+        }
       } catch (e) {
-        formattedDate = dto.createAt;
+        formattedDate = String(dateVal);
       }
     }
 
-    const name = dto.fullName || dto.name || 'Khách hàng';
-    const phone = dto.phone || '';
+    const rawName = dto.fullName || dto.full_name || dto.name || dto.patientName;
+    const name = (rawName && typeof rawName === 'string' && rawName.trim()) ? rawName.trim() : 'Khách hàng Web';
+
+    const rawPhone = dto.phone || dto.phoneNumber;
+    const phone = (rawPhone && typeof rawPhone === 'string' && rawPhone.trim()) ? rawPhone.trim() : 'Chưa có SĐT';
 
     // Cross-reference with existing doctor appointments (match strictly by requestIdStr or completed request status)
     const isCompletedRequest = dto.status === 'COMPLETED' || dto.status === 'PROCESSED';
 
     const matchedApt = Array.isArray(apptsData)
       ? apptsData.find(
-          (apt) =>
-            (apt.requestIdStr && String(apt.requestIdStr) === String(dto.id)) ||
-            (apt.requestId && String(apt.requestId) === String(dto.id)) ||
-            (isCompletedRequest &&
-              apt.phone &&
-              phone &&
-              apt.phone.trim() === phone.trim() &&
-              Math.abs(new Date(apt.createdAt || 0).getTime() - rawDate) < 24 * 3600 * 1000)
-        )
+        (apt) =>
+          (apt.requestIdStr && String(apt.requestIdStr) === String(dto.id)) ||
+          (apt.requestId && String(apt.requestId) === String(dto.id)) ||
+          (isCompletedRequest &&
+            apt.phone &&
+            phone &&
+            apt.phone.trim() === phone.trim() &&
+            Math.abs(new Date(apt.createdAt || 0).getTime() - rawDate) < 24 * 3600 * 1000)
+      )
       : null;
 
     const isScheduled = !!matchedApt;
@@ -82,10 +96,21 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
     let scheduledTimeStr = '';
     let doctorNameStr = '';
     let roomNameStr = '';
+    let serviceNameStr = '';
 
     if (matchedApt) {
       doctorNameStr = cleanDoctorTitle(matchedApt.dentistName || matchedApt.dentist);
       roomNameStr = matchedApt.roomName || '';
+
+      const s = matchedApt.serviceName || matchedApt.service || matchedApt.services || matchedApt.reason;
+      if (Array.isArray(s)) {
+        serviceNameStr = s.map((x) => (typeof x === 'string' ? x : (x?.name || x?.serviceName || ''))).filter(Boolean).join(', ');
+      } else if (typeof s === 'object' && s !== null) {
+        serviceNameStr = s.name || s.serviceName || '';
+      } else if (typeof s === 'string') {
+        serviceNameStr = s;
+      }
+
       if (matchedApt.appointmentTime) {
         try {
           const d = new Date(matchedApt.appointmentTime);
@@ -96,6 +121,21 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
       } else {
         scheduledTimeStr = '09:00';
       }
+    }
+
+    if (!serviceNameStr && dto) {
+      const s = dto.serviceName || dto.service || dto.services || dto.reason;
+      if (Array.isArray(s)) {
+        serviceNameStr = s.map((x) => (typeof x === 'string' ? x : (x?.name || x?.serviceName || ''))).filter(Boolean).join(', ');
+      } else if (typeof s === 'object' && s !== null) {
+        serviceNameStr = s.name || s.serviceName || '';
+      } else if (typeof s === 'string') {
+        serviceNameStr = s;
+      }
+    }
+
+    if (!serviceNameStr) {
+      serviceNameStr = dto.descriptions || dto.description || dto.note || 'Khám tổng quát';
     }
 
     const isConfirmed =
@@ -121,7 +161,7 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
     return {
       id: dto.id,
       name: name,
-      phone: phone || 'N/A',
+      phone: phone,
       date: formattedDate,
       rawDate: rawDate,
       note: dto.descriptions || dto.description || dto.note || 'Không có ghi chú',
@@ -134,6 +174,7 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
       doctorNameStr: doctorNameStr,
       scheduledTimeStr: scheduledTimeStr,
       roomNameStr: roomNameStr,
+      serviceNameStr: serviceNameStr,
     };
   };
 
@@ -242,13 +283,13 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
   const scheduledCount = requestList.filter((r) => r.isScheduled).length;
 
   return (
-    <div className="flex flex-col rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-      {/* Clean Balanced Header */}
+    <div className="flex flex-col rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+      {/* Clean Modern ERP Header */}
       <div className="border-b border-slate-100 bg-white">
         {/* Row 1: Title & Actions */}
         <div className="flex items-center justify-between px-4 py-3 bg-slate-50/80 border-b border-slate-100">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-100/80 text-teal-800 border border-teal-200">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-100/80 text-teal-800 border border-teal-200/60">
               <Calendar size={15} />
             </div>
             <h3 className="text-sm font-bold text-slate-800 tracking-tight">
@@ -256,7 +297,7 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
             </h3>
           </div>
           <div className="flex items-center gap-2">
-            <span className="rounded-md bg-slate-200/80 px-2 py-0.5 text-[11px] font-bold text-slate-700 whitespace-nowrap">
+            <span className="rounded-md bg-slate-200/70 px-2.5 py-0.5 text-[11px] font-bold text-slate-700 whitespace-nowrap">
               {requestList.length} tổng
             </span>
             <button
@@ -264,7 +305,7 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
               onClick={fetchRequests}
               disabled={loading}
               title="Làm mới danh sách"
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-white hover:text-slate-800 transition-colors shadow-2xs border border-slate-200/80 disabled:opacity-50"
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-white hover:text-slate-800 transition-colors border border-slate-200/80 disabled:opacity-50 shadow-2xs"
             >
               <RefreshCw size={13} strokeWidth={2} className={loading ? 'animate-spin' : ''} />
             </button>
@@ -273,14 +314,14 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
 
         {/* Row 2: Balanced Counter Cards */}
         <div className="grid grid-cols-2 gap-2.5 px-4 py-2.5 bg-slate-50/30">
-          <div className="flex items-center justify-between rounded-lg bg-amber-50 border border-amber-200/80 px-3 py-1.5 text-xs shadow-2xs">
+          <div className="flex items-center justify-between rounded-lg bg-amber-50/80 border border-amber-200/80 px-3 py-1.5 text-xs shadow-2xs">
             <span className="font-semibold text-amber-900 whitespace-nowrap">Chưa phân công</span>
             <span className="rounded-md bg-amber-200/70 px-2 py-0.5 font-extrabold text-amber-900 text-[11px]">
               {pendingCount}
             </span>
           </div>
 
-          <div className="flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-200/80 px-3 py-1.5 text-xs shadow-2xs">
+          <div className="flex items-center justify-between rounded-lg bg-emerald-50/80 border border-emerald-200/80 px-3 py-1.5 text-xs shadow-2xs">
             <span className="font-semibold text-emerald-900 whitespace-nowrap">Đã lên lịch</span>
             <span className="rounded-md bg-emerald-200/70 px-2 py-0.5 font-extrabold text-emerald-900 text-[11px]">
               {scheduledCount}
@@ -289,15 +330,14 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
         </div>
       </div>
 
-
-      {/* Scrollable List */}
-      <div className="max-h-[460px] overflow-y-auto divide-y divide-slate-100">
+      {/* Scrollable Card List with Distinct Separation */}
+      <div className="max-h-[460px] overflow-y-auto p-3 space-y-2.5 bg-slate-50/50">
         {loading && requestList.length === 0 ? (
-          <div className="py-8 text-center text-xs text-slate-400">
-            Đang kiểm tra danh sách và đối soát lịch hẹn...
+          <div className="py-8 text-center text-xs font-medium text-slate-400">
+            Đang tải dữ liệu yêu cầu đặt lịch...
           </div>
         ) : requestList.length === 0 ? (
-          <div className="py-8 text-center text-xs text-slate-400">
+          <div className="py-8 text-center text-xs font-medium text-slate-400">
             Không có yêu cầu đặt lịch nào hôm nay.
           </div>
         ) : (
@@ -306,99 +346,121 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
             const isRejected = req.status === 'rejected';
             const isProcessingThis = processingId === req.id;
 
+            // Distinct card background styles:
+            // - Processed / Scheduled: Soft green background & emerald border (Đã xử lý / Đã lên lịch)
+            // - New / Unprocessed: Soft warm amber background & amber border (Chưa xử lý / Yêu cầu mới)
+            // - Confirmed / Pending Schedule: Soft blue background & blue border
+            // - Rejected: Soft slate background & dim state
+            let cardBorderStyle = 'border-l-4 border-l-amber-500 border-amber-200/90 bg-amber-50/50 hover:bg-amber-100/60 hover:border-amber-300';
+            if (req.isScheduled) {
+              cardBorderStyle = 'border-l-4 border-l-emerald-600 border-emerald-300/80 bg-emerald-50/60 hover:bg-emerald-100/70 hover:border-emerald-400';
+            } else if (isConfirmed) {
+              cardBorderStyle = 'border-l-4 border-l-blue-500 border-blue-200/90 bg-blue-50/50 hover:bg-blue-100/60 hover:border-blue-300';
+            } else if (isRejected) {
+              cardBorderStyle = 'border-l-4 border-l-red-500 border-red-200/90 bg-red-50/50 hover:bg-red-100/60 hover:border-red-300';
+            }
+
             return (
               <div
                 key={req.id}
-                className={`px-4 py-3.5 transition-colors ${
-                  req.isScheduled
-                    ? 'bg-emerald-50/20'
-                    : isRejected
-                    ? 'bg-slate-50/70'
-                    : 'bg-white hover:bg-slate-50/50'
-                }`}
+                className={`rounded-lg border p-3 shadow-2xs transition-all hover:shadow-xs ${cardBorderStyle}`}
               >
-                {/* Row 1: Name + Status Badge */}
+                {/* Row 1: Patient Name + Status Badge */}
                 <div className="flex items-center justify-between gap-2">
-                  <p className={`text-xs font-bold leading-tight truncate ${isRejected ? 'text-slate-400' : 'text-slate-900'}`}>
-                    {req.name}
+                  <p className={`text-xs font-bold leading-tight truncate max-w-[170px] ${isRejected ? 'text-slate-700' : 'text-slate-900'}`}>
+                    {req.name || 'Khách hàng Web'}
                   </p>
 
-                  {/* Clean, Elegant Status Badges */}
+                  {/* Clean Single-Line Status Badges */}
                   {req.isScheduled ? (
-                    <span className="shrink-0 flex items-center gap-1 rounded-full bg-emerald-100/80 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
-                      <CheckCircle2 size={12} className="text-emerald-700" />
-                      Đã lên lịch khám
+                    <span className="shrink-0 flex items-center gap-1 rounded bg-emerald-100/80 px-2 py-1 text-[11px] font-bold text-emerald-800 border border-emerald-300/80 whitespace-nowrap">
+                      <CheckCircle2 size={12} className="text-emerald-700 shrink-0" />
+                      Đã lên lịch
                     </span>
                   ) : isConfirmed ? (
-                    <span className="shrink-0 flex items-center gap-1 rounded-full bg-amber-100/80 px-2.5 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-200">
-                      <Clock size={12} className="text-amber-700" />
-                      Chờ lên lịch khám
+                    <span className="shrink-0 flex items-center gap-1 rounded bg-blue-100/80 px-2 py-1 text-[11px] font-bold text-blue-800 border border-blue-300/80 whitespace-nowrap">
+                      <Clock size={12} className="text-blue-700 shrink-0" />
+                      Chờ lên lịch
                     </span>
                   ) : isRejected ? (
-                    <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-500 border border-slate-200">
+                    <span className="shrink-0 rounded bg-red-500 px-2 py-1 text-[11px] font-semibold text-white border border-red-600 whitespace-nowrap">
                       Đã từ chối
                     </span>
                   ) : (
-                    <span className="shrink-0 rounded-full bg-blue-100/80 px-2.5 py-0.5 text-[10px] font-bold text-blue-800 border border-blue-200">
+                    <span className="shrink-0 rounded bg-amber-100/80 px-2 py-1 text-[11px] font-bold text-amber-900 border border-amber-300/80 whitespace-nowrap">
                       Yêu cầu mới
                     </span>
                   )}
                 </div>
 
-                {/* Row 2: Phone + Request Date */}
-                <div className="mt-1 flex items-center gap-3 text-xs text-slate-500">
-                  <span className="font-semibold text-slate-700">{req.phone}</span>
-                  <span className="flex items-center gap-1 text-[11px] text-slate-400">
-                    <Calendar size={11} className="text-slate-400" />
-                    {req.date}
+                {/* Row 2: Phone (Left) + Request Date (Right) */}
+                <div className="mt-1 flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-800">{req.phone || 'Chưa có SĐT'}</span>
+                  <span className="flex items-center gap-1 text-[11px] text-slate-500 font-medium shrink-0">
+                    <Calendar size={11} className="text-slate-400 shrink-0" />
+                    {req.date || 'Hôm nay'}
                   </span>
                 </div>
 
                 {/* Row 3: Request Note OR Doctor Scheduled Info Box */}
                 {req.isScheduled ? (
-                  /* Elegant Scheduled Info Box */
-                  <div className="mt-2.5 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50/60 border border-emerald-200/80 p-2.5 text-xs shadow-xs">
-                    <div className="flex items-center justify-between font-bold text-slate-800">
-                      <span className="flex items-center gap-1.5 text-teal-900 font-bold">
-                        <Stethoscope size={14} className="text-teal-700" />
-                        {req.doctorNameStr}
+                  /* Clean Doctor Scheduled Info Box */
+                  <div className="mt-2 rounded-md bg-white/90 border border-emerald-200/90 p-2.5 text-xs space-y-1.5 shadow-2xs">
+                    <div className="flex items-center justify-between gap-1.5 font-bold text-slate-800">
+                      <span className="flex items-center gap-1.5 text-teal-900 font-bold truncate">
+                        <Stethoscope size={13} className="text-teal-600 shrink-0" />
+                        <span className="truncate">{req.doctorNameStr || 'Bác sĩ chuyên khoa'}</span>
                       </span>
-                      <span className="flex items-center gap-1 text-[11px] font-semibold text-teal-800 bg-white/90 px-2 py-0.5 rounded-md border border-teal-200/80 shadow-2xs">
-                        <Clock size={11} className="text-teal-600" /> {req.scheduledTimeStr}
+                      <span className="shrink-0 flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded whitespace-nowrap shadow-2xs">
+                        <Clock size={11} className="text-emerald-600 shrink-0" />
+                        {req.scheduledTimeStr}
                       </span>
                     </div>
                     {req.roomNameStr && (
-                      <div className="mt-1 text-[11px] text-teal-700 font-medium flex items-center gap-1">
-                        <Building size={11} /> {req.roomNameStr}
+                      <div className="text-[11px] text-slate-500 font-medium flex items-center gap-1">
+                        <Building size={11} className="text-slate-400 shrink-0" /> {req.roomNameStr}
+                      </div>
+                    )}
+                    {/* Dịch vụ đăng ký / khám bên dưới khi đã xử lý */}
+                    {req.serviceNameStr && (
+                      <div className="pt-1.5 border-t border-emerald-100 flex items-start gap-1.5 text-[11px]">
+                        <FileText size={12} className="text-teal-600 shrink-0 mt-0.5" />
+                        <div className="min-w-0">
+                          <span className="text-slate-500 font-medium">Dịch vụ: </span>
+                          <span className="font-bold text-slate-800">{req.serviceNameStr}</span>
+                        </div>
                       </div>
                     )}
                   </div>
                 ) : (
-                  /* Request Note for Patients WITHOUT Appointment */
-                  <p className="mt-1.5 text-xs leading-relaxed text-slate-500 line-clamp-2 italic">
-                    &ldquo;{req.note}&rdquo;
-                  </p>
+                  /* Request Note / Service for Patients WITHOUT Appointment */
+                  <div className="mt-1.5 flex items-start gap-1.5 text-xs bg-white/80 px-2.5 py-1.5 rounded border border-amber-200/70">
+                    <FileText size={13} className="text-amber-600 shrink-0 mt-0.5" />
+                    <span className="italic font-medium text-slate-800 leading-relaxed line-clamp-2">
+                      &ldquo;{req.note}&rdquo;
+                    </span>
+                  </div>
                 )}
 
                 {/* Row 4: Action Buttons */}
-                <div className="mt-2.5 flex items-center justify-between gap-2">
+                <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-slate-100 pt-2">
                   {req.isScheduled ? (
                     <div className="flex w-full items-center justify-between text-[11px]">
-                      <span className="flex items-center gap-1.5 font-medium text-slate-700 bg-slate-100/80 border border-slate-200/80 px-2.5 py-1 rounded-lg">
-                        <UserCheck size={13} className="text-teal-600" />
+                      <span className="flex items-center gap-1.5 font-medium text-slate-700 bg-slate-50 border border-slate-200/80 px-2.5 py-1 rounded">
+                        <UserCheck size={13} className="text-teal-600 shrink-0" />
                         NV xử lý: <strong className="font-semibold text-slate-900">{req.employeeName || currentUserDisplayName || 'Lễ tân'}</strong>
                       </span>
                     </div>
                   ) : isConfirmed ? (
                     <div className="flex w-full items-center justify-between gap-1 text-[11px]">
-                      <span className="flex items-center gap-1 font-medium text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-md">
-                        <AlertCircle size={12} className="text-amber-600" />
+                      <span className="flex items-center gap-1 font-medium text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
+                        <AlertCircle size={12} className="text-amber-600 shrink-0" />
                         Chưa phân công
                       </span>
                       <button
                         type="button"
                         onClick={() => onOpenCreateModal && onOpenCreateModal(req)}
-                        className="flex items-center gap-1.5 rounded-lg bg-teal-700 px-3.5 py-1 text-xs font-bold text-white hover:bg-teal-800 transition-colors shadow-sm"
+                        className="flex items-center gap-1.5 rounded bg-teal-700 px-3 py-1 text-xs font-bold text-white hover:bg-teal-800 transition-colors shadow-2xs whitespace-nowrap"
                       >
                         <PlusCircle size={13} />
                         Đặt lịch khám
@@ -406,14 +468,14 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
                     </div>
                   ) : isRejected ? (
                     <div className="flex w-full items-center justify-between text-[11px] text-slate-500">
-                      <span className="flex items-center gap-1.5 font-medium text-slate-600 bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-md">
-                        <UserCheck size={12} className="text-slate-500" />
+                      <span className="flex items-center gap-1.5 font-medium text-slate-600 bg-slate-50 border border-slate-200/80 px-2 py-0.5 rounded">
+                        <UserCheck size={12} className="text-slate-900 shrink-0" />
                         NV xử lý: {req.employeeName || currentUserDisplayName || 'Lễ tân'}
                       </span>
                       <button
                         type="button"
                         onClick={() => handleConfirm(req)}
-                        className="text-xs font-medium text-teal-700 hover:underline"
+                        className="text-xs font-medium text-teal-700 hover:underline whitespace-nowrap"
                       >
                         Xác nhận lại
                       </button>
@@ -424,7 +486,7 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
                         type="button"
                         onClick={() => handleOpenRejectModal(req)}
                         disabled={isProcessingThis}
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 disabled:opacity-50"
+                        className="rounded border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 disabled:opacity-50 whitespace-nowrap"
                       >
                         Từ chối
                       </button>
@@ -432,7 +494,7 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
                         type="button"
                         onClick={() => handleConfirm(req)}
                         disabled={isProcessingThis}
-                        className="flex items-center gap-1.5 rounded-lg bg-teal-700 px-3.5 py-1 text-xs font-bold text-white transition-colors hover:bg-teal-800 disabled:opacity-50 shadow-sm"
+                        className="flex items-center gap-1.5 rounded bg-teal-700 px-3.5 py-1 text-xs font-bold text-white transition-colors hover:bg-teal-800 disabled:opacity-50 shadow-2xs whitespace-nowrap"
                       >
                         {isProcessingThis && (
                           <div className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -451,10 +513,10 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
       {/* Rejection Confirmation Modal */}
       {isRejectModalOpen && rejectTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-fadeIn">
-          <div className="w-full max-w-md rounded-[4px] bg-white p-5 shadow-xl space-y-4 border border-rose-100">
+          <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl space-y-4 border border-rose-100">
             <div className="flex items-center justify-between border-b border-rose-100 pb-3">
               <div className="flex items-center gap-2.5 text-rose-600">
-                <div className="flex h-9 w-9 items-center justify-center rounded-[4px] bg-rose-100">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-100">
                   <AlertTriangle size={18} />
                 </div>
                 <div>
@@ -468,13 +530,13 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
                   setIsRejectModalOpen(false);
                   setRejectTarget(null);
                 }}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-[4px] hover:bg-slate-100 transition-colors"
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="rounded-[4px] bg-rose-50/70 border border-rose-100 p-3 space-y-1 text-xs text-slate-700">
+            <div className="rounded-lg bg-rose-50/70 border border-rose-100 p-3 space-y-1 text-xs text-slate-700">
               <p><strong>Bệnh nhân:</strong> <span className="font-bold text-slate-900">{rejectTarget.name}</span></p>
               {rejectTarget.phone && <p><strong>SĐT:</strong> {rejectTarget.phone}</p>}
               {rejectTarget.description && (
@@ -486,16 +548,15 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-slate-700">Lý do từ chối (Tùy chọn):</label>
               <div className="flex flex-wrap gap-1.5 text-[11px]">
-                {['Lịch kín', 'Bệnh nhân báo hủy', 'Không liên lạc được', 'Khác'].map((r) => (
+                {['Lịch kín', 'Bệnh nhân báo hủy', 'Không liên lạc me', 'Khác'].map((r) => (
                   <button
                     key={r}
                     type="button"
                     onClick={() => setRejectReason(r)}
-                    className={`px-2.5 py-1 rounded-[4px] border font-medium transition-all ${
-                      rejectReason === r
-                        ? 'bg-rose-600 text-white border-rose-600 font-bold'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                    }`}
+                    className={`px-2.5 py-1 rounded-lg border font-medium transition-all ${rejectReason === r
+                      ? 'bg-rose-600 text-white border-rose-600 font-bold'
+                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                      }`}
                   >
                     {r}
                   </button>
@@ -506,7 +567,7 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
                 placeholder="Nhập lý do cụ thể..."
-                className="w-full rounded-[4px] border border-slate-200 p-2 text-xs outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
+                className="w-full rounded-lg border border-slate-200 p-2 text-xs outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
               />
             </div>
 
@@ -517,7 +578,7 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
                   setIsRejectModalOpen(false);
                   setRejectTarget(null);
                 }}
-                className="rounded-[4px] border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
               >
                 Hủy bỏ
               </button>
@@ -525,7 +586,7 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
                 type="button"
                 disabled={isRejecting}
                 onClick={confirmReject}
-                className="flex items-center gap-1.5 rounded-[4px] bg-rose-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-rose-700 transition-all disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-lg bg-rose-600 px-4 py-2 text-xs font-bold text-white shadow-2xs hover:bg-rose-700 transition-all disabled:opacity-50"
               >
                 {isRejecting ? 'Đang từ chối...' : 'Xác nhận từ chối'}
               </button>
