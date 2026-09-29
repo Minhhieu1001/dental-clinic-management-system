@@ -183,6 +183,8 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
                     .description(phaseReq.getDescription())
                     .status(phaseReq.getStatus() != null ? phaseReq.getStatus() : StatusPhase.PENDING)
                     .estimatedDuration(phaseReq.getEstimatedDuration())
+                    .expectedStartDate(parseDateTime(phaseReq.getExpectedStartDate()))
+                    .expectedEndDate(parseDateTime(phaseReq.getExpectedEndDate()))
                     .treatmentServices(new ArrayList<>())
                     .treatmentVisits(new ArrayList<>())
                     .build();
@@ -300,6 +302,8 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
                                 .description(ph.getDescription())
                                 .status(ph.getStatus())
                                 .estimatedDuration(ph.getEstimatedDuration())
+                                .expectedStartDate(ph.getExpectedStartDate())
+                                .expectedEndDate(ph.getExpectedEndDate())
                                 .treatmentServices((ph.getTreatmentServices() != null ? ph.getTreatmentServices() : List.<TreatmentService>of()).stream().map(ts ->
                                         TreatmentPlanResponse.ServiceItemResponse.builder()
                                                 .id(ts.getId())

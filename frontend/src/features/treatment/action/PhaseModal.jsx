@@ -31,17 +31,26 @@ export function PhaseModal({
   const [phaseType, setPhaseType] = useState('Nội nha & Nha chu');
   const [phaseDuration, setPhaseDuration] = useState('1-2 tuần');
   const [phaseStatus, setPhaseStatus] = useState('PENDING');
+  const [expectedStartDate, setExpectedStartDate] = useState('');
+  const [expectedEndDate, setExpectedEndDate] = useState('');
   const [phaseDesc, setPhaseDesc] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
+      const parseDateStr = (val) => {
+        if (!val) return '';
+        return String(val).split('T')[0];
+      };
+
       if (mode === 'EDIT' && initialData) {
         setPhaseName(initialData.phase_name || '');
         setPhaseOrder(Number(initialData.phase_order) || 1);
         setPhaseType(initialData.treatmentType || 'Nội nha & Nha chu');
         setPhaseDuration(initialData.estimated_duration || '1-2 tuần');
         setPhaseStatus(initialData.status || 'PENDING');
+        setExpectedStartDate(parseDateStr(initialData.expected_start_date || initialData.expectedStartDate));
+        setExpectedEndDate(parseDateStr(initialData.expected_end_date || initialData.expectedEndDate));
         setPhaseDesc(initialData.description || '');
       } else {
         const order = Number(initialData?.phase_order) || 1;
@@ -50,6 +59,8 @@ export function PhaseModal({
         setPhaseType(initialData?.treatmentType || 'Nội nha & Nha chu');
         setPhaseDuration(initialData?.estimated_duration || '1-2 tuần');
         setPhaseStatus(initialData?.status || 'PENDING');
+        setExpectedStartDate(parseDateStr(initialData?.expected_start_date || initialData?.expectedStartDate));
+        setExpectedEndDate(parseDateStr(initialData?.expected_end_date || initialData?.expectedEndDate));
         setPhaseDesc(initialData?.description || '');
       }
       setIsSubmitting(false);
@@ -73,6 +84,8 @@ export function PhaseModal({
           treatmentType: phaseType,
           estimated_duration: phaseDuration,
           status: phaseStatus,
+          expected_start_date: expectedStartDate,
+          expected_end_date: expectedEndDate,
           description: phaseDesc.trim() || 'Giai đoạn điều trị can thiệp theo phác đồ bác sĩ.',
         });
       }
@@ -259,6 +272,35 @@ export function PhaseModal({
                       </button>
                     ))}
                   </div>
+                </div>
+              </div>
+
+              {/* 3b. Ngày dự kiến bắt đầu & Ngày dự kiến kết thúc */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+                    <CalendarCheck size={14} className="text-teal-700" />
+                    Dự kiến bắt đầu
+                  </label>
+                  <input
+                    type="date"
+                    value={expectedStartDate}
+                    onChange={(e) => setExpectedStartDate(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white px-4 py-2.5 text-sm font-medium text-slate-800 focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 transition-all outline-none shadow-2xs cursor-pointer"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+                    <CalendarCheck size={14} className="text-teal-700" />
+                    Dự kiến kết thúc
+                  </label>
+                  <input
+                    type="date"
+                    value={expectedEndDate}
+                    onChange={(e) => setExpectedEndDate(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white px-4 py-2.5 text-sm font-medium text-slate-800 focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 transition-all outline-none shadow-2xs cursor-pointer"
+                  />
                 </div>
               </div>
 
