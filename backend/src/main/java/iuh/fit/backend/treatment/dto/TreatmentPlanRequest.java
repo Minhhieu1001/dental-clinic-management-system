@@ -35,6 +35,8 @@ public class TreatmentPlanRequest {
         private String description;
         private StatusPhase status;
         private String estimatedDuration;
+        private String expectedStartDate;
+        private String expectedEndDate;
         private List<ServiceItemRequest> treatmentServices;
         private List<VisitItemRequest> treatmentVisits;
     }

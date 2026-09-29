@@ -40,6 +40,8 @@ public class TreatmentPlanResponse {
         private String description;
         private StatusPhase status;
         private String estimatedDuration;
+        private LocalDateTime expectedStartDate;
+        private LocalDateTime expectedEndDate;
         private List<ServiceItemResponse> treatmentServices;
         private List<VisitItemResponse> treatmentVisits;
     }

@@ -419,6 +419,8 @@ export interface TreatmentPhaseItem {
   treatmentType?: string;
   status?: string;
   estimatedDuration?: string;
+  expectedStartDate?: string;
+  expectedEndDate?: string;
   description?: string;
   treatmentServices?: TreatmentServiceItem[];
   treatmentVisits?: TreatmentVisitItem[];
@@ -888,7 +890,12 @@ export const TreatmentHistoryDetailModal: React.FC<TreatmentHistoryDetailModalPr
                           <div className="flex items-center gap-2">
                             {phase.estimatedDuration && (
                               <span className="text-[11px] text-slate-600 bg-white px-2 py-0.2 border border-slate-300 font-medium">
-                                Dự kiến: {phase.estimatedDuration}
+                                Thời lượng: {phase.estimatedDuration}
+                              </span>
+                            )}
+                            {(phase.expectedStartDate || phase.expectedEndDate) && (
+                              <span className="text-[11px] text-teal-700 bg-teal-50 px-2 py-0.2 border border-teal-200 font-medium">
+                                Dự kiến: {phase.expectedStartDate ? String(phase.expectedStartDate).split('T')[0] : '...'} ➔ {phase.expectedEndDate ? String(phase.expectedEndDate).split('T')[0] : '...'}
                               </span>
                             )}
                             <span className={`px-2 py-0.2 border text-[11px] ${phaseBadge.className}`}>

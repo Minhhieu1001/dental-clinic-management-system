@@ -382,6 +382,8 @@ export default function TreatmentPlans() {
       phase_name: ph.phaseName,
       treatmentType: ph.treatmentType || 'Tổng quát',
       estimated_duration: ph.estimatedDuration || '1 tuần',
+      expected_start_date: ph.expectedStartDate ? String(ph.expectedStartDate).split('T')[0] : '',
+      expected_end_date: ph.expectedEndDate ? String(ph.expectedEndDate).split('T')[0] : '',
       status: ph.status || 'PENDING',
       description: ph.description || '',
       treatment_services: (ph.treatmentServices || []).map((s, sIdx) => ({
@@ -537,6 +539,8 @@ export default function TreatmentPlans() {
         description: phase.description || '',
         status: phase.status || 'PENDING',
         estimatedDuration: phase.estimated_duration || '1 tuần',
+        expectedStartDate: phase.expected_start_date || phase.expectedStartDate || null,
+        expectedEndDate: phase.expected_end_date || phase.expectedEndDate || null,
         treatmentServices: (phase.treatment_services || []).map((s) => ({
           serviceId: s.service_id && !String(s.service_id).startsWith('srv-') ? s.service_id : null,
           toothNumber: s.toothNumber || '',
@@ -949,6 +953,8 @@ export default function TreatmentPlans() {
       phase_name: `Giai đoạn ${phases.length + 1}: `,
       treatmentType: 'Nội nha & Nha chu',
       estimated_duration: '1-2 tuần',
+      expected_start_date: '',
+      expected_end_date: '',
       status: 'PENDING',
       description: '',
     });
@@ -971,6 +977,8 @@ export default function TreatmentPlans() {
         phase_name: phaseFormData.phase_name,
         treatmentType: phaseFormData.treatmentType,
         estimated_duration: phaseFormData.estimated_duration,
+        expected_start_date: phaseFormData.expected_start_date || '',
+        expected_end_date: phaseFormData.expected_end_date || '',
         status: phaseFormData.status,
         description: phaseFormData.description || 'Giai đoạn điều trị can thiệp theo phác đồ bác sĩ.',
         treatment_services: [],
@@ -990,6 +998,8 @@ export default function TreatmentPlans() {
             phase_name: phaseFormData.phase_name,
             treatmentType: phaseFormData.treatmentType,
             estimated_duration: phaseFormData.estimated_duration,
+            expected_start_date: phaseFormData.expected_start_date || '',
+            expected_end_date: phaseFormData.expected_end_date || '',
             status: phaseFormData.status,
             description: phaseFormData.description,
           }
@@ -1876,6 +1886,18 @@ export default function TreatmentPlans() {
                               <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 text-slate-600 font-medium px-2.5 py-0.5 shadow-2xs">
                                 <Clock4 size={12} className="text-slate-500" />
                                 {phase.estimated_duration}
+                              </span>
+                            )}
+
+                            {/* Expected Start & End Date */}
+                            {(phase.expected_start_date || phase.expectedStartDate || phase.expected_end_date || phase.expectedEndDate) && (
+                              <span className="inline-flex items-center gap-1 rounded-md bg-teal-50 border border-teal-200 text-teal-800 font-medium px-2.5 py-0.5 shadow-2xs">
+                                <CalendarCheck size={12} className="text-teal-600" />
+                                <span>
+                                  Dự kiến: {phase.expected_start_date || phase.expectedStartDate ? String(phase.expected_start_date || phase.expectedStartDate).split('T')[0] : '...'}
+                                  {' ➔ '}
+                                  {phase.expected_end_date || phase.expectedEndDate ? String(phase.expected_end_date || phase.expectedEndDate).split('T')[0] : '...'}
+                                </span>
                               </span>
                             )}
 

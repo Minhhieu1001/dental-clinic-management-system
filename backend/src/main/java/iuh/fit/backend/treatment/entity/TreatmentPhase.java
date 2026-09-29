@@ -4,6 +4,7 @@ import iuh.fit.backend.treatment.enums.StatusPhase;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -41,6 +42,12 @@ public class TreatmentPhase {
 
     @Column(name = "estimated_duration", length = 100)
     private String estimatedDuration;
+
+    @Column(name = "expected_start_date")
+    private LocalDateTime expectedStartDate;
+
+    @Column(name = "expected_end_date")
+    private LocalDateTime expectedEndDate;
 
     @Builder.Default
     @OneToMany(mappedBy = "treatmentPhase", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
