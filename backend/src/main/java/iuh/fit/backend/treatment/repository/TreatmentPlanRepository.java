@@ -18,4 +18,11 @@ public interface TreatmentPlanRepository extends JpaRepository<TreatmentPlan, UU
 
     @Query("SELECT tp FROM TreatmentPlan tp WHERE tp.examinationResult.medicalRecord.patient.id = :patientId ORDER BY tp.startDate DESC")
     List<TreatmentPlan> findByPatientId(@Param("patientId") UUID patientId);
+
+    @Query(value = "SELECT DISTINCT tp.* FROM treatment_plans tp " +
+           "LEFT JOIN treatment_phases ph ON ph.treatment_plan_id = tp.id " +
+           "WHERE (tp.status = 'IN_PROGRESS' OR ph.status = 'IN_PROGRESS') " +
+           "AND (tp.roadmap_sent = false OR tp.roadmap_sent IS NULL)",
+           nativeQuery = true)
+    List<TreatmentPlan> findPlansNeedingRoadmapNotification();
 }

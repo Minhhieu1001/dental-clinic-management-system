@@ -20,6 +20,7 @@ public class MedicalRecordDTO {
     private String patientName;
     private String patientCode;
     private String patientPhone;
+    private String patientEmail;
 
     // Dentist info
     private UUID dentistId;
