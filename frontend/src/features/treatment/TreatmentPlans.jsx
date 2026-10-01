@@ -50,6 +50,7 @@ import {
   getTreatmentPlansByPatientId,
   getTreatmentPlanByExaminationResultId,
   updateTreatmentPlan,
+  autoScheduleFollowUpAppointments,
 } from '../../services/treatmentPlan.service';
 import {
   ICD10_DIAGNOSES,
@@ -591,6 +592,47 @@ export default function TreatmentPlans() {
         duration: 4000,
       });
       return false;
+    }
+  };
+
+  const [schedulingFollowUp, setSchedulingFollowUp] = useState(false);
+
+  const handleAutoScheduleFollowUp = async () => {
+    if (!phases || phases.length === 0) {
+      toast.error('Phác đồ hiện chưa có giai đoạn nào để xếp lịch tái khám!');
+      return;
+    }
+
+    setSchedulingFollowUp(true);
+    const toastId = toast.loading('Đang tự động xếp lịch tái khám & gửi email lộ trình phác đồ cho bệnh nhân...');
+    try {
+      let targetId = selectedPlanId;
+      if (!targetId || targetId === 'NEW' || String(targetId).length <= 10) {
+        const saved = await persistPlanChanges(phases);
+        if (!saved) {
+          toast.error('Không thể tự động đặt lịch tái khám vì lưu kế hoạch thất bại.', { id: toastId });
+          setSchedulingFollowUp(false);
+          return;
+        }
+        targetId = selectedPlanId;
+      }
+
+      if (targetId && targetId !== 'NEW') {
+        await autoScheduleFollowUpAppointments(targetId);
+      }
+      toast.success(
+        `Đã tự động xếp lịch tái khám cho ${phases.length} giai đoạn & gửi email thông báo lộ trình phác đồ cho bệnh nhân!`,
+        { id: toastId, duration: 4500 }
+      );
+
+      if (patient?.id) {
+        fetchPlansForPatient(patient.id);
+      }
+    } catch (err) {
+      console.error('Lỗi khi tự động xếp lịch tái khám:', err);
+      toast.error(`Lỗi khi đặt lịch tái khám: ${err?.response?.data?.message || err.message}`, { id: toastId });
+    } finally {
+      setSchedulingFollowUp(false);
     }
   };
 
@@ -1595,6 +1637,12 @@ export default function TreatmentPlans() {
               <span className="text-xs font-semibold text-slate-600">
                 Tổng số: <strong className="text-teal-800">{phases.length} giai đoạn</strong>
               </span>
+
+              <div className="inline-flex items-center gap-1.5 rounded-lg bg-teal-50 border border-teal-200 px-3 py-1.5 text-xs font-bold text-teal-800 shadow-2xs">
+                <Sparkles size={14} className="text-teal-600 animate-pulse" />
+                <span>Tự động gửi lộ trình tái khám (Email/SĐT) & Nhắc trước 1 ngày / 1h</span>
+              </div>
+
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.96 }}

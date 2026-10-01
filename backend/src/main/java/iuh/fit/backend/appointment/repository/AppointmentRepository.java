@@ -31,5 +31,11 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
     List<Appointment> findByStatusOrderByAppointmentDateAscAppointmentTimeAsc(StatusAppointment status);
 
     List<Appointment> findAllByOrderByAppointmentDateDescAppointmentTimeDesc();
+
+    @Query("SELECT a FROM Appointment a WHERE (a.status = 'CONFIRMED' OR a.status = 'PENDING' OR a.status = 'WAITING') AND (a.reminded1Day IS NULL OR a.reminded1Day = false) AND a.appointmentTime >= :startTime AND a.appointmentTime <= :endTime")
+    List<Appointment> findAppointmentsNeeding1DayReminder(@Param("startTime") LocalDateTime startTime, @Param("endTime") LocalDateTime endTime);
+
+    @Query("SELECT a FROM Appointment a WHERE (a.status = 'CONFIRMED' OR a.status = 'PENDING' OR a.status = 'WAITING') AND (a.reminded1Hour IS NULL OR a.reminded1Hour = false) AND a.appointmentTime >= :startTime AND a.appointmentTime <= :endTime")
+    List<Appointment> findAppointmentsNeeding1HourReminder(@Param("startTime") LocalDateTime startTime, @Param("endTime") LocalDateTime endTime);
 }
 

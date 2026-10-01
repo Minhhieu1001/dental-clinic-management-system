@@ -12,7 +12,14 @@ import iuh.fit.backend.treatment.entity.*;
 import iuh.fit.backend.treatment.repository.*;
 import iuh.fit.backend.user.entity.Dentist;
 import iuh.fit.backend.user.repository.DentistRepository;
+import iuh.fit.backend.appointment.dto.AppointmentDetailDTO;
+import iuh.fit.backend.appointment.entity.Appointment;
+import iuh.fit.backend.appointment.enums.StatusAppointment;
+import iuh.fit.backend.appointment.repository.AppointmentRepository;
+import iuh.fit.backend.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,12 +27,14 @@ import iuh.fit.backend.treatment.enums.StatusPhase;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TreatmentPlanServiceImpl implements TreatmentPlanService {
@@ -38,6 +47,9 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
     private final DentistRepository dentistRepository;
     private final ServiceRepository serviceRepository;
     private final ExaminationResultRepository examinationResultRepository;
+    private final AppointmentRepository appointmentRepository;
+    private final NotificationService notificationService;
+    private final SimpMessagingTemplate simpMessagingTemplate;
 
     @Override
     @Transactional
@@ -85,6 +97,12 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
 
         if (request.getPhases() != null && !request.getPhases().isEmpty()) {
             savePhases(savedPlan, request.getPhases(), assignedDoctor, request.getDentistName());
+        }
+
+        try {
+            autoScheduleFollowUpAppointments(savedPlan.getId());
+        } catch (Exception e) {
+            log.warn("Auto scheduling follow up appointments failed on creation: {}", e.getMessage());
         }
 
         return mapToResponse(savedPlan);
@@ -166,7 +184,15 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
             savePhases(plan, request.getPhases(), assignedDoctor, request.getDentistName());
         }
 
+        plan.setRoadmapSent(false);
         TreatmentPlan updated = treatmentPlanRepository.save(plan);
+
+        try {
+            autoScheduleFollowUpAppointments(updated.getId());
+        } catch (Exception e) {
+            log.warn("Auto scheduling follow up appointments failed on update: {}", e.getMessage());
+        }
+
         return mapToResponse(updated);
     }
 
@@ -244,6 +270,178 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
             throw new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy kế hoạch điều trị với ID: " + id);
         }
         treatmentPlanRepository.deleteById(id);
+    }
+
+    @Override
+    @Transactional
+    public TreatmentPlanResponse autoScheduleFollowUpAppointments(UUID id) {
+        TreatmentPlan plan = treatmentPlanRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy kế hoạch điều trị ID: " + id));
+
+        ExaminationResult exam = plan.getExaminationResult();
+        Patient patient = (exam != null && exam.getMedicalRecord() != null) ? exam.getMedicalRecord().getPatient() : null;
+        Dentist dentist = exam != null ? exam.getDentist() : null;
+
+        if (dentist == null && exam != null && exam.getMedicalRecord() != null) {
+            dentist = exam.getMedicalRecord().getDentist();
+        }
+
+        String patientName = patient != null ? patient.getFullName() : "Bệnh nhân";
+        String phone = (patient != null && patient.getPhoneNumber() != null && !patient.getPhoneNumber().isBlank()) ? patient.getPhoneNumber().trim() : "0343632524";
+        String email = patient != null ? patient.getEmail() : null;
+
+        List<TreatmentPhase> phases = plan.getTreatmentPhases();
+        if (phases == null || phases.isEmpty()) {
+            return mapToResponse(plan);
+        }
+
+        StringBuilder roadmapHtml = new StringBuilder();
+        DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("HH:mm - dd/MM/yyyy");
+
+        int phaseIndex = 1;
+        for (TreatmentPhase phase : phases) {
+            LocalDateTime apptDateTime = phase.getExpectedStartDate();
+            if (apptDateTime == null) {
+                LocalDateTime baseStart = plan.getStartDate() != null ? plan.getStartDate() : LocalDateTime.now();
+                apptDateTime = baseStart.plusDays((long) (phaseIndex - 1) * 7).withHour(9).withMinute(0);
+            } else if (apptDateTime.getHour() == 0 && apptDateTime.getMinute() == 0) {
+                apptDateTime = apptDateTime.withHour(9).withMinute(0);
+            }
+
+            String doctorName = dentist != null ? dentist.getFullName() : "BS. Nguyễn Thị Phương";
+
+            StringBuilder serviceNames = new StringBuilder();
+            if (phase.getTreatmentServices() != null && !phase.getTreatmentServices().isEmpty()) {
+                for (TreatmentService ts : phase.getTreatmentServices()) {
+                    if (serviceNames.length() > 0) serviceNames.append(", ");
+                    if (ts.getService() != null) {
+                        serviceNames.append(ts.getService().getServiceName());
+                        if (ts.getToothNumber() != null && !ts.getToothNumber().isBlank()) {
+                            serviceNames.append(" (Răng ").append(ts.getToothNumber()).append(")");
+                        }
+                    }
+                }
+            }
+            if (serviceNames.length() == 0) {
+                serviceNames.append("Khám & điều trị theo phác đồ");
+            }
+
+            String reason = "Tái khám: " + phase.getPhaseName();
+            String notes = "Tái khám Giai đoạn " + (phase.getPhaseOrder() != null ? phase.getPhaseOrder() : phaseIndex)
+                    + " thuộc phác đồ '" + (plan.getPlanName() != null ? plan.getPlanName() : "Điều trị")
+                    + "'. Chỉ định: " + serviceNames;
+
+            // Kiểm tra trùng lịch hẹn đã có
+            List<Appointment> existingAppts = appointmentRepository.findAll();
+            boolean exists = existingAppts.stream().anyMatch(a ->
+                    a.getPhone() != null && a.getPhone().equals(phone)
+                            && a.getReason() != null && a.getReason().contains(phase.getPhaseName())
+                            && a.getStatus() != StatusAppointment.CANCELLED
+            );
+
+            if (!exists) {
+                Appointment appt = Appointment.builder()
+                        .patientName(patientName)
+                        .phone(phone)
+                        .dentist(dentist)
+                        .appointmentDate(apptDateTime.toLocalDate().atStartOfDay())
+                        .appointmentTime(apptDateTime)
+                        .reason(reason)
+                        .notes(notes)
+                        .symptoms(phase.getDescription())
+                        .treatmentNotes("Chi tiết dịch vụ: " + serviceNames)
+                        .status(StatusAppointment.CONFIRMED)
+                        .reminded1Day(false)
+                        .reminded1Hour(false)
+                        .build();
+
+                appt = appointmentRepository.save(appt);
+                log.info("Tự động tạo lịch hẹn tái khám cho giai đoạn '{}' - Bệnh nhân {} lúc {}", phase.getPhaseName(), patientName, apptDateTime);
+
+                try {
+                    simpMessagingTemplate.convertAndSend("/topic/appointments", mapAppointmentToDTO(appt));
+                } catch (Exception ex) {
+                    log.warn("WebSocket send error: {}", ex.getMessage());
+                }
+            }
+
+            String phaseTitle = phase.getPhaseName() != null ? phase.getPhaseName().trim() : "";
+            if (!phaseTitle.toLowerCase().startsWith("giai đoạn")) {
+                String orderStr = phase.getPhaseOrder() != null ? String.valueOf(phase.getPhaseOrder()) : String.valueOf(phaseIndex);
+                phaseTitle = "Giai đoạn " + orderStr + ": " + phaseTitle;
+            }
+
+            String statusLabel;
+            String statusBgColor;
+            if (phase.getStatus() == StatusPhase.IN_PROGRESS) {
+                statusLabel = "Đang thực hiện (Giai đoạn hiện tại)";
+                statusBgColor = "#0f766e";
+            } else if (phase.getStatus() == StatusPhase.COMPLETED) {
+                statusLabel = "Đã hoàn thành";
+                statusBgColor = "#16a34a";
+            } else {
+                statusLabel = "Chưa thực hiện";
+                statusBgColor = "#64748b";
+            }
+
+            roadmapHtml.append("""
+                <div style="background:#f8fafc; border:1px solid #cbd5e1; border-left:4px solid %s; border-radius:8px; padding:14px; margin-bottom:12px;">
+                    <div style="font-weight:bold; color:#0f766e; font-size:15px; margin-bottom:6px;">
+                        %s
+                    </div>
+                    <div style="font-size:13px; color:#334155; margin:4px 0;">
+                        <strong>Trạng thái:</strong> <span style="color:%s; font-weight:bold;">%s</span>
+                    </div>
+                    <div style="font-size:13px; color:#334155; margin:4px 0;">
+                        <strong>Lịch tái khám dự kiến:</strong> %s
+                    </div>
+                    <div style="font-size:13px; color:#334155; margin:4px 0;">
+                        <strong>Bác sĩ phụ trách:</strong> %s
+                    </div>
+                    <div style="font-size:12px; color:#64748b; margin-top:6px;">
+                        <strong>Chỉ định điều trị:</strong> %s
+                    </div>
+                </div>
+                """.formatted(
+                    statusBgColor,
+                    phaseTitle,
+                    statusBgColor,
+                    statusLabel,
+                    apptDateTime.format(timeFmt),
+                    doctorName,
+                    serviceNames.toString()
+            ));
+
+            phaseIndex++;
+        }
+
+        try {
+            notificationService.sendTreatmentRoadmapEmail(email, patientName, phone, plan.getPlanName(), roadmapHtml.toString());
+            log.info("Đã gửi thông báo lộ trình phác đồ điều trị cho bệnh nhân {} (SĐT: {}, Email: {})", patientName, phone, email);
+            plan.setRoadmapSent(true);
+            plan = treatmentPlanRepository.save(plan);
+        } catch (Exception e) {
+            log.error("Lỗi khi gửi email/SMS thông báo lộ trình điều trị: {}", e.getMessage());
+        }
+
+        return mapToResponse(plan);
+    }
+
+    private AppointmentDetailDTO mapAppointmentToDTO(Appointment apt) {
+        return AppointmentDetailDTO.builder()
+                .id(apt.getId())
+                .patientName(apt.getPatientName() != null ? apt.getPatientName() : "N/A")
+                .patientCode("N/A")
+                .phone(apt.getPhone() != null ? apt.getPhone() : "")
+                .dentistId(apt.getDentist() != null ? apt.getDentist().getId() : null)
+                .dentistName(apt.getDentist() != null ? apt.getDentist().getFullName() : "Chưa phân công")
+                .appointmentDate(apt.getAppointmentDate())
+                .appointmentTime(apt.getAppointmentTime())
+                .reason(apt.getReason())
+                .notes(apt.getNotes())
+                .status(apt.getStatus())
+                .createdAt(apt.getCreatedAt())
+                .build();
     }
 
     private LocalDateTime parseDateTime(String str) {

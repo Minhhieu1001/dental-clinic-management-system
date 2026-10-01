@@ -6,6 +6,7 @@ import {
   Trash2,
   FileText,
   Phone,
+  Mail,
   Calendar,
   MapPin,
   Globe,
@@ -61,6 +62,7 @@ export default function PatientModal({
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
+    email: '',
     nationality: 'Việt Nam',
     gender: 'MALE',
     dateOfBirth: '',
@@ -80,6 +82,7 @@ export default function PatientModal({
       setFormData({
         fullName: payload.fullName || payload.patientName || '',
         phone: payload.phone || payload.phoneNumber || '',
+        email: payload.email || payload.user?.email || '',
         nationality: payload.nationality || 'Việt Nam',
         gender: payload.gender || 'MALE',
         dateOfBirth: payload.dateOfBirth ? payload.dateOfBirth.split('T')[0] : '',
@@ -101,6 +104,7 @@ export default function PatientModal({
       setFormData({
         fullName: '',
         phone: '',
+        email: '',
         nationality: 'Việt Nam',
         gender: 'MALE',
         dateOfBirth: '',
@@ -293,6 +297,13 @@ export default function PatientModal({
 
               <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100">
                 <span className="text-slate-500 font-medium flex items-center gap-1.5">
+                  <Mail size={14} className="text-teal-700" /> Email:
+                </span>
+                <span className="font-bold text-slate-800">{payload?.email || payload?.user?.email || 'Chưa cập nhật'}</span>
+              </div>
+
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+                <span className="text-slate-500 font-medium flex items-center gap-1.5">
                   <Calendar size={14} className="text-teal-700" /> Ngày sinh:
                 </span>
                 <span className="font-bold text-slate-800">
@@ -472,6 +483,20 @@ export default function PatientModal({
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   placeholder="VD: 0901234567"
+                  className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
+                />
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
+                  <Mail size={13} className="text-teal-700" /> Email liên hệ
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="VD: patient@example.com"
                   className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
                 />
               </div>

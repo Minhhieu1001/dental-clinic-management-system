@@ -47,6 +47,10 @@ public class TreatmentPlan {
     private LocalDateTime endDate;
 
     @Builder.Default
+    @Column(name = "roadmap_sent")
+    private Boolean roadmapSent = false;
+
+    @Builder.Default
     @OneToMany(mappedBy = "treatmentPlan", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<TreatmentPhase> treatmentPhases = new ArrayList<>();
 

@@ -91,4 +91,16 @@ public class TreatmentPlanController {
                         .build()
         );
     }
+
+    @PostMapping("/{id}/auto-schedule")
+    public ResponseEntity<ApiResponse<TreatmentPlanResponse>> autoScheduleFollowUpAppointments(@PathVariable UUID id) {
+        TreatmentPlanResponse response = treatmentPlanService.autoScheduleFollowUpAppointments(id);
+        return ResponseEntity.ok(
+                ApiResponse.<TreatmentPlanResponse>builder()
+                        .status(200)
+                        .message("Tự động đặt lịch tái khám theo các giai đoạn và gửi lộ trình điều trị thành công")
+                        .data(response)
+                        .build()
+        );
+    }
 }

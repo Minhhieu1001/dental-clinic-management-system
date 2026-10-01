@@ -45,11 +45,11 @@ ON CONFLICT (id) DO NOTHING;
 
 
 -- 4. THÊM THÔNG TIN BỆNH NHÂN (PATIENTS)
-INSERT INTO patients (id, user_id, full_name, patient_code, created_at)
+INSERT INTO patients (id, user_id, full_name, patient_code, email, created_at)
 VALUES 
-  ('c1111111-1111-1111-1111-111111111111', '55555555-5555-5555-5555-555555555555', 'Tâm Thành Nguyễn', 'PA-839092', NOW()),
-  ('c2222222-2222-2222-2222-222222222222', '66666666-6666-6666-6666-666666666666', 'Lê Thị Hương', 'BN-001890', NOW()),
-  ('c3333333-3333-3333-3333-333333333333', '77777777-7777-7777-7777-777777777777', 'Nguyễn Minh Long', 'BN-002185', NOW())
+  ('c1111111-1111-1111-1111-111111111111', '55555555-5555-5555-5555-555555555555', 'Tâm Thành Nguyễn', 'PA-839092', 'tamthanh@patient.clinic.vn', NOW()),
+  ('c2222222-2222-2222-2222-222222222222', '66666666-6666-6666-6666-666666666666', 'Lê Thị Hương', 'BN-001890', 'huong.le@patient.clinic.vn', NOW()),
+  ('c3333333-3333-3333-3333-333333333333', '77777777-7777-7777-7777-777777777777', 'Nguyễn Minh Long', 'BN-002185', 'long.nguyen@patient.clinic.vn', NOW())
 ON CONFLICT (id) DO NOTHING;
 
 
