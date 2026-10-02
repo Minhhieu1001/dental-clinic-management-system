@@ -3,6 +3,8 @@ package iuh.fit.backend.user.entity;
 import iuh.fit.backend.appointment.entity.Appointment;
 import iuh.fit.backend.appointment.entity.AppointmentRequest;
 import iuh.fit.backend.appointment.entity.Shift;
+import iuh.fit.backend.billing.entity.Invoice;
+import iuh.fit.backend.billing.entity.PaymentTransactions;
 import iuh.fit.backend.user.enums.Position;
 import iuh.fit.backend.inventory.entity.InventoryTransaction;
 import jakarta.persistence.*;
@@ -65,4 +67,11 @@ public class Employee {
     @OneToMany(mappedBy = "employee", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<Appointment> appointments = new ArrayList<>();
 
+    @Builder.Default
+    @OneToMany(mappedBy = "employee", fetch = FetchType.LAZY)
+    private List<Invoice> invoices = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "employee", fetch = FetchType.LAZY)
+    private List<PaymentTransactions> paymentTransactions = new ArrayList<>();
 }

@@ -1,6 +1,10 @@
 package iuh.fit.backend.billing.entity;
 
+import iuh.fit.backend.billing.enums.PaymentStatus;
 import iuh.fit.backend.patient.entity.Patient;
+import iuh.fit.backend.promotion.entity.Promotion;
+import iuh.fit.backend.treatment.entity.TreatmentPlan;
+import iuh.fit.backend.user.entity.Employee;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -26,20 +30,51 @@ public class Invoice {
     @JoinColumn(name = "patient_id")
     private Patient patient;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "treatment_plan_id", unique = true)
+    private TreatmentPlan treatmentPlan;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "employee_id")
+    private Employee employee;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "promotion_id")
+    private Promotion promotion;
+
+    @Column(name = "invoice_date")
     private LocalDateTime invoiceDate;
 
-    @Column(precision = 15, scale = 2)
+    @Column(name = "invoice_code", length = 255)
+    private String invoiceCode;
+
+    @Column(name = "total_amount", precision = 15, scale = 2)
     private BigDecimal totalAmount;
 
-    @Column(precision = 15, scale = 2)
+    @Column(name = "discount_amount", precision = 15, scale = 2)
     private BigDecimal discountAmount;
 
-    @Column(precision = 15, scale = 2)
+    @Column(name = "final_amount", precision = 15, scale = 2)
     private BigDecimal finalAmount;
 
-    private Boolean paymentStatus;
+    @Column(name = "paid_amount", precision = 15, scale = 2)
+    private BigDecimal paidAmount;
+
+    @Column(name = "remaining_amount", precision = 15, scale = 2)
+    private BigDecimal remainingAmount;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_status", length = 50)
+    private PaymentStatus paymentStatus;
+
+    @Column(name = "update_at")
+    private LocalDateTime updateAt;
 
     @Builder.Default
-    @OneToMany(mappedBy = "invoice", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @OneToMany(mappedBy = "invoice", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<InvoiceDetail> invoiceDetails = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "invoice", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    private List<PaymentTransactions> paymentTransactions = new ArrayList<>();
 }
