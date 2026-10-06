@@ -179,7 +179,7 @@ export default function CustomerCare() {
   };
 
   return (
-    <div className="space-y-5 p-4 sm:p-6 bg-slate-50/60 min-h-screen">
+    <div className="space-y-3 p-1.5 sm:p-2 bg-slate-50/60 min-h-screen">
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl bg-linear-to-r from-teal-900 via-teal-800 to-teal-900 p-6 text-white shadow-xl">
         <div className="flex items-center gap-4">

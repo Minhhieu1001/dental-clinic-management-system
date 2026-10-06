@@ -7,6 +7,7 @@ import iuh.fit.backend.common.exception.ErrorCode;
 import iuh.fit.backend.common.security.*;
 import iuh.fit.backend.user.entity.User;
 import iuh.fit.backend.user.enums.StatusUser;
+import iuh.fit.backend.user.repository.EmployeeRepository;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -30,6 +31,7 @@ public class AuthServiceImpl implements AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final CookieUtils cookieUtils;
     private final CustomUserDetailsService userDetailsService;
+    private final EmployeeRepository employeeRepository;
 
     @Override
     public AuthResponse login(LoginRequest request, HttpServletResponse response) {
@@ -143,7 +145,10 @@ public class AuthServiceImpl implements AuthService {
                 user.getEmail(),
                 user.getUsername(),
                 user.getRole().name(),
-                user.getAvatarUrl()
+                user.getAvatarUrl(),
+                employeeRepository.findByUserId(user.getId())
+                        .map(employee -> employee.getId())
+                        .orElse(null)
         );
     }
 

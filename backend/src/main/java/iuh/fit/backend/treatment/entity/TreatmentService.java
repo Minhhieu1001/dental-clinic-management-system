@@ -1,9 +1,12 @@
 package iuh.fit.backend.treatment.entity;
 
+import iuh.fit.backend.billing.entity.InvoiceDetail;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -22,6 +25,9 @@ public class TreatmentService {
     @JoinColumn(name = "service_id")
     private Service service;
 
+    @Column(name = "service_name", length = 255)
+    private String serviceName;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "treatment_phase_id")
     private TreatmentPhase treatmentPhase;
@@ -36,4 +42,8 @@ public class TreatmentService {
 
     @Column(name = "total_amount", precision = 15, scale = 2)
     private BigDecimal totalAmount;
+
+    @Builder.Default
+    @OneToMany(mappedBy = "treatmentService", fetch = FetchType.LAZY)
+    private List<InvoiceDetail> invoiceDetails = new ArrayList<>();
 }

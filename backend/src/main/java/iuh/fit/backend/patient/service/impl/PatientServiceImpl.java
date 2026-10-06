@@ -2,13 +2,16 @@ package iuh.fit.backend.patient.service.impl;
 
 import iuh.fit.backend.common.exception.AppException;
 import iuh.fit.backend.common.exception.ErrorCode;
+import iuh.fit.backend.billing.dto.PatientInvoiceDataResponse;
 import iuh.fit.backend.medicalrecord.entity.MedicalRecord;
 import iuh.fit.backend.medicalrecord.repository.MedicalRecordRepository;
 import iuh.fit.backend.patient.dto.PatientCreateDTO;
 import iuh.fit.backend.patient.dto.PatientDTO;
 import iuh.fit.backend.patient.entity.Patient;
+import iuh.fit.backend.patient.enums.Gender;
 import iuh.fit.backend.patient.repository.PatientRepository;
 import iuh.fit.backend.patient.service.PatientService;
+import iuh.fit.backend.treatment.enums.StatusPhase;
 import iuh.fit.backend.user.entity.Dentist;
 import iuh.fit.backend.user.entity.User;
 import iuh.fit.backend.user.enums.Role;
@@ -22,8 +25,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -214,6 +224,151 @@ public class PatientServiceImpl implements PatientService {
         Patient patient = patientRepository.findByPatientCode(code)
                 .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy hồ sơ bệnh nhân : " + code));
         return mapToDTO(patient);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PatientInvoiceDataResponse getRawInvoiceDataByPatientCode(String patientCode) {
+        List<Map<String, Object>> rows = patientRepository.getRawInvoiceDataByPatientCode(patientCode);
+        if (rows.isEmpty()) {
+            return PatientInvoiceDataResponse.builder()
+                    .unbilledTreatmentPlans(new ArrayList<>())
+                    .build();
+        }
+
+        Map<String, Object> firstRow = rows.get(0);
+        PatientInvoiceDataResponse.PatientSummaryDTO patientInfo =
+                PatientInvoiceDataResponse.PatientSummaryDTO.builder()
+                        .id(asUuid(firstRow.get("patient_id")))
+                        .patientCode(asString(firstRow.get("patient_code")))
+                        .fullName(asString(firstRow.get("full_name")))
+                        .phone(asString(firstRow.get("phone")))
+                        .gender(asEnum(Gender.class, firstRow.get("gender")))
+                        .dateOfBirth(asDateTime(firstRow.get("date_of_birth")))
+                        .address(asString(firstRow.get("address")))
+                        .build();
+
+        Map<UUID, PlanAggregate> plans = new LinkedHashMap<>();
+        for (Map<String, Object> row : rows) {
+            UUID planId = asUuid(row.get("treatment_plan_id"));
+            if (planId == null) {
+                continue;
+            }
+
+            PlanAggregate plan = plans.computeIfAbsent(planId, ignored -> new PlanAggregate(
+                    PatientInvoiceDataResponse.UnbilledTreatmentPlanDTO.builder()
+                            .treatmentPlanId(planId)
+                            .planName(asString(row.get("plan_name")))
+                            .description(asString(row.get("plan_description")))
+                            .estimatedCost(asBigDecimal(row.get("estimated_cost")))
+                            .status(asEnum(StatusPhase.class, row.get("plan_status")))
+                            .startDate(asDateTime(row.get("plan_start_date")))
+                            .examinationResultId(asUuid(row.get("examination_result_id")))
+                            .examinationDate(asDateTime(row.get("examination_date")))
+                            .chiefComplaint(asString(row.get("chief_complaint")))
+                            .doctorName(asString(row.get("doctor_name")))
+                            .creatorName(asString(row.get("creator_name")))
+                            .diagnoses(new ArrayList<>())
+                            .phases(new ArrayList<>())
+                            .invoiceServices(new ArrayList<>())
+                            .build()));
+
+            UUID diagnosisId = asUuid(row.get("diagnosis_id"));
+            if (diagnosisId != null) {
+                plan.diagnoses.putIfAbsent(diagnosisId,
+                        PatientInvoiceDataResponse.DiagnosisDTO.builder()
+                                .id(diagnosisId)
+                                .toothPosition(asString(row.get("tooth_position")))
+                                .primaryDiagnosis(asString(row.get("primary_diagnosis")))
+                                .level(asString(row.get("diagnosis_level")))
+                                .diagnosticNotes(asString(row.get("diagnostic_notes")))
+                                .build());
+            }
+
+            UUID phaseId = asUuid(row.get("phase_id"));
+            if (phaseId != null) {
+                PatientInvoiceDataResponse.PhaseDTO phase = plan.phases.computeIfAbsent(phaseId, ignored ->
+                        PatientInvoiceDataResponse.PhaseDTO.builder()
+                                .id(phaseId)
+                                .phaseName(asString(row.get("phase_name")))
+                                .phaseOrder(asString(row.get("phase_order")))
+                                .treatmentType(asString(row.get("treatment_type")))
+                                .description(asString(row.get("phase_description")))
+                                .status(asEnum(StatusPhase.class, row.get("phase_status")))
+                                .services(new ArrayList<>())
+                                .build());
+
+                UUID treatmentServiceId = asUuid(row.get("treatment_service_id"));
+                if (treatmentServiceId != null) {
+                    PatientInvoiceDataResponse.InvoiceServiceItemDTO service =
+                            PatientInvoiceDataResponse.InvoiceServiceItemDTO.builder()
+                                    .treatmentServiceId(treatmentServiceId)
+                                    .serviceId(asUuid(row.get("service_id")))
+                                    .serviceName(asString(row.get("service_name")))
+                                    .toothNumber(asString(row.get("tooth_number")))
+                                    .quantity(asInteger(row.get("quantity")))
+                                    .unitPrice(asBigDecimal(row.get("price")))
+                                    .totalAmount(asBigDecimal(row.get("total_amount")))
+                                    .build();
+                    if (plan.serviceIdsByPhase.computeIfAbsent(phaseId, ignored -> new HashSet<>())
+                            .add(treatmentServiceId)) {
+                        phase.getServices().add(service);
+                        plan.result.getInvoiceServices().add(service);
+                    }
+                }
+            }
+        }
+
+        plans.values().forEach(plan -> {
+            plan.result.setDiagnoses(new ArrayList<>(plan.diagnoses.values()));
+            plan.result.setPhases(new ArrayList<>(plan.phases.values()));
+        });
+
+        return PatientInvoiceDataResponse.builder()
+                .patientInfo(patientInfo)
+                .unbilledTreatmentPlans(plans.values().stream().map(plan -> plan.result).toList())
+                .build();
+    }
+
+    private static final class PlanAggregate {
+        private final PatientInvoiceDataResponse.UnbilledTreatmentPlanDTO result;
+        private final Map<UUID, PatientInvoiceDataResponse.DiagnosisDTO> diagnoses = new LinkedHashMap<>();
+        private final Map<UUID, PatientInvoiceDataResponse.PhaseDTO> phases = new LinkedHashMap<>();
+        private final Map<UUID, Set<UUID>> serviceIdsByPhase = new LinkedHashMap<>();
+
+        private PlanAggregate(PatientInvoiceDataResponse.UnbilledTreatmentPlanDTO result) {
+            this.result = result;
+        }
+    }
+
+    private static UUID asUuid(Object value) {
+        return value instanceof UUID uuid ? uuid : value == null ? null : UUID.fromString(value.toString());
+    }
+
+    private static String asString(Object value) {
+        return value == null ? null : value.toString();
+    }
+
+    private static Integer asInteger(Object value) {
+        return value instanceof Number number ? number.intValue() : value == null ? null : Integer.valueOf(value.toString());
+    }
+
+    private static BigDecimal asBigDecimal(Object value) {
+        return value instanceof BigDecimal decimal ? decimal : value == null ? null : new BigDecimal(value.toString());
+    }
+
+    private static LocalDateTime asDateTime(Object value) {
+        if (value instanceof LocalDateTime dateTime) {
+            return dateTime;
+        }
+        if (value instanceof Timestamp timestamp) {
+            return timestamp.toLocalDateTime();
+        }
+        return value == null ? null : LocalDateTime.parse(value.toString());
+    }
+
+    private static <E extends Enum<E>> E asEnum(Class<E> enumType, Object value) {
+        return value == null ? null : Enum.valueOf(enumType, value.toString());
     }
 
     private PatientDTO mapToDTO(Patient patient) {

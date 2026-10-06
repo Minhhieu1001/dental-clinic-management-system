@@ -81,7 +81,14 @@ export const roleRoutes = {
         ],
       },
       { label: 'Bệnh nhân', to: 'patients' },
-      { label: 'Thanh toán', to: 'billing' },
+      {
+        label: 'Thanh toán',
+        to: 'invoice',
+        children: [
+          { label: 'Hóa đơn', to: 'invoice' },
+          { label: 'Tra cứu hóa đơn', to: 'invoice-lookup' },
+        ],
+      },
       { label: 'Chăm sóc KH', to: 'customer-care' },
       { label: 'Kho', to: 'inventory' },
       { label: 'Nhập/Xuất', to: 'import-export' },

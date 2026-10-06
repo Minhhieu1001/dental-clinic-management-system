@@ -17,6 +17,8 @@ import java.util.UUID;
 public class PrescriptionRequestDTO {
     private UUID examinationResultId;
 
+    private String prescriptionCode;
+
     @NotBlank(message = "Tên đơn thuốc không được để trống")
     private String prescriptionName;
 

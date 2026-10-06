@@ -1,7 +1,8 @@
 package iuh.fit.backend.billing.entity;
 
+import iuh.fit.backend.billing.enums.ItemType;
 import iuh.fit.backend.prescription.entity.Prescription;
-import iuh.fit.backend.treatment.entity.Service;
+import iuh.fit.backend.treatment.entity.TreatmentService;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -25,18 +26,20 @@ public class InvoiceDetail {
     private Invoice invoice;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "service_id")
-    private Service service;
+    @JoinColumn(name = "treatment_service_id")
+    private TreatmentService treatmentService;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "prescription_id")
-    private Prescription prescription;
+
+    @Column(name = "item_name", length = 255)
+    private String itemName;
 
     private Integer quantity;
 
-    @Column(precision = 15, scale = 2)
+    @Column(name = "unit_price", precision = 15, scale = 2)
     private BigDecimal unitPrice;
 
-    @Column(precision = 15, scale = 2)
+    @Column(name = "subtotal", precision = 15, scale = 2)
     private BigDecimal subtotal;
+
+    private Boolean status;
 }

@@ -146,7 +146,7 @@ export default function PrescriptionPrintModal({
                 <div className="text-right shrink-0">
                   <span className="text-[10px] text-slate-700 font-bold uppercase block">Mã đơn thuốc:</span>
                   <span className="text-xs font-mono font-black text-black block">
-                    {prescription.id ? String(prescription.id).slice(0, 8).toUpperCase() : 'RX-NEW'}
+                    {prescription.prescriptionCode || prescription.code || (prescription.id ? String(prescription.id).slice(0, 8).toUpperCase() : 'RX-NEW')}
                   </span>
                   <span className="text-[10px] text-slate-700 block">
                     Ngày kê: {formatDateTime(prescription.prescriptionDate)}

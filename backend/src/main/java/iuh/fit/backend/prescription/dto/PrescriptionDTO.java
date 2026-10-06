@@ -20,6 +20,7 @@ public class PrescriptionDTO {
     private UUID patientId;
     private String patientCode;
     private String patientName;
+    private String prescriptionCode;
     private String prescriptionName;
     private LocalDateTime prescriptionDate;
     private String prescriber;

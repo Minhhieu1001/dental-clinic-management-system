@@ -17,7 +17,7 @@ export default function RoleShell({ config, CustomHeader }) {
         />
       )}
 
-      <main className="w-full px-2 py-4 sm:px-3 lg:px-4">
+      <main className="w-full px-1.5 py-1.5 sm:px-2 sm:py-2 lg:px-2.5 lg:py-2">
         <Outlet />
       </main>
     </div>

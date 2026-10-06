@@ -89,9 +89,5 @@ public class Service {
 
     @Builder.Default
     @OneToMany(mappedBy = "service", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    private List<InvoiceDetail> invoiceDetails = new ArrayList<>();
-
-    @Builder.Default
-    @OneToMany(mappedBy = "service", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<PromotionService> promotionServices = new ArrayList<>();
 }

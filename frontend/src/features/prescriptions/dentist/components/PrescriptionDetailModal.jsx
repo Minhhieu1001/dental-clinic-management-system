@@ -113,8 +113,16 @@ export default function PrescriptionDetailModal({
 
             {/* Prescription Overview Info with separate rows for DOB & Address */}
             <div className="p-4 bg-slate-50 border-b border-slate-200 space-y-2.5 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {/* Cột 1: Bệnh nhân */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                {/* Cột 1: Mã đơn thuốc */}
+                <div>
+                  <span className="text-slate-500 block text-[11px]">Mã đơn thuốc:</span>
+                  <strong className="text-teal-800 font-mono font-bold text-sm block">
+                    {prescription.prescriptionCode || prescription.code || (prescription.id ? String(prescription.id).slice(0, 8).toUpperCase() : '—')}
+                  </strong>
+                </div>
+
+                {/* Cột 2: Bệnh nhân */}
                 <div>
                   <span className="text-slate-500 block text-[11px]">Bệnh nhân:</span>
                   <strong className="text-slate-900 font-bold text-sm block">
@@ -127,7 +135,7 @@ export default function PrescriptionDetailModal({
                   )}
                 </div>
 
-                {/* Cột 2: Bác sĩ kê đơn */}
+                {/* Cột 3: Bác sĩ kê đơn */}
                 <div>
                   <span className="text-slate-500 block text-[11px]">Bác sĩ kê đơn:</span>
                   <strong className="text-slate-800 font-semibold text-xs block">
@@ -138,7 +146,7 @@ export default function PrescriptionDetailModal({
                   </span>
                 </div>
 
-                {/* Cột 3: Ngày giờ kê đơn */}
+                {/* Cột 4: Ngày giờ kê đơn */}
                 <div>
                   <span className="text-slate-500 block text-[11px]">Ngày giờ kê đơn:</span>
                   <span className="text-slate-800 font-semibold block">

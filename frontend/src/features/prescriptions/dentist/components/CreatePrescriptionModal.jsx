@@ -37,6 +37,7 @@ export default function CreatePrescriptionModal({
   prescriptionData = null,
 }) {
   const [prescriber, setPrescriber] = useState(currentDoctorName || '');
+  const [prescriptionCode, setPrescriptionCode] = useState('');
   const [prescriptionName, setPrescriptionName] = useState('');
   const [items, setItems] = useState([]);
   const [doctorAdvice, setDoctorAdvice] = useState('');
@@ -47,6 +48,7 @@ export default function CreatePrescriptionModal({
     if (isOpen) {
       if (type === 'edit' && prescriptionData) {
         setPrescriber(prescriptionData.prescriber || currentDoctorName || '');
+        setPrescriptionCode(prescriptionData.prescriptionCode || prescriptionData.code || '');
         setPrescriptionName(prescriptionData.prescriptionName || '');
         setDoctorAdvice(prescriptionData.doctorAdvice || prescriptionData.advice || '');
         const mapped = (prescriptionData.prescriptionDetails || []).map((item) => ({
@@ -62,6 +64,7 @@ export default function CreatePrescriptionModal({
         setItems(mapped);
       } else {
         setPrescriber(currentDoctorName || '');
+        setPrescriptionCode('');
         setPrescriptionName('');
         setItems([]);
         setDoctorAdvice('');
@@ -126,6 +129,7 @@ export default function CreatePrescriptionModal({
     const cleanAdvice = doctorAdvice && doctorAdvice !== '<p><br></p>' ? doctorAdvice.trim() : '';
 
     const payload = {
+      prescriptionCode: prescriptionCode.trim() || undefined,
       prescriptionName: prescriptionName.trim(),
       prescriber: prescriber.trim(),
       doctorAdvice: cleanAdvice,
@@ -218,7 +222,21 @@ export default function CreatePrescriptionModal({
             {/* Form Body */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {/* Top Form Fields Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                {/* Mã đơn thuốc */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Mã đơn thuốc: <span className="text-slate-400 font-normal">(Tùy chọn)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={prescriptionCode}
+                    onChange={(e) => setPrescriptionCode(e.target.value.toUpperCase())}
+                    placeholder="Tự động tạo (vd: DT-001)..."
+                    className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-sm focus:border-teal-600 focus:outline-hidden font-mono font-semibold text-teal-800 uppercase"
+                  />
+                </div>
+
                 {/* Bác sĩ kê đơn */}
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">

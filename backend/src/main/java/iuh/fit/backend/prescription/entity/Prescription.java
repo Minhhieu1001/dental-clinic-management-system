@@ -29,6 +29,9 @@ public class Prescription {
     @JoinColumn(name = "examination_result_id")
     private ExaminationResult examinationResult;
 
+    @Column(name = "prescription_code", length = 50)
+    private String prescriptionCode;
+
     @Column(name = "prescription_name", length = 255)
     private String prescriptionName;
 
@@ -47,8 +50,5 @@ public class Prescription {
     @OneToMany(mappedBy = "prescription", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PrescriptionDetail> prescriptionDetails = new ArrayList<>();
 
-    @Builder.Default
-    @OneToMany(mappedBy = "prescription", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    private List<InvoiceDetail> invoiceDetails = new ArrayList<>();
 }
 
