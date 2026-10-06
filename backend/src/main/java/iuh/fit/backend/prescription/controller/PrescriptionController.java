@@ -33,7 +33,7 @@ public class PrescriptionController {
                         .message("Lấy danh sách đơn thuốc thành công")
                         .data(list)
                         .build()
-        );
+        );  
     }
 
     @GetMapping("/{id}")

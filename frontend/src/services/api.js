@@ -29,6 +29,8 @@ export const getPromotions = async () => {
   return response.data
 }
 
+
+
 export const getPromotion = async (id) => {
   const response = await apiClient.get(`/promotions/${id}`)
   return response.data

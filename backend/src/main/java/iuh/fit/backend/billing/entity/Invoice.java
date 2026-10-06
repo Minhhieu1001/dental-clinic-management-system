@@ -48,6 +48,9 @@ public class Invoice {
     @Column(name = "invoice_code", length = 255)
     private String invoiceCode;
 
+    @Column(name = "is_save")
+    private Boolean isSave;
+
     @Column(name = "total_amount", precision = 15, scale = 2)
     private BigDecimal totalAmount;
 

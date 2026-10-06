@@ -48,7 +48,8 @@ import DentistNotifications from '../features/notification/DentistNotifications.
 import EmployeeDashboard from '../features/dashboard/EmployeeDashboard.jsx'
 import EmployeeAppointments from '../features/appointment/EmployeeAppointments.jsx'
 import EmployeePatients from '../features/patient/EmployeePatients.jsx'
-import EmployeeBilling from '../features/billing/EmployeeBilling.jsx'
+import EmployeeBilling from '../features/billing/employee/EmployeeBilling.jsx'
+import InvoiceLookup from '../features/billing/employee/InvoiceLookup.jsx'
 import CustomerCare from '../features/customer-care/CustomerCare.jsx'
 import EmployeeInventory from '../features/prescriptions/EmployeeInventory.jsx'
 import ImportExport from '../features/prescriptions/ImportExport.jsx'
@@ -132,7 +133,8 @@ export default function AppRouter() {
             <Route path="appointments" element={<EmployeeAppointments />} />
             <Route path="follow-up" element={<FollowUpAppointment />} />
             <Route path="patients" element={<EmployeePatients />} />
-            <Route path="billing" element={<EmployeeBilling />} />
+            <Route path="invoice" element={<EmployeeBilling />} />
+            <Route path="invoice-lookup" element={<InvoiceLookup />} />
             <Route path="customer-care" element={<CustomerCare />} />
             <Route path="inventory" element={<EmployeeInventory />} />
             <Route path="import-export" element={<ImportExport />} />

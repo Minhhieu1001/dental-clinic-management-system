@@ -2,7 +2,6 @@ package iuh.fit.backend.billing.entity;
 
 import iuh.fit.backend.billing.enums.PaymentMethod;
 import iuh.fit.backend.billing.enums.TransactionStatus;
-import iuh.fit.backend.prescription.entity.Prescription;
 import iuh.fit.backend.user.entity.Employee;
 import jakarta.persistence.*;
 import lombok.*;
@@ -47,6 +46,12 @@ public class PaymentTransactions {
     @Column(name = "total_amount", precision = 15, scale = 2)
     private BigDecimal totalAmount;
 
+    @Column(name = "amount_received", precision = 15, scale = 2)
+    private BigDecimal amountReceived;
+
+    @Column(name = "change_amount", precision = 15, scale = 2)
+    private BigDecimal changeAmount;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_method", length = 50)
     private PaymentMethod paymentMethod;
@@ -64,10 +69,7 @@ public class PaymentTransactions {
     @Column(columnDefinition = "TEXT")
     private String note;
 
-    // truong nay default la "" ve sau xu ly
-    @Column(columnDefinition = "TEXT")
-    private String PrescriptionId;
-
-
-
+    // Reserved for linking a payment to a prescription in a later billing flow.
+    @Column(name = "prescription_id", columnDefinition = "TEXT")
+    private String prescriptionId;
 }

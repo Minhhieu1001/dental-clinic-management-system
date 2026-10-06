@@ -88,8 +88,16 @@ public class PrescriptionServiceImpl implements PrescriptionService {
                     .orElse(null);
         }
 
+        String code = request.getPrescriptionCode();
+        if (code == null || code.isBlank()) {
+            code = "DT-" + (System.currentTimeMillis() % 1000000);
+        } else {
+            code = code.trim().toUpperCase();
+        }
+
         Prescription prescription = Prescription.builder()
                 .examinationResult(examinationResult)
+                .prescriptionCode(code)
                 .prescriptionName(request.getPrescriptionName())
                 .prescriptionDate(request.getPrescriptionDate() != null ? request.getPrescriptionDate() : LocalDateTime.now())
                 .prescriber(request.getPrescriber())
@@ -133,6 +141,9 @@ public class PrescriptionServiceImpl implements PrescriptionService {
             prescription.setExaminationResult(examinationResult);
         }
 
+        if (request.getPrescriptionCode() != null && !request.getPrescriptionCode().isBlank()) {
+            prescription.setPrescriptionCode(request.getPrescriptionCode().trim().toUpperCase());
+        }
         prescription.setPrescriptionName(request.getPrescriptionName());
         if (request.getPrescriptionDate() != null) {
             prescription.setPrescriptionDate(request.getPrescriptionDate());
@@ -189,8 +200,14 @@ public class PrescriptionServiceImpl implements PrescriptionService {
                 if (patient != null) {
                     patId = patient.getId();
                     patCode = patient.getPatientCode();
+                    patName = patient.getFullName();
                 }
             }
+        }
+
+        String rxCode = p.getPrescriptionCode();
+        if (rxCode == null || rxCode.isBlank()) {
+            rxCode = p.getId() != null ? "DT-" + p.getId().toString().substring(0, 8).toUpperCase() : null;
         }
 
         BigDecimal total = BigDecimal.ZERO;
@@ -223,6 +240,7 @@ public class PrescriptionServiceImpl implements PrescriptionService {
                 .patientId(patId)
                 .patientCode(patCode)
                 .patientName(patName)
+                .prescriptionCode(rxCode)
                 .prescriptionName(p.getPrescriptionName())
                 .prescriptionDate(p.getPrescriptionDate())
                 .prescriber(p.getPrescriber())

@@ -3,8 +3,8 @@ package iuh.fit.backend.promotion.controller;
 import iuh.fit.backend.promotion.dto.PromotionRequest;
 import iuh.fit.backend.promotion.dto.PromotionResponse;
 import iuh.fit.backend.promotion.entity.Promotion;
-import iuh.fit.backend.promotion.entity.PromotionService;
 import iuh.fit.backend.promotion.repository.PromotionRepository;
+import iuh.fit.backend.promotion.service.PromotionService;
 import iuh.fit.backend.treatment.entity.Service;
 import iuh.fit.backend.treatment.repository.ServiceRepository;
 import jakarta.validation.Valid;
@@ -23,6 +23,7 @@ import java.util.UUID;
 public class PromotionController {
     private final PromotionRepository promotionRepository;
     private final ServiceRepository serviceRepository;
+    private final PromotionService promotionQueryService;
 
     @GetMapping("/api/promotions")
     @Transactional(readOnly = true)
@@ -32,6 +33,20 @@ public class PromotionController {
                 .sorted((first, second) -> second.getStartDate().compareTo(first.getStartDate()))
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @GetMapping("/api/v1/promotions/vouchers")
+    public List<PromotionResponse> getAvailableVouchers() {
+        return promotionQueryService.getAvailableVouchers();
+    }
+
+    @GetMapping("/api/v1/promotions/vouchers/{couponCode}")
+    public PromotionResponse getAvailableVoucherByCouponCode(@PathVariable String couponCode) {
+        return promotionQueryService.getAvailableVoucherByCouponCode(couponCode)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Không tìm thấy voucher hợp lệ với mã coupon: " + couponCode
+                ));
     }
 
     @GetMapping("/api/promotions/{id}")
@@ -100,7 +115,7 @@ public class PromotionController {
             if (services.size() != request.serviceIds().stream().distinct().count()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Có dịch vụ ưu đãi không tồn tại");
             }
-            services.forEach(service -> promotion.getPromotionServices().add(PromotionService.builder()
+            services.forEach(service -> promotion.getPromotionServices().add(iuh.fit.backend.promotion.entity.PromotionService.builder()
                     .promotion(promotion).service(service).build()));
         }
 
@@ -132,8 +147,23 @@ public class PromotionController {
 
     private PromotionResponse toResponse(Promotion promotion) {
         return new PromotionResponse(
-                promotion.getId(), promotion.getTitle(), promotion.getCategory(), promotion.getDescription(), promotion.getImageUrl(), promotion.getDiscountPercent(),
-                promotion.getStartDate(), promotion.getEndDate(), promotion.getPromotionServices().stream()
+                promotion.getId(),
+                promotion.getTitle(),
+                promotion.getCouponCode(),
+                promotion.getCategory(),
+                promotion.getDescription(),
+                promotion.getImageUrl(),
+                promotion.getPromotionType(),
+                promotion.getDiscountPercent(),
+                promotion.getDiscountAmount(),
+                promotion.getMaxDiscountAmount(),
+                promotion.getStartDate(),
+                promotion.getEndDate(),
+                promotion.getUsageLimit(),
+                promotion.getUsedCount(),
+                promotion.getStatus(),
+                promotion.getCreatedAt(),
+                promotion.getPromotionServices().stream()
                         .map(item -> new PromotionResponse.PromotionServiceResponse(item.getService().getId(),
                                 item.getService().getServiceName(), item.getService().getPrice()))
                         .toList());

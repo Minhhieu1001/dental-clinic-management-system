@@ -122,6 +122,7 @@ export const createPrescription = async (prescriptionData) => {
   const localItem = {
     id: `local-rx-${Date.now()}`,
     ...prescriptionData,
+    prescriptionCode: prescriptionData.prescriptionCode || `DT-${String(Date.now()).slice(-6)}`,
     prescriptionDate: prescriptionData.prescriptionDate || new Date().toISOString(),
     totalAmount: (prescriptionData.prescriptionDetails || []).reduce(
       (sum, item) => sum + (Number(item.unitPrice) || 0) * (Number(item.quantity) || 1),

@@ -1,6 +1,7 @@
 package iuh.fit.backend.patient.controller;
 
 import iuh.fit.backend.common.response.ApiResponse;
+import iuh.fit.backend.billing.dto.PatientInvoiceDataResponse;
 import iuh.fit.backend.patient.dto.PatientCreateDTO;
 import iuh.fit.backend.patient.dto.PatientDTO;
 import iuh.fit.backend.patient.service.PatientService;
@@ -100,6 +101,18 @@ public class PatientController {
                         .status(200)
                         .message("Lấy thông tin hồ sơ bệnh nhân thành công")
                         .data(patient)
+                        .build()
+        );
+    }
+
+    @GetMapping("/raw-invoice-data/{patientCode}")
+    public ResponseEntity<ApiResponse<PatientInvoiceDataResponse>> getRawInvoiceDataByPatientCode(@PathVariable String patientCode) {
+        PatientInvoiceDataResponse data = patientService.getRawInvoiceDataByPatientCode(patientCode);
+        return ResponseEntity.ok(
+                ApiResponse.<PatientInvoiceDataResponse>builder()
+                        .status(200)
+                        .message("Lấy toàn bộ dữ liệu thô phục vụ lập hóa đơn theo mã bệnh nhân thành công")
+                        .data(data)
                         .build()
         );
     }

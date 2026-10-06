@@ -665,7 +665,7 @@ export default function Prescriptions() {
                         {idx + 1}
                       </td>
                       <td className="py-2.5 px-3 font-mono font-semibold text-slate-700 border-r border-slate-200">
-                        {rx.id ? String(rx.id).slice(0, 8).toUpperCase() : `RX-${idx + 1}`}
+                        {rx.prescriptionCode}
                       </td>
                       <td className="py-2.5 px-3 text-slate-600 border-r border-slate-200">
                         {formatDateTime(rx.prescriptionDate || rx.createdAt)}

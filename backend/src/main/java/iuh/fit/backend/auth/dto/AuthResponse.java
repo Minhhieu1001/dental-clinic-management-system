@@ -7,6 +7,6 @@ public record AuthResponse(
         String email,
         String username,
         String role,
-        String avatarUrl
+        String avatarUrl,
+        UUID employeeId
 ) {}
-

@@ -11,6 +11,8 @@ import {
   Users,
   Bell,
   CreditCard,
+  Receipt,
+  FileSearch,
   Package,
   BarChart3,
   UserCheck,
@@ -42,6 +44,8 @@ const getTabIcon = (to, label) => {
   if (key.includes('patient') || lbl.includes('bệnh nhân')) return Users;
   if (key.includes('customer-care') || key.includes('care') || lbl.includes('chăm sóc')) return HeartHandshake;
   if (key.includes('notification') || lbl.includes('thông báo')) return Bell;
+  if (key.includes('invoice-lookup') || lbl.includes('tra cứu hóa đơn') || lbl.includes('tra cứu')) return FileSearch;
+  if (lbl === 'hóa đơn' || key === 'invoices') return Receipt;
   if (key.includes('billing') || key.includes('invoice') || lbl.includes('thanh toán') || lbl.includes('hóa đơn')) return CreditCard;
   if (key.includes('inventory') || key.includes('import') || lbl.includes('kho') || lbl.includes('nhập')) return Package;
   if (key.includes('report') || lbl.includes('báo cáo')) return BarChart3;

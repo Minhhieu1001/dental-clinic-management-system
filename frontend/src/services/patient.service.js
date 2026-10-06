@@ -41,4 +41,8 @@ export const deletePatient = async (id) => {
   const response = await api.delete(`/patients/${id}`);
   return response.data?.data ?? response.data?.result ?? response.data;
 };
-
+// Get raw invoice JOIN data by patientCode
+export const getRawInvoiceDataByPatientCode = async (patientCode) => {
+  const response = await api.get(`/patients/raw-invoice-data/${patientCode}`);
+  return response.data?.data ?? response.data?.result ?? response.data ?? [];
+};

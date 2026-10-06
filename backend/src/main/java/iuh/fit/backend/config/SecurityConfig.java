@@ -86,6 +86,8 @@ public class SecurityConfig {
                                 "/api/v1/medicines/**",
                                 "/api/v1/prescriptions/**",
                                 "/api/v1/notifications/**",
+                                "/api/v1/invoices/**",
+                                "/api/invoices/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
@@ -95,6 +97,8 @@ public class SecurityConfig {
                                 "/ws/**",
                                 "/ws"
                         ).permitAll()
+                        .requestMatchers("/api/v1/payment-transactions/**")
+                        .hasAnyRole("ADMIN", "EMPLOYEE")
                         .requestMatchers(HttpMethod.POST, "/api/v1/appointmentrequest").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/dentists/**")
                         .permitAll()

@@ -1,0 +1,16 @@
+package iuh.fit.backend.billing.service;
+
+import iuh.fit.backend.billing.dto.CreateInvoiceRequest;
+import iuh.fit.backend.billing.dto.InvoiceListResponse;
+import iuh.fit.backend.billing.dto.InvoiceResponse;
+import iuh.fit.backend.billing.dto.PaymentRequest;
+import iuh.fit.backend.billing.enums.PaymentStatus;
+
+import java.util.UUID;
+
+public interface InvoiceService {
+    InvoiceListResponse getAllInvoiceDateDesc(Integer year, Integer month, PaymentStatus status, String search);
+    InvoiceResponse getInvoiceById(UUID id);
+    InvoiceResponse createInvoice(CreateInvoiceRequest request);
+    InvoiceResponse processPayment(UUID id, PaymentRequest request);
+}

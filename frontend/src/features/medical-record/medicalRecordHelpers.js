@@ -6,6 +6,8 @@ export const DEFAULT_DENTAL_CLINIC_ADDRESS =
 
 export const DEFAULT_RECORD_FILE_NAME = 'Hồ sơ điện tử răng hàm mặt';
 
+export const PHONE_NUMBER_CLINIC = '0945366872';
+
 
 export const generateRecordFileName = (patientName, patientCode) => {
   if (!patientName && !patientCode) return DEFAULT_RECORD_FILE_NAME;

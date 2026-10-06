@@ -477,7 +477,7 @@ export default function DentistAppointments() {
   const redLineTopPercent = ((currentHour - 7 + currentMin / 60) / 11) * 100;
 
   return (
-    <div className="mx-auto max-w-[1440px] space-y-5 p-4 sm:p-6 bg-[#F4F7F6]/60 min-h-screen text-slate-800 font-sans">
+    <div className="w-full space-y-3 p-1.5 sm:p-2 bg-[#F4F7F6]/60 min-h-screen text-slate-800 font-sans">
       {/* 1. Header Navigation Bar (Exact Match with Image 1) */}
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 rounded-[4px] border border-slate-200/80 bg-white p-4 shadow-xs">
         {/* Left Date Range Controls */}

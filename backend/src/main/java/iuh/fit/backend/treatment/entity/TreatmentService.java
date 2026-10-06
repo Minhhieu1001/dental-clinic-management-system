@@ -25,6 +25,9 @@ public class TreatmentService {
     @JoinColumn(name = "service_id")
     private Service service;
 
+    @Column(name = "service_name", length = 255)
+    private String serviceName;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "treatment_phase_id")
     private TreatmentPhase treatmentPhase;
