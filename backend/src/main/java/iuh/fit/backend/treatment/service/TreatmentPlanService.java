@@ -13,4 +13,5 @@ public interface TreatmentPlanService {
     TreatmentPlanResponse getTreatmentPlanByExaminationResultId(UUID examinationResultId);
     TreatmentPlanResponse updateTreatmentPlan(UUID id, TreatmentPlanRequest request);
     void deleteTreatmentPlan(UUID id);
+    TreatmentPlanResponse autoScheduleFollowUpAppointments(UUID id);
 }

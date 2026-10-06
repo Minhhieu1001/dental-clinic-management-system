@@ -195,6 +195,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
                 .patientName(p != null ? p.getFullName() : null)
                 .patientCode(p != null ? p.getPatientCode() : null)
                 .patientPhone(p != null ? p.getPhoneNumber() : null)
+                .patientEmail(p != null ? p.getEmail() : null)
                 .dentistId(d != null ? d.getId() : null)
                 .dentistName(d != null ? d.getFullName() : null)
                 .appointmentId(record.getAppointment() != null ? record.getAppointment().getId() : null)

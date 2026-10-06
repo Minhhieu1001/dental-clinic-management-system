@@ -83,6 +83,7 @@ public class PatientServiceImpl implements PatientService {
         Patient patient = Patient.builder()
                 .patientCode(patientCode)
                 .phoneNumber(dto.getPhone())
+                .email(dto.getEmail() != null ? dto.getEmail().trim() : null)
                 .nationality(dto.getNationality())
                 .fullName(dto.getFullName() != null ? dto.getFullName().trim() : "Bệnh nhân mới")
                 .gender(dto.getGender())
@@ -199,6 +200,9 @@ public class PatientServiceImpl implements PatientService {
         // Link User if phone changed and user exists
         if (dto.getPhone() != null && !dto.getPhone().trim().isEmpty()) {
             patient.setPhoneNumber(dto.getPhone().trim());
+        }
+        if (dto.getEmail() != null) {
+            patient.setEmail(dto.getEmail().trim());
         }
 
         patient = patientRepository.save(patient);
@@ -375,6 +379,7 @@ public class PatientServiceImpl implements PatientService {
                 .patientCode(patient.getPatientCode())
                 .fullName(patient.getFullName())
                 .phone(phoneStr)
+                .email(patient.getEmail())
                 .nationality(patient.getNationality())
                 .gender(patient.getGender())
                 .dateOfBirth(patient.getDateOfBirth())

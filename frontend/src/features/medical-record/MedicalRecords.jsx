@@ -512,6 +512,7 @@ export default function MedicalRecords() {
       const patientPayload = {
         fullName: patientData.fullName,
         phone: patientData.phone,
+        email: patientData.email || null,
         gender: patientData.gender,
         dateOfBirth: patientData.dateOfBirth
           ? (patientData.dateOfBirth.includes('T') ? patientData.dateOfBirth : `${patientData.dateOfBirth}T00:00:00`)
@@ -570,6 +571,7 @@ export default function MedicalRecords() {
           fullName: updatedPatient.fullName || prev.fullName,
           nationality: updatedPatient.nationality || prev.nationality,
           phone: updatedPatient.phone || updatedPatient.phoneNumber || prev.phone,
+          email: updatedPatient.email !== undefined ? updatedPatient.email : prev.email,
           gender: updatedPatient.gender || prev.gender,
           dateOfBirth: updatedPatient.dateOfBirth
             ? String(updatedPatient.dateOfBirth).split('T')[0]

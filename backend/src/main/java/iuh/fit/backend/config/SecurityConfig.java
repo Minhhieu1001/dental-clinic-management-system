@@ -88,6 +88,8 @@ public class SecurityConfig {
                                 "/api/v1/notifications/**",
                                 "/api/v1/invoices/**",
                                 "/api/invoices/**",
+                                "/api/v1/sms/**",
+                                "/api/v1/data-fix/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",

@@ -28,12 +28,12 @@ INSERT INTO employees (id, user_id, position, salary, hire_date, status) VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- Patients
-INSERT INTO patients (id, user_id, patient_code, full_name, gender, date_of_birth, address, created_at) VALUES
-('10000000-0000-0000-0000-000000000001', NULL, 'PAT-0001', 'Nguyen Van An', 'MALE', '1995-03-12 00:00:00', '12 Nguyen Trai, District 1, Ho Chi Minh City', '2026-07-01 09:00:00'),
-('10000000-0000-0000-0000-000000000002', NULL, 'PAT-0002', 'Tran Thi Bich', 'FEMALE', '1998-08-24 00:00:00', '45 Le Loi, District 3, Ho Chi Minh City', '2026-07-01 09:05:00'),
-('10000000-0000-0000-0000-000000000003', NULL, 'PAT-0003', 'Le Minh Chau', 'OTHER', '2001-11-02 00:00:00', '78 Vo Van Tan, District 10, Ho Chi Minh City', '2026-07-01 09:10:00'),
-('10000000-0000-0000-0000-000000000004', NULL, 'PAT-0004', 'Pham Quoc Dung', 'MALE', '1988-05-17 00:00:00', '22 Dien Bien Phu, Binh Thanh, Ho Chi Minh City', '2026-07-01 09:15:00'),
-('10000000-0000-0000-0000-000000000005', NULL, 'PAT-0005', 'Hoang Ngoc Linh', 'FEMALE', '1992-12-09 00:00:00', '9 Pasteur, District 1, Ho Chi Minh City', '2026-07-01 09:20:00')
+INSERT INTO patients (id, user_id, patient_code, full_name, email, gender, date_of_birth, address, created_at) VALUES
+('10000000-0000-0000-0000-000000000001', NULL, 'PAT-0001', 'Nguyen Van An', 'an.nguyen@example.com', 'MALE', '1995-03-12 00:00:00', '12 Nguyen Trai, District 1, Ho Chi Minh City', '2026-07-01 09:00:00'),
+('10000000-0000-0000-0000-000000000002', NULL, 'PAT-0002', 'Tran Thi Bich', 'bich.tran@example.com', 'FEMALE', '1998-08-24 00:00:00', '45 Le Loi, District 3, Ho Chi Minh City', '2026-07-01 09:05:00'),
+('10000000-0000-0000-0000-000000000003', NULL, 'PAT-0003', 'Le Minh Chau', 'chau.le@example.com', 'OTHER', '2001-11-02 00:00:00', '78 Vo Van Tan, District 10, Ho Chi Minh City', '2026-07-01 09:10:00'),
+('10000000-0000-0000-0000-000000000004', NULL, 'PAT-0004', 'Pham Quoc Dung', 'dung.pham@example.com', 'MALE', '1988-05-17 00:00:00', '22 Dien Bien Phu, Binh Thanh, Ho Chi Minh City', '2026-07-01 09:15:00'),
+('10000000-0000-0000-0000-000000000005', NULL, 'PAT-0005', 'Hoang Ngoc Linh', 'linh.hoang@example.com', 'FEMALE', '1992-12-09 00:00:00', '9 Pasteur, District 1, Ho Chi Minh City', '2026-07-01 09:20:00')
 ON CONFLICT (id) DO NOTHING;
 
 -- Notifications

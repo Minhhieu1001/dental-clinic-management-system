@@ -81,6 +81,7 @@ export default function EmployeePatients() {
           patientCode: p.patientCode || `PA-${Math.floor(100000 + Math.random() * 900000)}`,
           fullName: p.fullName || p.user?.fullName || 'Bệnh nhân',
           phone: p.phone || p.phoneNumber || p.user?.phone || 'N/A',
+          email: p.email || p.user?.email || '',
           gender: p.gender || 'MALE',
           dateOfBirth: p.dateOfBirth ? p.dateOfBirth.split('T')[0] : '',
           address: p.address || 'Chưa cập nhật',
@@ -173,6 +174,7 @@ export default function EmployeePatients() {
       const payloadData = {
         fullName: formData.fullName,
         phone: formData.phone,
+        email: formData.email,
         gender: formData.gender,
         dateOfBirth: formData.dateOfBirth ? `${formData.dateOfBirth}T00:00:00` : null,
         address: formData.address,
