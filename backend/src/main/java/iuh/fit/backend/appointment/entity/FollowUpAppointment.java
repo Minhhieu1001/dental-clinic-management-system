@@ -31,6 +31,14 @@ public class FollowUpAppointment {
     
     private Boolean status;
 
+    @Builder.Default
+    @Column(name = "reminded_1day")
+    private Boolean reminded1Day = false;
+
+    @Builder.Default
+    @Column(name = "reminded_1hour")
+    private Boolean reminded1Hour = false;
+
     private LocalDateTime createAt;
     private LocalDateTime updatedAt;
 

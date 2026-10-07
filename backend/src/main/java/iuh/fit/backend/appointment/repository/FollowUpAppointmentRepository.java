@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -30,4 +31,21 @@ public interface FollowUpAppointmentRepository extends JpaRepository<FollowUpApp
 
     @Query("SELECT f FROM FollowUpAppointment f ORDER BY f.followUpDate DESC")
     List<FollowUpAppointment> findAllByOrderByFollowUpDateDesc();
+
+    // === Scheduler Reminder Queries ===
+    @Query("SELECT f FROM FollowUpAppointment f WHERE (f.status IS NULL OR f.status = true) " +
+           "AND (f.reminded1Day IS NULL OR f.reminded1Day = false) " +
+           "AND f.followUpDate >= :startTime AND f.followUpDate <= :endTime")
+    List<FollowUpAppointment> findFollowUpsNeeding1DayReminder(
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime
+    );
+
+    @Query("SELECT f FROM FollowUpAppointment f WHERE (f.status IS NULL OR f.status = true) " +
+           "AND (f.reminded1Hour IS NULL OR f.reminded1Hour = false) " +
+           "AND f.followUpDate >= :startTime AND f.followUpDate <= :endTime")
+    List<FollowUpAppointment> findFollowUpsNeeding1HourReminder(
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime
+    );
 }
