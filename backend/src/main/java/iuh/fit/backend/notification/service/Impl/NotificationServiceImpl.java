@@ -178,4 +178,78 @@ public class NotificationServiceImpl implements NotificationService {
         emailService.send(email, subject, htmlContent);
         log.info("[EMAIL SERVICE] Đã gửi Email nhắc lịch ({}) thành công tới {} ({})", reminderLabel, patientName, email);
     }
+
+    @Override
+    public void sendFollowUpAppointmentNotification(String email, String phone, String patientName, String followUpDateStr, String doctorName, String reason, String note, boolean sendEmail, boolean sendSms) {
+        String recipientPhone = (phone != null && !phone.isBlank()) ? phone.trim() : "0343632524";
+
+        if (sendSms && !recipientPhone.isBlank()) {
+            String cleanReason = (reason != null && !reason.isBlank()) ? reason : "Tái khám định kỳ";
+            String smsContent = "Crown Dental (0343632524): Thong bao lich hen tai kham cua Benh nhan " + patientName + " luc " + followUpDateStr + " tai 12 Nguyen Van Bao, Go Vap. Ly do: " + removeAccent(cleanReason) + ". Hotline: 0343632524";
+            smsService.sendSms(recipientPhone, smsContent);
+        }
+
+        if (sendEmail && email != null && !email.isBlank()) {
+            String subject = "[Crown Dental] THÔNG BÁO LỊCH HẸN TÁI KHÁM - " + patientName + " (" + followUpDateStr + ")";
+            String htmlContent = """
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <style>
+                        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
+                        .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.08); border: 1px solid #e2e8f0; }
+                        .header { background: linear-gradient(135deg, #0f766e, #0d9488); padding: 22px; text-align: center; color: #ffffff; }
+                        .header h1 { margin: 0; font-size: 20px; font-weight: bold; }
+                        .body { padding: 26px; }
+                        .appointment-card { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 18px; margin: 18px 0; }
+                        .detail-row { margin-bottom: 10px; font-size: 14px; }
+                        .detail-label { font-weight: bold; color: #475569; width: 140px; display: inline-block; }
+                        .footer { background-color: #f8fafc; padding: 16px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>NHA KHOA QUỐC TẾ CROWN DENTAL</h1>
+                            <p style="margin: 4px 0 0 0; font-size: 13px;">THÔNG BÁO LỊCH HẸN TÁI KHÁM BỆNH NHÂN</p>
+                        </div>
+                        <div class="body">
+                            <p style="font-size: 15px;">Kính gửi Quý khách <strong>%s</strong>,</p>
+                            <p style="font-size: 14px; line-height: 1.5;">Phòng khám Nha khoa Crown Dental xin thông báo lịch hẹn tái khám của Quý khách đã được xác nhận thành công với các thông tin chi tiết sau:</p>
+
+                            <div class="appointment-card">
+                                <div class="detail-row"><span class="detail-label">Thời gian tái khám:</span> <strong style="color: #0f766e; font-size: 16px;">%s</strong></div>
+                                <div class="detail-row"><span class="detail-label">Bác sĩ phụ trách:</span> <strong>%s</strong></div>
+                                <div class="detail-row"><span class="detail-label">Nội dung / Lý do:</span> <span>%s</span></div>
+                                %s
+                                <div class="detail-row"><span class="detail-label">Địa điểm:</span> <span>Nha Khoa Quốc Tế Crown Dental (12 Nguyễn Văn Bảo, Phường 4, Q. Gò Vấp, TP. HCM)</span></div>
+                            </div>
+
+                            <p style="font-size: 13px; color: #475569;">Vui lòng đến đúng giờ hẹn để bác sĩ tiến hành kiểm tra và tiếp tục lộ trình chăm sóc răng miệng tốt nhất cho Quý khách. Nếu có thay đổi hoặc cần trợ giúp, xin liên hệ Hotline: <strong>0343632524</strong>.</p>
+                        </div>
+                        <div class="footer">
+                            <p style="margin: 0;">Nha Khoa Quốc Tế Crown Dental - Hotline hỗ trợ: 0343632524</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                """.formatted(
+                        patientName,
+                        followUpDateStr,
+                        doctorName != null ? doctorName : "Bác sĩ phụ trách",
+                        reason != null ? reason : "Tái khám kiểm tra định kỳ",
+                        (note != null && !note.isBlank()) ? "<div class=\"detail-row\"><span class=\"detail-label\">Lời dặn bác sĩ:</span> <span>" + note + "</span></div>" : ""
+                );
+            emailService.send(email, subject, htmlContent);
+            log.info("[EMAIL SERVICE] Đã gửi Email thông báo lịch tái khám tới {} ({})", patientName, email);
+        }
+    }
+
+    private String removeAccent(String s) {
+        if (s == null) return "";
+        String normalized = java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD);
+        String accentRemoved = normalized.replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
+        return accentRemoved.replace('Đ', 'D').replace('đ', 'd');
+    }
 }
