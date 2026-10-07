@@ -12,6 +12,7 @@ import {
   Pencil,
   MapPin,
   CalendarCheck,
+  Sparkles,
 } from 'lucide-react';
 
 const WEEKDAYS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ Nhật'];
@@ -25,6 +26,13 @@ const isSameDay = (d1, d2) => {
     date1.getMonth() === date2.getMonth() &&
     date1.getDate() === date2.getDate()
   );
+};
+
+const formatTimeOnly = (dateStr) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 };
 
 export default function FollowUpCalendarView({
@@ -133,7 +141,7 @@ export default function FollowUpCalendarView({
   return (
     <div className="bg-white border border-slate-300 rounded-sm shadow-2xs overflow-hidden text-slate-800 text-xs font-sans">
       {/* 1. CALENDAR CONTROLS & HEADER TOOLBAR */}
-      <div className="px-4 py-3 bg-slate-100 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="px-4 py-3 bg-slate-100/90 border-b border-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1 bg-white border border-slate-300 rounded-sm p-1 shadow-2xs">
             <button
@@ -147,7 +155,7 @@ export default function FollowUpCalendarView({
             <button
               type="button"
               onClick={handleToday}
-              className="px-2.5 py-0.5 text-xs font-bold text-teal-800 hover:bg-teal-50 rounded-sm cursor-pointer transition-colors"
+              className="px-2.5 py-0.5 text-xs font-extrabold text-teal-800 hover:bg-teal-50 rounded-sm cursor-pointer transition-colors"
             >
               Hôm nay
             </button>
@@ -170,23 +178,23 @@ export default function FollowUpCalendarView({
         </div>
 
         {/* Monthly Summary Badges */}
-        <div className="flex items-center gap-2 text-[11px] font-semibold flex-wrap">
-          <span className="px-2.5 py-1 rounded-sm bg-slate-200 text-slate-800 font-bold">
+        <div className="flex items-center gap-2 text-[11px] font-bold flex-wrap">
+          <span className="px-2.5 py-1 rounded-sm bg-slate-200 text-slate-800 font-extrabold">
             Tổng: {monthStats.total} lịch hẹn
           </span>
-          <span className="px-2.5 py-1 rounded-sm bg-emerald-100 text-emerald-800 font-bold border border-emerald-200">
-            {monthStats.confirmed} Đã xác nhận
+          <span className="px-2.5 py-1 rounded-sm bg-emerald-100 text-emerald-900 font-extrabold border border-emerald-300">
+            ✓ {monthStats.confirmed} Xác nhận
           </span>
           {monthStats.cancelled > 0 && (
-            <span className="px-2.5 py-1 rounded-sm bg-rose-100 text-rose-800 font-bold border border-rose-200">
-              {monthStats.cancelled} Đã hủy
+            <span className="px-2.5 py-1 rounded-sm bg-rose-100 text-rose-900 font-extrabold border border-rose-300">
+              ✕ {monthStats.cancelled} Đã hủy
             </span>
           )}
         </div>
       </div>
 
       {/* 2. WEEKDAYS HEADER */}
-      <div className="grid grid-cols-7 border-b border-slate-300 bg-slate-200 text-slate-700 font-bold text-center py-2 text-[11px] select-none">
+      <div className="grid grid-cols-7 border-b border-slate-300 bg-slate-200/90 text-slate-800 font-extrabold text-center py-2 text-[11px] uppercase tracking-wide select-none">
         {WEEKDAYS.map((day, idx) => (
           <div
             key={day}
@@ -207,22 +215,22 @@ export default function FollowUpCalendarView({
           return (
             <div
               key={idx}
-              className={`group relative min-h-[110px] p-1.5 transition-colors duration-150 flex flex-col justify-start ${
+              className={`group relative min-h-[115px] p-2 transition-colors duration-150 flex flex-col justify-start ${
                 !isCurrentMonth
                   ? 'bg-slate-100/60 text-slate-400'
                   : isTodayCell
-                  ? 'bg-teal-50/70 text-slate-900 border-2 border-teal-500'
+                  ? 'bg-teal-50/80 text-slate-900 ring-2 ring-teal-600 ring-inset z-10'
                   : 'bg-white hover:bg-slate-50'
               }`}
             >
               {/* Day Number Header */}
               <div className="flex items-center justify-between mb-1 select-none">
                 <span
-                  className={`text-xs px-1.5 py-0.5 rounded-sm font-bold ${
+                  className={`text-xs px-2 py-0.5 rounded-sm font-extrabold ${
                     isTodayCell
-                      ? 'bg-teal-700 text-white shadow-2xs'
+                      ? 'bg-teal-700 text-white shadow-xs'
                       : isCurrentMonth
-                      ? 'text-slate-800'
+                      ? 'text-slate-900'
                       : 'text-slate-400'
                   }`}
                 >
@@ -241,73 +249,54 @@ export default function FollowUpCalendarView({
                     onClick={() => {
                       if (onAddNewOnDate) onAddNewOnDate(date);
                     }}
-                    className="opacity-0 group-hover:opacity-100 p-0.5 text-teal-700 hover:bg-teal-100 rounded-sm transition-opacity cursor-pointer"
+                    className="opacity-0 group-hover:opacity-100 p-0.5 text-teal-800 hover:bg-teal-100 rounded-sm transition-opacity cursor-pointer flex items-center gap-0.5 text-[10px] font-bold"
                     title={`Lên lịch tái khám cho ngày ${date.getDate()}/${date.getMonth() + 1}`}
                   >
-                    <Plus size={14} />
+                    <Plus size={13} />
+                    <span>Hẹn</span>
                   </button>
                 )}
               </div>
 
-              {/* Follow-up Appointments List on this day */}
-              <div className="space-y-1 overflow-y-auto max-h-[120px] pr-0.5 scrollbar-thin">
-                {itemsOnDay.map((item, itemIdx) => {
-                  const d = new Date(item.followUpDate);
-                  const timeStr = !isNaN(d.getTime())
-                    ? d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
-                    : '';
-
+              {/* Items List in Cell */}
+              <div className="space-y-1.5 overflow-y-auto max-h-[95px] pr-0.5">
+                {itemsOnDay.map((item, iIdx) => {
                   const isConfirmed = item.status !== false;
-
                   return (
                     <div
-                      key={item.id || itemIdx}
+                      key={item.id || iIdx}
                       onClick={() => onSelectFollowUp(item)}
-                      className={`p-1.5 rounded-sm border transition-all cursor-pointer shadow-2xs group/card ${
+                      className={`p-1.5 rounded-sm text-[11px] border cursor-pointer transition-all hover:shadow-md relative group/card ${
                         isConfirmed
-                          ? 'bg-emerald-50/90 border-emerald-200 hover:border-emerald-500 hover:bg-emerald-100 text-slate-900'
-                          : 'bg-rose-50/90 border-rose-200 hover:border-rose-400 hover:bg-rose-100 text-rose-900'
+                          ? 'bg-emerald-50/90 border-l-4 border-l-emerald-600 border-emerald-200 text-emerald-950 hover:bg-emerald-100'
+                          : 'bg-rose-50/90 border-l-4 border-l-rose-600 border-rose-200 text-rose-950 hover:bg-rose-100'
                       }`}
-                      title="Nhấp để xem chi tiết / chỉnh sửa lịch hẹn này"
                     >
-                      <div className="flex items-center justify-between gap-1 font-bold text-[11px] leading-tight">
-                        <span className="flex items-center gap-1 font-mono text-teal-900">
-                          <Clock size={11} className="text-teal-700 shrink-0" />
-                          {timeStr}
+                      <div className="flex items-center justify-between font-extrabold">
+                        <span className="flex items-center gap-1">
+                          <Clock size={11} className={isConfirmed ? 'text-emerald-700' : 'text-rose-700'} />
+                          {formatTimeOnly(item.followUpDate) || '09:00'}
                         </span>
-
-                        <div className="flex items-center gap-1">
-                          {isConfirmed ? (
-                            <span className="text-emerald-700 font-extrabold text-[10px]" title="Xác nhận">
-                              ✓
-                            </span>
-                          ) : (
-                            <span className="text-rose-600 font-extrabold text-[10px]" title="Đã hủy">
-                              ✕
-                            </span>
-                          )}
+                        <div className="flex items-center gap-1 opacity-0 group-hover/card:opacity-100 transition-opacity">
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (onEditFollowUp) onEditFollowUp(item);
+                              onEditFollowUp(item, e);
                             }}
-                            className="opacity-0 group-hover/card:opacity-100 p-0.5 hover:bg-white rounded-sm text-slate-600 hover:text-teal-700"
-                            title="Sửa lịch"
+                            className="p-0.5 text-slate-700 hover:text-teal-800 rounded cursor-pointer"
+                            title="Sửa"
                           >
                             <Pencil size={11} />
                           </button>
                         </div>
                       </div>
-
-                      {/* Reason or Patient */}
-                      <div className="truncate font-semibold text-[11px] mt-0.5 text-slate-800">
-                        {item.patientName || selectedPatient?.fullName || item.reason || 'Tái khám'}
+                      <div className="font-bold truncate mt-0.5 text-slate-900" title={item.reason || 'Tái khám'}>
+                        {item.reason || 'Tái khám định kỳ'}
                       </div>
-
-                      {item.reason && item.patientName && (
-                        <div className="truncate text-[10px] text-slate-600 font-medium">
-                          {item.reason}
+                      {item.dentistName && (
+                        <div className="text-[10px] text-slate-600 truncate mt-0.5 font-medium">
+                          BS. {item.dentistName}
                         </div>
                       )}
                     </div>
@@ -318,20 +307,19 @@ export default function FollowUpCalendarView({
           );
         })}
       </div>
-
-      {/* 4. CALENDAR FOOTER INSTRUCTIONS */}
-      <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-slate-500 gap-2">
+    {/* 4. CALENDAR FOOTER INSTRUCTIONS */}
+      <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-slate-600 gap-2">
         <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-xs bg-emerald-500 inline-block"></span>
+          <span className="flex items-center gap-1.5 font-semibold">
+            <span className="w-2.5 h-2.5 rounded-xs bg-emerald-600 inline-block"></span>
             Lịch hẹn đã xác nhận
           </span>
-          <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-xs bg-rose-500 inline-block"></span>
+          <span className="flex items-center gap-1.5 font-semibold">
+            <span className="w-2.5 h-2.5 rounded-xs bg-rose-600 inline-block"></span>
             Lịch hẹn đã hủy
           </span>
         </div>
-        <span>Nhấp vào bất kỳ ô lịch nào để xem chi tiết hoặc lên lịch hẹn mới</span>
+        <span className="italic">Rê chuột vào ô ngày bất kỳ để nhấn "Hẹn" hoặc nhấp cuộc hẹn để xem chi tiết</span>
       </div>
     </div>
   );

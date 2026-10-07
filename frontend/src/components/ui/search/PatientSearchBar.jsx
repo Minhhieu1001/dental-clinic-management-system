@@ -80,7 +80,7 @@ export default function PatientSearchBar({
             value={currentVal}
             disabled={loadingPatientOptions}
             onChange={handleDropdownChange}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 focus:border-teal-600 focus:ring-1 focus:ring-teal-500 cursor-pointer shadow-2xs truncate transition-all disabled:opacity-60"
+            className="w-full rounded-sm border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 focus:border-teal-600 focus:ring-1 focus:ring-teal-500 cursor-pointer shadow-2xs truncate transition-all disabled:opacity-60"
           >
             <option value="">
               {loadingPatientOptions
@@ -119,7 +119,7 @@ export default function PatientSearchBar({
                 value={phoneSearchQuery}
                 onChange={(e) => setPhoneSearchQuery && setPhoneSearchQuery(e.target.value)}
                 placeholder={inputPlaceholder}
-                className="w-40 sm:w-48 rounded-lg border border-slate-300 bg-white pl-8 pr-7 py-1.5 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:ring-1 focus:ring-teal-500 shadow-2xs"
+                className="w-40 sm:w-48 rounded-sm border border-slate-300 bg-white pl-8 pr-7 py-1.5 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:ring-1 focus:ring-teal-500 shadow-2xs"
               />
               <Phone size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-teal-700" />
               {phoneSearchQuery && (
@@ -137,7 +137,7 @@ export default function PatientSearchBar({
           <button
             type="submit"
             disabled={searchingPhone}
-            className="flex items-center gap-1.5 rounded-lg bg-teal-700 hover:bg-teal-800 px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs disabled:opacity-50 transition-colors cursor-pointer whitespace-nowrap h-[32px]"
+            className="flex items-center gap-1.5 rounded-sm bg-teal-700 hover:bg-teal-800 px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs disabled:opacity-50 transition-colors cursor-pointer whitespace-nowrap h-[32px]"
           >
             {searchingPhone ? (
               <RefreshCw size={13} className="animate-spin" />
@@ -151,7 +151,7 @@ export default function PatientSearchBar({
             <button
               type="button"
               onClick={onClearPatient}
-              className="flex items-center gap-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 px-2.5 py-1.5 text-xs font-bold text-slate-700 shadow-2xs transition-colors cursor-pointer h-[32px]"
+              className="flex items-center gap-1 rounded-sm border border-slate-300 bg-white hover:bg-slate-50 px-2.5 py-1.5 text-xs font-bold text-slate-700 shadow-2xs transition-colors cursor-pointer h-[32px]"
               title="Đóng hồ sơ bệnh nhân hiện tại để tìm bệnh nhân khác"
             >
               <RotateCcw size={12} />

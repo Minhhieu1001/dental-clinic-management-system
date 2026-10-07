@@ -75,8 +75,8 @@ public class AppointmentReminderScheduler {
         // A. NHẮC LỊCH CHO APPOINTMENT (Lịch hẹn khám)
         // ============================================================
 
-        // 1. NHẮC TRƯỚC 1 NGÀY (Tất cả lịch hẹn diễn ra trong khoảng từ 18 giờ đến 30 giờ tới)
-        LocalDateTime start1Day = now.plusHours(18);
+        // 1. NHẮC TRƯỚC 1 NGÀY (Tất cả lịch hẹn/lịch tái khám diễn ra trong khoảng từ 65 phút đến 30 giờ tới)
+        LocalDateTime start1Day = now.plusMinutes(65);
         LocalDateTime end1Day = now.plusHours(30);
         List<Appointment> appts1Day = appointmentRepository.findAppointmentsNeeding1DayReminder(start1Day, end1Day);
 

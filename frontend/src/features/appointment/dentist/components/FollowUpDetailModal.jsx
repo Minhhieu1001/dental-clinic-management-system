@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Calendar, Clock, User, Phone, MapPin, Printer, FileText, CheckCircle, AlertCircle, Mail, MessageSquare } from 'lucide-react';
+import { X, Calendar, Clock, User, Phone, MapPin, Printer, FileText, CheckCircle, AlertCircle, Mail, MessageSquare, Sparkles, Building2 } from 'lucide-react';
 
 const formatDateTimeDisplay = (dateStr) => {
   if (!dateStr) return '—';
@@ -56,82 +56,83 @@ export default function FollowUpDetailModal({
         {/* Content */}
         <div className="p-5 space-y-4 text-xs">
           {/* Status Badge & Time Banner */}
-          <div className="rounded-sm bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="rounded-sm bg-gradient-to-r from-teal-50 via-emerald-50 to-teal-50 border border-teal-200 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
             <div>
-              <span className="text-[11px] font-bold text-teal-800 uppercase tracking-wide block mb-0.5">
+              <span className="text-[10px] font-extrabold text-teal-800 uppercase tracking-wide block mb-0.5">
                 Thời gian hẹn tái khám
               </span>
-              <div className="text-sm font-extrabold text-teal-900 flex items-center gap-1.5 capitalize">
-                <Clock size={16} className="text-teal-700 shrink-0" />
+              <div className="text-sm font-black text-teal-950 flex items-center gap-2 capitalize">
+                <Clock size={18} className="text-teal-700 shrink-0" />
                 <span>{formatDateTimeDisplay(followUp.followUpDate)}</span>
               </div>
             </div>
             <div className="self-start sm:self-auto">
               {followUp.status !== false ? (
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-sm bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-[11px]">
-                  <CheckCircle size={13} /> Đã xác nhận
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-sm bg-emerald-100 text-emerald-900 border border-emerald-300 font-extrabold text-[11px] shadow-2xs">
+                  <CheckCircle size={14} className="text-emerald-700" /> Đã xác nhận
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-sm bg-rose-100 text-rose-800 border border-rose-300 font-bold text-[11px]">
-                  <AlertCircle size={13} /> Đã hủy
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-sm bg-rose-100 text-rose-900 border border-rose-300 font-extrabold text-[11px]">
+                  <AlertCircle size={14} className="text-rose-700" /> Đã hủy
                 </span>
               )}
             </div>
           </div>
 
           {/* Patient Card */}
-          <div className="rounded-sm border border-slate-200 bg-slate-50/70 p-3 space-y-1">
-            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
-              THÔNG TIN BỆNH NHÂN
+          <div className="rounded-sm border border-slate-200 bg-slate-50/80 p-3.5 space-y-2">
+            <div className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider flex items-center gap-1">
+              <User size={13} className="text-teal-700" />
+              <span>THÔNG TIN BỆNH NHÂN</span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-800 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-800 pt-0.5">
               <div>
-                Họ và tên: <strong className="text-slate-900">{patient?.fullName || followUp.patientName || '—'}</strong>
+                Họ và tên: <strong className="text-slate-900 font-extrabold">{patient?.fullName || followUp.patientName || '—'}</strong>
               </div>
               <div>
-                Mã bệnh nhân: <strong className="text-teal-800 font-mono">{patient?.patientCode || followUp.patientCode || '—'}</strong>
+                Mã bệnh nhân: <strong className="text-teal-900 font-mono font-extrabold bg-teal-100 px-1.5 py-0.5 rounded border border-teal-200 text-[11px]">{patient?.patientCode || followUp.patientCode || '—'}</strong>
               </div>
               <div>
-                Số điện thoại: <strong className="text-slate-900">{patient?.phone || patient?.phoneNumber || followUp.patientPhone || '—'}</strong>
+                Số điện thoại: <strong className="text-slate-900 font-bold">{patient?.phone || patient?.phoneNumber || followUp.patientPhone || '—'}</strong>
               </div>
               <div>
-                Email: <strong className="text-slate-900">{patient?.email || followUp.patientEmail || '—'}</strong>
+                Email: <strong className="text-slate-900 font-medium">{patient?.email || followUp.patientEmail || '—'}</strong>
               </div>
             </div>
           </div>
 
           {/* Details */}
-          <div className="space-y-2 border-t border-slate-200 pt-3">
+          <div className="space-y-3 border-t border-slate-200 pt-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
                 <span className="text-slate-500 font-medium">Bác sĩ phụ trách:</span>{' '}
-                <strong className="text-slate-900">{followUp.dentistName || 'BS. Nha Khoa Crown Dental'}</strong>
+                <strong className="text-slate-900 font-bold">{followUp.dentistName || 'BS. Nha Khoa Crown Dental'}</strong>
               </div>
               <div>
                 <span className="text-slate-500 font-medium">Ngày lập phiếu:</span>{' '}
-                <strong className="text-slate-800">{formatDateDisplay(followUp.createAt || followUp.createdAt)}</strong>
+                <strong className="text-slate-800 font-semibold">{formatDateDisplay(followUp.createAt || followUp.createdAt)}</strong>
               </div>
             </div>
 
             <div>
-              <span className="text-slate-500 font-medium block mb-0.5">Lý do / Nội dung tái khám:</span>
-              <div className="bg-slate-50 p-2.5 rounded-sm border border-slate-200 text-slate-900 font-semibold">
+              <span className="text-slate-600 font-bold block mb-1">Lý do / Nội dung tái khám:</span>
+              <div className="bg-slate-50 p-3 rounded-sm border border-slate-200 text-slate-900 font-extrabold text-xs">
                 {followUp.reason || 'Tái khám kiểm tra định kỳ'}
               </div>
             </div>
 
             {followUp.note && (
               <div>
-                <span className="text-slate-500 font-medium block mb-0.5">Ghi chú & Lời dặn nha sĩ:</span>
-                <div className="bg-amber-50/60 p-2.5 rounded-sm border border-amber-200 text-slate-800 italic">
+                <span className="text-slate-600 font-bold block mb-1">Ghi chú & Lời dặn nha sĩ:</span>
+                <div className="bg-amber-50/70 p-3 rounded-sm border border-amber-200 text-slate-800 font-medium italic">
                   {followUp.note}
                 </div>
               </div>
             )}
 
-            <div className="flex items-center gap-1.5 text-slate-500 pt-1">
-              <MapPin size={13} className="text-teal-700 shrink-0" />
-              <span>Địa điểm: <strong>Nha Khoa Quốc Tế Crown Dental (12 Nguyễn Văn Bảo, Q. Gò Vấp)</strong></span>
+            <div className="flex items-center gap-1.5 text-slate-600 pt-1">
+              <Building2 size={14} className="text-teal-700 shrink-0" />
+              <span>Địa điểm: <strong className="text-slate-900">Nha Khoa Quốc Tế Crown Dental (12 Nguyễn Văn Bảo, Q. Gò Vấp, TP. HCM)</strong></span>
             </div>
           </div>
         </div>
@@ -141,7 +142,7 @@ export default function FollowUpDetailModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-800 bg-white border border-slate-300 rounded-sm cursor-pointer"
+            className="px-4 py-1.5 text-xs font-bold text-slate-700 hover:text-slate-900 bg-white border border-slate-300 rounded-sm cursor-pointer shadow-2xs"
           >
             Đóng
           </button>
@@ -150,12 +151,13 @@ export default function FollowUpDetailModal({
             onClick={() => {
               if (onPrint) onPrint(followUp);
             }}
-            className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 rounded-sm transition-colors cursor-pointer shadow-xs"
+            className="flex items-center gap-2 px-4 py-1.5 text-xs font-extrabold text-white bg-teal-700 hover:bg-teal-800 rounded-sm transition-colors cursor-pointer shadow-md"
           >
-            <Printer size={14} /> In Giấy Hẹn Tái Khám
+            <Printer size={15} /> In Giấy Hẹn Tái Khám
           </button>
         </div>
       </div>
     </div>
   );
 }
+
