@@ -4,4 +4,5 @@ public interface NotificationService {
     void sendAccountCreatedEmail(String email, String username, String password);
     void sendTreatmentRoadmapEmail(String email, String patientName, String phone, String planName, String roadmapDetailsHtml);
     void sendAppointmentReminderEmail(String email, String phone, String patientName, String appointmentTimeStr, String doctorName, String reason, String reminderType);
+    void sendFollowUpAppointmentNotification(String email, String phone, String patientName, String followUpDateStr, String doctorName, String reason, String note, boolean sendEmail, boolean sendSms);
 }

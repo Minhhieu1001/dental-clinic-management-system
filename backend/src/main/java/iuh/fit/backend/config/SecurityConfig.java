@@ -85,6 +85,7 @@ public class SecurityConfig {
                                 "/api/v1/treatment-plans/**",
                                 "/api/v1/medicines/**",
                                 "/api/v1/prescriptions/**",
+                                "/api/v1/follow-up-appointments/**",
                                 "/api/v1/notifications/**",
                                 "/api/v1/invoices/**",
                                 "/api/invoices/**",
