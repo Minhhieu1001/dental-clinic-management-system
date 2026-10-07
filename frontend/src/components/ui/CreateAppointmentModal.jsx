@@ -343,24 +343,24 @@ export default function CreateAppointmentModal({
 
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-2xl rounded-xl bg-white shadow-2xl ring-1 ring-slate-900/10 overflow-hidden max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 sm:p-4 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="w-full max-w-2xl rounded-sm bg-white shadow-2xl border border-slate-200 overflow-hidden max-h-[94vh] flex flex-col font-sans text-xs">
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-teal-800 via-teal-700 to-emerald-700 px-6 py-4 text-white shrink-0">
+        <div className="flex items-center justify-between border-b border-teal-800/40 bg-teal-800 px-5 py-3.5 text-white shrink-0 shadow-2xs">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-white/15 backdrop-blur-md border border-white/20 text-white shadow-md">
-              <Stethoscope size={22} />
+            <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-white/15 border border-white/20 text-white shadow-2xs shrink-0">
+              <Stethoscope size={20} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-teal-200">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-teal-200">
                   {isEditMode ? 'Đổi Lịch Khám Bệnh Nhân' : 'Đặt Lịch Khám Bệnh Nhân'}
                 </span>
-                <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold text-white flex items-center gap-1">
-                  <Sparkles size={11} /> Đã kết nối Hệ thống Bác sĩ
+                <span className="rounded-sm bg-white/20 px-2 py-0.5 text-[9px] font-extrabold text-white flex items-center gap-1">
+                  <Sparkles size={10} /> Đã kết nối Hệ thống Bác sĩ
                 </span>
               </div>
-              <h3 className="text-lg font-bold leading-tight">
+              <h3 className="text-base font-extrabold leading-tight text-white tracking-wide">
                 {isEditMode ? 'Cập Nhật Thông Tin & Đổi Ca Khám' : 'Phân Công Bác Sĩ & Tạo Ca Khám'}
               </h3>
             </div>
@@ -368,21 +368,21 @@ export default function CreateAppointmentModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full p-1.5 text-teal-100 hover:bg-white/10 hover:text-white transition-colors"
+            className="rounded-sm p-1.5 text-teal-100 hover:bg-white/15 hover:text-white transition-colors cursor-pointer"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-3.5 overflow-y-auto flex-1 text-slate-800">
           {/* Section 1: Patient Information */}
-          <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-teal-800 flex items-center gap-1.5">
-              <User size={14} className="text-teal-600" /> Thông tin bệnh nhân
+          <div className="rounded-sm border border-slate-200 bg-slate-50/70 p-3.5 space-y-2.5">
+            <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-teal-800 flex items-center gap-1.5">
+              <User size={14} className="text-teal-700" /> Thông tin bệnh nhân
             </h4>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1">
                   Họ và tên bệnh nhân <span className="text-rose-500">*</span>
@@ -394,7 +394,7 @@ export default function CreateAppointmentModal({
                   value={formData.fullName}
                   onChange={handleChange}
                   placeholder="Ví dụ: Nguyễn Văn An"
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-800 focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                  className="w-full rounded-sm border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
                 />
               </div>
 
@@ -409,7 +409,7 @@ export default function CreateAppointmentModal({
                   value={formData.phone}
                   onChange={handleChange}
                   placeholder="09xx xxx xxx"
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-800 focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                  className="w-full rounded-sm border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
                 />
               </div>
 
@@ -419,7 +419,7 @@ export default function CreateAppointmentModal({
                   name="gender"
                   value={formData.gender}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-800 bg-white focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                  className="w-full rounded-sm border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-800 bg-white focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
                 >
                   <option value="Nam">Nam</option>
                   <option value="Nữ">Nữ</option>
@@ -434,7 +434,7 @@ export default function CreateAppointmentModal({
                   name="dob"
                   value={formData.dob}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-800 bg-white focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                  className="w-full rounded-sm border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-800 bg-white focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
                 />
               </div>
             </div>
@@ -442,34 +442,34 @@ export default function CreateAppointmentModal({
 
           {/* Section 2: Professional Doctor Selector (CUSTOM DROPDOWN) */}
           <div className="relative" ref={dropdownRef}>
-            <label className="block text-[12px] font-bold text-slate-800 mb-1.5 flex items-center justify-between">
+            <label className="block text-[11px] font-bold text-slate-800 mb-1 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <Stethoscope size={15} className="text-teal-600" />
+                <Stethoscope size={14} className="text-teal-700" />
                 Bác sĩ phụ trách chuyên môn <span className="text-rose-500">*</span>
               </span>
-              <span className="text-[11px] font-normal text-slate-500">Lịch khám sẽ hiển thị ở tài khoản Bác sĩ đã chọn</span>
+              <span className="text-[10px] font-medium text-slate-500">Lịch khám sẽ hiển thị ở tài khoản Bác sĩ đã chọn</span>
             </label>
 
             {/* Custom Doctor Select Trigger Card */}
             <div
               onClick={() => setIsDoctorDropdownOpen(!isDoctorDropdownOpen)}
-              className="flex items-center justify-between rounded-xl border border-teal-600/30 bg-teal-50/40 p-3 shadow-sm hover:border-teal-600 hover:bg-teal-50/60 cursor-pointer transition-all"
+              className="flex items-center justify-between rounded-sm border border-teal-600/40 bg-teal-50/50 p-2.5 shadow-2xs hover:border-teal-700 hover:bg-teal-50/80 cursor-pointer transition-all"
             >
               {selectedDoctor ? (
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal-700 font-extrabold text-white shadow-md text-sm border border-teal-800">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-teal-700 font-extrabold text-white text-xs border border-teal-800 shadow-2xs">
                     {getDoctorInitials(selectedDoctor)}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-extrabold text-slate-800">
+                      <p className="text-xs font-extrabold text-slate-900">
                         {getDoctorName(selectedDoctor)}
                       </p>
-                      <span className="inline-flex items-center gap-1 rounded-md bg-teal-100 px-2 py-0.5 text-[10px] font-bold text-teal-800 border border-teal-200">
-                        <Award size={10} /> {selectedDoctor.experienceYears || 8}+ năm KN
+                      <span className="inline-flex items-center gap-1 rounded-sm bg-teal-100 px-1.5 py-0.2 text-[9px] font-extrabold text-teal-800 border border-teal-200">
+                        <Award size={9} /> {selectedDoctor.experienceYears || 8}+ năm KN
                       </span>
                     </div>
-                    <p className="text-[11px] text-teal-700 font-bold mt-0.5">
+                    <p className="text-[10px] text-teal-700 font-bold mt-0.2">
                       {getDoctorSpecialization(selectedDoctor)}
                     </p>
                   </div>
@@ -478,32 +478,32 @@ export default function CreateAppointmentModal({
                 <span className="text-xs text-slate-400 font-medium">Chọn Bác sĩ trong danh sách...</span>
               )}
               <ChevronDown
-                size={20}
+                size={18}
                 className={`text-teal-700 transition-transform ${isDoctorDropdownOpen ? 'rotate-180' : ''}`}
               />
             </div>
 
             {/* Custom Floating Searchable Dropdown Menu */}
             {isDoctorDropdownOpen && (
-              <div className="absolute left-0 right-0 top-full z-50 mt-1.5 rounded-xl border border-slate-200 bg-white shadow-2xl ring-1 ring-black/5 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+              <div className="absolute left-0 right-0 top-full z-50 mt-1 rounded-sm border border-slate-300 bg-white shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
                 {/* Search Bar */}
-                <div className="border-b border-slate-100 p-2.5 bg-slate-50/70">
+                <div className="border-b border-slate-200 p-2 bg-slate-50">
                   <div className="relative">
-                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                       type="text"
                       value={doctorSearchTerm}
                       onChange={(e) => setDoctorSearchTerm(e.target.value)}
                       placeholder="Tìm bác sĩ theo tên hoặc chuyên khoa..."
-                      className="w-full rounded-lg border border-slate-200 bg-white pl-8 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                      className="w-full rounded-sm border border-slate-200 bg-white pl-7 pr-2.5 py-1 text-xs text-slate-800 placeholder-slate-400 focus:border-teal-600 focus:outline-none"
                     />
                   </div>
                 </div>
 
                 {/* Doctor List */}
-                <div className="max-h-60 overflow-y-auto divide-y divide-slate-100 p-1.5">
+                <div className="max-h-56 overflow-y-auto divide-y divide-slate-100 p-1">
                   {filteredDentists.length === 0 ? (
-                    <div className="py-6 text-center text-xs text-slate-400">Không tìm thấy bác sĩ phù hợp</div>
+                    <div className="py-5 text-center text-xs text-slate-400">Không tìm thấy bác sĩ phù hợp</div>
                   ) : (
                     filteredDentists.map((doc) => {
                       const isSelected = doc.id === formData.dentistId;
@@ -515,15 +515,17 @@ export default function CreateAppointmentModal({
                         <div
                           key={doc.id}
                           onClick={() => handleSelectDoctor(doc)}
-                          className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all ${isSelected
-                            ? 'bg-teal-700 text-white font-bold shadow-md shadow-teal-700/20'
-                            : 'hover:bg-slate-50 text-slate-800'
-                            }`}
+                          className={`flex items-center justify-between p-2.5 rounded-sm cursor-pointer transition-all ${
+                            isSelected
+                              ? 'bg-teal-700 text-white font-bold shadow-2xs'
+                              : 'hover:bg-slate-50 text-slate-800'
+                          }`}
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2.5">
                             <div
-                              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold text-xs ${isSelected ? 'bg-white text-teal-800' : 'bg-teal-50 text-teal-700 border border-teal-100'
-                                }`}
+                              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-sm font-bold text-xs ${
+                                isSelected ? 'bg-white text-teal-800' : 'bg-teal-50 text-teal-700 border border-teal-200'
+                              }`}
                             >
                               {initials}
                             </div>
@@ -533,19 +535,20 @@ export default function CreateAppointmentModal({
                                   {docName}
                                 </p>
                                 <span
-                                  className={`rounded-md px-1.5 py-0.5 text-[9px] font-bold ${isSelected ? 'bg-white/20 text-white' : 'bg-teal-50 text-teal-700 border border-teal-200'
-                                    }`}
+                                  className={`rounded-sm px-1.5 py-0.2 text-[9px] font-bold ${
+                                    isSelected ? 'bg-white/20 text-white' : 'bg-teal-50 text-teal-700 border border-teal-200'
+                                  }`}
                                 >
                                   {doc.experienceYears || 8}+ năm KN
                                 </span>
                               </div>
-                              <p className={`text-[11px] font-medium mt-0.5 ${isSelected ? 'text-teal-100' : 'text-slate-500'}`}>
+                              <p className={`text-[10px] font-medium mt-0.2 ${isSelected ? 'text-teal-100' : 'text-slate-500'}`}>
                                 {docSpec}
                               </p>
                             </div>
                           </div>
 
-                          {isSelected && <CheckCircle2 size={18} className="text-white shrink-0" />}
+                          {isSelected && <CheckCircle2 size={16} className="text-white shrink-0" />}
                         </div>
                       );
                     })
@@ -556,19 +559,19 @@ export default function CreateAppointmentModal({
           </div>
 
           {/* Section 3: Schedule, Room & Service details */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {/* Room */}
             <div>
               <label className="block text-[11px] font-bold text-slate-700 mb-1">
                 <span className="flex items-center gap-1">
-                  <Building size={13} className="text-teal-600" /> Phòng khám xếp lịch
+                  <Building size={13} className="text-teal-700" /> Phòng khám xếp lịch
                 </span>
               </label>
               <select
                 name="roomId"
                 value={formData.roomId}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-800 bg-white focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                className="w-full rounded-sm border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-800 bg-white focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
               >
                 <option value="">-- Chọn phòng khám --</option>
                 {rooms.map((r) => (
@@ -590,7 +593,7 @@ export default function CreateAppointmentModal({
                 name="priority"
                 value={formData.priority}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-800 bg-white focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                className="w-full rounded-sm border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-800 bg-white focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
               >
                 <option value="NORMAL">Khám thông thường (Theo thứ tự)</option>
                 <option value="URGENT">⚠️ Ưu tiên / Ca cấp cứu nha khoa</option>
@@ -601,7 +604,7 @@ export default function CreateAppointmentModal({
             <div>
               <label className="block text-[11px] font-bold text-slate-700 mb-1">
                 <span className="flex items-center gap-1">
-                  <Calendar size={13} className="text-teal-600" /> Ngày hẹn khám <span className="text-rose-500">*</span>
+                  <Calendar size={13} className="text-teal-700" /> Ngày hẹn khám <span className="text-rose-500">*</span>
                 </span>
               </label>
               <input
@@ -610,7 +613,7 @@ export default function CreateAppointmentModal({
                 required
                 value={formData.appointmentDate}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-800 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                className="w-full rounded-sm border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-800 bg-white focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
               />
             </div>
 
@@ -618,7 +621,7 @@ export default function CreateAppointmentModal({
             <div>
               <label className="block text-[11px] font-bold text-slate-700 mb-1">
                 <span className="flex items-center gap-1">
-                  <Clock size={13} className="text-teal-600" /> Giờ khám <span className="text-rose-500">*</span>
+                  <Clock size={13} className="text-teal-700" /> Giờ khám <span className="text-rose-500">*</span>
                 </span>
               </label>
               <input
@@ -627,7 +630,7 @@ export default function CreateAppointmentModal({
                 required
                 value={formData.appointmentTime}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-800 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                className="w-full rounded-sm border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-800 bg-white focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
               />
             </div>
           </div>
@@ -636,7 +639,7 @@ export default function CreateAppointmentModal({
           <div>
             <label className="block text-[11px] font-bold text-slate-700 mb-1">
               <span className="flex items-center gap-1">
-                <FileText size={13} className="text-teal-600" /> Dịch vụ / Lý do khám bệnh <span className="text-rose-500">*</span>
+                <FileText size={13} className="text-teal-700" /> Dịch vụ / Lý do khám bệnh <span className="text-rose-500">*</span>
               </span>
             </label>
             <div className="space-y-1.5">
@@ -647,7 +650,7 @@ export default function CreateAppointmentModal({
                     setFormData((prev) => ({ ...prev, reason: e.target.value }));
                   }
                 }}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-800 bg-white focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                className="w-full rounded-sm border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-800 bg-white focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
               >
                 {COMMON_SERVICES.map((srv) => (
                   <option key={srv} value={srv}>
@@ -664,7 +667,7 @@ export default function CreateAppointmentModal({
                   value={formData.reason}
                   onChange={handleChange}
                   placeholder="Nhập lý do hoặc dịch vụ nha khoa cụ thể..."
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-800 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                  className="w-full rounded-sm border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-800 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
                 />
               )}
             </div>
@@ -681,28 +684,28 @@ export default function CreateAppointmentModal({
               value={formData.notes}
               onChange={handleChange}
               placeholder="Nhập tiền sử bệnh lý hoặc lời dặn của bệnh nhân..."
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 resize-none"
+              className="w-full rounded-sm border border-slate-200 px-3 py-1.5 text-xs text-slate-800 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600 resize-none"
             />
           </div>
 
           {/* Actions Footer */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+              className="rounded-sm border border-slate-300 bg-white px-4 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
             >
               Hủy / Đóng
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="flex items-center gap-1.5 rounded-lg bg-teal-700 px-5 py-2 text-xs font-bold text-white shadow-md shadow-teal-700/20 hover:bg-teal-800 transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-sm bg-teal-700 px-5 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-teal-800 transition-colors disabled:opacity-50 cursor-pointer"
             >
               {submitting ? (
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
               ) : (
-                <CheckCircle2 size={16} />
+                <CheckCircle2 size={15} />
               )}
               {isEditMode ? 'Xác Nhận Đổi Lịch' : 'Xác Nhận Tạo Lịch Hẹn'}
             </button>

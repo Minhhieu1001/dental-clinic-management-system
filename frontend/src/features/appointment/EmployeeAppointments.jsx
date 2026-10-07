@@ -670,44 +670,40 @@ export default function EmployeeAppointments() {
             <button
               type="button"
               onClick={() => setViewMode('DAY')}
-              className={`rounded-sm px-3 py-1 text-xs font-bold transition-all cursor-pointer ${
-                viewMode === 'DAY'
-                  ? 'bg-white text-teal-800 shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`rounded-sm px-3 py-1 text-xs font-bold transition-all cursor-pointer ${viewMode === 'DAY'
+                ? 'bg-white text-teal-800 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               Ngày
             </button>
             <button
               type="button"
               onClick={() => setViewMode('WEEK')}
-              className={`rounded-sm px-3 py-1 text-xs font-bold transition-all cursor-pointer ${
-                viewMode === 'WEEK'
-                  ? 'bg-white text-teal-800 shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`rounded-sm px-3 py-1 text-xs font-bold transition-all cursor-pointer ${viewMode === 'WEEK'
+                ? 'bg-white text-teal-800 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               Tuần
             </button>
             <button
               type="button"
               onClick={() => setViewMode('MONTH')}
-              className={`rounded-sm px-3 py-1 text-xs font-bold transition-all cursor-pointer ${
-                viewMode === 'MONTH'
-                  ? 'bg-white text-teal-800 shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`rounded-sm px-3 py-1 text-xs font-bold transition-all cursor-pointer ${viewMode === 'MONTH'
+                ? 'bg-white text-teal-800 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               Tháng
             </button>
             <button
               type="button"
               onClick={() => setViewMode('LIST')}
-              className={`rounded-sm px-3 py-1 text-xs font-bold transition-all duration-150 flex items-center gap-1 cursor-pointer active:scale-95 ${
-                viewMode === 'LIST'
-                  ? 'bg-teal-700 text-white shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`rounded-sm px-3 py-1 text-xs font-bold transition-all duration-150 flex items-center gap-1 cursor-pointer active:scale-95 ${viewMode === 'LIST'
+                ? 'bg-teal-700 text-white shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               <ListFilter size={13} />
               Danh sách
@@ -718,11 +714,10 @@ export default function EmployeeAppointments() {
           <button
             type="button"
             onClick={() => setViewMode(viewMode === 'LIST' ? 'WEEK' : 'LIST')}
-            className={`flex items-center gap-1.5 rounded-sm border px-3 py-1.5 text-xs font-bold transition-all duration-150 shadow-2xs cursor-pointer active:scale-95 ${
-              viewMode === 'LIST'
-                ? 'border-teal-700 bg-teal-800 text-white'
-                : 'border-teal-200 bg-teal-50/80 text-teal-800 hover:bg-teal-100'
-            }`}
+            className={`flex items-center gap-1.5 rounded-sm border px-3 py-1.5 text-xs font-bold transition-all duration-150 shadow-2xs cursor-pointer active:scale-95 ${viewMode === 'LIST'
+              ? 'border-teal-700 bg-teal-800 text-white'
+              : 'border-teal-200 bg-teal-50/80 text-teal-800 hover:bg-teal-100'
+              }`}
           >
             <History size={14} className={viewMode === 'LIST' ? 'text-white' : 'text-teal-700'} />
             <span>Lịch sử 7 ngày</span>
@@ -767,39 +762,36 @@ export default function EmployeeAppointments() {
             {/* Receptionist Filter Toolbar */}
             <div className="flex flex-wrap items-center gap-2 text-xs">
               {/* Creator Scope Filter Buttons */}
-              <div className="flex items-center gap-0.5 rounded-sm bg-slate-100 p-0.5 border border-slate-200">
+              <div className="flex items-center gap-0.5 rounded-sm bg-slate-100/90 p-0.5 border border-slate-200">
                 <button
                   type="button"
                   onClick={() => setCreatorScopeFilter('ALL')}
-                  className={`rounded-sm px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
-                    creatorScopeFilter === 'ALL'
-                      ? 'bg-slate-900 text-white shadow-2xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                  className={`rounded-sm px-3 py-1 text-xs font-bold transition-all cursor-pointer ${creatorScopeFilter === 'ALL'
+                    ? 'bg-teal-700 text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                    }`}
                 >
-                  Tất cả ({weekStats.total})
+                  Tất cả
                 </button>
                 <button
                   type="button"
                   onClick={() => setCreatorScopeFilter('MY_CREATED')}
-                  className={`rounded-sm px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
-                    creatorScopeFilter === 'MY_CREATED'
-                      ? 'bg-teal-700 text-white shadow-2xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                  className={`rounded-sm px-3 py-1 text-xs font-bold transition-all cursor-pointer ${creatorScopeFilter === 'MY_CREATED'
+                    ? 'bg-teal-700 text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                    }`}
                 >
-                  Do tôi tạo ({weekStats.myCreatedCount})
+                  Tại quầy
                 </button>
                 <button
                   type="button"
                   onClick={() => setCreatorScopeFilter('WEB_REQUESTS')}
-                  className={`rounded-sm px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
-                    creatorScopeFilter === 'WEB_REQUESTS'
-                      ? 'bg-amber-600 text-white shadow-2xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                  className={`rounded-sm px-3 py-1 text-xs font-bold transition-all cursor-pointer ${creatorScopeFilter === 'WEB_REQUESTS'
+                    ? 'bg-teal-700 text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                    }`}
                 >
-                  Web / Hotline ({weekStats.webRequestCount})
+                  Trực tuyến
                 </button>
               </div>
 
@@ -871,11 +863,10 @@ export default function EmployeeAppointments() {
           {/* Card 1: Tất cả */}
           <div
             onClick={() => setStatusFilter('ALL')}
-            className={`rounded-sm p-2 px-2.5 border flex items-center justify-between shadow-2xs cursor-pointer transition-all duration-150 active:scale-95 ${
-              statusFilter === 'ALL'
-                ? 'bg-teal-50 border-teal-600 ring-2 ring-teal-600'
-                : 'bg-slate-50/80 border-slate-200 hover:bg-slate-100'
-            }`}
+            className={`rounded-sm p-2 px-2.5 border flex items-center justify-between shadow-2xs cursor-pointer transition-all duration-150 active:scale-95 ${statusFilter === 'ALL'
+              ? 'bg-teal-50 border-teal-600 ring-2 ring-teal-600'
+              : 'bg-slate-50/80 border-slate-200 hover:bg-slate-100'
+              }`}
             title="Nhấp để xem tất cả lịch hẹn"
           >
             <div>
@@ -888,11 +879,10 @@ export default function EmployeeAppointments() {
           {/* Card 2: Chưa lên lịch */}
           <div
             onClick={() => setStatusFilter('UNASSIGNED')}
-            className={`rounded-sm p-2 px-2.5 border flex items-center justify-between shadow-2xs cursor-pointer transition-all duration-150 active:scale-95 ${
-              statusFilter === 'UNASSIGNED'
-                ? 'bg-amber-50 border-amber-500 ring-2 ring-amber-500'
-                : 'bg-slate-50/80 border-slate-200 hover:bg-slate-100'
-            }`}
+            className={`rounded-sm p-2 px-2.5 border flex items-center justify-between shadow-2xs cursor-pointer transition-all duration-150 active:scale-95 ${statusFilter === 'UNASSIGNED'
+              ? 'bg-amber-50 border-amber-500 ring-2 ring-amber-500'
+              : 'bg-slate-50/80 border-slate-200 hover:bg-slate-100'
+              }`}
             title="Nhấp để lọc ca chưa xếp bác sĩ"
           >
             <div>
@@ -907,11 +897,10 @@ export default function EmployeeAppointments() {
           {/* Card 3: Đã lên lịch */}
           <div
             onClick={() => setStatusFilter('SCHEDULED')}
-            className={`rounded-sm p-2 px-2.5 border flex items-center justify-between shadow-2xs cursor-pointer transition-all duration-150 active:scale-95 ${
-              statusFilter === 'SCHEDULED'
-                ? 'bg-teal-50 border-teal-600 ring-2 ring-teal-600'
-                : 'bg-slate-50/80 border-slate-200 hover:bg-slate-100'
-            }`}
+            className={`rounded-sm p-2 px-2.5 border flex items-center justify-between shadow-2xs cursor-pointer transition-all duration-150 active:scale-95 ${statusFilter === 'SCHEDULED'
+              ? 'bg-teal-50 border-teal-600 ring-2 ring-teal-600'
+              : 'bg-slate-50/80 border-slate-200 hover:bg-slate-100'
+              }`}
             title="Nhấp để lọc ca đã lên lịch thành công"
           >
             <div>
@@ -926,11 +915,10 @@ export default function EmployeeAppointments() {
           {/* Card 4: Từ chối */}
           <div
             onClick={() => setStatusFilter('REJECTED')}
-            className={`rounded-sm p-2 px-2.5 border flex items-center justify-between shadow-2xs cursor-pointer transition-all duration-150 active:scale-95 ${
-              statusFilter === 'REJECTED'
-                ? 'bg-rose-50 border-rose-500 ring-2 ring-rose-500'
-                : 'bg-slate-50/80 border-slate-200 hover:bg-slate-100'
-            }`}
+            className={`rounded-sm p-2 px-2.5 border flex items-center justify-between shadow-2xs cursor-pointer transition-all duration-150 active:scale-95 ${statusFilter === 'REJECTED'
+              ? 'bg-rose-50 border-rose-500 ring-2 ring-rose-500'
+              : 'bg-slate-50/80 border-slate-200 hover:bg-slate-100'
+              }`}
             title="Nhấp để lọc ca đã bị từ chối / hủy"
           >
             <div>
@@ -1108,9 +1096,8 @@ export default function EmployeeAppointments() {
                   return (
                     <div
                       key={idx}
-                      className={`p-3 border-r border-slate-200 last:border-r-0 ${
-                        isToday ? 'bg-teal-50/90 text-teal-950 font-extrabold border-b-2 border-b-teal-600' : ''
-                      }`}
+                      className={`p-3 border-r border-slate-200 last:border-r-0 ${isToday ? 'bg-teal-50/90 text-teal-950 font-extrabold border-b-2 border-b-teal-600' : ''
+                        }`}
                     >
                       <div className="flex items-center justify-center gap-1">
                         <span className="text-xs font-extrabold uppercase">{WEEKDAYS[idx].short}</span>
@@ -1336,23 +1323,21 @@ export default function EmployeeAppointments() {
                   return (
                     <div
                       key={idx}
-                      className={`p-2 min-h-[95px] flex flex-col justify-start gap-1 transition-colors ${
-                        !item.isCurrentMonth
-                          ? 'bg-slate-50/50 text-slate-300'
-                          : isToday
+                      className={`p-2 min-h-[95px] flex flex-col justify-start gap-1 transition-colors ${!item.isCurrentMonth
+                        ? 'bg-slate-50/50 text-slate-300'
+                        : isToday
                           ? 'bg-teal-50/70 font-bold'
                           : 'bg-white hover:bg-slate-50/80'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center justify-between text-xs">
                         <span
-                          className={`font-extrabold px-1.5 py-0.2 rounded ${
-                            isToday
-                              ? 'bg-teal-700 text-white shadow-2xs'
-                              : item.isCurrentMonth
+                          className={`font-extrabold px-1.5 py-0.2 rounded ${isToday
+                            ? 'bg-teal-700 text-white shadow-2xs'
+                            : item.isCurrentMonth
                               ? 'text-slate-800'
                               : 'text-slate-300'
-                          }`}
+                            }`}
                         >
                           {cellDate.getDate()}
                         </span>
@@ -1469,11 +1454,10 @@ export default function EmployeeAppointments() {
                     key={r}
                     type="button"
                     onClick={() => setRejectReason(r)}
-                    className={`px-2.5 py-1 rounded border font-medium transition-all ${
-                      rejectReason === r
-                        ? 'bg-rose-600 text-white border-rose-600 font-bold'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                    }`}
+                    className={`px-2.5 py-1 rounded border font-medium transition-all ${rejectReason === r
+                      ? 'bg-rose-600 text-white border-rose-600 font-bold'
+                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                      }`}
                   >
                     {r}
                   </button>
