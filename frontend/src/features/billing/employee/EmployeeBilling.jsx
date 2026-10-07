@@ -391,12 +391,13 @@ export default function EmployeeBilling() {
                 <TableCell sx={{ width: 110, fontWeight: 700, fontSize: '0.75rem', color: '#475569', borderBottom: '1px solid #cbd5e1', whiteSpace: 'nowrap' }}>
                   Ngày tạo
                 </TableCell>
-                <TableCell sx={{ width: 180, fontWeight: 700, fontSize: '0.75rem', color: '#475569', borderBottom: '1px solid #cbd5e1', whiteSpace: 'nowrap' }}>Mã hóa đơn</TableCell>
-                <TableCell sx={{ width: 220, fontWeight: 700, fontSize: '0.75rem', color: '#475569', borderBottom: '1px solid #cbd5e1', whiteSpace: 'nowrap' }}>Khách hàng</TableCell>
-                <TableCell align="right" sx={{ width: 130, fontWeight: 700, fontSize: '0.75rem', color: '#475569', borderBottom: '1px solid #cbd5e1', whiteSpace: 'nowrap' }}>Tổng tiền</TableCell>
-                <TableCell align="right" sx={{ width: 130, fontWeight: 700, fontSize: '0.75rem', color: '#475569', borderBottom: '1px solid #cbd5e1', whiteSpace: 'nowrap' }}>Đã thanh toán</TableCell>
-                <TableCell align="right" sx={{ width: 120, fontWeight: 700, fontSize: '0.75rem', color: '#475569', borderBottom: '1px solid #cbd5e1', whiteSpace: 'nowrap' }}>Còn nợ</TableCell>
-                <TableCell align="center" sx={{ width: 160, fontWeight: 700, fontSize: '0.75rem', color: '#475569', borderBottom: '1px solid #cbd5e1', whiteSpace: 'nowrap' }}>Trạng thái</TableCell>
+                <TableCell sx={{ width: 120, fontWeight: 700, fontSize: '0.75rem', color: '#475569', borderBottom: '1px solid #cbd5e1', whiteSpace: 'nowrap' }}>Mã hóa đơn</TableCell>
+                <TableCell sx={{ width: 160, fontWeight: 700, fontSize: '0.75rem', color: '#475569', borderBottom: '1px solid #cbd5e1', whiteSpace: 'nowrap' }}>Khách hàng</TableCell>
+                <TableCell align="right" sx={{ width: 100, fontWeight: 700, fontSize: '0.75rem', color: '#475569', borderBottom: '1px solid #cbd5e1', whiteSpace: 'nowrap' }}>Tổng tiền</TableCell>
+                <TableCell align="right" sx={{ width: 100, fontWeight: 700, fontSize: '0.75rem', color: '#475569', borderBottom: '1px solid #cbd5e1', whiteSpace: 'nowrap' }}>Đã thanh toán</TableCell>
+                <TableCell align="right" sx={{ width: 100, fontWeight: 700, fontSize: '0.75rem', color: '#475569', borderBottom: '1px solid #cbd5e1', whiteSpace: 'nowrap' }}>Còn nợ</TableCell>
+                <TableCell sx={{ width: 180, fontWeight: 700, fontSize: '0.75rem', color: '#475569', borderBottom: '1px solid #cbd5e1', whiteSpace: 'nowrap' }}>Người tạo</TableCell>
+                <TableCell align="center" sx={{ width: 150, fontWeight: 700, fontSize: '0.75rem', color: '#475569', borderBottom: '1px solid #cbd5e1', whiteSpace: 'nowrap' }}>Trạng thái</TableCell>
                 <TableCell align="center" sx={{ width: 80, fontWeight: 700, fontSize: '0.75rem', color: '#475569', borderBottom: '1px solid #cbd5e1', whiteSpace: 'nowrap' }}>Thao tác</TableCell>
               </TableRow>
             </TableHead>
@@ -449,6 +450,9 @@ export default function EmployeeBilling() {
                       </TableCell>
                       <TableCell align="right" sx={{ fontSize: '0.8125rem', fontWeight: 600, color: inv.debtAmount > 0 ? '#e11d48' : '#64748b', whiteSpace: 'nowrap' }}>
                         {formatVND(inv.debtAmount).replace(' đ', '')}
+                      </TableCell>
+                      <TableCell sx={{ fontSize: '0.8125rem', fontWeight: 600, color: '#0f766e', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={inv.employeeName}>
+                        {inv.employeeName}
                       </TableCell>
                       <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>
                         <span

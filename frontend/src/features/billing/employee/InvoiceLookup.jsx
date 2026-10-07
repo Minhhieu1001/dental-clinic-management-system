@@ -1,9 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import toast from 'react-hot-toast';
 import {
   Phone,
   CreditCard,
   User,
-  FileSearch,
   Filter,
   Eye,
   Printer,
@@ -11,7 +11,11 @@ import {
   AlertCircle,
   ShieldCheck,
   Calendar,
+  MapPin,
+  Loader2,
   Search,
+  MoreVertical,
+  Plus,
 } from 'lucide-react';
 import {
   Table,
@@ -22,31 +26,50 @@ import {
   TableRow,
   Paper,
   TablePagination,
+  IconButton,
+  Menu,
+  MenuItem,
 } from '@mui/material';
-import { MOCK_INVOICES, MOCK_PATIENTS } from './mockBillingData';
 import InvoiceDetailModal from './action/InvoiceDetailModal';
 import PaymentModal from './action/PaymentModal';
 import PrintInvoiceModal from './action/PrintInvoiceModal';
+import SelectPatientModal from './action/SelectPatientModal';
+import CreateInvoiceModal from './action/CreateInvoiceModal';
+import { getPatients, searchPatient, getPatientById, getPatientsByPhone } from '../../../services/patient.service';
+import { getInvoicesByPatientId } from '../../../services/invoice.service';
+import { mapBackendInvoiceToUi } from '../../../utils/invoiceMapper';
 
 export default function InvoiceLookup() {
-  const [invoices, setInvoices] = useState(MOCK_INVOICES);
+  const [invoices, setInvoices] = useState([]);
+  const [patientList, setPatientList] = useState([]);
+  const [activeCustomer, setActiveCustomer] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  // Multiple matched patients modal state (trường hợp 1 SĐT có nhiều hồ sơ)
+  const [matchedPatients, setMatchedPatients] = useState([]);
+  const [showSelectPatientModal, setShowSelectPatientModal] = useState(false);
 
   // Search & Filter State
   const [phoneSearch, setPhoneSearch] = useState('');
   const [cccdSearch, setCccdSearch] = useState('');
-  const [selectedPatientId, setSelectedPatientId] = useState('P001'); // Default demo P001
+  const [selectedPatientId, setSelectedPatientId] = useState('');
 
-  // Invoice Filters State (matching mockup image)
-  const [selectedYear, setSelectedYear] = useState('2026');
+  // Invoice Filters State
+  const [selectedYear, setSelectedYear] = useState('ALL');
   const [selectedMonth, setSelectedMonth] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Action menu state (3 dots menu)
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [menuInvoice, setMenuInvoice] = useState(null);
 
   // Modals state
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Pagination
   const [page, setPage] = useState(0);
@@ -54,78 +77,293 @@ export default function InvoiceLookup() {
 
   const formatVND = (num) => new Intl.NumberFormat('vi-VN').format(num || 0) + ' đ';
 
-  // Active Customer computed
-  const activeCustomer = useMemo(() => {
-    if (selectedPatientId && selectedPatientId !== 'ALL') {
-      return MOCK_PATIENTS.find((p) => p.id === selectedPatientId) || null;
+  const formatDob = (dobStr) => {
+    if (!dobStr) return 'Chưa cập nhật';
+    const d = new Date(dobStr);
+    if (!isNaN(d.getTime())) {
+      return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
     }
-    if (phoneSearch.trim()) {
-      return MOCK_PATIENTS.find((p) => p.phone.includes(phoneSearch.trim())) || null;
-    }
-    if (cccdSearch.trim()) {
-      return MOCK_PATIENTS.find((p) => p.cccd.includes(cccdSearch.trim())) || null;
-    }
-    return null;
-  }, [selectedPatientId, phoneSearch, cccdSearch]);
+    return dobStr;
+  };
 
-  // Filter invoices logic
+  // 1. Fetch patient list on mount for dropdown only
+  const fetchPatientList = async () => {
+    try {
+      const data = await getPatients();
+      setPatientList(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.warn('Lỗi lấy danh sách bệnh nhân:', err);
+    }
+  };
+
+  // 2. Fetch patient info first, then fetch their invoices using patient ID
+  const fetchPatientAndInvoices = useCallback(async (patientObjOrId) => {
+    if (!patientObjOrId) {
+      setActiveCustomer(null);
+      setInvoices([]);
+      return;
+    }
+    setLoading(true);
+    try {
+      let patient = null;
+      if (typeof patientObjOrId === 'object' && patientObjOrId !== null) {
+        patient = patientObjOrId;
+      } else if (patientObjOrId) {
+        patient = patientList.find((p) => p.id === patientObjOrId);
+        if (!patient) {
+          patient = await getPatientById(patientObjOrId);
+        }
+      }
+
+      if (patient) {
+        setActiveCustomer(patient);
+        setSelectedPatientId(patient.id);
+        const patientInvoices = await getInvoicesByPatientId(patient.id);
+        const mapped = (patientInvoices || []).map((inv) => mapBackendInvoiceToUi(inv));
+        setInvoices(mapped);
+        if (mapped.length === 0) {
+          toast(`Bệnh nhân "${patient.fullName || patient.name}" chưa có hóa đơn nào.`, { icon: 'ℹ️' });
+        }
+      } else {
+        setActiveCustomer(null);
+        setInvoices([]);
+      }
+    } catch (err) {
+      console.warn('Lỗi lấy thông tin & hóa đơn bệnh nhân:', err);
+      setInvoices([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [patientList]);
+
+  // Xử lý Tìm kiếm (Hỗ trợ nhập 1 tiêu chí SĐT / CCCD hoặc kết hợp CẢ 2 TIÊU CHÍ)
+  const handleSearch = async () => {
+    const phone = phoneSearch.trim();
+    const cccd = cccdSearch.trim();
+
+    if (!phone && !cccd) {
+      toast.error('Vui lòng nhập SĐT hoặc số CCCD để tìm kiếm!');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Trường hợp 1: Nhập CẢ SĐT và CCCD (Tìm kiếm theo đa tiêu chí)
+      if (phone && cccd) {
+        let list = await getPatientsByPhone(phone);
+        if (!Array.isArray(list) || list.length === 0) {
+          const single = await searchPatient(phone);
+          list = single ? [single] : [];
+        }
+
+        // Lọc bệnh nhân trùng khớp cả số CCCD
+        const filteredBoth = list.filter((p) => {
+          const pCccd = (p.cccd || p.identityCard || '').trim();
+          return pCccd.includes(cccd);
+        });
+
+        if (filteredBoth.length === 1) {
+          const p = filteredBoth[0];
+          setSelectedPatientId(p.id);
+          setActiveCustomer(p);
+          toast.success(`Đã tìm thấy bệnh nhân khớp SĐT & CCCD: ${p.fullName || p.name}`);
+          const patientInvoices = await getInvoicesByPatientId(p.id);
+          const mapped = (patientInvoices || []).map((inv) => mapBackendInvoiceToUi(inv));
+          setInvoices(mapped);
+          if (mapped.length === 0) {
+            toast(`Bệnh nhân "${p.fullName || p.name}" chưa có hóa đơn nào.`, { icon: 'ℹ️' });
+          }
+        } else if (filteredBoth.length > 1) {
+          setMatchedPatients(filteredBoth);
+          setShowSelectPatientModal(true);
+          toast(`Phát hiện ${filteredBoth.length} hồ sơ khớp cả SĐT và CCCD!`, { icon: 'ℹ️' });
+        } else {
+          // Thử tra cứu theo CCCD trực tiếp nếu lọc danh sách SĐT không ra
+          const pByCccd = await searchPatient(cccd);
+          if (pByCccd && (pByCccd.phone || pByCccd.phoneNumber || '').includes(phone)) {
+            setSelectedPatientId(pByCccd.id);
+            setActiveCustomer(pByCccd);
+            toast.success(`Đã tìm thấy bệnh nhân: ${pByCccd.fullName || pByCccd.name}`);
+            const patientInvoices = await getInvoicesByPatientId(pByCccd.id);
+            const mapped = (patientInvoices || []).map((inv) => mapBackendInvoiceToUi(inv));
+            setInvoices(mapped);
+          } else {
+            setActiveCustomer(null);
+            setInvoices([]);
+            toast.error('Không tìm thấy bệnh nhân nào khớp cả SĐT và số CCCD đã nhập!');
+          }
+        }
+      }
+      // Trường hợp 2: Chỉ nhập SĐT
+      else if (phone) {
+        let list = await getPatientsByPhone(phone);
+        if (!Array.isArray(list) || list.length === 0) {
+          const single = await searchPatient(phone);
+          list = single ? [single] : [];
+        }
+
+        if (list.length === 1) {
+          const p = list[0];
+          setSelectedPatientId(p.id);
+          setActiveCustomer(p);
+          toast.success(`Đã tìm thấy bệnh nhân: ${p.fullName || p.name}`);
+          const patientInvoices = await getInvoicesByPatientId(p.id);
+          const mapped = (patientInvoices || []).map((inv) => mapBackendInvoiceToUi(inv));
+          setInvoices(mapped);
+          if (mapped.length === 0) {
+            toast(`Bệnh nhân "${p.fullName || p.name}" chưa có hóa đơn nào.`, { icon: 'ℹ️' });
+          }
+        } else if (list.length > 1) {
+          setMatchedPatients(list);
+          setShowSelectPatientModal(true);
+          toast(`Phát hiện ${list.length} hồ sơ trùng SĐT. Vui lòng chọn hồ sơ!`, { icon: 'ℹ️' });
+        } else {
+          setActiveCustomer(null);
+          setInvoices([]);
+          toast.error('Không tìm thấy hồ sơ bệnh nhân nào với SĐT này!');
+        }
+      }
+      // Trường hợp 3: Chỉ nhập CCCD
+      else if (cccd) {
+        const patient = await searchPatient(cccd);
+        if (patient) {
+          setSelectedPatientId(patient.id);
+          setActiveCustomer(patient);
+          toast.success(`Đã tìm thấy bệnh nhân: ${patient.fullName || patient.name}`);
+          const patientInvoices = await getInvoicesByPatientId(patient.id);
+          const mapped = (patientInvoices || []).map((inv) => mapBackendInvoiceToUi(inv));
+          setInvoices(mapped);
+          if (mapped.length === 0) {
+            toast(`Bệnh nhân "${patient.fullName || patient.name}" chưa có hóa đơn nào.`, { icon: 'ℹ️' });
+          }
+        } else {
+          setActiveCustomer(null);
+          setInvoices([]);
+          toast.error('Không tìm thấy hồ sơ bệnh nhân nào với số CCCD này!');
+        }
+      }
+    } catch (err) {
+      console.warn('Lỗi tìm kiếm bệnh nhân:', err);
+      toast.error('Có lỗi xảy ra trong quá trình tìm kiếm!');
+      setActiveCustomer(null);
+      setInvoices([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Người dùng chọn 1 hồ sơ từ SelectPatientModal
+  const handleChoosePatientFromList = async (patient) => {
+    setShowSelectPatientModal(false);
+    setMatchedPatients([]);
+    if (patient && patient.id) {
+      setSelectedPatientId(patient.id);
+      setActiveCustomer(patient);
+      toast.success(`Đã chọn bệnh nhân: ${patient.fullName || patient.name}`);
+      setLoading(true);
+      try {
+        const patientInvoices = await getInvoicesByPatientId(patient.id);
+        const mapped = (patientInvoices || []).map((inv) => mapBackendInvoiceToUi(inv));
+        setInvoices(mapped);
+        if (mapped.length === 0) {
+          toast(`Bệnh nhân "${patient.fullName || patient.name}" chưa có hóa đơn nào.`, { icon: 'ℹ️' });
+        }
+      } catch (err) {
+        console.warn('Lỗi lấy danh sách hóa đơn của bệnh nhân:', err);
+        setInvoices([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  // On mount, fetch patient list for dropdown
+  useEffect(() => {
+    fetchPatientList();
+  }, []);
+
+  const handleSelectPatient = async (id) => {
+    setSelectedPatientId(id);
+    setPhoneSearch('');
+    setCccdSearch('');
+    setPage(0);
+
+    if (!id) {
+      setActiveCustomer(null);
+      setInvoices([]);
+    } else {
+      const patient = patientList.find((p) => p.id === id);
+      if (patient) {
+        toast.success(`Đã chọn bệnh nhân: ${patient.fullName || patient.name}`);
+      }
+      await fetchPatientAndInvoices(id);
+    }
+  };
+
+  const handleResetFilters = () => {
+    setPhoneSearch('');
+    setCccdSearch('');
+    setSelectedPatientId('');
+    setSelectedYear('ALL');
+    setSelectedMonth('ALL');
+    setStatusFilter('ALL');
+    setSearchQuery('');
+    setActiveCustomer(null);
+    setInvoices([]);
+    setPage(0);
+    toast.success('Đã đặt lại bộ lọc');
+  };
+
+  // Action Menu Handlers (3 dots menu)
+  const handleOpenMenu = (e, inv) => {
+    e.stopPropagation();
+    setAnchorEl(e.currentTarget);
+    setMenuInvoice(inv);
+  };
+
+  const handleCloseMenu = () => {
+    setAnchorEl(null);
+    setMenuInvoice(null);
+  };
+
+  // Client-side filter on current invoice list
   const filteredInvoices = useMemo(() => {
     return invoices.filter((inv) => {
-      // 1. Patient lookup filter
-      if (selectedPatientId && selectedPatientId !== 'ALL') {
-        if (inv.patientId !== selectedPatientId) return false;
-      } else {
-        if (phoneSearch.trim() && !inv.patientPhone.includes(phoneSearch.trim())) {
-          return false;
+      // 1. Date Filter (Year & Month)
+      if (inv.date && inv.date !== 'Chưa lập hóa đơn') {
+        const parts = inv.date.split('/');
+        if (parts.length === 3) {
+          const invMonth = parts[1];
+          const invYear = parts[2];
+
+          if (selectedYear !== 'ALL' && invYear !== selectedYear) {
+            return false;
+          }
+
+          if (selectedMonth !== 'ALL') {
+            const formattedMonth = selectedMonth.padStart(2, '0');
+            if (invMonth !== formattedMonth) return false;
+          }
         }
-        if (cccdSearch.trim() && !(inv.patientCccd || '').includes(cccdSearch.trim())) {
-          return false;
-        }
       }
 
-      // 2. Date Filter (Year & Month)
-      const parts = inv.date.split('/');
-      const invMonth = parts[1];
-      const invYear = parts[2];
-
-      if (selectedYear !== 'ALL' && invYear !== selectedYear) {
-        return false;
-      }
-
-      if (selectedMonth !== 'ALL') {
-        const formattedMonth = selectedMonth.padStart(2, '0');
-        if (invMonth !== formattedMonth) return false;
-      }
-
-      // 3. Status filter
+      // 2. Status filter
       if (statusFilter === 'PAID' && inv.status !== 'Đã thanh toán') return false;
       if (statusFilter === 'PARTIAL' && inv.status !== 'Thanh toán một phần') return false;
       if (statusFilter === 'UNPAID' && inv.status !== 'Chưa thanh toán') return false;
 
-      // 4. Search Query filter (Mã HĐ hoặc Tên bệnh nhân)
+      // 3. Search Query filter (Mã HĐ hoặc Tên bệnh nhân)
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
-        const matchesId = inv.id.toLowerCase().includes(q);
-        const matchesName = inv.patientName.toLowerCase().includes(q);
+        const matchesId = (inv.id || '').toLowerCase().includes(q);
+        const matchesName = (inv.patientName || '').toLowerCase().includes(q);
         if (!matchesId && !matchesName) return false;
       }
 
       return true;
     });
-  }, [invoices, selectedPatientId, phoneSearch, cccdSearch, selectedYear, selectedMonth, statusFilter, searchQuery]);
+  }, [invoices, selectedYear, selectedMonth, statusFilter, searchQuery]);
 
-  const handleResetFilters = () => {
-    setPhoneSearch('');
-    setCccdSearch('');
-    setSelectedPatientId('ALL');
-    setSelectedYear('ALL');
-    setSelectedMonth('ALL');
-    setStatusFilter('ALL');
-    setSearchQuery('');
-    setPage(0);
-  };
-
-  // Nhận hóa đơn đã cập nhật từ PaymentConfirmModal
   const handlePaymentSuccess = (updatedInvoice) => {
     if (!updatedInvoice) return;
     setInvoices((prev) =>
@@ -138,160 +376,237 @@ export default function InvoiceLookup() {
     setSelectedInvoice((prev) => (prev ? { ...prev, ...updatedInvoice } : prev));
   };
 
+  // 5. CHUYỂN BẢN NHÁP TỪ MODAL TẠO SANG GIAO DIỆN XEM TRƯỚC VÀ XÁC NHẬN LƯU HÓA ĐƠN
+  const handleCreateInvoiceDraft = (draftInvoice) => {
+    setShowCreateModal(false);
+    setSelectedInvoice(draftInvoice);
+    setShowDetailModal(true);
+    toast.success('Đã tạo bản xem trước hóa đơn! Kiểm tra và nhấn "Lưu hóa đơn" để lưu vào hệ thống.');
+  };
+
+  // 6. XÁC NHẬN LƯU HÓA ĐƠN VÀO HỆ THỐNG / DB
+  const handleSaveDraftInvoice = async (officialInvoice) => {
+    if (officialInvoice) {
+      setSelectedInvoice(officialInvoice);
+    }
+    const targetPatientId = officialInvoice?.patientId || activeCustomer?.id || selectedPatientId;
+    if (targetPatientId) {
+      await fetchPatientAndInvoices(targetPatientId);
+    }
+  };
+
   return (
     <div className="space-y-3 p-1 w-full">
-
       {/* PANEL 1: TRA CỨU THÔNG TIN BỆNH NHÂN */}
-      <div className="bg-white p-4 sm:p-5 rounded-sm border border-slate-300 shadow-2xs space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-          <span className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-2">
-            <Filter size={16} className="text-teal-700" />
-            Bộ lọc & Tìm kiếm tra cứu bệnh nhân
+      <div className="bg-white p-3 sm:p-4 rounded border border-slate-200 shadow-2xs space-y-3">
+        <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+            <Filter size={15} className="text-teal-700" />
+            Bộ lọc & Tra cứu bệnh nhân
           </span>
           <button
             onClick={handleResetFilters}
-            className="flex items-center gap-1.5 text-xs font-extrabold text-slate-500 hover:text-teal-800 transition-colors cursor-pointer"
+            className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-teal-700 transition-colors cursor-pointer"
           >
-            <RotateCcw size={14} />
+            <RotateCcw size={13} />
             <span>Đặt lại bộ lọc</span>
           </button>
         </div>
 
-        {/* Controls Row: Phone Search on Left, CCCD & Patient Select on Right */}
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-          {/* Left Side: Tìm theo SĐT */}
-          <div className="w-full lg:w-72">
-            <label className="block text-xs font-extrabold uppercase tracking-wide text-slate-700 mb-1.5">
-              Tìm theo Số điện thoại (SĐT)
-            </label>
-            <div className="relative">
-              <Phone size={16} className="absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Nhập SĐT khách hàng..."
-                value={phoneSearch}
-                onChange={(e) => {
-                  setPhoneSearch(e.target.value);
-                  if (e.target.value) setSelectedPatientId('ALL');
-                  setPage(0);
-                }}
-                className="w-full bg-slate-50 border border-slate-300 pl-9 pr-3 py-2 text-sm font-bold text-slate-900 placeholder-slate-400 rounded-sm focus:bg-white focus:ring-1 focus:ring-teal-700 focus:outline-none"
-              />
-            </div>
+        {/* 2 Column Layout: Left side for Patient info, Right side for Search Inputs */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+          {/* BÊN TRÁI: THÔNG TIN BỆNH NHÂN */}
+          <div className="lg:col-span-6 flex flex-col">
+            {activeCustomer ? (
+              <div className="bg-teal-50/70 border border-teal-200 p-3 rounded h-full flex flex-col justify-between space-y-2">
+                {/* Header patient: Avatar + Name + Patient Code */}
+                <div className="flex items-center gap-2.5 border-b border-teal-200/80 pb-2">
+                  <div className="w-9 h-9 rounded-full bg-teal-700 text-white font-bold text-sm flex items-center justify-center shrink-0 shadow-2xs">
+                    {(activeCustomer.fullName || activeCustomer.name || 'K').charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex items-center justify-between w-full min-w-0">
+                    <h3 className="font-semibold text-sm text-slate-900 truncate">
+                      {activeCustomer.fullName || activeCustomer.name}
+                    </h3>
+                    <span className="bg-white text-teal-800 text-xs font-semibold px-2 py-0.5 rounded border border-teal-300 shrink-0">
+                      Mã: {activeCustomer.patientCode || activeCustomer.id}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Details list vertical & 2-col compact grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2 text-xs">
+                  <div className="flex items-center gap-2 text-slate-700">
+                    <div className="w-6 h-6 rounded bg-teal-100/90 flex items-center justify-center text-teal-800 shrink-0">
+                      <Phone size={13} />
+                    </div>
+                    <span className="text-slate-500 font-medium shrink-0">SĐT:</span>
+                    <strong className="text-teal-800 font-semibold truncate">
+                      {activeCustomer.phone || activeCustomer.phoneNumber || 'Chưa có'}
+                    </strong>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-slate-700">
+                    <div className="w-6 h-6 rounded bg-teal-100/90 flex items-center justify-center text-teal-800 shrink-0">
+                      <Calendar size={13} />
+                    </div>
+                    <span className="text-slate-500 font-medium shrink-0">Ngày sinh:</span>
+                    <strong className="text-slate-800 font-semibold truncate">
+                      {formatDob(activeCustomer.dateOfBirth || activeCustomer.dob)}
+                    </strong>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-slate-700">
+                    <div className="w-6 h-6 rounded bg-teal-100/90 flex items-center justify-center text-teal-800 shrink-0">
+                      <ShieldCheck size={13} />
+                    </div>
+                    <span className="text-slate-500 font-medium shrink-0">CCCD:</span>
+                    <strong className="text-slate-800 font-semibold truncate">
+                      {activeCustomer.cccd || activeCustomer.identityCard || 'Chưa cập nhật'}
+                    </strong>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-slate-700">
+                    <div className="w-6 h-6 rounded bg-teal-100/90 flex items-center justify-center text-teal-800 shrink-0">
+                      <MapPin size={13} />
+                    </div>
+                    <span className="text-slate-500 font-medium shrink-0">Địa chỉ:</span>
+                    <span className="text-slate-800 font-medium truncate" title={activeCustomer.address}>
+                      {activeCustomer.address || 'Chưa cập nhật'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-slate-50 border border-dashed border-slate-300 p-3 rounded h-full flex flex-col items-center justify-center text-center text-slate-400 space-y-1">
+                <User size={24} className="text-slate-300" />
+                <p className="text-xs font-medium text-slate-600">Chưa chọn thông tin bệnh nhân</p>
+                <p className="text-[11px] text-slate-400">Vui lòng nhập SĐT, CCCD hoặc chọn ở thanh tìm kiếm</p>
+              </div>
+            )}
           </div>
 
-          {/* Right Side: Tìm theo CCCD & Chọn danh sách khách hàng */}
-          <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
-            <div className="w-full sm:w-64">
-              <label className="block text-xs font-extrabold uppercase tracking-wide text-slate-700 mb-1.5">
-                Tìm theo Số CCCD/CMND
-              </label>
-              <div className="relative">
-                <ShieldCheck size={16} className="absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Nhập số CCCD/CMND..."
-                  value={cccdSearch}
-                  onChange={(e) => {
-                    setCccdSearch(e.target.value);
-                    if (e.target.value) setSelectedPatientId('ALL');
-                    setPage(0);
-                  }}
-                  className="w-full bg-slate-50 border border-slate-300 pl-9 pr-3 py-2 text-sm font-bold text-slate-900 placeholder-slate-400 rounded-sm focus:bg-white focus:ring-1 focus:ring-teal-700 focus:outline-none"
-                />
-              </div>
-            </div>
+          {/* BÊN PHẢI: THANH TÌM KIẾM SĐT, CCCD, CHỌN KHÁCH HÀNG */}
+          <div className="lg:col-span-6 space-y-2.5 bg-slate-50/60 p-2.5 border border-slate-200 rounded flex flex-col justify-between">
+            <div className="space-y-2.5">
+              {/* HÀNG CÙNG NHAU: SĐT + CCCD + NÚT TÌM KIẾM */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+                {/* 1. Tìm theo SĐT */}
+                <div className="sm:col-span-5">
+                  <label className="block text-[11px] font-semibold uppercase tracking-wide text-slate-600 mb-1">
+                    Tìm theo SĐT
+                  </label>
+                  <div className="relative">
+                    <Phone size={14} className="absolute left-2.5 top-2.5 text-slate-400 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Nhập SĐT..."
+                      value={phoneSearch}
+                      onChange={(e) => {
+                        setPhoneSearch(e.target.value);
+                        setSelectedPatientId('');
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSearch();
+                      }}
+                      className="w-full bg-white border border-slate-300 pl-8 pr-2.5 py-1.5 text-xs text-slate-900 placeholder-slate-400 rounded focus:ring-1 focus:ring-teal-700 focus:outline-none"
+                    />
+                  </div>
+                </div>
 
-            <div className="w-full sm:w-72">
-              <label className="block text-xs font-extrabold uppercase tracking-wide text-slate-700 mb-1.5">
-                Chọn danh sách khách hàng
-              </label>
-              <div className="relative">
-                <User size={16} className="absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
-                <select
-                  value={selectedPatientId}
-                  onChange={(e) => {
-                    setSelectedPatientId(e.target.value);
-                    setPhoneSearch('');
-                    setCccdSearch('');
-                    setPage(0);
-                  }}
-                  className="w-full bg-slate-50 border border-teal-700 pl-9 pr-8 py-2 text-sm font-bold text-slate-900 rounded-sm focus:bg-white focus:ring-1 focus:ring-teal-700 focus:outline-none cursor-pointer"
-                >
-                  <option value="ALL">-- Tất cả khách hàng ({MOCK_PATIENTS.length}) --</option>
-                  {MOCK_PATIENTS.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({p.phone})
-                    </option>
-                  ))}
-                </select>
+                {/* 2. Tìm theo CCCD */}
+                <div className="sm:col-span-5">
+                  <label className="block text-[11px] font-semibold uppercase tracking-wide text-slate-600 mb-1">
+                    Tìm theo CCCD/CMND
+                  </label>
+                  <div className="relative">
+                    <ShieldCheck size={14} className="absolute left-2.5 top-2.5 text-slate-400 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Nhập số CCCD..."
+                      value={cccdSearch}
+                      onChange={(e) => {
+                        setCccdSearch(e.target.value);
+                        setSelectedPatientId('');
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSearch();
+                      }}
+                      className="w-full bg-white border border-slate-300 pl-8 pr-2.5 py-1.5 text-xs text-slate-900 placeholder-slate-400 rounded focus:ring-1 focus:ring-teal-700 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* 3. Nút Tìm kiếm cùng 1 hàng */}
+                <div className="sm:col-span-2">
+                  <button
+                    type="button"
+                    onClick={handleSearch}
+                    className="w-full px-2 py-1.5 bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold rounded transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-2xs h-[31px]"
+                  >
+                    <Search size={14} />
+                    <span>Tìm kiếm</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 3. Chọn danh sách khách hàng */}
+              <div className="pt-1.5 border-t border-slate-200/80">
+                <label className="block text-[11px] font-semibold uppercase tracking-wide text-slate-600 mb-1">
+                  Hoặc chọn nhanh từ danh sách khách hàng
+                </label>
+                <div className="relative">
+                  <User size={14} className="absolute left-2.5 top-2.5 text-slate-400 pointer-events-none" />
+                  <select
+                    value={selectedPatientId}
+                    onChange={(e) => handleSelectPatient(e.target.value)}
+                    className="w-full bg-white border border-slate-300 pl-8 pr-7 py-1.5 text-xs font-medium text-slate-900 rounded focus:ring-1 focus:ring-teal-700 focus:outline-none cursor-pointer"
+                  >
+                    <option value="">Chọn khách hàng</option>
+                    {patientList.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.fullName || p.name} ({p.phone || p.phoneNumber || 'Không SĐT'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
           </div>
         </div>
-
-        {/* Crisp ERP Patient Details Card */}
-        {activeCustomer && (
-          <div className="bg-emerald-50/90 border border-emerald-300 p-4 rounded-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all mt-2">
-            <div className="flex items-center gap-3.5">
-              <div className="w-11 h-11 rounded-sm bg-teal-700 text-white font-black text-base flex items-center justify-center shrink-0 shadow-xs">
-                {activeCustomer.name.charAt(0)}
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2.5">
-                  <h3 className="font-extrabold text-base text-slate-900">{activeCustomer.name}</h3>
-                  <span className="bg-white text-teal-800 text-xs font-extrabold px-2.5 py-0.5 rounded-sm border border-teal-300">
-                    Mã hồ sơ: {activeCustomer.id}
-                  </span>
-                </div>
-                <div className="text-xs sm:text-sm font-semibold text-slate-700 flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <span>Số điện thoại: <strong className="text-teal-800 font-bold">{activeCustomer.phone}</strong></span>
-                  <span className="text-slate-300">|</span>
-                  <span>Ngày sinh: <strong className="text-slate-900 font-bold">{activeCustomer.dob || '15/08/1990'}</strong></span>
-                  <span className="text-slate-300">|</span>
-                  <span>CCCD: <strong className="text-slate-900 font-bold">{activeCustomer.cccd}</strong></span>
-                  <span className="text-slate-300">|</span>
-                  <span>Địa chỉ: <span className="text-slate-800 font-medium">{activeCustomer.address}</span></span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* PANEL 2: BỘ LỌC DANH SÁCH HÓA ĐƠN */}
-      <div className="bg-white p-4 sm:p-2 rounded-sm border border-slate-300 shadow-2xs space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-200 pb-1">
-          <span className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-2">
-            <Filter size={16} className="text-teal-700" />
-            Bộ lọc danh sách hóa đơn
+      <div className="bg-white p-3 rounded border border-slate-200 shadow-2xs space-y-2">
+        <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+            <Filter size={15} className="text-teal-700" />
+            Bộ lọc kết quả hóa đơn
           </span>
           <button
             onClick={handleResetFilters}
-            className="flex items-center gap-1.5 text-xs font-extrabold text-slate-500 hover:text-teal-800 transition-colors cursor-pointer"
+            className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-teal-700 transition-colors cursor-pointer"
           >
-            <RotateCcw size={14} />
-            <span>Đặt lại bộ lọc</span>
+            <RotateCcw size={13} />
+            <span>Đặt lại</span>
           </button>
         </div>
 
-        {/* Compact Filters Row: Year & Month on Left, Payment Status on Right */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          {/* Left Side: Lọc theo Năm & Tháng */}
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Filter 1: Lọc theo Năm */}
-            <div className="w-full sm:w-44">
+        {/* Compact Filters Row */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="w-full sm:w-40">
               <div className="relative">
-                <Calendar size={16} className="absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
+                <Calendar size={14} className="absolute left-2.5 top-2.5 text-slate-400 pointer-events-none" />
                 <select
                   value={selectedYear}
                   onChange={(e) => {
                     setSelectedYear(e.target.value);
                     setPage(0);
                   }}
-                  className="w-full bg-slate-50 border border-slate-300 pl-9 pr-3 py-2 text-sm font-bold text-slate-900 rounded-sm focus:bg-white focus:ring-1 focus:ring-teal-700 focus:outline-none cursor-pointer"
+                  className="w-full bg-slate-50 border border-slate-300 pl-8 pr-2.5 py-1.5 text-xs font-medium text-slate-900 rounded focus:bg-white focus:ring-1 focus:ring-teal-700 focus:outline-none cursor-pointer"
                 >
-                  <option value="ALL">-- Tất cả năm --</option>
+                  <option value="ALL">Tất cả năm</option>
                   <option value="2026">Năm 2026</option>
                   <option value="2025">Năm 2025</option>
                   <option value="2024">Năm 2024</option>
@@ -299,17 +614,16 @@ export default function InvoiceLookup() {
               </div>
             </div>
 
-            {/* Filter 2: Lọc theo Tháng */}
-            <div className="w-full sm:w-48">
+            <div className="w-full sm:w-44">
               <select
                 value={selectedMonth}
                 onChange={(e) => {
                   setSelectedMonth(e.target.value);
                   setPage(0);
                 }}
-                className="w-full bg-slate-50 border border-slate-300 px-3 py-2 text-sm font-bold text-slate-900 rounded-sm focus:bg-white focus:ring-1 focus:ring-teal-700 focus:outline-none cursor-pointer"
+                className="w-full bg-slate-50 border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-900 rounded focus:bg-white focus:ring-1 focus:ring-teal-700 focus:outline-none cursor-pointer"
               >
-                <option value="ALL">-- Tất cả các tháng --</option>
+                <option value="ALL">Tất cả các tháng</option>
                 {Array.from({ length: 12 }, (_, i) => {
                   const mStr = (i + 1).toString().padStart(2, '0');
                   return (
@@ -320,24 +634,31 @@ export default function InvoiceLookup() {
                 })}
               </select>
             </div>
+
+            <div className="w-full sm:w-52">
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setPage(0);
+                }}
+                className="w-full bg-slate-50 border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-900 rounded focus:bg-white focus:ring-1 focus:ring-teal-700 focus:outline-none cursor-pointer"
+              >
+                <option value="ALL">Tất cả trạng thái</option>
+                <option value="PAID">Đã thanh toán đủ</option>
+                <option value="PARTIAL">Thanh toán một phần</option>
+                <option value="UNPAID">Chưa thanh toán</option>
+              </select>
+            </div>
           </div>
 
-          {/* Right Side: Trạng thái thanh toán (Pushed to Far Right) */}
-          <div className="w-full sm:w-56">
-            <select
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                setPage(0);
-              }}
-              className="w-full bg-slate-50 border border-slate-300 px-3 py-2 text-sm font-bold text-slate-900 rounded-sm focus:bg-white focus:ring-1 focus:ring-teal-700 focus:outline-none cursor-pointer"
-            >
-              <option value="ALL">Tất cả trạng thái</option>
-              <option value="PAID">Đã thanh toán đủ</option>
-              <option value="PARTIAL">Thanh toán một phần</option>
-              <option value="UNPAID">Chưa thanh toán</option>
-            </select>
-          </div>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center justify-center gap-1.5 bg-teal-700 hover:bg-teal-800 text-white font-semibold text-xs px-3.5 py-1.5 rounded shadow-2xs transition-colors cursor-pointer border border-teal-800 shrink-0 h-[31px]"
+          >
+            <Plus size={15} />
+            <span>Tạo hóa đơn</span>
+          </button>
         </div>
       </div>
 
@@ -347,24 +668,38 @@ export default function InvoiceLookup() {
           <Table sx={{ minWidth: 750 }}>
             <TableHead className="bg-slate-100/80">
               <TableRow>
-                <TableCell sx={{ fontWeight: 800, fontSize: '0.75rem', color: '#334155', borderBottom: '1px solid #cbd5e1' }}>Ngày lập</TableCell>
-                <TableCell sx={{ fontWeight: 800, fontSize: '0.75rem', color: '#334155', borderBottom: '1px solid #cbd5e1' }}>Mã hóa đơn</TableCell>
-                <TableCell sx={{ fontWeight: 800, fontSize: '0.75rem', color: '#334155', borderBottom: '1px solid #cbd5e1' }}>Tên khách hàng</TableCell>
-                <TableCell sx={{ fontWeight: 800, fontSize: '0.75rem', color: '#334155', borderBottom: '1px solid #cbd5e1' }}>Số điện thoại</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 800, fontSize: '0.75rem', color: '#334155', borderBottom: '1px solid #cbd5e1' }}>Tổng tiền</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 800, fontSize: '0.75rem', color: '#334155', borderBottom: '1px solid #cbd5e1' }}>Đã thanh toán</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 800, fontSize: '0.75rem', color: '#334155', borderBottom: '1px solid #cbd5e1' }}>Còn nợ</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 800, fontSize: '0.75rem', color: '#334155', borderBottom: '1px solid #cbd5e1' }}>Trạng thái</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 800, fontSize: '0.75rem', color: '#334155', borderBottom: '1px solid #cbd5e1' }}>Hành động</TableCell>
+                <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', color: '#334155', borderBottom: '1px solid #cbd5e1' }}>Ngày lập</TableCell>
+                <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', color: '#334155', borderBottom: '1px solid #cbd5e1' }}>Mã hóa đơn</TableCell>
+                <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', color: '#334155', borderBottom: '1px solid #cbd5e1' }}>Tên khách hàng</TableCell>
+                <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', color: '#334155', borderBottom: '1px solid #cbd5e1' }}>Số điện thoại</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', color: '#334155', borderBottom: '1px solid #cbd5e1' }}>Tổng tiền</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', color: '#334155', borderBottom: '1px solid #cbd5e1' }}>Đã thanh toán</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', color: '#334155', borderBottom: '1px solid #cbd5e1' }}>Còn nợ</TableCell>
+                <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', color: '#334155', borderBottom: '1px solid #cbd5e1' }}>Người tạo</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.75rem', color: '#334155', borderBottom: '1px solid #cbd5e1' }}>Trạng thái</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.75rem', color: '#334155', borderBottom: '1px solid #cbd5e1' }}>Hành động</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredInvoices.length === 0 ? (
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={9} align="center" sx={{ py: 6, color: '#94a3b8' }}>
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Loader2 size={24} className="animate-spin text-teal-700" />
+                      <p className="font-semibold text-xs">Đang tải dữ liệu...</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : filteredInvoices.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} align="center" sx={{ py: 6, color: '#94a3b8' }}>
                     <div className="flex flex-col items-center justify-center gap-2">
                       <AlertCircle size={26} className="text-amber-500" />
-                      <p className="font-bold text-xs">Không tìm thấy hóa đơn nào trùng khớp tiêu chí tra cứu.</p>
+                      <p className="font-semibold text-xs">
+                        {activeCustomer
+                          ? `Bệnh nhân "${activeCustomer.fullName || activeCustomer.name}" chưa có hóa đơn nào.`
+                          : 'Vui lòng nhập SĐT, CCCD hoặc chọn bệnh nhân ở thanh tìm kiếm để tra cứu hóa đơn.'}
+                      </p>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -381,30 +716,33 @@ export default function InvoiceLookup() {
                       }}
                       sx={{ cursor: 'pointer', '&:hover': { backgroundColor: '#f8fafc' } }}
                     >
-                      <TableCell sx={{ fontSize: '0.8125rem', fontWeight: 600, color: '#334155' }}>
+                      <TableCell sx={{ fontSize: '0.8125rem', fontWeight: 500, color: '#334155' }}>
                         {inv.date}
                       </TableCell>
-                      <TableCell sx={{ fontSize: '0.8125rem', fontWeight: 800, color: '#0f172a' }}>
+                      <TableCell sx={{ fontSize: '0.8125rem', fontWeight: 700, color: '#0f172a' }}>
                         {inv.id}
                       </TableCell>
-                      <TableCell sx={{ fontSize: '0.8125rem', fontWeight: 700, color: '#0f766e' }}>
+                      <TableCell sx={{ fontSize: '0.8125rem', fontWeight: 600, color: '#0f766e' }}>
                         {inv.patientName}
                       </TableCell>
-                      <TableCell sx={{ fontSize: '0.8125rem', fontWeight: 600, color: '#475569' }}>
+                      <TableCell sx={{ fontSize: '0.8125rem', fontWeight: 500, color: '#475569' }}>
                         {inv.patientPhone}
                       </TableCell>
-                      <TableCell align="right" sx={{ fontSize: '0.8125rem', fontWeight: 800, color: '#0f172a' }}>
+                      <TableCell align="right" sx={{ fontSize: '0.8125rem', fontWeight: 700, color: '#0f172a' }}>
                         {formatVND(inv.totalAmount).replace(' đ', '')}
                       </TableCell>
-                      <TableCell align="right" sx={{ fontSize: '0.8125rem', fontWeight: 700, color: '#047857' }}>
+                      <TableCell align="right" sx={{ fontSize: '0.8125rem', fontWeight: 600, color: '#047857' }}>
                         {formatVND(inv.paidAmount).replace(' đ', '')}
                       </TableCell>
-                      <TableCell align="right" sx={{ fontSize: '0.8125rem', fontWeight: 800, color: inv.debtAmount > 0 ? '#e11d48' : '#64748b' }}>
+                      <TableCell align="right" sx={{ fontSize: '0.8125rem', fontWeight: 700, color: inv.debtAmount > 0 ? '#e11d48' : '#64748b' }}>
                         {formatVND(inv.debtAmount).replace(' đ', '')}
+                      </TableCell>
+                      <TableCell sx={{ fontSize: '0.8125rem', fontWeight: 600, color: '#0f766e' }}>
+                        {inv.employeeName}
                       </TableCell>
                       <TableCell align="center">
                         <span
-                          className={`inline-block px-2.5 py-0.5 rounded text-[11px] font-extrabold border ${inv.status === 'Đã thanh toán'
+                          className={`inline-block px-2.5 py-0.5 rounded text-[11px] font-semibold border ${inv.status === 'Đã thanh toán'
                             ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                             : inv.status === 'Thanh toán một phần'
                               ? 'bg-amber-50 text-amber-800 border-amber-200'
@@ -414,41 +752,10 @@ export default function InvoiceLookup() {
                           {inv.status}
                         </span>
                       </TableCell>
-                      <TableCell align="center" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={() => {
-                              setSelectedInvoice(inv);
-                              setShowDetailModal(true);
-                            }}
-                            title="Xem chi tiết"
-                            className="p-1.5 rounded text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-                          >
-                            <Eye size={17} />
-                          </button>
-                          {inv.debtAmount > 0 && (
-                            <button
-                              onClick={() => {
-                                setSelectedInvoice(inv);
-                                setShowPaymentModal(true);
-                              }}
-                              title="Thanh toán"
-                              className="p-1.5 rounded text-teal-700 hover:bg-teal-50 transition-colors cursor-pointer"
-                            >
-                              <CreditCard size={17} />
-                            </button>
-                          )}
-                          <button
-                            onClick={() => {
-                              setSelectedInvoice(inv);
-                              setShowPrintModal(true);
-                            }}
-                            title="In hóa đơn"
-                            className="p-1.5 rounded text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
-                          >
-                            <Printer size={17} />
-                          </button>
-                        </div>
+                      <TableCell align="center" onClick={(e) => e.stopPropagation()} sx={{ whiteSpace: 'nowrap' }}>
+                        <IconButton size="small" onClick={(e) => handleOpenMenu(e, inv)}>
+                          <MoreVertical size={16} />
+                        </IconButton>
                       </TableCell>
                     </TableRow>
                   ))
@@ -474,12 +781,62 @@ export default function InvoiceLookup() {
         />
       </Paper>
 
+      {/* Action Menu (3 dots) */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleCloseMenu}
+        PaperProps={{ style: { borderRadius: '6px', minWidth: '150px' } }}
+      >
+        <MenuItem
+          onClick={() => {
+            setSelectedInvoice(menuInvoice);
+            setShowDetailModal(true);
+            handleCloseMenu();
+          }}
+          className="text-xs font-medium text-slate-700 gap-2"
+        >
+          <Eye size={15} className="text-slate-500" /> Xem chi tiết
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setSelectedInvoice(menuInvoice);
+            setShowPaymentModal(true);
+            handleCloseMenu();
+          }}
+          disabled={!menuInvoice || menuInvoice.debtAmount <= 0}
+          className="text-xs font-medium text-teal-700 gap-2"
+        >
+          <CreditCard size={15} className="text-teal-700" /> Thanh toán
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setSelectedInvoice(menuInvoice);
+            setShowPrintModal(true);
+            handleCloseMenu();
+          }}
+          className="text-xs font-medium text-slate-700 gap-2"
+        >
+          <Printer size={15} className="text-slate-500" /> In hóa đơn
+        </MenuItem>
+      </Menu>
+
+      {/* Modal Chọn Bệnh nhân khi có nhiều hồ sơ trùng SĐT */}
+      <SelectPatientModal
+        open={showSelectPatientModal}
+        onClose={() => setShowSelectPatientModal(false)}
+        patients={matchedPatients}
+        phoneKeyword={phoneSearch}
+        onSelectPatient={handleChoosePatientFromList}
+      />
+
       {/* Modals */}
       <InvoiceDetailModal
         open={showDetailModal}
         onClose={() => setShowDetailModal(false)}
         invoice={selectedInvoice}
         onPaymentSuccess={handlePaymentSuccess}
+        onSaveInvoice={handleSaveDraftInvoice}
       />
 
       <PaymentModal
@@ -494,7 +851,12 @@ export default function InvoiceLookup() {
         onClose={() => setShowPrintModal(false)}
         invoice={selectedInvoice}
       />
+
+      <CreateInvoiceModal
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreateInvoice={handleCreateInvoiceDraft}
+      />
     </div>
   );
 }
-

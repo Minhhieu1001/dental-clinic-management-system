@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Ban,
+  ChevronLeft,
+  ChevronRight,
   Eye,
   LockKeyhole,
   MoreVertical,
@@ -9,10 +11,8 @@ import {
   Search,
   ShieldCheck,
   Users,
-  ChevronLeft,
-  ChevronRight,
-  UserRound,
 } from 'lucide-react';
+import { Menu, MenuItem } from '@mui/material';
 import toast from 'react-hot-toast';
 import AddEmployeeModal from '../../components/ui/AddEmployeeModal';
 import EditEmployeeModal from '../../components/ui/EditEmployeeModal';
@@ -25,17 +25,15 @@ const USE_MOCK_DATA = false;
 
 function StatCard({ title, value, subtitle, icon: Icon, iconBg, iconColor, valueColor }) {
   return (
-    <div className="flex-1 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-center gap-4">
-        <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${iconBg}`}>
-          <Icon className={`h-7 w-7 ${iconColor}`} />
+    <div className="flex-1 rounded-lg border border-slate-200 bg-white p-4 shadow-2xs">
+      <div className="flex items-center gap-3.5">
+        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${iconBg}`}>
+          <Icon className={`h-5 w-5 ${iconColor}`} />
         </div>
         <div>
-          <p className="text-sm text-slate-500 font-medium mb-1">{title}</p>
-          <div className="flex items-baseline gap-2">
-            <p className={`text-2xl font-bold ${valueColor}`}>{value}</p>
-            {subtitle && <p className="text-xs text-slate-400">{subtitle}</p>}
-          </div>
+          <p className="text-[12px] text-slate-500 font-medium">{title}</p>
+          <p className={`text-xl font-extrabold ${valueColor}`}>{value}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">{subtitle}</p>
         </div>
       </div>
     </div>
@@ -54,12 +52,27 @@ export default function EmployeeManagement() {
   const [pageSize, setPageSize] = useState(10);
 
   // UI State
-  const [actionEmployeeId, setActionEmployeeId] = useState(null);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editEmployee, setEditEmployee] = useState(null);
   const [processingId, setProcessingId] = useState(null);
+
+  // MUI Menu State (Cho nút 3 chấm)
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [menuEmployee, setMenuEmployee] = useState(null);
+
+  const handleOpenMenu = (event, emp) => {
+    event.stopPropagation();
+    setAnchorEl(event.currentTarget);
+    setMenuEmployee(emp);
+  };
+
+  const handleCloseMenu = () => {
+    setAnchorEl(null);
+    setMenuEmployee(null);
+  };
 
   const fetchData = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
@@ -85,12 +98,10 @@ export default function EmployeeManagement() {
         inactive: statsData?.inactive || 0,
       });
 
-      // Update selected employee data if it is currently selected
+      // Cập nhật dữ liệu nhân viên đang xem chi tiết (nếu có)
       setSelectedEmployee((prev) => {
         if (!prev) return prev;
         const updatedSelected = mappedEmployees.find((e) => e.id === prev.id);
-        // Only update if something changed (to avoid unnecessary re-renders)
-        // Here we just return the new object from mappedEmployees, React handles the rest.
         return updatedSelected || prev;
       });
     } catch (err) {
@@ -126,6 +137,7 @@ export default function EmployeeManagement() {
   const paginatedEmployees = filteredEmployees.slice(startIndex, startIndex + pageSize);
 
   const handleToggleLock = async (emp) => {
+    if (!emp) return;
     if (!USE_MOCK_DATA && !emp?.userId) {
       toast.error('Nhân viên này chưa có tài khoản đăng nhập!');
       return;
@@ -133,7 +145,7 @@ export default function EmployeeManagement() {
 
     try {
       setProcessingId(emp.id);
-      const isLocked = emp.displayStatus === 'locked';
+      const isLocked = emp.displayStatus === 'locked' || emp.displayStatus === 'Bị khóa';
 
       if (!USE_MOCK_DATA) {
         const { lockUser, unlockUser } = await import('../../services/user.service');
@@ -143,26 +155,37 @@ export default function EmployeeManagement() {
           await lockUser(emp.userId);
         }
       }
-      
-      // Optimistic update for both mock and real API
-      setEmployees(prev => prev.map(e => {
+
+      // Optimistic update
+      const updatedList = employees.map((e) => {
         if (e.id === emp.id) {
           return {
             ...e,
-            displayStatus: isLocked ? 'active' : 'locked',
-            statusUser: isLocked ? 'ACTIVE' : 'BLOCK'
+            displayStatus: isLocked ? 'Hoạt động' : 'Bị khóa',
+            statusUser: isLocked ? 'ACTIVE' : 'BLOCK',
           };
         }
         return e;
-      }));
+      });
+
+      setEmployees(updatedList);
+
+      // Update selectedEmployee state if currently open
+      if (selectedEmployee?.id === emp.id) {
+        setSelectedEmployee((prev) => ({
+          ...prev,
+          displayStatus: isLocked ? 'Hoạt động' : 'Bị khóa',
+          statusUser: isLocked ? 'ACTIVE' : 'BLOCK',
+        }));
+      }
 
       // Update stats optimistically
-      setStats(prev => {
+      setStats((prev) => {
         const isNowLocked = !isLocked;
         return {
           ...prev,
-          active: prev.active + (isNowLocked ? -1 : 1),
-          locked: prev.locked + (isNowLocked ? 1 : -1)
+          active: Math.max(0, prev.active + (isNowLocked ? -1 : 1)),
+          locked: Math.max(0, prev.locked + (isNowLocked ? 1 : -1)),
         };
       });
 
@@ -172,12 +195,22 @@ export default function EmployeeManagement() {
       toast.error('Thao tác thất bại. Vui lòng thử lại.');
     } finally {
       setProcessingId(null);
-      setActionEmployeeId(null);
     }
   };
 
+  const handleViewDetail = (emp) => {
+    setSelectedEmployee(emp);
+    setIsDetailOpen(true);
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('vi-VN');
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard
@@ -186,8 +219,8 @@ export default function EmployeeManagement() {
           subtitle="Nhân viên"
           icon={Users}
           iconBg="bg-blue-50"
-          iconColor="text-blue-600"
-          valueColor="text-slate-800"
+          iconColor="text-blue-500"
+          valueColor="text-slate-900"
         />
         <StatCard
           title="Đang hoạt động"
@@ -195,8 +228,8 @@ export default function EmployeeManagement() {
           subtitle="Nhân viên"
           icon={ShieldCheck}
           iconBg="bg-emerald-50"
-          iconColor="text-emerald-600"
-          valueColor="text-slate-800"
+          iconColor="text-emerald-500"
+          valueColor="text-emerald-600"
         />
         <StatCard
           title="Bị khóa"
@@ -205,281 +238,263 @@ export default function EmployeeManagement() {
           icon={Ban}
           iconBg="bg-amber-50"
           iconColor="text-amber-500"
-          valueColor="text-slate-800"
+          valueColor="text-amber-600"
         />
       </div>
 
-      {/* Main Content Area (Split Layout) */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Left Side: Table Area */}
-        <div className="lg:col-span-3 min-w-0 flex flex-col rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden min-h-[600px]">
-          {/* Filters Bar */}
-          <div className="border-b border-slate-100 p-4 bg-white flex flex-wrap items-center gap-4">
-            <div className="relative flex-1 min-w-[280px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Tìm kiếm theo tên, số điện thoại hoặc email..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-700 outline-none transition-all focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
-              />
-            </div>
-
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-slate-500 hidden sm:inline-block">Lọc theo trạng thái</span>
-              <select
-                value={statusFilter}
-                onChange={(e) => {
-                  setStatusFilter(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="h-10 w-44 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-blue-400 cursor-pointer"
-              >
-                <option value="all">Tất cả trạng thái</option>
-                <option value="Hoạt động">Đang hoạt động</option>
-                <option value="Bị khóa">Bị khóa</option>
-              </select>
-            </div>
-
-            <div className="flex-1 lg:flex-none" />
-
-            <button
-              type="button"
-              onClick={() => setIsAddModalOpen(true)}
-              className="inline-flex h-10 w-full lg:w-auto shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 hover:shadow-md active:scale-[0.98]"
-            >
-              <Plus className="h-4 w-4" />
-              Thêm nhân viên
-            </button>
-          </div>
-
-          <div className="px-5 py-4 border-b border-slate-100 bg-white">
-            <h2 className="text-base font-bold text-slate-800">Danh sách nhân viên</h2>
-          </div>
-
-          {/* Table */}
-          <div className="overflow-x-auto flex-1">
-            <table className="w-full min-w-[900px]">
-              <thead className="bg-white border-b border-slate-100">
-                <tr>
-                  <th className="px-5 py-3 text-left text-[13px] font-semibold text-slate-700 w-12">#</th>
-                  <th className="px-5 py-3 text-left text-[13px] font-semibold text-slate-700">Nhân viên</th>
-                  <th className="px-5 py-3 text-left text-[13px] font-semibold text-slate-700">Số điện thoại</th>
-                  <th className="px-5 py-3 text-left text-[13px] font-semibold text-slate-700">Vai trò</th>
-                  <th className="px-5 py-3 text-left text-[13px] font-semibold text-slate-700">Trạng thái tài khoản</th>
-                  <th className="px-5 py-3 text-left text-[13px] font-semibold text-slate-700 text-center">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {loading ? (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-16 text-center text-slate-400">
-                      Đang tải dữ liệu...
-                    </td>
-                  </tr>
-                ) : paginatedEmployees.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-16 text-center text-slate-400">
-                      Không tìm thấy nhân viên phù hợp.
-                    </td>
-                  </tr>
-                ) : (
-                  paginatedEmployees.map((emp, index) => {
-                    const isActionOpen = actionEmployeeId === emp.id;
-                    const showDropdownUp = index >= paginatedEmployees.length - 2 && paginatedEmployees.length > 2;
-                    const isSelected = selectedEmployee?.id === emp.id;
-
-                    return (
-                      <tr
-                        key={emp.id}
-                        onClick={() => setSelectedEmployee(emp)}
-                        className={`transition-colors cursor-pointer ${isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50/80 bg-white'}`}
-                      >
-                        <td className="px-5 py-3 text-[13px] text-slate-500">
-                          {startIndex + index + 1}
-                        </td>
-                        <td className="px-5 py-3">
-                          <div className="flex items-center gap-3">
-                            <img
-                              src={emp.avatar}
-                              alt={emp.name}
-                              className="h-10 w-10 rounded-full object-cover ring-2 ring-white shadow-sm shrink-0"
-                            />
-                            <div className="min-w-0 flex-1">
-                              <p className="font-semibold text-slate-800 text-[13px] truncate">{emp.name || 'Chưa cập nhật'}</p>
-                              <p className="text-[12px] text-slate-500 truncate mt-0.5">{emp.email || '—'}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-5 py-3 text-[13px] text-slate-600">{emp.phone || '—'}</td>
-                        <td className="px-5 py-3">
-                          <RoleBadge role={emp.displayRole} />
-                        </td>
-                        <td className="px-5 py-3">
-                          <StatusDot status={emp.displayStatus} />
-                        </td>
-                        <td className="px-5 py-3">
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedEmployee(emp);
-                              }}
-                              className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                              title="Xem chi tiết"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditEmployee(emp);
-                                setIsEditModalOpen(true);
-                              }}
-                              className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
-                              title="Chỉnh sửa"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </button>
-                            <div className="relative">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActionEmployeeId(isActionOpen ? null : emp.id);
-                                }}
-                                className={`h-8 w-8 flex items-center justify-center rounded-lg transition-colors ${isActionOpen ? 'bg-slate-100 text-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
-                              >
-                                <MoreVertical className="h-4 w-4" />
-                              </button>
-
-                              {isActionOpen && (
-                                <>
-                                  <div
-                                    className="fixed inset-0 z-40"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setActionEmployeeId(null);
-                                    }}
-                                  />
-                                  <div
-                                    className={`absolute right-0 z-50 w-48 rounded-xl border border-slate-200 bg-white p-1 shadow-lg ${showDropdownUp ? 'bottom-10 origin-bottom-right' : 'top-10 origin-top-right'}`}
-                                  >
-                                    <button
-                                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setEditEmployee(emp);
-                                        setIsEditModalOpen(true);
-                                        setActionEmployeeId(null);
-                                      }}
-                                    >
-                                      <Pencil className="h-3.5 w-3.5 text-slate-400" />
-                                      Cập nhật thông tin
-                                    </button>
-                                    <div className="h-px bg-slate-100 mx-2" />
-                                    <button
-                                      disabled={processingId === emp.id}
-                                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleToggleLock(emp);
-                                        setActionEmployeeId(null);
-                                      }}
-                                    >
-                                      <LockKeyhole className="h-3.5 w-3.5 text-red-400" />
-                                      {emp.displayStatus === 'locked' ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
-                                    </button>
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-slate-100 px-5 py-4">
-              <p className="text-sm text-slate-500">
-                Hiển thị <span className="font-semibold text-slate-700">{startIndex + 1}</span> đến{' '}
-                <span className="font-semibold text-slate-700">
-                  {Math.min(startIndex + pageSize, filteredEmployees.length)}
-                </span>{' '}
-                của <span className="font-semibold text-slate-700">{filteredEmployees.length}</span> nhân viên
-              </p>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="p-1.5 text-slate-400 hover:text-slate-600 disabled:opacity-30 transition-colors"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: totalPages }).map((_, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setCurrentPage(idx + 1)}
-                      className={`h-8 w-8 rounded-lg text-sm font-medium transition-colors ${currentPage === idx + 1
-                          ? 'bg-blue-600 text-white shadow-sm'
-                          : 'text-slate-600 hover:bg-slate-100'
-                        }`}
-                    >
-                      {idx + 1}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="p-1.5 text-slate-400 hover:text-slate-600 disabled:opacity-30 transition-colors"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </button>
-                <div className="h-6 w-px bg-slate-200 mx-2" />
-                <select
-                  value={pageSize}
-                  onChange={(e) => {
-                    setPageSize(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-600 outline-none cursor-pointer"
-                >
-                  <option value={10}>10 / trang</option>
-                  <option value={20}>20 / trang</option>
-                  <option value={50}>50 / trang</option>
-                </select>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Right Side: Detail Panel */}
-        <div className="lg:col-span-1">
-          <EmployeeDetailPanel
-            employee={selectedEmployee}
-            onEdit={(emp) => {
-              setEditEmployee(emp);
-              setIsEditModalOpen(true);
+      {/* Bộ lọc và Nút Thêm */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[240px] max-w-md">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Tìm kiếm theo tên, số điện thoại hoặc email..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
             }}
+            className="w-full h-10 pl-10 pr-4 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all"
           />
         </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-slate-500 hidden sm:inline-block">Lọc theo trạng thái</span>
+          <select
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-700 outline-none focus:border-blue-400 cursor-pointer"
+          >
+            <option value="all">Tất cả trạng thái</option>
+            <option value="Hoạt động">Đang hoạt động</option>
+            <option value="Bị khóa">Bị khóa</option>
+          </select>
+        </div>
+
+        <div className="flex-1" />
+
+        <button
+          type="button"
+          onClick={() => setIsAddModalOpen(true)}
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-xs font-semibold text-white shadow-xs transition-all hover:bg-blue-700 active:scale-[0.98] cursor-pointer"
+        >
+          <Plus className="h-4 w-4" />
+          Thêm nhân viên
+        </button>
       </div>
+
+      {/* Main Content Area - Full-width Table */}
+      <div className="rounded-lg border border-slate-200 bg-white shadow-2xs overflow-hidden">
+        <div className="px-5 py-3 border-b border-slate-100 bg-white">
+          <h2 className="text-sm font-bold text-slate-800">Danh sách nhân viên</h2>
+        </div>
+
+        {/* Table container với scroll dọc cố định height */}
+        <div className="overflow-x-auto max-h-[calc(100vh-310px)] overflow-y-auto">
+          <table className="w-full text-left border-collapse">
+            <thead className="sticky top-0 bg-white shadow-xs z-10 border-b border-slate-100">
+              <tr>
+                <th className="px-5 py-3 text-left text-[12px] font-semibold text-slate-600 w-12">#</th>
+                <th className="px-5 py-3 text-left text-[12px] font-semibold text-slate-600">Nhân viên</th>
+                <th className="px-5 py-3 text-left text-[12px] font-semibold text-slate-600">Số điện thoại</th>
+                <th className="px-5 py-3 text-left text-[12px] font-semibold text-slate-600">Ngày vào làm</th>
+                <th className="px-5 py-3 text-left text-[12px] font-semibold text-slate-600">Vai trò</th>
+                <th className="px-5 py-3 text-left text-[12px] font-semibold text-slate-600">Trạng thái tài khoản</th>
+                <th className="px-5 py-3 text-center text-[12px] font-semibold text-slate-600">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-16 text-center text-slate-400">
+                    Đang tải dữ liệu...
+                  </td>
+                </tr>
+              ) : paginatedEmployees.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-16 text-center text-slate-400">
+                    Không tìm thấy nhân viên phù hợp.
+                  </td>
+                </tr>
+              ) : (
+                paginatedEmployees.map((emp, index) => {
+                  return (
+                    <tr
+                      key={emp.id}
+                      onClick={() => handleViewDetail(emp)}
+                      className="transition-colors hover:bg-slate-50/80 bg-white cursor-pointer"
+                    >
+                      <td className="px-5 py-3 text-[13px] text-slate-500 font-medium">
+                        {startIndex + index + 1}
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={emp.avatar}
+                            alt={emp.name}
+                            className="h-9 w-9 rounded-full object-cover ring-2 ring-white shadow-2xs shrink-0"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-slate-900 text-xs truncate">{emp.name || 'Chưa cập nhật'}</p>
+                            <p className="text-[11px] text-slate-400 truncate mt-0.5">{emp.email || '—'}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3 text-xs text-slate-600 font-medium">{emp.phone || '—'}</td>
+                      <td className="px-5 py-3 text-xs text-slate-600 font-medium">{formatDate(emp.createdAt)}</td>
+                      <td className="px-5 py-3">
+                        <RoleBadge role={emp.displayRole} />
+                      </td>
+                      <td className="px-5 py-3">
+                        <StatusDot status={emp.displayStatus} />
+                      </td>
+                      <td className="px-5 py-3 text-center">
+                        <button
+                          type="button"
+                          onClick={(e) => handleOpenMenu(e, emp)}
+                          className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3 bg-white">
+            <p className="text-xs text-slate-500">
+              Hiển thị <span className="font-semibold text-slate-700">{startIndex + 1}</span> đến{' '}
+              <span className="font-semibold text-slate-700">
+                {Math.min(startIndex + pageSize, filteredEmployees.length)}
+              </span>{' '}
+              của <span className="font-semibold text-slate-700">{filteredEmployees.length}</span> nhân viên
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="p-1.5 text-slate-400 hover:text-slate-600 disabled:opacity-30 transition-colors cursor-pointer"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }).map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentPage(idx + 1)}
+                    className={`h-7 w-7 rounded-md text-xs font-medium transition-colors cursor-pointer ${currentPage === idx + 1
+                      ? 'bg-blue-600 text-white shadow-2xs'
+                      : 'text-slate-600 hover:bg-slate-100'
+                      }`}
+                  >
+                    {idx + 1}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="p-1.5 text-slate-400 hover:text-slate-600 disabled:opacity-30 transition-colors cursor-pointer"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+              <div className="h-4 w-px bg-slate-200 mx-1" />
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="h-7 rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-600 outline-none cursor-pointer"
+              >
+                <option value={10}>10 / trang</option>
+                <option value={20}>20 / trang</option>
+                <option value={50}>50 / trang</option>
+              </select>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Action Menu (Render bằng MUI Portal giúp không bị overflow clipping) */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleCloseMenu}
+        slotProps={{
+          paper: {
+            elevation: 2,
+            sx: {
+              borderRadius: '8px',
+              mt: 0.5,
+              minWidth: 160,
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+            },
+          },
+        }}
+        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+      >
+        <MenuItem
+          onClick={() => {
+            handleViewDetail(menuEmployee);
+            handleCloseMenu();
+          }}
+          className="flex items-center gap-2 text-xs font-medium text-slate-700 py-2 px-3 hover:bg-slate-50"
+        >
+          <Eye className="w-4 h-4 text-blue-500" />
+          Xem chi tiết
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setEditEmployee(menuEmployee);
+            setIsEditModalOpen(true);
+            handleCloseMenu();
+          }}
+          className="flex items-center gap-2 text-xs font-medium text-slate-700 py-2 px-3 hover:bg-slate-50"
+        >
+          <Pencil className="w-4 h-4 text-emerald-500" />
+          Cập nhật thông tin
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            handleToggleLock(menuEmployee);
+            handleCloseMenu();
+          }}
+          disabled={processingId === menuEmployee?.id}
+          className="flex items-center gap-2 text-xs font-medium text-red-600 py-2 px-3 hover:bg-red-50"
+        >
+          <LockKeyhole className="w-4 h-4 text-red-500" />
+          {menuEmployee?.displayStatus === 'locked' || menuEmployee?.displayStatus === 'Bị khóa'
+            ? 'Mở khóa tài khoản'
+            : 'Khóa tài khoản'}
+        </MenuItem>
+      </Menu>
+
+      {/* Employee Detail Slide-in Panel */}
+      <EmployeeDetailPanel
+        isOpen={isDetailOpen}
+        onClose={() => setIsDetailOpen(false)}
+        employee={selectedEmployee}
+        onEdit={(emp) => {
+          setEditEmployee(emp);
+          setIsEditModalOpen(true);
+        }}
+        onToggleLock={handleToggleLock}
+        processing={processingId === selectedEmployee?.id}
+      />
 
       <AddEmployeeModal
         isOpen={isAddModalOpen}
@@ -496,7 +511,7 @@ export default function EmployeeManagement() {
           setIsEditModalOpen(false);
           setEditEmployee(null);
         }}
-        onSuccess={(updated) => {
+        onSuccess={() => {
           fetchData(false);
           setIsEditModalOpen(false);
         }}

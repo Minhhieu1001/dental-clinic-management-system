@@ -16,6 +16,8 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
 
     boolean existsByTreatmentPlanId(UUID treatmentPlanId);
 
+    List<Invoice> findByPatientIdOrderByInvoiceDateDesc(UUID patientId);
+
     @Query("SELECT DISTINCT i FROM Invoice i " +
            "LEFT JOIN FETCH i.patient p " +
            "LEFT JOIN FETCH i.employee e " +

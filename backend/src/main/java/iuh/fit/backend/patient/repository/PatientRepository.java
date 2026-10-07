@@ -16,6 +16,9 @@ public interface PatientRepository extends JpaRepository<Patient, UUID> {
     Optional<Patient> findByPatientCode(String patientCode);
     List<Patient> findAllByOrderByCreatedAtDesc();
     List<Patient> findByPhoneNumberOrderByCreatedAtDesc(String phoneNumber);
+    Optional<Patient> findFirstByPhoneNumberOrderByCreatedAtDesc(String phoneNumber);
+    Optional<Patient> findFirstByCccdOrderByCreatedAtDesc(String cccd);
+    Optional<Patient> findFirstByPatientCodeOrderByCreatedAtDesc(String patientCode);
 
     @Query(value = """
         SELECT
@@ -23,6 +26,7 @@ public interface PatientRepository extends JpaRepository<Patient, UUID> {
             pa.patient_code AS patient_code,
             pa.full_name AS full_name,
             pa.phone_number AS phone,
+            pa.cccd AS cccd,
             pa.gender AS gender,
             pa.date_of_birth AS date_of_birth,
             pa.address AS address,

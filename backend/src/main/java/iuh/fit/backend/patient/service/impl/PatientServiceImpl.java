@@ -77,12 +77,44 @@ public class PatientServiceImpl implements PatientService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public PatientDTO searchPatient(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Từ khóa tìm kiếm bệnh nhân không được để trống");
+        }
+
+        String value = keyword.trim();
+        Optional<Patient> patient = Optional.empty();
+
+        try {
+            patient = patientRepository.findById(UUID.fromString(value));
+        } catch (IllegalArgumentException ignored) {
+            // The keyword can also be a phone number, CCCD, or patient code.
+        }
+
+        if (patient.isEmpty()) {
+            patient = patientRepository.findFirstByPhoneNumberOrderByCreatedAtDesc(value);
+        }
+        if (patient.isEmpty()) {
+            patient = patientRepository.findFirstByCccdOrderByCreatedAtDesc(value);
+        }
+        if (patient.isEmpty()) {
+            patient = patientRepository.findFirstByPatientCodeOrderByCreatedAtDesc(value);
+        }
+
+        return mapToDTO(patient.orElseThrow(() ->
+                new AppException(ErrorCode.RESOURCE_NOT_FOUND,
+                        "Không tìm thấy bệnh nhân theo từ khóa: " + value)));
+    }
+
+    @Override
     @Transactional
     public PatientDTO createPatient(PatientCreateDTO dto) {
         String patientCode = "PA-" + (System.currentTimeMillis() % 1000000);
         Patient patient = Patient.builder()
                 .patientCode(patientCode)
                 .phoneNumber(dto.getPhone())
+                .cccd(normalize(dto.getCccd()))
                 .email(dto.getEmail() != null ? dto.getEmail().trim() : null)
                 .nationality(dto.getNationality())
                 .fullName(dto.getFullName() != null ? dto.getFullName().trim() : "Bệnh nhân mới")
@@ -201,6 +233,9 @@ public class PatientServiceImpl implements PatientService {
         if (dto.getPhone() != null && !dto.getPhone().trim().isEmpty()) {
             patient.setPhoneNumber(dto.getPhone().trim());
         }
+        if (dto.getCccd() != null) {
+            patient.setCccd(normalize(dto.getCccd()));
+        }
         if (dto.getEmail() != null) {
             patient.setEmail(dto.getEmail().trim());
         }
@@ -243,6 +278,7 @@ public class PatientServiceImpl implements PatientService {
                         .patientCode(asString(firstRow.get("patient_code")))
                         .fullName(asString(firstRow.get("full_name")))
                         .phone(asString(firstRow.get("phone")))
+                        .cccd(asString(firstRow.get("cccd")))
                         .gender(asEnum(Gender.class, firstRow.get("gender")))
                         .dateOfBirth(asDateTime(firstRow.get("date_of_birth")))
                         .address(asString(firstRow.get("address")))
@@ -379,6 +415,7 @@ public class PatientServiceImpl implements PatientService {
                 .patientCode(patient.getPatientCode())
                 .fullName(patient.getFullName())
                 .phone(phoneStr)
+                .cccd(patient.getCccd())
                 .email(patient.getEmail())
                 .nationality(patient.getNationality())
                 .gender(patient.getGender())
@@ -390,5 +427,9 @@ public class PatientServiceImpl implements PatientService {
                 .surgicalHistory(patient.getSurgicalHistory())
                 .createdAt(patient.getCreatedAt())
                 .build();
+    }
+
+    private static String normalize(String value) {
+        return value == null || value.trim().isEmpty() ? null : value.trim();
     }
 }

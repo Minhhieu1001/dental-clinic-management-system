@@ -44,6 +44,18 @@ public class PatientController {
         );
     }
 
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<PatientDTO>> searchPatient(@RequestParam String keyword) {
+        PatientDTO patient = patientService.searchPatient(keyword);
+        return ResponseEntity.ok(
+                ApiResponse.<PatientDTO>builder()
+                        .status(200)
+                        .message("Tìm kiếm bệnh nhân thành công")
+                        .data(patient)
+                        .build()
+        );
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<PatientDTO>> getPatientById(@PathVariable UUID id) {
         PatientDTO patient = patientService.getPatientById(id);

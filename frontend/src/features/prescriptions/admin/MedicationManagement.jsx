@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Pill,
   Search,
@@ -274,6 +274,11 @@ export default function MedicationManagement() {
     const nextStatus = med.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
     const statusLabel = nextStatus === 'ACTIVE' ? 'Đang bán' : 'Ngừng bán';
 
+    // Optimistic update để UI đổi tức thì không bị giật trang
+    setMedicines((prev) =>
+      prev.map((item) => (item.id === med.id ? { ...item, status: nextStatus } : item))
+    );
+
     try {
       await updateMedicineStatus(med.id, nextStatus);
       toast.success(`Thuốc "${med.name}" chuyển sang: ${statusLabel}`);
@@ -283,6 +288,10 @@ export default function MedicationManagement() {
       console.error('Lỗi khi cập nhật trạng thái thuốc qua API:', err);
       const errorMsg = err?.response?.data?.message || 'Không thể cập nhật trạng thái thuốc';
       toast.error(errorMsg);
+      // Revert trên state nếu lỗi API
+      setMedicines((prev) =>
+        prev.map((item) => (item.id === med.id ? { ...item, status: med.status } : item))
+      );
     }
   };
 
@@ -398,7 +407,6 @@ export default function MedicationManagement() {
             <span className="text-xl font-bold text-slate-800">{stats.total}</span>
             <span className="text-[11px] text-slate-500">loại</span>
           </div>
-          <p className="mt-0.5 text-[11px] text-slate-400">Tổng {stats.totalStock.toLocaleString()} đơn vị</p>
         </div>
 
         {/* Card 2: Đang kinh doanh / Còn bán */}
@@ -413,7 +421,6 @@ export default function MedicationManagement() {
             <span className="text-xl font-bold text-emerald-600">{stats.active}</span>
             <span className="text-[11px] text-slate-500">loại</span>
           </div>
-          <p className="mt-0.5 text-[11px] text-emerald-600 font-medium">Sẵn sàng kê đơn</p>
         </div>
 
         {/* Card 3: Ngừng kinh doanh / Tạm ngưng */}
@@ -428,7 +435,6 @@ export default function MedicationManagement() {
             <span className="text-xl font-bold text-slate-700">{stats.inactive}</span>
             <span className="text-[11px] text-slate-500">loại</span>
           </div>
-          <p className="mt-0.5 text-[11px] text-slate-400">Tạm ngưng nhập / kê</p>
         </div>
 
         {/* Card 4: Sắp hết hàng */}
@@ -443,7 +449,6 @@ export default function MedicationManagement() {
             <span className="text-xl font-bold text-amber-600">{stats.lowStock}</span>
             <span className="text-[11px] text-slate-500">loại</span>
           </div>
-          <p className="mt-0.5 text-[11px] text-amber-600 font-medium">Tồn &lt; 30 đơn vị</p>
         </div>
 
         {/* Card 5: Cận hạn / Hết hạn */}
@@ -458,9 +463,6 @@ export default function MedicationManagement() {
             <span className="text-xl font-bold text-rose-600">{stats.expiringSoon + stats.expired}</span>
             <span className="text-[11px] text-slate-500">loại</span>
           </div>
-          <p className="mt-0.5 text-[11px] text-rose-600 font-medium">
-            {stats.expired > 0 ? `${stats.expired} đã hết hạn` : 'Trong 60 ngày'}
-          </p>
         </div>
 
       </div>

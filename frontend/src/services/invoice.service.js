@@ -40,4 +40,13 @@ export const payInvoice = async (invoiceId, paymentData) => {
 };
 
 
-
+// Lấy danh sách hóa đơn theo bệnh nhân
+export const getInvoicesByPatientId = async (patientId) => {
+  try {
+    const response = await api.get(`/invoices/patient/${patientId}`);
+    return response.data?.data ?? response.data?.result ?? response.data ?? [];
+  } catch (error) {
+    console.warn('Lỗi lấy danh sách hóa đơn của bệnh nhân:', error);
+    return [];
+  }
+};
