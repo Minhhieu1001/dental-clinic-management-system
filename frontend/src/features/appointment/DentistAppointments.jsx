@@ -484,21 +484,35 @@ export default function DentistAppointments() {
       });
   }, [appointments, statusFilter, currentDate, searchTerm]);
 
+  // Next / active patient appointment for Doctor Dashboard Hero Banner
+  const nextPatientAppt = useMemo(() => {
+    const waitingOrActive = appointments.filter((apt) => {
+      if (apt.status === 'COMPLETED' || apt.status === 'CANCELLED') return false;
+      return true;
+    }).sort((a, b) => {
+      const dA = parseAppointmentDateTime(a.appointmentTime, a.appointmentDate);
+      const dB = parseAppointmentDateTime(b.appointmentTime, b.appointmentDate);
+      return (dA ? dA.getTime() : 0) - (dB ? dB.getTime() : 0);
+    });
+    return waitingOrActive[0] || null;
+  }, [appointments]);
+
   const doctorDisplayName = dentistInfo ? (dentistInfo.name || dentistInfo.fullName) : formatDoctorTitle(user);
 
   const now = new Date();
 
   return (
     <div className="mx-auto max-w-[1550px] px-2 sm:px-4 py-3 space-y-3 text-slate-800 text-xs font-sans">
-      {/* 0. Hero Doctor Dashboard Banner */}
+      {/* 0. Hero Doctor Dashboard Banner - Minimal & Clean */}
       <div className="rounded-sm bg-white p-4 text-slate-800 border border-slate-200 shadow-2xs">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          {/* Left: Doctor & Clinic Room Profile */}
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-sm bg-teal-50 text-teal-700 border border-teal-200 shrink-0">
+            <div className="p-2.5 rounded-sm bg-teal-50 text-teal-700 border border-teal-200/90 shrink-0">
               <Stethoscope size={22} />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-sm sm:text-base font-extrabold uppercase tracking-wide text-slate-900">
                   LỊCH LÀM VIỆC & KHÁM BỆNH BÁC SĨ
                 </h1>
@@ -507,15 +521,15 @@ export default function DentistAppointments() {
                 </span>
               </div>
               <p className="text-slate-500 text-[11px] mt-0.5 font-medium">
-                Lịch khám theo tuần, mở hồ sơ bệnh án khám lâm sàng & kê đơn thuốc cho bệnh nhân.
+                Nha khoa Quốc tế Crown Dental • Lịch khám theo tuần, mở hồ sơ bệnh án khám lâm sàng & kê đơn thuốc cho bệnh nhân.
               </p>
             </div>
           </div>
 
-          {/* Metric Quick Stats Pills */}
-          <div className="flex flex-wrap items-center gap-2 text-xs">
+          {/* Right: Metric Quick Stats Pills */}
+          <div className="flex flex-wrap items-center gap-2 text-xs shrink-0">
             <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-sm px-3 py-1.5 shadow-2xs">
-              <span className="text-slate-500 font-medium text-[11px]">Tổng ca tuần này:</span>
+              <span className="text-slate-500 font-medium text-[11px]">Tổng ca tuần:</span>
               <strong className="text-slate-900 font-extrabold">{weekStats.total}</strong>
             </div>
             <div className="flex items-center gap-2 bg-sky-50/80 border border-sky-200 text-sky-900 rounded-sm px-3 py-1.5 shadow-2xs">
@@ -650,79 +664,161 @@ export default function DentistAppointments() {
         </div>
       </div>
 
-      {/* Professional Interactive Minimal Filter Strip */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-sm border border-slate-200 bg-white p-3 shadow-2xs">
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setStatusFilter('ALL')}
-            className={`flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-bold transition-all duration-150 cursor-pointer active:scale-95 ${statusFilter === 'ALL'
-              ? 'bg-slate-900 text-white shadow-2xs ring-1 ring-slate-900'
-              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-          >
-            Tất cả <span className="rounded-sm bg-white/20 px-1.5 py-0.2 text-[10px]">{weekStats.total}</span>
-          </button>
+      {/* Dynamic Stacked Distribution Bar & Interactive KPI Cards Grid */}
+      <div className="rounded-sm border border-slate-200 bg-white p-3 sm:p-4 shadow-2xs space-y-3">
+        {/* Top Line: Title & Distribution Bar */}
+        <div className="space-y-1.5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+              <Activity size={15} className="text-teal-700" />
+              <span>Phân bổ lịch khám tuần ({dateRangeLabel})</span>
+            </div>
+            {/* Quick Search */}
+            <div className="relative">
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Tìm tên BN, SĐT, dịch vụ..."
+                className="w-full sm:w-60 rounded-sm border border-slate-200 bg-slate-50 pl-7 pr-2.5 py-1 text-xs text-slate-800 placeholder-slate-400 focus:border-teal-600 focus:bg-white focus:outline-hidden"
+              />
+            </div>
+          </div>
 
-          <button
-            type="button"
-            onClick={() => setStatusFilter('WAITING')}
-            className={`flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-bold transition-all duration-150 cursor-pointer active:scale-95 ${statusFilter === 'WAITING'
-              ? 'bg-sky-700 text-white shadow-2xs ring-1 ring-sky-700'
-              : 'bg-sky-50/80 text-sky-800 border border-sky-200/80 hover:bg-sky-100'
-              }`}
-          >
-            Chưa khám
-            <span className="rounded-sm bg-sky-100 text-sky-900 px-1.5 py-0.2 text-[10px] font-extrabold">{weekStats.waiting}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setStatusFilter('IN_PROGRESS')}
-            className={`flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-bold transition-all duration-150 cursor-pointer active:scale-95 ${statusFilter === 'IN_PROGRESS'
-              ? 'bg-purple-700 text-white shadow-2xs ring-1 ring-purple-700'
-              : 'bg-purple-50/80 text-purple-800 border border-purple-200/80 hover:bg-purple-100'
-              }`}
-          >
-            Đang khám
-            <span className="rounded-sm bg-purple-100 text-purple-900 px-1.5 py-0.2 text-[10px] font-extrabold">{weekStats.inProgress}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setStatusFilter('COMPLETED')}
-            className={`flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-bold transition-all duration-150 cursor-pointer active:scale-95 ${statusFilter === 'COMPLETED'
-              ? 'bg-emerald-700 text-white shadow-2xs ring-1 ring-emerald-700'
-              : 'bg-emerald-50/80 text-emerald-800 border border-emerald-200/80 hover:bg-emerald-100'
-              }`}
-          >
-            Hoàn thành
-            <span className="rounded-sm bg-emerald-100 text-emerald-900 px-1.5 py-0.2 text-[10px] font-extrabold">{weekStats.completed}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setStatusFilter('CANCELLED')}
-            className={`flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-bold transition-all duration-150 cursor-pointer active:scale-95 ${statusFilter === 'CANCELLED'
-              ? 'bg-rose-700 text-white shadow-2xs ring-1 ring-rose-700'
-              : 'bg-rose-50/80 text-rose-800 border border-rose-200/80 hover:bg-rose-100'
-              }`}
-          >
-            Đã hủy
-            <span className="rounded-sm bg-rose-100 text-rose-900 px-1.5 py-0.2 text-[10px] font-extrabold">{weekStats.cancelled}</span>
-          </button>
+          {/* Dynamic Stacked Distribution Bar */}
+          <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden flex p-0.5 border border-slate-200/80 shadow-2xs">
+            {weekStats.total === 0 ? (
+              <div className="h-full w-full bg-slate-200/80 rounded-full" title="Chưa có ca khám nào trong tuần" />
+            ) : (
+              <>
+                {weekStats.waiting > 0 && (
+                  <div
+                    style={{ width: `${(weekStats.waiting / weekStats.total) * 100}%` }}
+                    className="h-full bg-gradient-to-r from-sky-400 to-sky-500 transition-all duration-300 first:rounded-l-full last:rounded-r-full"
+                    title={`Chưa khám: ${weekStats.waiting} (${Math.round((weekStats.waiting / weekStats.total) * 100)}%)`}
+                  />
+                )}
+                {weekStats.inProgress > 0 && (
+                  <div
+                    style={{ width: `${(weekStats.inProgress / weekStats.total) * 100}%` }}
+                    className="h-full bg-gradient-to-r from-purple-400 to-purple-500 transition-all duration-300 first:rounded-l-full last:rounded-r-full"
+                    title={`Đang khám: ${weekStats.inProgress} (${Math.round((weekStats.inProgress / weekStats.total) * 100)}%)`}
+                  />
+                )}
+                {weekStats.completed > 0 && (
+                  <div
+                    style={{ width: `${(weekStats.completed / weekStats.total) * 100}%` }}
+                    className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all duration-300 first:rounded-l-full last:rounded-r-full"
+                    title={`Hoàn thành: ${weekStats.completed} (${Math.round((weekStats.completed / weekStats.total) * 100)}%)`}
+                  />
+                )}
+                {weekStats.cancelled > 0 && (
+                  <div
+                    style={{ width: `${(weekStats.cancelled / weekStats.total) * 100}%` }}
+                    className="h-full bg-gradient-to-r from-rose-400 to-rose-600 transition-all duration-300 first:rounded-l-full last:rounded-r-full"
+                    title={`Đã hủy: ${weekStats.cancelled} (${Math.round((weekStats.cancelled / weekStats.total) * 100)}%)`}
+                  />
+                )}
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Quick Search inside Filter Bar */}
-        <div className="relative">
-          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Tìm tên BN, SĐT, dịch vụ..."
-            className="w-full sm:w-56 rounded-sm border border-slate-200 bg-slate-50 pl-7 pr-2.5 py-1 text-xs text-slate-800 placeholder-slate-400 focus:border-teal-600 focus:bg-white focus:outline-hidden"
-          />
+        {/* Metric Cards Grid below the progress bar (Interactive Filters matching User's Image) */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-0.5 text-xs select-none">
+          {/* Card 1: Tất cả */}
+          <div
+            onClick={() => setStatusFilter('ALL')}
+            className={`rounded-sm p-2 px-2.5 border flex items-center justify-between shadow-2xs cursor-pointer transition-all duration-150 active:scale-95 ${
+              statusFilter === 'ALL'
+                ? 'bg-teal-50 border-teal-600 ring-2 ring-teal-600'
+                : 'bg-slate-50/80 border-slate-200 hover:bg-slate-100'
+            }`}
+            title="Nhấp để lọc xem tất cả cuộc hẹn"
+          >
+            <div>
+              <div className="text-[10px] text-slate-500 uppercase font-extrabold">TỔNG LỊCH HẸN</div>
+              <div className="text-xs font-extrabold text-slate-900 mt-0.5">{weekStats.total} ca khám</div>
+            </div>
+            <span className="text-[11px] font-bold text-slate-600 bg-white px-1.5 py-0.5 rounded border border-slate-200">100%</span>
+          </div>
+
+          {/* Card 2: Chưa khám */}
+          <div
+            onClick={() => setStatusFilter('WAITING')}
+            className={`rounded-sm p-2 px-2.5 border flex items-center justify-between shadow-2xs cursor-pointer transition-all duration-150 active:scale-95 ${
+              statusFilter === 'WAITING'
+                ? 'bg-sky-100/90 border-sky-600 ring-2 ring-sky-600'
+                : 'bg-sky-50/50 border-sky-200/80 hover:bg-sky-100/60'
+            }`}
+            title="Nhấp để lọc ca chưa khám"
+          >
+            <div>
+              <div className="text-[10px] text-sky-800 uppercase font-extrabold">CHƯA KHÁM</div>
+              <div className="text-xs font-extrabold text-sky-950 mt-0.5">{weekStats.waiting} ca</div>
+            </div>
+            <span className="text-[11px] font-extrabold text-sky-700 bg-white px-1.5 py-0.5 rounded border border-sky-200">
+              {weekStats.total > 0 ? Math.round((weekStats.waiting / weekStats.total) * 100) : 0}%
+            </span>
+          </div>
+
+          {/* Card 3: Đang khám */}
+          <div
+            onClick={() => setStatusFilter('IN_PROGRESS')}
+            className={`rounded-sm p-2 px-2.5 border flex items-center justify-between shadow-2xs cursor-pointer transition-all duration-150 active:scale-95 ${
+              statusFilter === 'IN_PROGRESS'
+                ? 'bg-purple-100/90 border-purple-600 ring-2 ring-purple-600'
+                : 'bg-purple-50/50 border-purple-200/80 hover:bg-purple-100/60'
+            }`}
+            title="Nhấp để lọc ca đang khám"
+          >
+            <div>
+              <div className="text-[10px] text-purple-800 uppercase font-extrabold">ĐANG KHÁM</div>
+              <div className="text-xs font-extrabold text-purple-950 mt-0.5">{weekStats.inProgress} ca</div>
+            </div>
+            <span className="text-[11px] font-extrabold text-purple-700 bg-white px-1.5 py-0.5 rounded border border-purple-200">
+              {weekStats.total > 0 ? Math.round((weekStats.inProgress / weekStats.total) * 100) : 0}%
+            </span>
+          </div>
+
+          {/* Card 4: Hoàn thành */}
+          <div
+            onClick={() => setStatusFilter('COMPLETED')}
+            className={`rounded-sm p-2 px-2.5 border flex items-center justify-between shadow-2xs cursor-pointer transition-all duration-150 active:scale-95 ${
+              statusFilter === 'COMPLETED'
+                ? 'bg-emerald-100/90 border-emerald-600 ring-2 ring-emerald-600'
+                : 'bg-emerald-50/50 border-emerald-200/80 hover:bg-emerald-100/60'
+            }`}
+            title="Nhấp để lọc ca hoàn thành"
+          >
+            <div>
+              <div className="text-[10px] text-emerald-800 uppercase font-extrabold">HOÀN THÀNH</div>
+              <div className="text-xs font-extrabold text-emerald-950 mt-0.5">{weekStats.completed} xong</div>
+            </div>
+            <span className="text-[11px] font-extrabold text-emerald-700 bg-white px-1.5 py-0.5 rounded border border-emerald-200">
+              {weekStats.total > 0 ? Math.round((weekStats.completed / weekStats.total) * 100) : 0}%
+            </span>
+          </div>
+
+          {/* Card 5: Đã hủy */}
+          <div
+            onClick={() => setStatusFilter('CANCELLED')}
+            className={`rounded-sm p-2 px-2.5 border flex items-center justify-between shadow-2xs cursor-pointer transition-all duration-150 active:scale-95 ${
+              statusFilter === 'CANCELLED'
+                ? 'bg-rose-100/90 border-rose-600 ring-2 ring-rose-600'
+                : 'bg-rose-50/50 border-rose-200/80 hover:bg-rose-100/60'
+            }`}
+            title="Nhấp để lọc ca đã hủy"
+          >
+            <div>
+              <div className="text-[10px] text-rose-800 uppercase font-extrabold">ĐÃ HỦY</div>
+              <div className="text-xs font-extrabold text-rose-950 mt-0.5">{weekStats.cancelled} ca hủy</div>
+            </div>
+            <span className="text-[11px] font-extrabold text-rose-700 bg-white px-1.5 py-0.5 rounded border border-rose-200">
+              {weekStats.total > 0 ? Math.round((weekStats.cancelled / weekStats.total) * 100) : 0}%
+            </span>
+          </div>
         </div>
       </div>
 
