@@ -41,6 +41,9 @@ public class Patient {
     @Column(length = 50)
     private String phoneNumber;
 
+    @Column(length = 20)
+    private String cccd;
+
     @Column(length = 255)
     private String email;
 

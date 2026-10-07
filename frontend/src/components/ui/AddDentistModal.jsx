@@ -259,6 +259,23 @@ export default function AddDentistModal({ isOpen, onClose, onSuccess, mockMode =
   const [specCertificates, setSpecCertificates] = useState([]);
   const [isSubmitDisabled, setIsSubmitDisabled] = useState(false);
 
+  const [mounted, setMounted] = useState(false);
+  const [active, setActive] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setMounted(true);
+      const timer = setTimeout(() => setActive(true), 20);
+      document.body.style.overflow = 'hidden';
+      return () => clearTimeout(timer);
+    } else {
+      setActive(false);
+      const timer = setTimeout(() => setMounted(false), 250);
+      document.body.style.overflow = 'unset';
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     if (isOpen) {
       setCurrentStep(0);
@@ -275,7 +292,7 @@ export default function AddDentistModal({ isOpen, onClose, onSuccess, mockMode =
     }
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  if (!mounted) return null;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -870,14 +887,27 @@ export default function AddDentistModal({ isOpen, onClose, onSuccess, mockMode =
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-      <div className="w-full max-w-3xl bg-white rounded-2xl shadow-xl flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div
+        className={`fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-300 ${
+          active ? 'opacity-100' : 'opacity-0'
+        }`}
+        onClick={!loading ? onClose : undefined}
+      />
+
+      {/* Modal Content */}
+      <div
+        className={`relative w-full max-w-3xl bg-white rounded-lg shadow-xl border border-slate-200 flex flex-col max-h-[92vh] transition-all duration-300 ease-out transform ${
+          active ? 'scale-100 opacity-100 translate-y-0' : 'scale-95 opacity-0 -translate-y-3'
+        }`}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <h2 className="text-lg font-bold text-slate-800">Thêm bác sĩ mới</h2>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-colors"
+            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -889,7 +919,7 @@ export default function AddDentistModal({ isOpen, onClose, onSuccess, mockMode =
         {/* Content */}
         <div className="p-6 overflow-y-auto flex-1 bg-slate-50/30">
           {error && (
-            <div className="mb-6 p-4 rounded-xl bg-red-50 text-red-600 text-sm flex items-start gap-3">
+            <div className="mb-6 p-4 rounded-lg bg-red-50 text-red-600 text-sm flex items-start gap-3 border border-red-100">
               <Info className="w-5 h-5 shrink-0 mt-0.5" />
               <p>{error}</p>
             </div>
@@ -903,7 +933,7 @@ export default function AddDentistModal({ isOpen, onClose, onSuccess, mockMode =
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-white rounded-b-2xl">
+        <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-white rounded-b-lg">
           <div>
             {currentStep > 0 && (
               <button

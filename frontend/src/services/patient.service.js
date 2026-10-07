@@ -46,3 +46,16 @@ export const getRawInvoiceDataByPatientCode = async (patientCode) => {
   const response = await api.get(`/patients/raw-invoice-data/${patientCode}`);
   return response.data?.data ?? response.data?.result ?? response.data ?? [];
 };
+
+// Search patient by UUID, patientCode, phone, CCCD
+export const searchPatient = async (keyword) => {
+  try {
+    const response = await api.get('/patients/search', {
+      params: { keyword },
+    });
+    return response.data?.data ?? response.data?.result ?? response.data ?? null;
+  } catch (error) {
+    console.warn('Lỗi tìm kiếm bệnh nhân:', error);
+    return null;
+  }
+};

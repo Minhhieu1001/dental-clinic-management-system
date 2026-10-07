@@ -78,6 +78,15 @@ public class InvoiceServiceImpl implements InvoiceService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<InvoiceResponse> getInvoicesByPatientId(UUID patientId) {
+        return invoiceRepository.findByPatientIdOrderByInvoiceDateDesc(patientId)
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     @Transactional
     public InvoiceResponse createInvoice(CreateInvoiceRequest request) {
         Patient patient = null;
@@ -360,6 +369,7 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .treatmentPlanId(inv.getTreatmentPlan() != null ? inv.getTreatmentPlan().getId() : null)
                 .patientName(inv.getPatient() != null ? inv.getPatient().getFullName() : null)
                 .patientPhone(inv.getPatient() != null ? inv.getPatient().getPhoneNumber() : null)
+                .patientCccd(inv.getPatient() != null ? inv.getPatient().getCccd() : null)
                 .patientCode(inv.getPatient() != null ? inv.getPatient().getPatientCode() : null)
                 .employeeId(inv.getEmployee() != null ? inv.getEmployee().getId() : null)
                 .employeeName(empName)

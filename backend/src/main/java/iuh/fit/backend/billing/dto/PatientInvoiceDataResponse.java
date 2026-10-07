@@ -27,6 +27,7 @@ public class PatientInvoiceDataResponse {
         private String patientCode;
         private String fullName;
         private String phone;
+        private String cccd;
         private Gender gender;
         private LocalDateTime dateOfBirth;
         private String address;

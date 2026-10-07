@@ -1,6 +1,7 @@
 // ... existing imports ...
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Ban, BarChart3, CalendarDays, ChevronLeft, ChevronRight, Eye, Loader2, LockKeyhole, MoreVertical, Pencil, Plus, Search, ShieldCheck, TrendingUp, UserRound, Users, } from 'lucide-react';
+import { Menu, MenuItem } from '@mui/material';
 import toast from 'react-hot-toast';
 import AddDentistModal from '../../components/ui/AddDentistModal';
 import EditDentistModal from '../../components/ui/EditDentistModal';
@@ -13,34 +14,21 @@ import { lockUser, unlockUser } from '../../services/user.service';
 
 function StatCard({ title, value, subtitle, icon: Icon, iconBg, iconColor, valueColor }) {
     return (
-        <div className="flex-1 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-4">
-                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
-                    <Icon className={`h-6 w-6 ${iconColor}`} />
+        <div className="flex-1 rounded-lg border border-slate-200 bg-white p-4 shadow-2xs">
+            <div className="flex items-center gap-3.5">
+                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${iconBg}`}>
+                    <Icon className={`h-5 w-5 ${iconColor}`} />
                 </div>
                 <div>
-                    <p className="text-[13px] text-slate-500 font-medium">{title}</p>
-                    <p className={`text-2xl font-extrabold ${valueColor}`}>{value}</p>
-                    <p className="text-[12px] text-slate-400 mt-0.5">{subtitle}</p>
+                    <p className="text-[12px] text-slate-500 font-medium">{title}</p>
+                    <p className={`text-xl font-extrabold ${valueColor}`}>{value}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">{subtitle}</p>
                 </div>
             </div>
         </div>
     );
 }
 
-function ChartPlaceholder({ title, icon: Icon }) {
-    return (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-                <Icon className="h-4 w-4 text-slate-400" />
-                <h3 className="text-sm font-bold text-slate-800">{title}</h3>
-            </div>
-            <div className="h-40 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 border border-dashed border-slate-200 flex items-center justify-center">
-                <p className="text-xs text-slate-400">Biểu đồ sẽ được cập nhật sau</p>
-            </div>
-        </div>
-    );
-}
 
 export default function DentistManagement() {
     const [dentists, setDentists] = useState([]);
@@ -57,12 +45,26 @@ export default function DentistManagement() {
 
     // UI State
     const [selectedDentistId, setSelectedDentistId] = useState(null);
-    const [actionDentistId, setActionDentistId] = useState(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editDentist, setEditDentist] = useState(null);
     const [processingId, setProcessingId] = useState(null);
+
+    // MUI Menu State (Cho nút 3 chấm)
+    const [anchorEl, setAnchorEl] = useState(null);
+    const [menuDentist, setMenuDentist] = useState(null);
+
+    const handleOpenMenu = (event, dentist) => {
+        event.stopPropagation();
+        setAnchorEl(event.currentTarget);
+        setMenuDentist(dentist);
+    };
+
+    const handleCloseMenu = () => {
+        setAnchorEl(null);
+        setMenuDentist(null);
+    };
 
     const fetchData = useCallback(async (showLoading = true) => {
         if (showLoading) setLoading(true);
@@ -177,6 +179,11 @@ export default function DentistManagement() {
         setSelectedDentistId(id);
         setIsDetailOpen(true);
     };
+    const formatDate = (dateString) => {
+        if (!dateString) return '-';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('vi-VN');
+    };
 
     return (
         <div className="space-y-5">
@@ -230,7 +237,7 @@ export default function DentistManagement() {
                                     setCurrentPage(1);
                                 }}
                                 type="text"
-                                placeholder="Tìm kiếm theo tên, email, số điện thoại..."
+                                placeholder="Tìm kiếm tên, email, SĐT..."
                                 className="w-full h-10 pl-10 pr-4 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all"
                             />
                         </div>
@@ -263,23 +270,6 @@ export default function DentistManagement() {
                                 </option>
                             ))}
                         </select>
-
-                        <select
-                            value={shiftFilter}
-                            onChange={(e) => {
-                                setShiftFilter(e.target.value);
-                                setCurrentPage(1);
-                            }}
-                            className="h-10 w-40 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-blue-400 cursor-pointer"
-                        >
-                            <option value="all">Ca làm việc</option>
-                            {SHIFT_OPTIONS.map((item) => (
-                                <option key={item.key} value={item.key}>
-                                    {item.label}
-                                </option>
-                            ))}
-                        </select>
-
                         <div className="flex-1" />
 
                         <button
@@ -292,151 +282,71 @@ export default function DentistManagement() {
                         </button>
                     </div>
 
-                    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm flex flex-col">
-                        <div className="px-5 py-4 border-b border-slate-100">
+                    <div className="rounded-lg border border-slate-200 bg-white shadow-2xs flex flex-col overflow-hidden">
+                        <div className="px-5 py-3.5 border-b border-slate-100 bg-white shrink-0">
                             <h2 className="text-base font-bold text-slate-800">Danh sách bác sĩ</h2>
                         </div>
 
-                        <div className="overflow-x-auto flex-1">
+                        {/* Chiều cao bảng vừa màn hình, cuộn mượt khi có nhiều danh sách, tiêu đề dính sticky */}
+                        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-310px)] min-h-[300px] flex-1">
                             <table className="w-full min-w-[900px]">
-                                <thead className="bg-slate-50/80 border-b border-slate-100">
+                                <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-2xs">
                                     <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 w-12">#</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Thông tin bác sĩ</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Chuyên khoa</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Kinh nghiệm</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Số điện thoại</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Trạng thái</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Thao tác</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 w-12 bg-slate-50">#</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 bg-slate-50">Thông tin bác sĩ</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 bg-slate-50">Ngày sinh</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 bg-slate-50">Chuyên khoa</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 bg-slate-50">Kinh nghiệm</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 bg-slate-50">Số điện thoại</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 bg-slate-50">Trạng thái</th>
+                                        <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 w-20 bg-slate-50">Thao tác</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                    {paginatedDentists.map((dentist, index) => {
-                                        const isActionOpen = actionDentistId === dentist.id;
-                                        const showDropdownUp =
-                                            index >= paginatedDentists.length - 2 && paginatedDentists.length > 2;
-
-                                        return (
-                                            <tr
-                                                key={dentist.id}
-                                                className="transition-colors hover:bg-slate-50/50 bg-white"
-                                            >
-                                                <td className="px-4 py-3 text-sm text-slate-500">
-                                                    {startIndex + index + 1}
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <div className="flex items-center gap-3">
-                                                        <img
-                                                            src={dentist.avatar}
-                                                            alt={dentist.name}
-                                                            className="h-10 w-10 rounded-full object-cover ring-2 ring-white shadow-sm"
-                                                        />
-                                                        <div className="min-w-0">
-                                                            <p className="font-semibold text-slate-800 text-sm truncate">
-                                                                {dentist.name}
-                                                            </p>
-                                                            <p className="text-xs text-slate-400 truncate">{dentist.email}</p>
-                                                        </div>
+                                <tbody className="divide-y divide-slate-100">
+                                    {paginatedDentists.map((dentist, index) => (
+                                        <tr
+                                            key={dentist.id}
+                                            className="transition-colors hover:bg-slate-50/50 bg-white"
+                                        >
+                                            <td className="px-4 py-3 text-sm text-slate-500">
+                                                {startIndex + index + 1}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-3">
+                                                    <img
+                                                        src={dentist.avatar}
+                                                        alt={dentist.name}
+                                                        className="h-10 w-10 rounded-full object-cover ring-2 ring-white shadow-sm"
+                                                    />
+                                                    <div className="min-w-0">
+                                                        <p className="font-semibold text-slate-800 text-sm truncate">
+                                                            {dentist.name}
+                                                        </p>
+                                                        <p className="text-xs text-slate-400 truncate">{dentist.email}</p>
                                                     </div>
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <SpecialtyBadge labels={dentist.displaySpecializations} />
-                                                </td>
-                                                <td className="px-4 py-3 text-sm text-slate-600">{dentist.displayExperience}</td>
-                                                <td className="px-4 py-3 text-sm text-slate-600">{dentist.phone || '—'}</td>
-                                                <td className="px-4 py-3">
-                                                    <DentistStatusDot status={dentist.displayStatus} compact />
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <div className="flex items-center gap-1">
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleViewDetail(dentist.id);
-                                                            }}
-                                                            className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                                                            title="Xem chi tiết"
-                                                        >
-                                                            <Eye className="h-4 w-4" />
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setEditDentist(dentist);
-                                                                setIsEditModalOpen(true);
-                                                            }}
-                                                            className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
-                                                            title="Chỉnh sửa"
-                                                        >
-                                                            <Pencil className="h-4 w-4" />
-                                                        </button>
-                                                        <div className="relative">
-                                                            <button
-                                                                type="button"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setActionDentistId(isActionOpen ? null : dentist.id);
-                                                                }}
-                                                                className={`h-8 w-8 flex items-center justify-center rounded-lg transition-colors ${isActionOpen
-                                                                    ? 'bg-slate-100 text-slate-700'
-                                                                    : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
-                                                                    }`}
-                                                                title="Thêm"
-                                                            >
-                                                                <MoreVertical className="h-4 w-4" />
-                                                            </button>
-
-                                                            {isActionOpen && (
-                                                                <>
-                                                                    <div
-                                                                        className="fixed inset-0 z-40"
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            setActionDentistId(null);
-                                                                        }}
-                                                                    />
-                                                                    <div
-                                                                        className={`absolute right-0 z-50 w-48 rounded-xl border border-slate-200 bg-white p-1 shadow-lg ${showDropdownUp
-                                                                            ? 'bottom-10 origin-bottom-right'
-                                                                            : 'top-10 origin-top-right'
-                                                                            }`}
-                                                                    >
-                                                                        <button
-                                                                            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                setEditDentist(dentist);
-                                                                                setIsEditModalOpen(true);
-                                                                                setActionDentistId(null);
-                                                                            }}
-                                                                        >
-                                                                            <Pencil className="h-3.5 w-3.5 text-slate-400" />
-                                                                            Cập nhật thông tin
-                                                                        </button>
-                                                                        <div className="h-px bg-slate-100 mx-2" />
-                                                                        <button
-                                                                            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors"
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                handleToggleLock(dentist);
-                                                                            }}
-                                                                        >
-                                                                            <LockKeyhole className="h-3.5 w-3.5 text-red-400" />
-                                                                            {dentist.displayStatus === 'locked'
-                                                                                ? 'Mở khóa tài khoản'
-                                                                                : 'Khóa tài khoản'}
-                                                                        </button>
-                                                                    </div>
-                                                                </>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-slate-600">{formatDate(dentist.dateOfBirth)}</td>
+                                            <td className="px-4 py-3">
+                                                <SpecialtyBadge labels={dentist.displaySpecializations} />
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-slate-600">{dentist.displayExperience}</td>
+                                            <td className="px-4 py-3 text-sm text-slate-600">{dentist.phone || '—'}</td>
+                                            <td className="px-4 py-3">
+                                                <DentistStatusDot status={dentist.displayStatus} compact />
+                                            </td>
+                                            <td className="px-4 py-3 text-center">
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => handleOpenMenu(e, dentist)}
+                                                    className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                                                    title="Thao tác"
+                                                >
+                                                    <MoreVertical className="h-4 w-4" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
 
                                     {paginatedDentists.length === 0 && (
                                         <tr>
@@ -449,7 +359,8 @@ export default function DentistManagement() {
                             </table>
                         </div>
 
-                        <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3">
+                        {/* Thanh phân trang cố định dưới chân bảng */}
+                        <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3 bg-white shrink-0">
                             <p className="text-sm text-slate-400">
                                 Hiển thị {filteredDentists.length === 0 ? 0 : startIndex + 1} đến{' '}
                                 {Math.min(startIndex + pageSize, filteredDentists.length)} của{' '}
@@ -502,14 +413,58 @@ export default function DentistManagement() {
                         </div>
                     </div>
 
-                    {/* Biểu đồ giả lập ở dưới cùng */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                        <ChartPlaceholder title="Thống kê hiệu suất" icon={BarChart3} />
-                        <ChartPlaceholder title="Bệnh nhân theo tháng" icon={UserRound} />
-                        <ChartPlaceholder title="Doanh thu theo bác sĩ" icon={TrendingUp} />
-                    </div>
                 </div>
             )}
+
+            {/* Menu Thao tác xổ xuống (Dùng MUI Portal không bao giờ bị đè hay bị giấu dưới thanh cuộn) */}
+            <Menu
+                anchorEl={anchorEl}
+                open={Boolean(anchorEl)}
+                onClose={handleCloseMenu}
+                PaperProps={{
+                    style: {
+                        borderRadius: '6px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                        minWidth: '135px',
+                        border: '1px solid #e2e8f0',
+                        padding: '2px 0',
+                    },
+                }}
+            >
+                <MenuItem
+                    onClick={() => {
+                        handleViewDetail(menuDentist?.id);
+                        handleCloseMenu();
+                    }}
+                    className="text-[11px] font-medium text-slate-700 gap-2 py-1 px-2.5 hover:bg-slate-50 cursor-pointer min-h-0"
+                >
+                    <Eye className="h-3.5 w-3.5 text-slate-400" />
+                    Xem chi tiết
+                </MenuItem>
+                <MenuItem
+                    onClick={() => {
+                        setEditDentist(menuDentist);
+                        setIsEditModalOpen(true);
+                        handleCloseMenu();
+                    }}
+                    className="text-[11px] font-medium text-slate-700 gap-2 py-1 px-2.5 hover:bg-slate-50 cursor-pointer min-h-0"
+                >
+                    <Pencil className="h-3.5 w-3.5 text-slate-400" />
+                    Chỉnh sửa
+                </MenuItem>
+                <div className="h-px bg-slate-100 my-0.5" />
+                <MenuItem
+                    onClick={() => {
+                        if (menuDentist) handleToggleLock(menuDentist);
+                        handleCloseMenu();
+                    }}
+                    className={`text-[11px] font-medium gap-2 py-1 px-2.5 cursor-pointer min-h-0 ${menuDentist?.displayStatus === 'locked' ? 'text-emerald-600 hover:bg-emerald-50' : 'text-red-600 hover:bg-red-50'
+                        }`}
+                >
+                    <LockKeyhole className="h-3.5 w-3.5" />
+                    {menuDentist?.displayStatus === 'locked' ? 'Mở khóa' : 'Khóa tài khoản'}
+                </MenuItem>
+            </Menu>
 
             {/* Panel chi tiết - Render overlay */}
             <DentistDetailPanel

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { X, UserRound, Mail, Phone, Lock, MapPin, Building2, Banknote, CalendarDays, Loader2, ImagePlus, User, Camera } from 'lucide-react';
 import { createUser, createEmployee } from '../../services/employee.service';
 import { uploadImage } from '../../services/media.service';
@@ -10,6 +10,23 @@ export default function AddEmployeeModal({ isOpen, onClose, onSuccess }) {
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
   const fileInputRef = useRef(null);
+
+  const [mounted, setMounted] = useState(false);
+  const [active, setActive] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setMounted(true);
+      const timer = setTimeout(() => setActive(true), 20);
+      document.body.style.overflow = 'hidden';
+      return () => clearTimeout(timer);
+    } else {
+      setActive(false);
+      const timer = setTimeout(() => setMounted(false), 250);
+      document.body.style.overflow = 'unset';
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
 
   const [formData, setFormData] = useState({
     username: '',
@@ -23,7 +40,7 @@ export default function AddEmployeeModal({ isOpen, onClose, onSuccess }) {
     hireDate: new Date().toISOString().split('T')[0]
   });
 
-  if (!isOpen) return null;
+  if (!mounted) return null;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -110,22 +127,28 @@ export default function AddEmployeeModal({ isOpen, onClose, onSuccess }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+        className={`fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-300 ${
+          active ? 'opacity-100' : 'opacity-0'
+        }`}
         onClick={!loading ? onClose : undefined}
       />
 
       {/* Modal Content */}
-      <div className="relative w-full max-w-4xl rounded-2xl bg-white shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div
+        className={`relative w-full max-w-4xl rounded-lg bg-white shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh] transition-all duration-300 ease-out transform ${
+          active ? 'scale-100 opacity-100 translate-y-0' : 'scale-95 opacity-0 -translate-y-3'
+        }`}
+      >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-white z-10">
           <div>
-            <h2 className="text-xl font-bold text-slate-800">Thêm nhân viên mới</h2>
-            <p className="text-sm text-slate-500 mt-0.5">Điền thông tin để tạo tài khoản nhân viên</p>
+            <h2 className="text-lg font-bold text-slate-800">Thêm nhân viên mới</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Điền thông tin để tạo tài khoản nhân viên</p>
           </div>
           <button
             onClick={onClose}
             disabled={loading}
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -157,63 +180,63 @@ export default function AddEmployeeModal({ isOpen, onClose, onSuccess }) {
                   <button
                     type="button"
                     onClick={handleRemoveAvatar}
-                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-red-500 text-white flex items-center justify-center shadow-sm hover:bg-red-600"
+                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-red-500 text-white flex items-center justify-center shadow-xs hover:bg-red-600 cursor-pointer"
                   >
                     <X className="h-3 w-3" />
                   </button>
                 )}
               </div>
               <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleAvatarChange} />
-              <p className="mt-3 text-sm font-medium text-slate-600">Ảnh đại diện (Tùy chọn)</p>
+              <p className="mt-3 text-xs font-medium text-slate-600">Ảnh đại diện (Tùy chọn)</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Cột 1: Thông tin tài khoản */}
               <div className="space-y-5">
-                <h3 className="text-sm font-bold text-slate-800 border-b border-slate-200 pb-2">Thông tin tài khoản</h3>
+                <h3 className="text-xs font-bold text-slate-800 border-b border-slate-200 pb-2">Thông tin tài khoản</h3>
 
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-slate-700">Họ và tên <span className="text-red-500">*</span></label>
+                  <label className="text-xs font-medium text-slate-700">Họ và tên <span className="text-red-500">*</span></label>
                   <div className="relative">
-                    <UserRound className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                    <UserRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
                       required
                       name="username"
                       value={formData.username}
                       onChange={handleChange}
-                      className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-4 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all bg-white"
+                      className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-4 text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 transition-all bg-white"
                       placeholder="Nguyễn Văn A"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-slate-700">Email <span className="text-red-500">*</span></label>
+                  <label className="text-xs font-medium text-slate-700">Email <span className="text-red-500">*</span></label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
                       required
                       type="email"
                       name="email"
                       value={formData.email}
                       onChange={handleChange}
-                      className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-4 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all bg-white"
+                      className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-4 text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 transition-all bg-white"
                       placeholder="email@example.com"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-slate-700">Mật khẩu <span className="text-red-500">*</span></label>
+                  <label className="text-xs font-medium text-slate-700">Mật khẩu <span className="text-red-500">*</span></label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
                       required
                       type="password"
                       name="password"
                       value={formData.password}
                       onChange={handleChange}
-                      className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-4 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all bg-white"
+                      className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-4 text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 transition-all bg-white"
                       placeholder="••••••••"
                       minLength={6}
                     />
@@ -221,16 +244,16 @@ export default function AddEmployeeModal({ isOpen, onClose, onSuccess }) {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-slate-700">Số điện thoại <span className="text-red-500">*</span></label>
+                  <label className="text-xs font-medium text-slate-700">Số điện thoại <span className="text-red-500">*</span></label>
                   <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
                       required
                       type="tel"
                       name="phone"
                       value={formData.phone}
                       onChange={handleChange}
-                      className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-4 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all bg-white"
+                      className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-4 text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 transition-all bg-white"
                       placeholder="0912345678"
                     />
                   </div>
@@ -239,34 +262,37 @@ export default function AddEmployeeModal({ isOpen, onClose, onSuccess }) {
 
               {/* Cột 2: Thông tin công việc & cá nhân */}
               <div className="space-y-5">
-                <h3 className="text-sm font-bold text-slate-800 border-b border-slate-200 pb-2">Hồ sơ nhân sự</h3>
+                <h3 className="text-xs font-bold text-slate-800 border-b border-slate-200 pb-2">Hồ sơ nhân sự</h3>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-slate-700">Vai trò <span className="text-red-500">*</span></label>
+                    <label className="text-xs font-medium text-slate-700">Vai trò <span className="text-red-500">*</span></label>
                     <div className="relative">
-                      <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                      <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                       <select
                         name="position"
                         value={formData.position}
                         onChange={handleChange}
-                        className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-4 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all bg-white cursor-pointer appearance-none"
+                        className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 transition-all bg-white cursor-pointer"
                       >
                         <option value="RECEPTIONIST">Lễ tân</option>
-                        <option value="WAREHOUSE">Quản lý kho</option>
+                        <option value="ASSISTANT">Phụ tá</option>
+                        <option value="PHARMACIST">Dược sĩ</option>
+                        <option value="ACCOUNTANT">Kế toán</option>
+                        <option value="OTHER">Khác</option>
                       </select>
                     </div>
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-slate-700">Giới tính <span className="text-red-500">*</span></label>
+                    <label className="text-xs font-medium text-slate-700">Giới tính <span className="text-red-500">*</span></label>
                     <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                       <select
                         name="gender"
                         value={formData.gender}
                         onChange={handleChange}
-                        className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-4 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all bg-white cursor-pointer appearance-none"
+                        className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 transition-all bg-white cursor-pointer"
                       >
                         <option value="MALE">Nam</option>
                         <option value="FEMALE">Nữ</option>
@@ -278,45 +304,45 @@ export default function AddEmployeeModal({ isOpen, onClose, onSuccess }) {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-slate-700">Lương cơ bản (VNĐ)</label>
+                    <label className="text-xs font-medium text-slate-700">Lương cơ bản (VNĐ)</label>
                     <div className="relative">
-                      <Banknote className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                      <Banknote className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                       <input
                         type="number"
                         name="salary"
                         value={formData.salary}
                         onChange={handleChange}
-                        className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-4 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all bg-white"
-                        min="0"
-                        step="100000"
+                        step={500000}
+                        min={0}
+                        className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-4 text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 transition-all bg-white"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-slate-700">Ngày vào làm</label>
+                    <label className="text-xs font-medium text-slate-700">Ngày vào làm</label>
                     <div className="relative">
-                      <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                      <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                       <input
                         type="date"
                         name="hireDate"
                         value={formData.hireDate}
                         onChange={handleChange}
-                        className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-4 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all bg-white"
+                        className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-4 text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 transition-all bg-white"
                       />
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-slate-700">Địa chỉ cư trú</label>
+                  <label className="text-xs font-medium text-slate-700">Địa chỉ cư trú</label>
                   <div className="relative">
-                    <MapPin className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
+                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                     <textarea
                       name="address"
                       value={formData.address}
                       onChange={handleChange}
-                      className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-4 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all bg-white min-h-[80px] resize-none"
+                      className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-4 text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 transition-all bg-white min-h-[80px] resize-none"
                       placeholder="Số nhà, đường, quận/huyện, tỉnh/thành phố..."
                     />
                   </div>
@@ -327,12 +353,12 @@ export default function AddEmployeeModal({ isOpen, onClose, onSuccess }) {
         </div>
 
         {/* Footer */}
-        <div className="border-t border-slate-100 p-6 bg-white z-10 flex justify-end gap-3">
+        <div className="border-t border-slate-100 p-4 bg-white z-10 flex justify-end gap-3 rounded-b-lg">
           <button
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="px-6 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-50"
+            className="px-5 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-50 cursor-pointer"
           >
             Hủy bỏ
           </button>
@@ -340,7 +366,7 @@ export default function AddEmployeeModal({ isOpen, onClose, onSuccess }) {
             type="submit"
             form="add-employee-form"
             disabled={loading}
-            className="inline-flex min-w-[140px] items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
+            className="inline-flex min-w-[130px] items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-xs font-semibold text-white shadow-2xs hover:bg-blue-700 transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
           >
             {loading ? (
               <>

@@ -11,6 +11,7 @@ public interface PatientService {
     List<PatientDTO> getAllPatients();
     PatientDTO getPatientById(UUID id);
     List<PatientDTO> getPatientsByPhoneNumber(String phoneNumber);
+    PatientDTO searchPatient(String keyword);
     PatientDTO createPatient(PatientCreateDTO dto);
     PatientDTO updatePatient(UUID id, PatientCreateDTO dto);
     void deletePatient(UUID id);

@@ -7,10 +7,12 @@ import iuh.fit.backend.billing.dto.PaymentRequest;
 import iuh.fit.backend.billing.enums.PaymentStatus;
 
 import java.util.UUID;
+import java.util.List;
 
 public interface InvoiceService {
     InvoiceListResponse getAllInvoiceDateDesc(Integer year, Integer month, PaymentStatus status, String search);
     InvoiceResponse getInvoiceById(UUID id);
+    List<InvoiceResponse> getInvoicesByPatientId(UUID patientId);
     InvoiceResponse createInvoice(CreateInvoiceRequest request);
     InvoiceResponse processPayment(UUID id, PaymentRequest request);
 }

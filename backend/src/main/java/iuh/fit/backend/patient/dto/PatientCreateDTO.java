@@ -14,6 +14,7 @@ import java.util.UUID;
 public class PatientCreateDTO {
     private String fullName;
     private String phone;
+    private String cccd;
     private String email;
     private String nationality;
     private Gender gender;

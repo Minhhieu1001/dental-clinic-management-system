@@ -101,25 +101,25 @@ public class MedicineServiceImpl implements MedicineService {
 
     private Sort mapSort(String sortBy) {
         if (sortBy == null || sortBy.trim().isEmpty() || "DEFAULT".equalsIgnoreCase(sortBy)) {
-            return Sort.by(Sort.Direction.DESC, "createdAt");
+            return Sort.by(Sort.Order.desc("createdAt").nullsLast(), Sort.Order.asc("name"));
         }
         switch (sortBy.toUpperCase()) {
             case "NAME_ASC":
-                return Sort.by(Sort.Direction.ASC, "name");
+                return Sort.by(Sort.Order.asc("name"));
             case "NAME_DESC":
-                return Sort.by(Sort.Direction.DESC, "name");
+                return Sort.by(Sort.Order.desc("name"));
             case "PRICE_ASC":
-                return Sort.by(Sort.Direction.ASC, "price");
+                return Sort.by(Sort.Order.asc("price"), Sort.Order.asc("name"));
             case "PRICE_DESC":
-                return Sort.by(Sort.Direction.DESC, "price");
+                return Sort.by(Sort.Order.desc("price"), Sort.Order.asc("name"));
             case "STOCK_ASC":
-                return Sort.by(Sort.Direction.ASC, "stockQuantity");
+                return Sort.by(Sort.Order.asc("stockQuantity"), Sort.Order.asc("name"));
             case "STOCK_DESC":
-                return Sort.by(Sort.Direction.DESC, "stockQuantity");
+                return Sort.by(Sort.Order.desc("stockQuantity"), Sort.Order.asc("name"));
             case "EXPIRY_ASC":
-                return Sort.by(Sort.Direction.ASC, "expiryDate");
+                return Sort.by(Sort.Order.asc("expiryDate").nullsLast(), Sort.Order.asc("name"));
             default:
-                return Sort.by(Sort.Direction.DESC, "createdAt");
+                return Sort.by(Sort.Order.desc("createdAt").nullsLast(), Sort.Order.asc("name"));
         }
     }
 

@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/invoices")
@@ -36,6 +37,14 @@ public class InvoiceController {
     public ResponseEntity<ApiResponse<InvoiceResponse>> getInvoiceById(@PathVariable UUID id) {
         InvoiceResponse invoice = invoiceService.getInvoiceById(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy thông tin hóa đơn thành công", invoice));
+    }
+
+    @GetMapping("/patient/{patientId}")
+    public ResponseEntity<ApiResponse<List<InvoiceResponse>>> getInvoicesByPatientId(
+            @PathVariable UUID patientId
+    ) {
+        List<InvoiceResponse> invoices = invoiceService.getInvoicesByPatientId(patientId);
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách hóa đơn của bệnh nhân thành công", invoices));
     }
 
     @PostMapping
