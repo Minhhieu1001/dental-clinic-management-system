@@ -135,11 +135,11 @@ export default function FollowUpCalendarView({
       {/* 1. CALENDAR CONTROLS & HEADER TOOLBAR */}
       <div className="px-4 py-3 bg-slate-100 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 bg-white border border-slate-300 rounded-md p-1 shadow-2xs">
+          <div className="flex items-center gap-1 bg-white border border-slate-300 rounded-sm p-1 shadow-2xs">
             <button
               type="button"
               onClick={handlePrevMonth}
-              className="p-1 hover:bg-slate-100 rounded text-slate-700 cursor-pointer transition-colors"
+              className="p-1 hover:bg-slate-100 rounded-sm text-slate-700 cursor-pointer transition-colors"
               title="Tháng trước"
             >
               <ChevronLeft size={16} />
@@ -147,14 +147,14 @@ export default function FollowUpCalendarView({
             <button
               type="button"
               onClick={handleToday}
-              className="px-2.5 py-0.5 text-xs font-bold text-teal-800 hover:bg-teal-50 rounded cursor-pointer transition-colors"
+              className="px-2.5 py-0.5 text-xs font-bold text-teal-800 hover:bg-teal-50 rounded-sm cursor-pointer transition-colors"
             >
               Hôm nay
             </button>
             <button
               type="button"
               onClick={handleNextMonth}
-              className="p-1 hover:bg-slate-100 rounded text-slate-700 cursor-pointer transition-colors"
+              className="p-1 hover:bg-slate-100 rounded-sm text-slate-700 cursor-pointer transition-colors"
               title="Tháng sau"
             >
               <ChevronRight size={16} />
@@ -171,14 +171,14 @@ export default function FollowUpCalendarView({
 
         {/* Monthly Summary Badges */}
         <div className="flex items-center gap-2 text-[11px] font-semibold flex-wrap">
-          <span className="px-2.5 py-1 rounded bg-slate-200 text-slate-800 font-bold">
+          <span className="px-2.5 py-1 rounded-sm bg-slate-200 text-slate-800 font-bold">
             Tổng: {monthStats.total} lịch hẹn
           </span>
-          <span className="px-2.5 py-1 rounded bg-emerald-100 text-emerald-800 font-bold border border-emerald-200">
+          <span className="px-2.5 py-1 rounded-sm bg-emerald-100 text-emerald-800 font-bold border border-emerald-200">
             {monthStats.confirmed} Đã xác nhận
           </span>
           {monthStats.cancelled > 0 && (
-            <span className="px-2.5 py-1 rounded bg-rose-100 text-rose-800 font-bold border border-rose-200">
+            <span className="px-2.5 py-1 rounded-sm bg-rose-100 text-rose-800 font-bold border border-rose-200">
               {monthStats.cancelled} Đã hủy
             </span>
           )}
@@ -218,7 +218,7 @@ export default function FollowUpCalendarView({
               {/* Day Number Header */}
               <div className="flex items-center justify-between mb-1 select-none">
                 <span
-                  className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${
+                  className={`text-xs px-1.5 py-0.5 rounded-sm font-bold ${
                     isTodayCell
                       ? 'bg-teal-700 text-white shadow-2xs'
                       : isCurrentMonth
@@ -241,7 +241,7 @@ export default function FollowUpCalendarView({
                     onClick={() => {
                       if (onAddNewOnDate) onAddNewOnDate(date);
                     }}
-                    className="opacity-0 group-hover:opacity-100 p-0.5 text-teal-700 hover:bg-teal-100 rounded transition-opacity cursor-pointer"
+                    className="opacity-0 group-hover:opacity-100 p-0.5 text-teal-700 hover:bg-teal-100 rounded-sm transition-opacity cursor-pointer"
                     title={`Lên lịch tái khám cho ngày ${date.getDate()}/${date.getMonth() + 1}`}
                   >
                     <Plus size={14} />
@@ -263,7 +263,7 @@ export default function FollowUpCalendarView({
                     <div
                       key={item.id || itemIdx}
                       onClick={() => onSelectFollowUp(item)}
-                      className={`p-1.5 rounded border transition-all cursor-pointer shadow-2xs group/card ${
+                      className={`p-1.5 rounded-sm border transition-all cursor-pointer shadow-2xs group/card ${
                         isConfirmed
                           ? 'bg-emerald-50/90 border-emerald-200 hover:border-emerald-500 hover:bg-emerald-100 text-slate-900'
                           : 'bg-rose-50/90 border-rose-200 hover:border-rose-400 hover:bg-rose-100 text-rose-900'
@@ -292,7 +292,7 @@ export default function FollowUpCalendarView({
                               e.stopPropagation();
                               if (onEditFollowUp) onEditFollowUp(item);
                             }}
-                            className="opacity-0 group-hover/card:opacity-100 p-0.5 hover:bg-white rounded text-slate-600 hover:text-teal-700"
+                            className="opacity-0 group-hover/card:opacity-100 p-0.5 hover:bg-white rounded-sm text-slate-600 hover:text-teal-700"
                             title="Sửa lịch"
                           >
                             <Pencil size={11} />
@@ -323,11 +323,11 @@ export default function FollowUpCalendarView({
       <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-slate-500 gap-2">
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+            <span className="w-2.5 h-2.5 rounded-xs bg-emerald-500 inline-block"></span>
             Lịch hẹn đã xác nhận
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span>
+            <span className="w-2.5 h-2.5 rounded-xs bg-rose-500 inline-block"></span>
             Lịch hẹn đã hủy
           </span>
         </div>

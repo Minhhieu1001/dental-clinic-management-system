@@ -407,7 +407,7 @@ export default function FollowUpAppointment() {
           <button
             type="button"
             onClick={handleOpenCreateModal}
-            className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 rounded-md transition-colors cursor-pointer shadow-xs"
+            className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 rounded-sm transition-colors cursor-pointer shadow-xs"
           >
             <Plus size={15} />
             <span>Lên lịch tái khám mới</span>
@@ -416,7 +416,7 @@ export default function FollowUpAppointment() {
       </div>
 
       {/* 2. Patient Search Bar & Patient Info Strip */}
-      <div className="rounded-xl border border-slate-200/90 bg-white shadow-2xs overflow-hidden">
+      <div className="rounded-sm border border-slate-200/90 bg-white shadow-2xs overflow-hidden">
         {/* TẦNG 1: SEARCH BAR DÙNG CHUNG */}
         <PatientSearchBar
           patientOptions={patientOptions}
@@ -513,7 +513,7 @@ export default function FollowUpAppointment() {
             </div>
 
             {/* Bộ chọn Đợt khám (Treatment Session Selector) */}
-            <div className="flex items-center gap-2 self-start lg:self-auto shrink-0 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs">
+            <div className="flex items-center gap-2 self-start lg:self-auto shrink-0 bg-slate-50 px-3 py-1.5 rounded-sm border border-slate-200 shadow-2xs">
               <span className="text-xs font-bold text-slate-700 whitespace-nowrap flex items-center gap-1.5">
                 <CalendarCheck size={14} className="text-teal-700" />
                 <span>Đợt khám:</span>
@@ -521,7 +521,7 @@ export default function FollowUpAppointment() {
               <select
                 value={selectedSessionId}
                 onChange={(e) => setSelectedSessionId(e.target.value)}
-                className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 shadow-2xs focus:border-teal-600 outline-hidden cursor-pointer"
+                className="rounded-sm border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 shadow-2xs focus:border-teal-600 outline-hidden cursor-pointer"
               >
                 <option value="ALL">-- Tất cả các đợt ({treatmentSessions.length} đợt) --</option>
                 {treatmentSessions.map((s, idx) => (
@@ -552,8 +552,8 @@ export default function FollowUpAppointment() {
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap">
-            {/* VIEW MODE TOGGLE SWITCHER (Dạng danh sách / Dạng lịch) */}
-            <div className="flex items-center bg-slate-200 p-0.5 rounded-md border border-slate-300 shadow-2xs">
+            {/* VIEW MODE TOGGLE SWITCHER (Danh sách / Lịch) */}
+            <div className="flex items-center bg-slate-200 p-0.5 rounded-sm border border-slate-300 shadow-2xs">
               <button
                 type="button"
                 onClick={() => setViewMode('list')}
@@ -741,11 +741,11 @@ export default function FollowUpAppointment() {
                           </td>
                           <td className="py-2.5 px-3 text-center border-r border-slate-200">
                             {item.status !== false ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[10px]">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[10px]">
                                 <CheckCircle2 size={11} /> Xác nhận
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 font-bold text-[10px]">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm bg-rose-50 text-rose-700 border border-rose-200 font-bold text-[10px]">
                                 <XCircle size={11} /> Đã hủy
                               </span>
                             )}

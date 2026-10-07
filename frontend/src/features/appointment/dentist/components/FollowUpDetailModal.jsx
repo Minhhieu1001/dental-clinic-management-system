@@ -35,7 +35,7 @@ export default function FollowUpDetailModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 overflow-y-auto">
-      <div className="relative w-full max-w-xl rounded-xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-xl rounded-sm bg-white shadow-2xl border border-slate-200 overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between bg-teal-800 px-5 py-3 text-white">
           <div className="flex items-center gap-2">
@@ -47,7 +47,7 @@ export default function FollowUpDetailModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1 text-teal-100 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+            className="rounded-sm p-1 text-teal-100 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
           >
             <X size={18} />
           </button>
@@ -56,7 +56,7 @@ export default function FollowUpDetailModal({
         {/* Content */}
         <div className="p-5 space-y-4 text-xs">
           {/* Status Badge & Time Banner */}
-          <div className="rounded-lg bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="rounded-sm bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <span className="text-[11px] font-bold text-teal-800 uppercase tracking-wide block mb-0.5">
                 Thời gian hẹn tái khám
@@ -68,11 +68,11 @@ export default function FollowUpDetailModal({
             </div>
             <div className="self-start sm:self-auto">
               {followUp.status !== false ? (
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-[11px]">
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-sm bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-[11px]">
                   <CheckCircle size={13} /> Đã xác nhận
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-300 font-bold text-[11px]">
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-sm bg-rose-100 text-rose-800 border border-rose-300 font-bold text-[11px]">
                   <AlertCircle size={13} /> Đã hủy
                 </span>
               )}
@@ -80,7 +80,7 @@ export default function FollowUpDetailModal({
           </div>
 
           {/* Patient Card */}
-          <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3 space-y-1">
+          <div className="rounded-sm border border-slate-200 bg-slate-50/70 p-3 space-y-1">
             <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
               THÔNG TIN BỆNH NHÂN
             </div>
@@ -115,7 +115,7 @@ export default function FollowUpDetailModal({
 
             <div>
               <span className="text-slate-500 font-medium block mb-0.5">Lý do / Nội dung tái khám:</span>
-              <div className="bg-slate-50 p-2.5 rounded border border-slate-200 text-slate-900 font-semibold">
+              <div className="bg-slate-50 p-2.5 rounded-sm border border-slate-200 text-slate-900 font-semibold">
                 {followUp.reason || 'Tái khám kiểm tra định kỳ'}
               </div>
             </div>
@@ -123,7 +123,7 @@ export default function FollowUpDetailModal({
             {followUp.note && (
               <div>
                 <span className="text-slate-500 font-medium block mb-0.5">Ghi chú & Lời dặn nha sĩ:</span>
-                <div className="bg-amber-50/60 p-2.5 rounded border border-amber-200 text-slate-800 italic">
+                <div className="bg-amber-50/60 p-2.5 rounded-sm border border-amber-200 text-slate-800 italic">
                   {followUp.note}
                 </div>
               </div>
@@ -141,7 +141,7 @@ export default function FollowUpDetailModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-800 bg-white border border-slate-300 rounded-md cursor-pointer"
+            className="px-4 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-800 bg-white border border-slate-300 rounded-sm cursor-pointer"
           >
             Đóng
           </button>
@@ -150,7 +150,7 @@ export default function FollowUpDetailModal({
             onClick={() => {
               if (onPrint) onPrint(followUp);
             }}
-            className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 rounded-md transition-colors cursor-pointer shadow-xs"
+            className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 rounded-sm transition-colors cursor-pointer shadow-xs"
           >
             <Printer size={14} /> In Giấy Hẹn Tái Khám
           </button>

@@ -54,7 +54,7 @@ export default function FollowUpPrintModal({
             .info-table { width: 100%; margin-bottom: 16px; border-collapse: collapse; font-size: 13px; }
             .info-table td { padding: 6px 4px; vertical-align: top; }
             .label { font-weight: bold; color: #475569; width: 150px; }
-            .appointment-box { background-color: #f0fdf4; border: 2px solid #0d9488; border-radius: 8px; padding: 16px; text-align: center; margin: 20px 0; }
+            .appointment-box { background-color: #f0fdf4; border: 2px solid #0d9488; border-radius: 4px; padding: 16px; text-align: center; margin: 20px 0; }
             .appointment-time { font-size: 18px; font-weight: bold; color: #0f766e; margin-top: 4px; }
             .footer-table { width: 100%; margin-top: 40px; font-size: 12px; text-align: center; }
             .signature-title { font-weight: bold; margin-bottom: 60px; }
@@ -78,7 +78,7 @@ export default function FollowUpPrintModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 overflow-y-auto">
-      <div className="relative w-full max-w-2xl rounded-xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-2xl rounded-sm bg-white shadow-2xl border border-slate-200 overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
         {/* Header toolbar */}
         <div className="flex items-center justify-between bg-slate-100 px-5 py-3 border-b border-slate-200">
           <div className="flex items-center gap-2">
@@ -91,14 +91,14 @@ export default function FollowUpPrintModal({
             <button
               type="button"
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 rounded-md transition-colors cursor-pointer shadow-xs"
+              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 rounded-sm transition-colors cursor-pointer shadow-xs"
             >
               <Printer size={14} /> In Giấy Hẹn
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition-colors cursor-pointer"
+              className="rounded-sm p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition-colors cursor-pointer"
             >
               <X size={18} />
             </button>
@@ -163,7 +163,7 @@ export default function FollowUpPrintModal({
             </table>
 
             {/* Appointment Box */}
-            <div className="appointment-box bg-emerald-50/80 border-2 border-teal-600 rounded-lg p-4 text-center my-4">
+            <div className="appointment-box bg-emerald-50/80 border-2 border-teal-600 rounded-sm p-4 text-center my-4">
               <div className="text-xs font-bold text-teal-800 uppercase tracking-wide">
                 THỜI GIAN HẸN TÁI KHÁM
               </div>

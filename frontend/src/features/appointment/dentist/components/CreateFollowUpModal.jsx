@@ -86,7 +86,7 @@ export default function CreateFollowUpModal({
       setReason(followUpData.reason || '');
       setNote(followUpData.note || '');
       setStatus(followUpData.status !== undefined ? followUpData.status : true);
-      setSendEmail(false); // Don't re-send by default on edit unless checked
+      setSendEmail(false);
       setSendSms(false);
     } else {
       // Default Create mode
@@ -156,11 +156,11 @@ export default function CreateFollowUpModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 overflow-y-auto">
-      <div className="relative w-full max-w-2xl rounded-xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-2xl rounded-sm bg-white shadow-2xl border border-slate-200 overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between bg-gradient-to-r from-teal-700 to-emerald-800 px-5 py-3.5 text-white">
+        <div className="flex items-center justify-between bg-gradient-to-r from-teal-700 to-emerald-800 px-5 py-3 text-white">
           <div className="flex items-center gap-2">
-            <Calendar className="text-teal-200" size={20} />
+            <Calendar className="text-teal-200" size={18} />
             <h2 className="text-sm font-bold uppercase tracking-wide">
               {type === 'edit' ? 'Cập Nhật Lịch Tái Khám Bệnh Nhân' : 'Lên Lịch Tái Khám Mới'}
             </h2>
@@ -168,7 +168,7 @@ export default function CreateFollowUpModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1 text-teal-100 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+            className="rounded-sm p-1 text-teal-100 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
           >
             <X size={18} />
           </button>
@@ -176,11 +176,11 @@ export default function CreateFollowUpModal({
 
         {/* Patient Header Summary */}
         {patient && (
-          <div className="bg-teal-50/70 border-b border-teal-100 px-5 py-2.5 flex items-center justify-between text-xs">
+          <div className="bg-teal-50/70 border-b border-teal-100 px-5 py-2 flex items-center justify-between text-xs">
             <div className="flex items-center gap-2">
               <span className="font-bold text-slate-900">{patient.fullName}</span>
               {patient.patientCode && (
-                <span className="rounded bg-teal-100 border border-teal-200 text-teal-900 text-[10px] font-extrabold px-1.5 py-0.5">
+                <span className="rounded-sm bg-teal-100 border border-teal-200 text-teal-900 text-[10px] font-extrabold px-1.5 py-0.5">
                   {patient.patientCode}
                 </span>
               )}
@@ -195,7 +195,7 @@ export default function CreateFollowUpModal({
         )}
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs">
+        <form onSubmit={handleSubmit} className="p-4 space-y-3.5 text-xs">
           {/* 1. Chọn Đợt khám & Bác sĩ phụ trách */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
@@ -205,7 +205,7 @@ export default function CreateFollowUpModal({
               <select
                 value={examinationResultId}
                 onChange={(e) => setExaminationResultId(e.target.value)}
-                className="w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-teal-600 outline-hidden cursor-pointer"
+                className="w-full rounded-sm border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:border-teal-600 outline-hidden cursor-pointer"
               >
                 <option value="">-- Không liên kết đợt khám cụ thể --</option>
                 {treatmentSessions.map((s, idx) => (
@@ -223,7 +223,7 @@ export default function CreateFollowUpModal({
               <select
                 value={dentistId}
                 onChange={(e) => setDentistId(e.target.value)}
-                className="w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-teal-600 outline-hidden cursor-pointer"
+                className="w-full rounded-sm border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:border-teal-600 outline-hidden cursor-pointer"
               >
                 <option value="">-- Chọn bác sĩ ({currentDoctorName ? `Mặc định: ${currentDoctorName}` : 'Hệ thống'}) --</option>
                 {dentists.map((d) => (
@@ -247,7 +247,7 @@ export default function CreateFollowUpModal({
                 value={followUpDate}
                 onChange={(e) => setFollowUpDate(e.target.value)}
                 required
-                className="w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-900 focus:border-teal-600 outline-hidden cursor-pointer"
+                className="w-full rounded-sm border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:border-teal-600 outline-hidden cursor-pointer"
               />
             </div>
 
@@ -258,7 +258,7 @@ export default function CreateFollowUpModal({
               <select
                 value={status ? 'true' : 'false'}
                 onChange={(e) => setStatus(e.target.value === 'true')}
-                className="w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-800 focus:border-teal-600 outline-hidden cursor-pointer"
+                className="w-full rounded-sm border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:border-teal-600 outline-hidden cursor-pointer"
               >
                 <option value="true" className="text-emerald-700 font-bold">✓ Xác nhận / Đang chờ tái khám</option>
                 <option value="false" className="text-rose-700 font-bold">✕ Đã hủy / Ngưng tái khám</option>
@@ -277,7 +277,7 @@ export default function CreateFollowUpModal({
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="VD: Tái khám tháo chỉ, kiểm tra khớp cắn, siết niềng răng..."
-              className="w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-teal-600 outline-hidden mb-1.5"
+              className="w-full rounded-sm border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:border-teal-600 outline-hidden mb-1.5"
             />
             {/* Tag gợi ý nhanh */}
             <div className="flex flex-wrap gap-1">
@@ -286,7 +286,7 @@ export default function CreateFollowUpModal({
                   key={i}
                   type="button"
                   onClick={() => setReason(r)}
-                  className="px-2 py-0.5 text-[10px] font-semibold text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-full transition-colors cursor-pointer"
+                  className="px-2 py-0.5 text-[10px] font-semibold text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-sm transition-colors cursor-pointer"
                 >
                   + {r}
                 </button>
@@ -304,29 +304,29 @@ export default function CreateFollowUpModal({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Nhập ghi chú hoặc dặn dò cho bệnh nhân (VD: Ăn nhẹ trước khi đến, mang theo phim X-quang...)"
-              className="w-full rounded-md border border-slate-300 bg-white p-2.5 text-xs text-slate-800 focus:border-teal-600 outline-hidden resize-none"
+              className="w-full rounded-sm border border-slate-300 bg-white p-2 text-xs text-slate-800 focus:border-teal-600 outline-hidden resize-none"
             />
           </div>
 
           {/* 5. Bộ lựa chọn kênh gửi thông báo (Email / SMS / Cả hai) */}
-          <div className="rounded-lg border border-teal-200 bg-teal-50/50 p-3.5 space-y-2.5">
+          <div className="rounded-sm border border-teal-200 bg-teal-50/50 p-3 space-y-2">
             <div className="flex items-center justify-between border-b border-teal-100 pb-1.5">
               <div className="flex items-center gap-1.5 font-bold text-teal-900 text-xs">
-                <Send size={14} className="text-teal-700" />
+                <Send size={13} className="text-teal-700" />
                 <span>Kênh tự động gửi thông báo lịch tái khám cho bệnh nhân:</span>
               </div>
-              <span className="text-[10px] text-teal-700 font-semibold bg-white px-2 py-0.5 rounded border border-teal-200">
+              <span className="text-[10px] text-teal-700 font-semibold bg-white px-2 py-0.5 rounded-sm border border-teal-200">
                 Gửi ngay khi Lưu
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <label className={`flex items-center gap-2 p-2 rounded-md border transition-colors cursor-pointer select-none ${sendEmail ? 'bg-white border-teal-500 shadow-2xs' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <label className={`flex items-center gap-2 p-2 rounded-sm border transition-colors cursor-pointer select-none ${sendEmail ? 'bg-white border-teal-500 shadow-2xs' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
                 <input
                   type="checkbox"
                   checked={sendEmail}
                   onChange={(e) => setSendEmail(e.target.checked)}
-                  className="rounded text-teal-600 focus:ring-teal-500 h-4 w-4 cursor-pointer"
+                  className="rounded-sm text-teal-600 focus:ring-teal-500 h-4 w-4 cursor-pointer"
                 />
                 <div className="flex items-center gap-1.5 font-bold text-slate-800">
                   <Mail size={14} className={sendEmail ? 'text-teal-700' : 'text-slate-400'} />
@@ -339,12 +339,12 @@ export default function CreateFollowUpModal({
                 )}
               </label>
 
-              <label className={`flex items-center gap-2 p-2 rounded-md border transition-colors cursor-pointer select-none ${sendSms ? 'bg-white border-teal-500 shadow-2xs' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
+              <label className={`flex items-center gap-2 p-2 rounded-sm border transition-colors cursor-pointer select-none ${sendSms ? 'bg-white border-teal-500 shadow-2xs' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
                 <input
                   type="checkbox"
                   checked={sendSms}
                   onChange={(e) => setSendSms(e.target.checked)}
-                  className="rounded text-teal-600 focus:ring-teal-500 h-4 w-4 cursor-pointer"
+                  className="rounded-sm text-teal-600 focus:ring-teal-500 h-4 w-4 cursor-pointer"
                 />
                 <div className="flex items-center gap-1.5 font-bold text-slate-800">
                   <MessageSquare size={14} className={sendSms ? 'text-emerald-700' : 'text-slate-400'} />
@@ -368,14 +368,14 @@ export default function CreateFollowUpModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors cursor-pointer"
+              className="px-4 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-sm transition-colors cursor-pointer"
             >
               Hủy bỏ
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="flex items-center gap-1.5 px-5 py-2 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 rounded-md transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 rounded-sm transition-colors cursor-pointer shadow-xs disabled:opacity-50"
             >
               <CheckCircle2 size={15} />
               <span>{submitting ? 'Đang lưu...' : type === 'edit' ? 'Cập nhật lịch tái khám' : 'Lưu & Gửi lịch tái khám'}</span>
