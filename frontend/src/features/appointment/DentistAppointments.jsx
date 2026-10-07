@@ -26,9 +26,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { getDentistsList } from '../../services/dentist.service';
-import { getMyAppointments, getAppointments, updateAppointmentStatus } from '../../services/appointment.service';
 import ClinicalExamModal from '../../components/ui/ClinicalExamModal';
-import CreateAppointmentModal from '../../components/ui/CreateAppointmentModal';
 
 const TIME_SLOTS = [
   '07:00',
@@ -90,7 +88,6 @@ export default function DentistAppointments() {
   // Modal States
   const [selectedExamAppt, setSelectedExamAppt] = useState(null);
   const [isExamModalOpen, setIsExamModalOpen] = useState(false);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Helper to format doctor title
   const formatDoctorTitle = (usr) => {
@@ -639,16 +636,6 @@ export default function DentistAppointments() {
           >
             <History size={14} className={viewMode === 'LIST' ? 'text-white' : 'text-teal-700'} />
             <span>Lịch sử 7 ngày</span>
-          </button>
-
-          {/* Add Appointment Button */}
-          <button
-            type="button"
-            onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-1.5 rounded-sm bg-teal-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-teal-800 transition-all duration-150 active:scale-95 cursor-pointer"
-          >
-            <Plus size={15} />
-            Tạo ca khám mới
           </button>
 
           {/* Refresh Button */}
@@ -1322,13 +1309,6 @@ export default function DentistAppointments() {
           setSelectedExamAppt(null);
         }}
         appointment={selectedExamAppt}
-        onSuccess={fetchAppointments}
-      />
-
-      {/* Create Appointment Modal */}
-      <CreateAppointmentModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
         onSuccess={fetchAppointments}
       />
     </div>

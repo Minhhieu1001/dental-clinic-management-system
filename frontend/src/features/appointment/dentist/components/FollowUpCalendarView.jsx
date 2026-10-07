@@ -41,6 +41,7 @@ export default function FollowUpCalendarView({
   onSelectFollowUp,
   onEditFollowUp,
   onAddNewOnDate,
+  isEmployee = false,
 }) {
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -243,7 +244,7 @@ export default function FollowUpCalendarView({
                 </span>
 
                 {/* Quick Add Button on Hover */}
-                {selectedPatient && isCurrentMonth && (
+                {selectedPatient && isCurrentMonth && !isEmployee && (
                   <button
                     type="button"
                     onClick={() => {
@@ -277,19 +278,21 @@ export default function FollowUpCalendarView({
                           <Clock size={11} className={isConfirmed ? 'text-emerald-700' : 'text-rose-700'} />
                           {formatTimeOnly(item.followUpDate) || '09:00'}
                         </span>
-                        <div className="flex items-center gap-1 opacity-0 group-hover/card:opacity-100 transition-opacity">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onEditFollowUp(item, e);
-                            }}
-                            className="p-0.5 text-slate-700 hover:text-teal-800 rounded cursor-pointer"
-                            title="Sửa"
-                          >
-                            <Pencil size={11} />
-                          </button>
-                        </div>
+                        {!isEmployee && (
+                          <div className="flex items-center gap-1 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onEditFollowUp(item, e);
+                              }}
+                              className="p-0.5 text-slate-700 hover:text-teal-800 rounded cursor-pointer"
+                              title="Sửa"
+                            >
+                              <Pencil size={11} />
+                            </button>
+                          </div>
+                        )}
                       </div>
                       <div className="font-bold truncate mt-0.5 text-slate-900" title={item.reason || 'Tái khám'}>
                         {item.reason || 'Tái khám định kỳ'}

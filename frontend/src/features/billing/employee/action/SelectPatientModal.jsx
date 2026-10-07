@@ -47,9 +47,9 @@ export default function SelectPatientModal({
         </button>
       </DialogTitle>
 
-      <DialogContent className="py-4 space-y-3">
-        <p className="text-xs text-slate-600">
-          Số điện thoại <strong className="text-teal-700">{phoneKeyword}</strong> có {patients.length} hồ sơ bệnh nhân. Vui lòng chọn đúng bệnh nhân để tra cứu hóa đơn:
+      <DialogContent className="!pt-4 pb-4 space-y-3">
+        <p className="text-xs text-slate-600 pt-1">
+          Số điện thoại <strong className="text-teal-700">{phoneKeyword}</strong> có {patients.length} hồ sơ bệnh nhân. Vui lòng chọn đúng bệnh nhân:
         </p>
 
         <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
