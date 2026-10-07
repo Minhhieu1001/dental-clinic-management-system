@@ -18,14 +18,15 @@ import {
   History,
   Search,
   ShieldCheck,
+  Activity,
+  Phone,
+  UserCheck,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { getDentistsList } from '../../services/dentist.service';
-import { getMyAppointments, getAppointments, updateAppointmentStatus } from '../../services/appointment.service';
 import ClinicalExamModal from '../../components/ui/ClinicalExamModal';
-import CreateAppointmentModal from '../../components/ui/CreateAppointmentModal';
 
 const TIME_SLOTS = [
   '07:00',
@@ -87,7 +88,6 @@ export default function DentistAppointments() {
   // Modal States
   const [selectedExamAppt, setSelectedExamAppt] = useState(null);
   const [isExamModalOpen, setIsExamModalOpen] = useState(false);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Helper to format doctor title
   const formatDoctorTitle = (usr) => {
@@ -148,7 +148,7 @@ export default function DentistAppointments() {
     fetchAppointments();
   }, [fetchAppointments]);
 
-  // Cập nhật trực tiếp State
+  // Realtime update handler
   const handleRealtimeAppt = useCallback((updatedApt) => {
     if (!updatedApt || !updatedApt.id) return;
     toast.success('Cập nhật ca khám mới!', { id: 'realtime-appt' });
@@ -204,7 +204,7 @@ export default function DentistAppointments() {
     return days;
   }, [currentDate]);
 
-  // Date range display label (e.g. 12 - 18 / 05 / 2025)
+  // Date range display label (e.g. 28 - 04 / 10 / 2026)
   const dateRangeLabel = useMemo(() => {
     if (weekDaysList.length < 7) return '';
     const start = weekDaysList[0];
@@ -252,7 +252,6 @@ export default function DentistAppointments() {
         aptDateObj = new Date();
       }
 
-      // Check if appointment date falls strictly within the displayed week range
       if (aptDateObj >= startWeek && aptDateObj <= endWeek) {
         filteredCount++;
         if (apt.status === 'IN_PROGRESS') inProgress++;
@@ -265,7 +264,7 @@ export default function DentistAppointments() {
     return { waiting, inProgress, completed, cancelled, total: filteredCount };
   }, [appointments, weekDaysList]);
 
-  // Filter 100% REAL DATABASE APPOINTMENTS matching dayIdx and hourStr
+  // Filter appointments matching dayIdx and hourStr
   const getEventsForCell = (dayIdx, hourStr) => {
     const targetDayDate = weekDaysList[dayIdx];
     if (!targetDayDate) return [];
@@ -281,6 +280,16 @@ export default function DentistAppointments() {
         if (statusFilter === 'IN_PROGRESS' && apt.status !== 'IN_PROGRESS') return false;
         if (statusFilter === 'COMPLETED' && apt.status !== 'COMPLETED') return false;
         if (statusFilter === 'CANCELLED' && apt.status !== 'CANCELLED') return false;
+      }
+
+      // Search term filter if entered
+      if (searchTerm.trim()) {
+        const q = searchTerm.toLowerCase().trim();
+        const matchName = (apt.patientName || apt.fullName || '').toLowerCase().includes(q);
+        const matchPhone = (apt.phone || '').includes(q);
+        const matchCode = (apt.patientCode || '').toLowerCase().includes(q);
+        const matchReason = (apt.reason || apt.service || '').toLowerCase().includes(q);
+        if (!matchName && !matchPhone && !matchCode && !matchReason) return false;
       }
 
       const aptDateObj = parseAppointmentDateTime(apt.appointmentTime, apt.appointmentDate);
@@ -341,6 +350,14 @@ export default function DentistAppointments() {
         if (statusFilter === 'CANCELLED' && apt.status !== 'CANCELLED') return false;
       }
 
+      if (searchTerm.trim()) {
+        const q = searchTerm.toLowerCase().trim();
+        const matchName = (apt.patientName || apt.fullName || '').toLowerCase().includes(q);
+        const matchPhone = (apt.phone || '').includes(q);
+        const matchCode = (apt.patientCode || '').toLowerCase().includes(q);
+        if (!matchName && !matchPhone && !matchCode) return false;
+      }
+
       const aptDateObj = parseAppointmentDateTime(apt.appointmentTime, apt.appointmentDate);
       if (!aptDateObj) return false;
 
@@ -352,63 +369,63 @@ export default function DentistAppointments() {
     });
   };
 
-  // Status color styles & label mapping
+  // Status color styles & label mapping (Modern, Minimal & Clean White Theme)
   const getStatusCardStyle = (status) => {
     switch (status) {
       case 'CONFIRMED':
       case 'not-arrived':
         return {
-          cardBg: 'bg-amber-50/95 border-amber-500 text-amber-950 hover:bg-amber-100 hover:shadow-md',
-          badgeBg: 'bg-amber-600 text-white',
+          cardBg: 'bg-white border border-slate-200 border-l-[3.5px] border-l-amber-500 text-slate-900 hover:border-amber-400 hover:shadow-xs transition-all',
+          badgeBg: 'bg-amber-50 text-amber-800 border border-amber-200/80',
           label: 'Chưa đến',
           iconColor: 'text-amber-600',
         };
       case 'WAITING':
       case 'waiting':
         return {
-          cardBg: 'bg-blue-50/95 border-blue-500 text-blue-950 hover:bg-blue-100 hover:shadow-md',
-          badgeBg: 'bg-blue-600 text-white',
-          label: 'Đang chờ khám',
-          iconColor: 'text-blue-600',
+          cardBg: 'bg-white border border-slate-200 border-l-[3.5px] border-l-sky-500 text-slate-900 hover:border-sky-400 hover:shadow-xs transition-all',
+          badgeBg: 'bg-sky-50 text-sky-800 border border-sky-200/80',
+          label: 'Chờ khám',
+          iconColor: 'text-sky-600',
         };
       case 'CALLED':
       case 'called':
         return {
-          cardBg: 'bg-purple-50/95 border-purple-500 text-purple-950 hover:bg-purple-100 hover:shadow-md',
-          badgeBg: 'bg-purple-600 text-white',
+          cardBg: 'bg-white border border-slate-200 border-l-[3.5px] border-l-purple-500 text-slate-900 hover:border-purple-400 hover:shadow-xs transition-all',
+          badgeBg: 'bg-purple-50 text-purple-800 border border-purple-200/80',
           label: 'Đã gọi vào',
           iconColor: 'text-purple-600',
         };
       case 'IN_PROGRESS':
       case 'in-progress':
         return {
-          cardBg: 'bg-emerald-50/95 border-emerald-600 text-emerald-950 hover:bg-emerald-100 hover:shadow-md',
-          badgeBg: 'bg-emerald-600 text-white',
-          label: 'Đang điều trị',
-          iconColor: 'text-emerald-600',
+          cardBg: 'bg-white border border-slate-200 border-l-[3.5px] border-l-teal-600 text-slate-900 hover:border-teal-400 hover:shadow-xs transition-all',
+          badgeBg: 'bg-teal-50 text-teal-800 border border-teal-200/80',
+          label: 'Đang khám',
+          iconColor: 'text-teal-600',
         };
       case 'COMPLETED':
       case 'completed':
         return {
-          cardBg: 'bg-slate-100/95 border-slate-400 text-slate-900 hover:bg-slate-200 hover:shadow-md',
-          badgeBg: 'bg-slate-700 text-white',
+          cardBg: 'bg-white border border-slate-200 border-l-[3.5px] border-l-slate-400 text-slate-900 hover:border-slate-300 hover:shadow-xs transition-all',
+          badgeBg: 'bg-slate-100 text-slate-700 border border-slate-200',
           label: 'Hoàn thành',
           iconColor: 'text-slate-600',
         };
       case 'CANCELLED':
       case 'cancelled':
         return {
-          cardBg: 'bg-rose-50/95 border-rose-500 text-rose-950 hover:bg-rose-100 hover:shadow-md',
-          badgeBg: 'bg-rose-600 text-white',
+          cardBg: 'bg-white border border-slate-200 border-l-[3.5px] border-l-rose-500 text-slate-900 hover:border-rose-300 hover:shadow-xs transition-all',
+          badgeBg: 'bg-rose-50 text-rose-800 border border-rose-200/80',
           label: 'Đã hủy',
           iconColor: 'text-rose-600',
         };
       default:
         return {
-          cardBg: 'bg-sky-50/95 border-sky-600 text-sky-950 hover:bg-sky-100 hover:shadow-md',
-          badgeBg: 'bg-sky-600 text-white',
+          cardBg: 'bg-white border border-slate-200 border-l-[3.5px] border-l-teal-600 text-slate-900 hover:border-teal-400 hover:shadow-xs transition-all',
+          badgeBg: 'bg-teal-50 text-teal-800 border border-teal-200/80',
           label: 'Lịch hẹn',
-          iconColor: 'text-sky-600',
+          iconColor: 'text-teal-600',
         };
     }
   };
@@ -423,17 +440,15 @@ export default function DentistAppointments() {
   const listFilteredAppointments = useMemo(() => {
     return appointments
       .filter((apt) => {
-        // 1. Status Filter
         if (
           statusFilter === 'WAITING' &&
-          !(apt.status === 'WAITING' || apt.status === 'PENDING' || apt.status === 'UNASSIGNED')
+          !(apt.status === 'WAITING' || apt.status === 'PENDING' || apt.status === 'UNASSIGNED' || apt.status === 'CONFIRMED' || apt.status === 'not-arrived')
         )
           return false;
         if (statusFilter === 'IN_PROGRESS' && apt.status !== 'IN_PROGRESS') return false;
         if (statusFilter === 'COMPLETED' && apt.status !== 'COMPLETED') return false;
         if (statusFilter === 'CANCELLED' && apt.status !== 'CANCELLED') return false;
 
-        // 2. Date Range Filter (7 Days of the currently selected week)
         const aptDateObj = parseAppointmentDateTime(apt.appointmentTime, apt.appointmentDate);
         if (!aptDateObj) return false;
 
@@ -448,7 +463,6 @@ export default function DentistAppointments() {
 
         if (aptDateObj < weekStart || aptDateObj > weekEnd) return false;
 
-        // 3. Search Term Filter
         if (searchTerm.trim()) {
           const q = searchTerm.toLowerCase().trim();
           const matchName = (apt.patientName || apt.fullName || '').toLowerCase().includes(q);
@@ -467,36 +481,85 @@ export default function DentistAppointments() {
       });
   }, [appointments, statusFilter, currentDate, searchTerm]);
 
+  // Next / active patient appointment for Doctor Dashboard Hero Banner
+  const nextPatientAppt = useMemo(() => {
+    const waitingOrActive = appointments.filter((apt) => {
+      if (apt.status === 'COMPLETED' || apt.status === 'CANCELLED') return false;
+      return true;
+    }).sort((a, b) => {
+      const dA = parseAppointmentDateTime(a.appointmentTime, a.appointmentDate);
+      const dB = parseAppointmentDateTime(b.appointmentTime, b.appointmentDate);
+      return (dA ? dA.getTime() : 0) - (dB ? dB.getTime() : 0);
+    });
+    return waitingOrActive[0] || null;
+  }, [appointments]);
+
   const doctorDisplayName = dentistInfo ? (dentistInfo.name || dentistInfo.fullName) : formatDoctorTitle(user);
 
-  // Current real-time indicator line position (e.g. 11:15 AM -> 11.25)
   const now = new Date();
-  const currentHour = now.getHours();
-  const currentMin = now.getMinutes();
-  const showRedLine = currentHour >= 7 && currentHour <= 17;
-  const redLineTopPercent = ((currentHour - 7 + currentMin / 60) / 11) * 100;
 
   return (
-    <div className="w-full space-y-3 p-1.5 sm:p-2 bg-[#F4F7F6]/60 min-h-screen text-slate-800 font-sans">
-      {/* 1. Header Navigation Bar (Exact Match with Image 1) */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 rounded-[4px] border border-slate-200/80 bg-white p-4 shadow-xs">
+    <div className="mx-auto max-w-[1550px] px-2 sm:px-4 py-3 space-y-3 text-slate-800 text-xs font-sans">
+      {/* 0. Hero Doctor Dashboard Banner - Minimal & Clean */}
+      <div className="rounded-sm bg-white p-4 text-slate-800 border border-slate-200 shadow-2xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          {/* Left: Doctor & Clinic Room Profile */}
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-sm bg-teal-50 text-teal-700 border border-teal-200/90 shrink-0">
+              <Stethoscope size={22} />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-sm sm:text-base font-extrabold uppercase tracking-wide text-slate-900">
+                  LỊCH LÀM VIỆC & KHÁM BỆNH BÁC SĨ
+                </h1>
+                <span className="text-[10px] font-extrabold text-teal-800 bg-teal-50 px-2 py-0.5 rounded-sm border border-teal-200/80 uppercase">
+                  {doctorDisplayName}
+                </span>
+              </div>
+              <p className="text-slate-500 text-[11px] mt-0.5 font-medium">
+                Nha khoa Quốc tế Crown Dental • Lịch khám theo tuần, mở hồ sơ bệnh án khám lâm sàng & kê đơn thuốc cho bệnh nhân.
+              </p>
+            </div>
+          </div>
+
+          {/* Right: Metric Quick Stats Pills */}
+          <div className="flex flex-wrap items-center gap-2 text-xs shrink-0">
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-sm px-3 py-1.5 shadow-2xs">
+              <span className="text-slate-500 font-medium text-[11px]">Tổng ca tuần:</span>
+              <strong className="text-slate-900 font-extrabold">{weekStats.total}</strong>
+            </div>
+            <div className="flex items-center gap-2 bg-sky-50/80 border border-sky-200 text-sky-900 rounded-sm px-3 py-1.5 shadow-2xs">
+              <span className="text-sky-700 font-medium text-[11px]">Chờ khám:</span>
+              <strong className="text-sky-950 font-extrabold">{weekStats.waiting}</strong>
+            </div>
+            <div className="flex items-center gap-2 bg-emerald-50/80 border border-emerald-200 text-emerald-900 rounded-sm px-3 py-1.5 shadow-2xs">
+              <span className="text-emerald-700 font-medium text-[11px]">Hoàn thành:</span>
+              <strong className="text-emerald-950 font-extrabold">{weekStats.completed}</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 1. Header Navigation Bar (Modern, Minimal & Clean) */}
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 rounded-sm border border-slate-200 bg-white p-3.5 shadow-2xs">
         {/* Left Date Range Controls */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           {/* Navigation Arrows */}
-          <div className="flex items-center gap-1 rounded-[4px] border border-slate-200 bg-slate-50/60 p-1">
+          <div className="flex items-center gap-0.5 rounded-sm border border-slate-200 bg-slate-50/70 p-0.5">
             <button
               type="button"
               onClick={handlePrev}
-              className="flex h-8 w-8 items-center justify-center rounded-[4px] text-slate-600 hover:bg-white hover:shadow-xs transition-all"
+              className="flex h-7 w-7 items-center justify-center rounded-sm text-slate-600 hover:bg-white hover:text-slate-900 transition-all cursor-pointer"
             >
-              <ChevronLeft size={18} />
+              <ChevronLeft size={16} />
             </button>
             <button
               type="button"
               onClick={handleNext}
-              className="flex h-8 w-8 items-center justify-center rounded-[4px] text-slate-600 hover:bg-white hover:shadow-xs transition-all"
+              className="flex h-7 w-7 items-center justify-center rounded-sm text-slate-600 hover:bg-white hover:text-slate-900 transition-all cursor-pointer"
             >
-              <ChevronRight size={18} />
+              <ChevronRight size={16} />
             </button>
           </div>
 
@@ -504,26 +567,26 @@ export default function DentistAppointments() {
           <button
             type="button"
             onClick={handleToday}
-            className="rounded-[4px] border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 transition-all"
+            className="rounded-sm border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 transition-all cursor-pointer"
           >
             Hôm nay
           </button>
 
           {/* Displayed Date Range */}
-          <span className="text-base sm:text-lg font-extrabold text-slate-800 tracking-tight ml-2">
+          <span className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight ml-1">
             {dateRangeLabel}
           </span>
         </div>
 
-        {/* Right View Mode Controls & Add Action */}
-        <div className="flex flex-wrap items-center gap-3">
-          {/* View Mode Toggle Pill (Ngày | Tuần | Tháng | List) */}
-          <div className="flex items-center gap-1 rounded-[4px] bg-slate-100/90 p-1 border border-slate-200/60">
+        {/* Right View Mode Controls & Actions */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* View Mode Toggle Segmented Control */}
+          <div className="flex items-center gap-0.5 rounded-sm bg-slate-100 p-0.5 border border-slate-200">
             <button
               type="button"
               onClick={() => setViewMode('DAY')}
-              className={`rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${viewMode === 'DAY'
-                ? 'bg-white text-teal-800 shadow-xs'
+              className={`rounded-sm px-3 py-1 text-xs font-bold transition-all cursor-pointer ${viewMode === 'DAY'
+                ? 'bg-white text-teal-800 shadow-2xs'
                 : 'text-slate-600 hover:text-slate-900'
                 }`}
             >
@@ -532,8 +595,8 @@ export default function DentistAppointments() {
             <button
               type="button"
               onClick={() => setViewMode('WEEK')}
-              className={`rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${viewMode === 'WEEK'
-                ? 'bg-[#E0F2FE] text-teal-900 shadow-xs border border-teal-200'
+              className={`rounded-sm px-3 py-1 text-xs font-bold transition-all cursor-pointer ${viewMode === 'WEEK'
+                ? 'bg-white text-teal-800 shadow-2xs'
                 : 'text-slate-600 hover:text-slate-900'
                 }`}
             >
@@ -542,8 +605,8 @@ export default function DentistAppointments() {
             <button
               type="button"
               onClick={() => setViewMode('MONTH')}
-              className={`rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${viewMode === 'MONTH'
-                ? 'bg-white text-teal-800 shadow-xs'
+              className={`rounded-sm px-3 py-1 text-xs font-bold transition-all cursor-pointer ${viewMode === 'MONTH'
+                ? 'bg-white text-teal-800 shadow-2xs'
                 : 'text-slate-600 hover:text-slate-900'
                 }`}
             >
@@ -552,13 +615,13 @@ export default function DentistAppointments() {
             <button
               type="button"
               onClick={() => setViewMode('LIST')}
-              className={`rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all flex items-center gap-1 ${viewMode === 'LIST'
-                ? 'bg-teal-700 text-white shadow-xs'
+              className={`rounded-sm px-3 py-1 text-xs font-bold transition-all duration-150 flex items-center gap-1 cursor-pointer active:scale-95 ${viewMode === 'LIST'
+                ? 'bg-teal-700 text-white shadow-2xs'
                 : 'text-slate-600 hover:text-slate-900'
                 }`}
             >
               <ListFilter size={13} />
-              Dạng List
+              Danh sách
             </button>
           </div>
 
@@ -566,23 +629,13 @@ export default function DentistAppointments() {
           <button
             type="button"
             onClick={() => setViewMode(viewMode === 'LIST' ? 'WEEK' : 'LIST')}
-            className={`flex items-center gap-1.5 rounded-[4px] border px-3.5 py-2 text-xs font-bold transition-all shadow-2xs ${viewMode === 'LIST'
+            className={`flex items-center gap-1.5 rounded-sm border px-3 py-1.5 text-xs font-bold transition-all duration-150 shadow-2xs cursor-pointer active:scale-95 ${viewMode === 'LIST'
               ? 'border-teal-700 bg-teal-800 text-white'
-              : 'border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100'
+              : 'border-teal-200 bg-teal-50/80 text-teal-800 hover:bg-teal-100'
               }`}
           >
-            <History size={15} className={viewMode === 'LIST' ? 'text-white' : 'text-teal-700'} />
+            <History size={14} className={viewMode === 'LIST' ? 'text-white' : 'text-teal-700'} />
             <span>Lịch sử 7 ngày</span>
-          </button>
-
-          {/* Add Appointment Button */}
-          <button
-            type="button"
-            onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-1.5 rounded-[4px] bg-teal-700 px-4 py-2 text-xs font-bold text-white shadow-md shadow-teal-700/20 hover:bg-teal-800 transition-all"
-          >
-            <Plus size={16} />
-            Tạo ca khám mới
           </button>
 
           {/* Refresh Button */}
@@ -591,96 +644,180 @@ export default function DentistAppointments() {
             onClick={fetchAppointments}
             disabled={loading}
             title="Làm mới lịch khám"
-            className="flex h-9 w-9 items-center justify-center rounded-[4px] bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-200 transition-colors disabled:opacity-50"
+            className="flex h-8 w-8 items-center justify-center rounded-sm bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors disabled:opacity-50 active:scale-95 cursor-pointer"
           >
-            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>
 
-      {/* Professional Interactive Live Status Filter Strip */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-[4px] border border-slate-200/80 bg-white p-3 sm:px-5 shadow-2xs">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-extrabold text-slate-400 uppercase tracking-wider mr-1">Bộ lọc:</span>
+      {/* Dynamic Stacked Distribution Bar & Interactive KPI Cards Grid */}
+      <div className="rounded-sm border border-slate-200 bg-white p-3 sm:p-4 shadow-2xs space-y-3">
+        {/* Top Line: Title & Distribution Bar */}
+        <div className="space-y-1.5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+              <Activity size={15} className="text-teal-700" />
+              <span>Phân bổ lịch khám tuần ({dateRangeLabel})</span>
+            </div>
+            {/* Quick Search */}
+            <div className="relative">
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Tìm tên BN, SĐT, dịch vụ..."
+                className="w-full sm:w-60 rounded-sm border border-slate-200 bg-slate-50 pl-7 pr-2.5 py-1 text-xs text-slate-800 placeholder-slate-400 focus:border-teal-600 focus:bg-white focus:outline-hidden"
+              />
+            </div>
+          </div>
 
-          <button
-            type="button"
+          {/* Dynamic Stacked Distribution Bar */}
+          <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden flex p-0.5 border border-slate-200/80 shadow-2xs">
+            {weekStats.total === 0 ? (
+              <div className="h-full w-full bg-slate-200/80 rounded-full" title="Chưa có ca khám nào trong tuần" />
+            ) : (
+              <>
+                {weekStats.waiting > 0 && (
+                  <div
+                    style={{ width: `${(weekStats.waiting / weekStats.total) * 100}%` }}
+                    className="h-full bg-gradient-to-r from-sky-400 to-sky-500 transition-all duration-300 first:rounded-l-full last:rounded-r-full"
+                    title={`Chưa khám: ${weekStats.waiting} (${Math.round((weekStats.waiting / weekStats.total) * 100)}%)`}
+                  />
+                )}
+                {weekStats.inProgress > 0 && (
+                  <div
+                    style={{ width: `${(weekStats.inProgress / weekStats.total) * 100}%` }}
+                    className="h-full bg-gradient-to-r from-purple-400 to-purple-500 transition-all duration-300 first:rounded-l-full last:rounded-r-full"
+                    title={`Đang khám: ${weekStats.inProgress} (${Math.round((weekStats.inProgress / weekStats.total) * 100)}%)`}
+                  />
+                )}
+                {weekStats.completed > 0 && (
+                  <div
+                    style={{ width: `${(weekStats.completed / weekStats.total) * 100}%` }}
+                    className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all duration-300 first:rounded-l-full last:rounded-r-full"
+                    title={`Hoàn thành: ${weekStats.completed} (${Math.round((weekStats.completed / weekStats.total) * 100)}%)`}
+                  />
+                )}
+                {weekStats.cancelled > 0 && (
+                  <div
+                    style={{ width: `${(weekStats.cancelled / weekStats.total) * 100}%` }}
+                    className="h-full bg-gradient-to-r from-rose-400 to-rose-600 transition-all duration-300 first:rounded-l-full last:rounded-r-full"
+                    title={`Đã hủy: ${weekStats.cancelled} (${Math.round((weekStats.cancelled / weekStats.total) * 100)}%)`}
+                  />
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Metric Cards Grid below the progress bar (Interactive Filters matching User's Image) */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-0.5 text-xs select-none">
+          {/* Card 1: Tất cả */}
+          <div
             onClick={() => setStatusFilter('ALL')}
-            className={`flex items-center gap-1.5 rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${statusFilter === 'ALL'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
+            className={`rounded-sm p-2 px-2.5 border flex items-center justify-between shadow-2xs cursor-pointer transition-all duration-150 active:scale-95 ${
+              statusFilter === 'ALL'
+                ? 'bg-teal-50 border-teal-600 ring-2 ring-teal-600'
+                : 'bg-slate-50/80 border-slate-200 hover:bg-slate-100'
+            }`}
+            title="Nhấp để lọc xem tất cả cuộc hẹn"
           >
-            Tất cả <span className="rounded-[4px] bg-white/20 px-1.5 py-0.2 text-[10px]">{weekStats.total}</span>
-          </button>
+            <div>
+              <div className="text-[10px] text-slate-500 uppercase font-extrabold">TỔNG LỊCH HẸN</div>
+              <div className="text-xs font-extrabold text-slate-900 mt-0.5">{weekStats.total} ca khám</div>
+            </div>
+            <span className="text-[11px] font-bold text-slate-600 bg-white px-1.5 py-0.5 rounded border border-slate-200">100%</span>
+          </div>
 
-          <button
-            type="button"
+          {/* Card 2: Chưa khám */}
+          <div
             onClick={() => setStatusFilter('WAITING')}
-            className={`flex items-center gap-1.5 rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${statusFilter === 'WAITING'
-              ? 'bg-sky-600 text-white shadow-xs'
-              : 'bg-sky-50 text-sky-800 border border-sky-200/80 hover:bg-sky-100'
-              }`}
+            className={`rounded-sm p-2 px-2.5 border flex items-center justify-between shadow-2xs cursor-pointer transition-all duration-150 active:scale-95 ${
+              statusFilter === 'WAITING'
+                ? 'bg-sky-100/90 border-sky-600 ring-2 ring-sky-600'
+                : 'bg-sky-50/50 border-sky-200/80 hover:bg-sky-100/60'
+            }`}
+            title="Nhấp để lọc ca chưa khám"
           >
-            <span className="h-2 w-2 rounded-full bg-sky-400" />
-            Chưa khám
-            <span className="rounded-[4px] bg-sky-700/30 px-1.5 py-0.2 text-[10px]">{weekStats.waiting}</span>
-          </button>
+            <div>
+              <div className="text-[10px] text-sky-800 uppercase font-extrabold">CHƯA KHÁM</div>
+              <div className="text-xs font-extrabold text-sky-950 mt-0.5">{weekStats.waiting} ca</div>
+            </div>
+            <span className="text-[11px] font-extrabold text-sky-700 bg-white px-1.5 py-0.5 rounded border border-sky-200">
+              {weekStats.total > 0 ? Math.round((weekStats.waiting / weekStats.total) * 100) : 0}%
+            </span>
+          </div>
 
-          <button
-            type="button"
+          {/* Card 3: Đang khám */}
+          <div
             onClick={() => setStatusFilter('IN_PROGRESS')}
-            className={`flex items-center gap-1.5 rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${statusFilter === 'IN_PROGRESS'
-              ? 'bg-purple-600 text-white shadow-xs'
-              : 'bg-purple-50 text-purple-800 border border-purple-200/80 hover:bg-purple-100'
-              }`}
+            className={`rounded-sm p-2 px-2.5 border flex items-center justify-between shadow-2xs cursor-pointer transition-all duration-150 active:scale-95 ${
+              statusFilter === 'IN_PROGRESS'
+                ? 'bg-purple-100/90 border-purple-600 ring-2 ring-purple-600'
+                : 'bg-purple-50/50 border-purple-200/80 hover:bg-purple-100/60'
+            }`}
+            title="Nhấp để lọc ca đang khám"
           >
-            <span className="h-2 w-2 rounded-full bg-purple-400" />
-            Đang khám
-            <span className="rounded-[4px] bg-purple-700/30 px-1.5 py-0.2 text-[10px]">{weekStats.inProgress}</span>
-          </button>
+            <div>
+              <div className="text-[10px] text-purple-800 uppercase font-extrabold">ĐANG KHÁM</div>
+              <div className="text-xs font-extrabold text-purple-950 mt-0.5">{weekStats.inProgress} ca</div>
+            </div>
+            <span className="text-[11px] font-extrabold text-purple-700 bg-white px-1.5 py-0.5 rounded border border-purple-200">
+              {weekStats.total > 0 ? Math.round((weekStats.inProgress / weekStats.total) * 100) : 0}%
+            </span>
+          </div>
 
-          <button
-            type="button"
+          {/* Card 4: Hoàn thành */}
+          <div
             onClick={() => setStatusFilter('COMPLETED')}
-            className={`flex items-center gap-1.5 rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${statusFilter === 'COMPLETED'
-              ? 'bg-emerald-600 text-white shadow-xs'
-              : 'bg-emerald-50 text-emerald-800 border border-emerald-200/80 hover:bg-emerald-100'
-              }`}
+            className={`rounded-sm p-2 px-2.5 border flex items-center justify-between shadow-2xs cursor-pointer transition-all duration-150 active:scale-95 ${
+              statusFilter === 'COMPLETED'
+                ? 'bg-emerald-100/90 border-emerald-600 ring-2 ring-emerald-600'
+                : 'bg-emerald-50/50 border-emerald-200/80 hover:bg-emerald-100/60'
+            }`}
+            title="Nhấp để lọc ca hoàn thành"
           >
-            <span className="h-2 w-2 rounded-full bg-emerald-400" />
-            Hoàn thành
-            <span className="rounded-[4px] bg-emerald-700/30 px-1.5 py-0.2 text-[10px]">{weekStats.completed}</span>
-          </button>
+            <div>
+              <div className="text-[10px] text-emerald-800 uppercase font-extrabold">HOÀN THÀNH</div>
+              <div className="text-xs font-extrabold text-emerald-950 mt-0.5">{weekStats.completed} xong</div>
+            </div>
+            <span className="text-[11px] font-extrabold text-emerald-700 bg-white px-1.5 py-0.5 rounded border border-emerald-200">
+              {weekStats.total > 0 ? Math.round((weekStats.completed / weekStats.total) * 100) : 0}%
+            </span>
+          </div>
 
-          <button
-            type="button"
+          {/* Card 5: Đã hủy */}
+          <div
             onClick={() => setStatusFilter('CANCELLED')}
-            className={`flex items-center gap-1.5 rounded-[4px] px-3 py-1.5 text-xs font-bold transition-all ${statusFilter === 'CANCELLED'
-              ? 'bg-rose-600 text-white shadow-xs'
-              : 'bg-rose-50 text-rose-800 border border-rose-200/80 hover:bg-rose-100'
-              }`}
+            className={`rounded-sm p-2 px-2.5 border flex items-center justify-between shadow-2xs cursor-pointer transition-all duration-150 active:scale-95 ${
+              statusFilter === 'CANCELLED'
+                ? 'bg-rose-100/90 border-rose-600 ring-2 ring-rose-600'
+                : 'bg-rose-50/50 border-rose-200/80 hover:bg-rose-100/60'
+            }`}
+            title="Nhấp để lọc ca đã hủy"
           >
-            <span className="h-2 w-2 rounded-full bg-rose-400" />
-            Đã hủy
-            <span className="rounded-[4px] bg-rose-700/30 px-1.5 py-0.2 text-[10px]">{weekStats.cancelled}</span>
-          </button>
-        </div>
-
-        <div className="text-[11px] font-medium text-slate-400 hidden lg:block">
-          * Bấm nút trạng thái để lọc nhanh ca khám
+            <div>
+              <div className="text-[10px] text-rose-800 uppercase font-extrabold">ĐÃ HỦY</div>
+              <div className="text-xs font-extrabold text-rose-950 mt-0.5">{weekStats.cancelled} ca hủy</div>
+            </div>
+            <span className="text-[11px] font-extrabold text-rose-700 bg-white px-1.5 py-0.5 rounded border border-rose-200">
+              {weekStats.total > 0 ? Math.round((weekStats.cancelled / weekStats.total) * 100) : 0}%
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* 2. Calendar View Content (WEEK MATRIX VIEW - Responsive All 7 Days Visible) */}
+      {/* 2. Calendar Matrix View (WEEK VIEW) */}
       {viewMode === 'WEEK' && (
-        <div className="rounded-[4px] border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+        <div className="rounded-sm border border-slate-200 bg-white shadow-2xs overflow-hidden">
           <div className="overflow-x-auto">
             <div className="w-full min-w-[1050px] relative">
               {/* Matrix Table Header: Days of the Week */}
-              <div className="grid grid-cols-8 border-b border-slate-200 bg-slate-50/70 text-center text-xs font-bold text-slate-700">
+              <div className="grid grid-cols-8 border-b border-slate-200 bg-slate-50/80 text-center text-xs font-bold text-slate-700">
                 {/* Time slot column title */}
-                <div className="p-3 border-r border-slate-200 text-slate-400 font-semibold text-[11px] flex items-center justify-center">
+                <div className="p-2.5 border-r border-slate-200/80 text-slate-400 font-semibold text-[11px] flex items-center justify-center">
                   Giờ / Ngày
                 </div>
 
@@ -697,11 +834,18 @@ export default function DentistAppointments() {
                   return (
                     <div
                       key={idx}
-                      className={`p-3 border-r border-slate-200 last:border-r-0 ${isToday ? 'bg-teal-50/80 text-teal-900 font-extrabold' : ''
+                      className={`p-2.5 border-r border-slate-200/80 last:border-r-0 ${isToday ? 'bg-teal-50/90 text-teal-950 font-extrabold' : ''
                         }`}
                     >
-                      <div className="text-xs font-extrabold uppercase">{WEEKDAYS[idx].short}</div>
-                      <div className={`text-xs font-bold mt-0.5 ${isToday ? 'text-teal-700' : 'text-slate-500'}`}>
+                      <div className="flex items-center justify-center gap-1">
+                        <span className="text-xs font-extrabold uppercase tracking-wide">{WEEKDAYS[idx].short}</span>
+                        {isToday && (
+                          <span className="text-[9px] font-extrabold bg-teal-700 text-white px-1 py-0.2 rounded-xs uppercase">
+                            Hôm nay
+                          </span>
+                        )}
+                      </div>
+                      <div className={`text-[11px] font-bold mt-0.5 ${isToday ? 'text-teal-700' : 'text-slate-500'}`}>
                         {dayNum}/{monthNum}
                       </div>
                     </div>
@@ -711,12 +855,10 @@ export default function DentistAppointments() {
 
               {/* Matrix Grid Container */}
               <div className="relative divide-y divide-slate-100">
-
-                {/* Time Slot Rows */}
                 {TIME_SLOTS.map((hourStr) => (
-                  <div key={hourStr} className="grid grid-cols-8 min-h-[88px]">
+                  <div key={hourStr} className="grid grid-cols-8 min-h-[92px]">
                     {/* Time Label Column */}
-                    <div className="p-2 border-r border-slate-200 bg-slate-50/40 text-xs font-bold text-slate-500 flex items-center justify-center">
+                    <div className="p-2 border-r border-slate-200/80 bg-slate-50/40 text-xs font-bold text-slate-500 flex items-center justify-center">
                       {hourStr}
                     </div>
 
@@ -727,7 +869,7 @@ export default function DentistAppointments() {
                       return (
                         <div
                           key={dayIdx}
-                          className="p-1.5 border-r border-slate-100 last:border-r-0 hover:bg-slate-50/50 transition-colors relative min-h-[88px] flex flex-col justify-start gap-2 overflow-visible"
+                          className="p-1.5 border-r border-slate-100 last:border-r-0 hover:bg-slate-50/50 transition-colors relative min-h-[92px] flex flex-col justify-start gap-1.5 overflow-visible group"
                         >
                           {cellEvents.map((event) => {
                             const style = getStatusCardStyle(event.status);
@@ -746,43 +888,44 @@ export default function DentistAppointments() {
                               }
                             }
 
+                            const hasValidCode = event.patientCode && event.patientCode !== 'N/A' && event.patientCode !== 'null';
+
                             return (
                               <div
                                 key={event.id}
                                 onClick={() => handleEventClick(event)}
-                                className={`w-full p-2.5 rounded-[4px] border-l-[4px] shadow-2xs hover:shadow-md transition-all cursor-pointer space-y-1.5 overflow-hidden text-left ${style.cardBg}`}
+                                title="Nhấp vào để xem hồ sơ khám & kê đơn thuốc"
+                                className={`w-full p-2 rounded-sm shadow-2xs cursor-pointer space-y-1 text-left ${style.cardBg}`}
                               >
                                 {isUrgent && (
-                                  <div className="flex items-center gap-1 text-[9px] font-extrabold text-rose-700 bg-rose-100/90 border border-rose-200 rounded-[3px] px-1.5 py-0.5 w-max">
+                                  <div className="flex items-center gap-1 text-[9px] font-extrabold text-rose-700 bg-rose-50 border border-rose-200 rounded-sm px-1.5 py-0.5 w-max">
                                     <span>🚨 Cấp cứu</span>
                                   </div>
                                 )}
 
                                 {/* Top Row: Time & Status Badge */}
-                                <div className="space-y-1 border-b border-slate-200/60 pb-1.5">
-                                  <div className="text-[10px] font-bold text-slate-700 flex items-center gap-1">
+                                <div className="flex items-center justify-between gap-1 border-b border-slate-100 pb-1">
+                                  <div className="text-[10px] font-bold text-slate-600 flex items-center gap-1">
                                     <Clock size={11} className={style.iconColor} /> {timeRange}
                                   </div>
-                                  <div className="flex items-center gap-1">
-                                    <span className={`rounded-[3px] px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider ${style.badgeBg}`}>
-                                      {style.label}
-                                    </span>
-                                  </div>
+                                  <span className={`rounded-sm px-1.5 py-0.2 text-[9px] font-extrabold uppercase tracking-wider ${style.badgeBg}`}>
+                                    {style.label}
+                                  </span>
                                 </div>
 
                                 {/* Patient Name, Code & Phone */}
-                                <div className="space-y-0.5">
-                                  <p className="font-extrabold text-xs text-slate-900 leading-snug break-words">
-                                    {event.patientName || event.fullName || 'Bệnh nhân'}
+                                <div className="space-y-0.5 pt-0.5">
+                                  <p className="font-extrabold text-xs text-slate-900 leading-snug break-words flex items-center justify-between gap-1">
+                                    <span>{event.patientName || event.fullName || 'Bệnh nhân'}</span>
                                   </p>
                                   <div className="flex flex-wrap items-center gap-1 text-[10px]">
-                                    {event.patientCode && (
-                                      <span className="font-extrabold text-teal-800 bg-teal-100/70 border border-teal-200/80 rounded-[3px] px-1 py-0.2 text-[9px]">
+                                    {hasValidCode && (
+                                      <span className="font-bold text-teal-800 bg-teal-50 border border-teal-200/80 rounded-sm px-1 py-0.2 text-[9px]">
                                         {event.patientCode}
                                       </span>
                                     )}
                                     {event.phone && (
-                                      <span className="font-semibold text-slate-500 flex items-center gap-0.5">
+                                      <span className="font-medium text-slate-500">
                                         📞 {event.phone}
                                       </span>
                                     )}
@@ -790,7 +933,7 @@ export default function DentistAppointments() {
                                 </div>
 
                                 {/* Service / Reason */}
-                                <p className="text-[11px] font-extrabold text-teal-950 leading-tight flex items-start gap-1">
+                                <p className="text-[11px] font-semibold text-teal-900 leading-tight flex items-start gap-1 pt-0.5">
                                   <FileText size={11} className="text-teal-700 shrink-0 mt-0.5" />
                                   <span className="line-clamp-2">{event.reason || event.service || 'Khám tổng quát'}</span>
                                 </p>
@@ -800,7 +943,6 @@ export default function DentistAppointments() {
                         </div>
                       );
                     })}
-
                   </div>
                 ))}
               </div>
@@ -811,14 +953,14 @@ export default function DentistAppointments() {
 
       {/* 3. DAY VIEW MODE */}
       {viewMode === 'DAY' && (
-        <div className="rounded-[4px] border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
-              <CalendarIcon size={18} className="text-teal-700" />
+        <div className="rounded-sm border border-slate-200 bg-white p-5 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+            <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+              <CalendarIcon size={16} className="text-teal-700" />
               Lịch khám chi tiết ngày: <span className="text-teal-700">{currentDate.toLocaleDateString('vi-VN')}</span>
             </h3>
             <span className="text-xs font-semibold text-slate-500">
-              Tổng số ca: {appointments.length}
+              Tổng số ca: <strong className="text-slate-900 font-extrabold">{appointments.length}</strong>
             </span>
           </div>
 
@@ -834,25 +976,28 @@ export default function DentistAppointments() {
                   <span className="w-16 text-xs font-bold text-slate-400 shrink-0 mt-1">{hourStr}</span>
                   <div className="flex-1 space-y-2">
                     {matchingEvents.length === 0 ? (
-                      <div className="text-xs text-slate-300 italic border border-dashed border-slate-100 rounded-lg p-2">
+                      <div className="text-xs text-slate-300 italic border border-dashed border-slate-200 rounded-sm p-2">
                         Khung giờ trống
                       </div>
                     ) : (
-                      matchingEvents.map((apt) => (
-                        <div
-                          key={apt.id}
-                          onClick={() => handleEventClick(apt)}
-                          className="flex items-center justify-between p-3 rounded-xl bg-teal-50/70 border border-teal-200 hover:shadow-md cursor-pointer transition-all"
-                        >
-                          <div>
-                            <p className="text-xs font-bold text-slate-900">{apt.patientName}</p>
-                            <p className="text-[11px] text-teal-700 font-medium">{apt.reason}</p>
+                      matchingEvents.map((apt) => {
+                        const style = getStatusCardStyle(apt.status);
+                        return (
+                          <div
+                            key={apt.id}
+                            onClick={() => handleEventClick(apt)}
+                            className={`flex items-center justify-between p-3 rounded-sm border cursor-pointer hover:shadow-2xs transition-all ${style.cardBg}`}
+                          >
+                            <div>
+                              <p className="text-xs font-bold text-slate-900">{apt.patientName}</p>
+                              <p className="text-[11px] text-teal-700 font-medium">{apt.reason}</p>
+                            </div>
+                            <span className={`rounded-sm px-2.5 py-0.5 text-[10px] font-extrabold ${style.badgeBg}`}>
+                              {style.label}
+                            </span>
                           </div>
-                          <span className="rounded-full bg-teal-700 px-2.5 py-0.5 text-[10px] font-bold text-white">
-                            {apt.status}
-                          </span>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 </div>
@@ -864,28 +1009,28 @@ export default function DentistAppointments() {
 
       {/* 4. MONTH VIEW MODE */}
       {viewMode === 'MONTH' && (
-        <div className="rounded-[4px] border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+        <div className="rounded-sm border border-slate-200 bg-white p-5 shadow-2xs space-y-4">
           {/* Month Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
             <div className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-[4px] bg-teal-50 text-teal-700 border border-teal-200">
-                <CalendarIcon size={18} />
+              <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-teal-50 text-teal-700 border border-teal-200">
+                <CalendarIcon size={16} />
               </div>
               <div>
-                <h3 className="text-base font-extrabold text-slate-900 leading-tight">
+                <h3 className="text-sm font-extrabold text-slate-900 leading-tight">
                   Lịch khám Tháng {String(currentDate.getMonth() + 1).padStart(2, '0')} / {currentDate.getFullYear()}
                 </h3>
-                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                <p className="text-[11px] text-slate-500 font-medium mt-0.5">
                   Tổng hợp ca khám theo từng ngày trong tháng
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-              <span className="flex items-center gap-1 bg-teal-50 text-teal-800 border border-teal-200 px-2.5 py-1 rounded-[3px] font-bold">
+              <span className="flex items-center gap-1 bg-teal-50 text-teal-800 border border-teal-200 px-2.5 py-1 rounded-sm font-bold">
                 <CheckCircle2 size={13} /> {weekStats.completed} ca hoàn thành
               </span>
-              <span className="flex items-center gap-1 bg-sky-50 text-sky-800 border border-sky-200 px-2.5 py-1 rounded-[3px] font-bold">
+              <span className="flex items-center gap-1 bg-sky-50 text-sky-800 border border-sky-200 px-2.5 py-1 rounded-sm font-bold">
                 <Clock size={13} /> {weekStats.waiting} ca chưa khám
               </span>
             </div>
@@ -928,7 +1073,7 @@ export default function DentistAppointments() {
                     >
                       <div className="flex items-center justify-between text-xs">
                         <span
-                          className={`font-extrabold px-1.5 py-0.2 rounded-[3px] ${isToday
+                          className={`font-extrabold px-1.5 py-0.2 rounded-sm ${isToday
                             ? 'bg-teal-700 text-white shadow-2xs'
                             : item.isCurrentMonth
                               ? 'text-slate-800'
@@ -938,7 +1083,7 @@ export default function DentistAppointments() {
                           {cellDate.getDate()}
                         </span>
                         {dayAppts.length > 0 && (
-                          <span className="text-[10px] font-bold text-teal-800 bg-teal-100/70 border border-teal-200 px-1 py-0.2 rounded-[3px]">
+                          <span className="text-[10px] font-bold text-teal-800 bg-teal-100/70 border border-teal-200 px-1 py-0.2 rounded-sm">
                             {dayAppts.length} ca
                           </span>
                         )}
@@ -962,7 +1107,7 @@ export default function DentistAppointments() {
                             <div
                               key={apt.id}
                               onClick={() => handleEventClick(apt)}
-                              className={`p-1 rounded-[3px] border border-slate-200 text-[10px] cursor-pointer hover:shadow-2xs transition-all text-left truncate ${style.cardBg}`}
+                              className={`p-1 rounded-sm border border-slate-200 text-[10px] cursor-pointer hover:shadow-2xs transition-all text-left truncate ${style.cardBg}`}
                             >
                               <div className="font-bold truncate flex items-center justify-between gap-1">
                                 <span className="truncate">{apt.patientName || apt.fullName}</span>
@@ -978,7 +1123,7 @@ export default function DentistAppointments() {
                               setCurrentDate(new Date(cellDate));
                               setViewMode('DAY');
                             }}
-                            className="text-[9px] font-extrabold text-teal-800 hover:underline cursor-pointer text-center bg-teal-50 border border-teal-100 py-0.5 rounded-[3px]"
+                            className="text-[9px] font-extrabold text-teal-800 hover:underline cursor-pointer text-center bg-teal-50 border border-teal-100 py-0.5 rounded-sm"
                           >
                             +{dayAppts.length - 2} ca khác &rarr;
                           </div>
@@ -995,19 +1140,19 @@ export default function DentistAppointments() {
 
       {/* 5. 7-DAY WEEKLY HISTORY LIST VIEW MODE */}
       {viewMode === 'LIST' && (
-        <div className="rounded-[4px] border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+        <div className="rounded-sm border border-slate-200 bg-white p-4 shadow-2xs space-y-3">
           {/* List View Header & Filter */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
             <div>
               <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-[4px] bg-teal-50 text-teal-700 border border-teal-200">
-                  <History size={18} />
+                <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-teal-50 text-teal-700 border border-teal-200">
+                  <History size={16} />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-slate-900 leading-tight">
+                  <h3 className="text-sm font-extrabold text-slate-900 leading-tight">
                     Lịch sử khám bệnh 1 tuần qua ({dateRangeLabel})
                   </h3>
-                  <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  <p className="text-[11px] text-slate-500 font-medium mt-0.5">
                     Hiển thị tổng cộng <strong className="text-teal-800 font-bold">{listFilteredAppointments.length}</strong> ca khám trong tuần
                   </p>
                 </div>
@@ -1022,7 +1167,7 @@ export default function DentistAppointments() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Tìm bệnh nhân, SĐT, mã BN..."
-                className="w-full sm:w-64 rounded-[4px] border border-slate-200 bg-slate-50 pl-8 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:border-teal-500 focus:bg-white focus:outline-none"
+                className="w-full sm:w-64 rounded-sm border border-slate-200 bg-slate-50 pl-8 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:border-teal-500 focus:bg-white focus:outline-hidden"
               />
             </div>
           </div>
@@ -1032,12 +1177,12 @@ export default function DentistAppointments() {
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3 px-3">Thời gian & Ngày</th>
-                  <th className="py-3 px-3">Bệnh nhân</th>
-                  <th className="py-3 px-3">Bác sĩ & Phòng</th>
-                  <th className="py-3 px-3">Dịch vụ & Chẩn đoán</th>
-                  <th className="py-3 px-3">Trạng thái</th>
-                  <th className="py-3 px-3 text-right">Thao tác</th>
+                  <th className="py-2.5 px-3">Thời gian & Ngày</th>
+                  <th className="py-2.5 px-3">Bệnh nhân</th>
+                  <th className="py-2.5 px-3">Bác sĩ & Phòng</th>
+                  <th className="py-2.5 px-3">Dịch vụ & Chẩn đoán</th>
+                  <th className="py-2.5 px-3">Trạng thái</th>
+                  <th className="py-2.5 px-3 text-right">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -1072,9 +1217,9 @@ export default function DentistAppointments() {
                     const isUrgent = apt.notes && apt.notes.includes('[ƯU TIÊN / CẤP CỨU]');
 
                     return (
-                      <tr key={apt.id} className="hover:bg-slate-50/80 transition-colors">
+                      <tr key={apt.id} className="hover:bg-slate-50/80 transition-colors border-b border-slate-100">
                         {/* Time & Date */}
-                        <td className="py-3 px-3 whitespace-nowrap">
+                        <td className="py-2.5 px-3 whitespace-nowrap">
                           <div className="font-extrabold text-slate-900">{formattedDateStr}</div>
                           <div className="text-[11px] font-semibold text-slate-500 flex items-center gap-1 mt-0.5">
                             <Clock size={11} className="text-teal-600" /> {timeRangeStr}
@@ -1082,13 +1227,13 @@ export default function DentistAppointments() {
                         </td>
 
                         {/* Patient Info */}
-                        <td className="py-3 px-3">
+                        <td className="py-2.5 px-3">
                           <div className="font-extrabold text-slate-900 text-xs">
                             {apt.patientName || apt.fullName || 'Bệnh nhân'}
                           </div>
                           <div className="flex items-center gap-1.5 text-[10px] mt-0.5">
-                            {apt.patientCode && (
-                              <span className="font-bold text-teal-800 bg-teal-100/70 border border-teal-200 px-1 py-0.2 rounded-[3px]">
+                            {apt.patientCode && apt.patientCode !== 'N/A' && (
+                              <span className="font-bold text-teal-800 bg-teal-50 border border-teal-200 px-1 py-0.2 rounded-sm">
                                 {apt.patientCode}
                               </span>
                             )}
@@ -1099,7 +1244,7 @@ export default function DentistAppointments() {
                         </td>
 
                         {/* Doctor & Room */}
-                        <td className="py-3 px-3 whitespace-nowrap">
+                        <td className="py-2.5 px-3 whitespace-nowrap">
                           <div className="font-bold text-slate-800 flex items-center gap-1 text-xs">
                             <Stethoscope size={12} className="text-teal-700 shrink-0" />
                             <span>{apt.dentistName || doctorDisplayName}</span>
@@ -1113,7 +1258,7 @@ export default function DentistAppointments() {
                         </td>
 
                         {/* Service & Diagnosis */}
-                        <td className="py-3 px-3 max-w-[220px]">
+                        <td className="py-2.5 px-3 max-w-[220px]">
                           <div className="font-bold text-teal-950 text-xs truncate">
                             {apt.reason || apt.service || 'Khám tổng quát nha khoa'}
                           </div>
@@ -1122,25 +1267,25 @@ export default function DentistAppointments() {
                               Chẩn đoán: <span className="text-slate-700 font-semibold">{apt.diagnosis}</span>
                             </div>
                           ) : isUrgent ? (
-                            <div className="inline-flex items-center gap-1 text-[9px] font-extrabold text-rose-700 bg-rose-100 border border-rose-200 rounded-[3px] px-1 py-0.2 mt-0.5">
+                            <div className="inline-flex items-center gap-1 text-[9px] font-extrabold text-rose-700 bg-rose-50 border border-rose-200 rounded-sm px-1 py-0.2 mt-0.5">
                               🚨 Ca cấp cứu
                             </div>
                           ) : null}
                         </td>
 
                         {/* Status Badge */}
-                        <td className="py-3 px-3 whitespace-nowrap">
-                          <span className={`rounded-[3px] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider inline-block ${style.badgeBg}`}>
+                        <td className="py-2.5 px-3 whitespace-nowrap">
+                          <span className={`rounded-sm px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider inline-block ${style.badgeBg}`}>
                             {style.label}
                           </span>
                         </td>
 
                         {/* Action */}
-                        <td className="py-3 px-3 text-right whitespace-nowrap">
+                        <td className="py-2.5 px-3 text-right whitespace-nowrap">
                           <button
                             type="button"
                             onClick={() => handleEventClick(apt)}
-                            className="inline-flex items-center gap-1.5 rounded-[4px] border border-teal-600 bg-teal-50 px-3 py-1.5 text-xs font-bold text-teal-800 hover:bg-teal-100 transition-colors shadow-2xs"
+                            className="inline-flex items-center gap-1.5 rounded-sm border border-teal-600 bg-teal-50/80 px-3 py-1.5 text-xs font-bold text-teal-800 hover:bg-teal-100 transition-colors shadow-2xs cursor-pointer"
                           >
                             <Eye size={13} className="text-teal-700" />
                             <span>Xem hồ sơ</span>
@@ -1164,13 +1309,6 @@ export default function DentistAppointments() {
           setSelectedExamAppt(null);
         }}
         appointment={selectedExamAppt}
-        onSuccess={fetchAppointments}
-      />
-
-      {/* Create Appointment Modal */}
-      <CreateAppointmentModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
         onSuccess={fetchAppointments}
       />
     </div>

@@ -39,6 +39,7 @@ import FollowUpDetailModal from './components/FollowUpDetailModal';
 import FollowUpPrintModal from './components/FollowUpPrintModal';
 import FollowUpCalendarView from './components/FollowUpCalendarView';
 import DeleteConfirmModal from '../../prescriptions/dentist/components/DeleteConfirmModal';
+import SelectPatientModal from '../../billing/employee/action/SelectPatientModal';
 
 import {
   getPatients,
@@ -124,7 +125,8 @@ const getTimeBadgeInfo = (dateStr, status) => {
 };
 
 export default function FollowUpAppointment() {
-  const { user } = useAuth();
+  const { user, isEmployee } = useAuth();
+  const isEmployeeRole = isEmployee || user?.role === 'EMPLOYEE';
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -164,6 +166,10 @@ export default function FollowUpAppointment() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deletingFollowUp, setDeletingFollowUp] = useState(null);
   const [deletingLoading, setDeletingLoading] = useState(false);
+
+  // 7. Duplicate Patients Modal State
+  const [duplicatePatients, setDuplicatePatients] = useState([]);
+  const [isSelectPatientModalOpen, setIsSelectPatientModalOpen] = useState(false);
 
   // Load patients list for dropdown
   useEffect(() => {
@@ -346,8 +352,11 @@ export default function FollowUpAppointment() {
       const list = Array.isArray(results) ? results : (results ? [results] : []);
       if (list.length === 0) {
         toast.error(`Không tìm thấy bệnh nhân nào với SĐT: ${phone}`);
-      } else {
+      } else if (list.length === 1) {
         handleSelectPatient(list[0]);
+      } else {
+        setDuplicatePatients(list);
+        setIsSelectPatientModalOpen(true);
       }
     } catch (err) {
       toast.error('Lỗi khi tìm kiếm bệnh nhân');
@@ -487,7 +496,7 @@ export default function FollowUpAppointment() {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap self-start lg:self-auto">
-            {selectedPatient && (
+            {!isEmployeeRole && selectedPatient && (
               <button
                 type="button"
                 onClick={handleOpenCreateModal}
@@ -846,6 +855,7 @@ export default function FollowUpAppointment() {
             onSelectFollowUp={handleViewDetail}
             onEditFollowUp={handleEditFollowUp}
             onAddNewOnDate={handleAddNewOnDate}
+            isEmployee={isEmployeeRole}
           />
         ) : (
           /* DẠNG DANH SÁCH BẢNG (LIST TABLE VIEW) */
@@ -891,15 +901,19 @@ export default function FollowUpAppointment() {
                           <FileText size={42} className="mx-auto text-slate-300" />
                           <p className="font-bold text-slate-700 text-sm">Bệnh nhân chưa có lịch tái khám nào</p>
                           <p className="text-[11px] text-slate-500">
-                            Nhấp vào nút "Lên lịch tái khám mới" ở trên để tạo và tự động gửi thông báo cho bệnh nhân này.
+                            {!isEmployeeRole
+                              ? 'Nhấp vào nút "Lên lịch tái khám mới" ở trên để tạo và tự động gửi thông báo cho bệnh nhân này.'
+                              : 'Bệnh nhân chưa được bác sĩ chỉ định lịch tái khám nào.'}
                           </p>
-                          <button
-                            type="button"
-                            onClick={handleOpenCreateModal}
-                            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 rounded-sm shadow-sm transition-colors cursor-pointer"
-                          >
-                            <Plus size={14} /> Lên lịch tái khám ngay
-                          </button>
+                          {!isEmployeeRole && (
+                            <button
+                              type="button"
+                              onClick={handleOpenCreateModal}
+                              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 rounded-sm shadow-sm transition-colors cursor-pointer"
+                            >
+                              <Plus size={14} /> Lên lịch tái khám ngay
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -923,13 +937,15 @@ export default function FollowUpAppointment() {
                             >
                               Xem tất cả các đợt
                             </button>
-                            <button
-                              type="button"
-                              onClick={handleOpenCreateModal}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 rounded-sm cursor-pointer transition-colors"
-                            >
-                              <Plus size={13} /> Lên lịch cho đợt này
-                            </button>
+                            {!isEmployeeRole && (
+                              <button
+                                type="button"
+                                onClick={handleOpenCreateModal}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 rounded-sm cursor-pointer transition-colors"
+                              >
+                                <Plus size={13} /> Lên lịch cho đợt này
+                              </button>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -1007,12 +1023,22 @@ export default function FollowUpAppointment() {
                             <div className="flex items-center justify-center gap-0.5">
                               <button
                                 type="button"
-                                onClick={(e) => handleEditFollowUp(item, e)}
+                                onClick={(e) => handleViewDetail(item, e)}
                                 className="p-1 text-slate-600 hover:text-teal-800 hover:bg-teal-100/70 rounded-sm cursor-pointer transition-colors"
-                                title="Chỉnh sửa lịch tái khám"
+                                title="Xem chi tiết phiếu tái khám"
                               >
-                                <Pencil size={13} />
+                                <Eye size={13} />
                               </button>
+                              {!isEmployeeRole && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleEditFollowUp(item, e)}
+                                  className="p-1 text-slate-600 hover:text-teal-800 hover:bg-teal-100/70 rounded-sm cursor-pointer transition-colors"
+                                  title="Chỉnh sửa lịch tái khám"
+                                >
+                                  <Pencil size={13} />
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 onClick={(e) => handlePrint(item, e)}
@@ -1021,14 +1047,16 @@ export default function FollowUpAppointment() {
                               >
                                 <Printer size={13} />
                               </button>
-                              <button
-                                type="button"
-                                onClick={(e) => handleDeleteClick(item, e)}
-                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-100 rounded-sm cursor-pointer transition-colors"
-                                title="Xóa lịch tái khám"
-                              >
-                                <Trash2 size={13} />
-                              </button>
+                              {!isEmployeeRole && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleDeleteClick(item, e)}
+                                  className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-100 rounded-sm cursor-pointer transition-colors"
+                                  title="Xóa lịch tái khám"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1121,6 +1149,18 @@ export default function FollowUpAppointment() {
             ? `Lịch hẹn ngày ${formatDateTime(deletingFollowUp.followUpDate)} — ${deletingFollowUp.reason || 'Tái khám'}`
             : ''
         }
+      />
+
+      {/* 8. MODAL 5: CHỌN HỒ SƠ BỆNH NHÂN TRÙNG SĐT */}
+      <SelectPatientModal
+        open={isSelectPatientModalOpen}
+        onClose={() => setIsSelectPatientModalOpen(false)}
+        patients={duplicatePatients}
+        phoneKeyword={phoneSearchQuery}
+        onSelectPatient={(patient) => {
+          handleSelectPatient(patient);
+          setIsSelectPatientModalOpen(false);
+        }}
       />
     </div>
   );
