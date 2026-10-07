@@ -22,6 +22,7 @@ export default function CreateFollowUpModal({
   selectedSessionId,
   type = 'create', // 'create' | 'edit'
   followUpData = null,
+  presetDate = null,
 }) {
   const [dentists, setDentists] = useState([]);
   const [loadingDentists, setLoadingDentists] = useState(false);
@@ -98,12 +99,17 @@ export default function CreateFollowUpModal({
       }
 
       setDentistId('');
-      // Default follow-up date: 7 days from now at 09:00 AM
-      const nextWeek = new Date();
-      nextWeek.setDate(nextWeek.getDate() + 7);
-      nextWeek.setHours(9, 0, 0, 0);
-      const tzOffset = nextWeek.getTimezoneOffset() * 60000;
-      const defaultTimeStr = new Date(nextWeek.getTime() - tzOffset).toISOString().slice(0, 16);
+      
+      // Default follow-up date: presetDate or 7 days from now at 09:00 AM
+      const targetDate = presetDate ? new Date(presetDate) : new Date();
+      if (!presetDate) {
+        targetDate.setDate(targetDate.getDate() + 7);
+      }
+      if (targetDate.getHours() === 0 && targetDate.getMinutes() === 0) {
+        targetDate.setHours(9, 0, 0, 0);
+      }
+      const tzOffset = targetDate.getTimezoneOffset() * 60000;
+      const defaultTimeStr = new Date(targetDate.getTime() - tzOffset).toISOString().slice(0, 16);
       setFollowUpDate(defaultTimeStr);
 
       setReason('Tái khám kiểm tra định kỳ');
@@ -112,7 +118,7 @@ export default function CreateFollowUpModal({
       setSendEmail(true);
       setSendSms(true);
     }
-  }, [isOpen, type, followUpData, selectedSessionId, treatmentSessions]);
+  }, [isOpen, type, followUpData, selectedSessionId, treatmentSessions, presetDate]);
 
   if (!isOpen) return null;
 

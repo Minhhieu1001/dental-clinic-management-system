@@ -18,6 +18,8 @@ import {
   CheckCircle2,
   XCircle,
   FileText,
+  List,
+  CalendarDays,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -26,6 +28,7 @@ import PatientSearchBar from '../../../components/ui/search/PatientSearchBar';
 import CreateFollowUpModal from './components/CreateFollowUpModal';
 import FollowUpDetailModal from './components/FollowUpDetailModal';
 import FollowUpPrintModal from './components/FollowUpPrintModal';
+import FollowUpCalendarView from './components/FollowUpCalendarView';
 import DeleteConfirmModal from '../../prescriptions/dentist/components/DeleteConfirmModal';
 
 import {
@@ -88,34 +91,38 @@ export default function FollowUpAppointment() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // 1. Patient State
+  // 1. View Mode State: 'list' (Bảng danh sách) | 'calendar' (Lịch tháng)
+  const [viewMode, setViewMode] = useState('list');
+
+  // 2. Patient State
   const [patientOptions, setPatientOptions] = useState([]);
   const [loadingPatientOptions, setLoadingPatientOptions] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(location.state?.patient || null);
   const [phoneSearchQuery, setPhoneSearchQuery] = useState('');
   const [searchingPhone, setSearchingPhone] = useState(false);
 
-  // 2. Clinical Context: Medical records & Examination sessions (Đợt khám)
+  // 3. Clinical Context: Medical records & Examination sessions (Đợt khám)
   const [medicalRecords, setMedicalRecords] = useState([]);
   const [activeMedicalRecord, setActiveMedicalRecord] = useState(null);
   const [treatmentSessions, setTreatmentSessions] = useState([]);
   const [selectedSessionId, setSelectedSessionId] = useState('ALL');
   const [loadingSessions, setLoadingSessions] = useState(false);
 
-  // 3. Follow-up Appointments Table State
+  // 4. Follow-up Appointments Data & Sorting State
   const [followUps, setFollowUps] = useState([]);
   const [loadingFollowUps, setLoadingFollowUps] = useState(false);
-  const [sortOrder, setSortOrder] = useState('asc'); // 'asc': Ngày hẹn gần nhất trước, 'desc': Ngày hẹn xa nhất trước
+  const [sortOrder, setSortOrder] = useState('asc'); // 'asc': Ngày hẹn gần nhất trước, 'desc': Xa nhất trước
 
-  // 4. Modals State
+  // 5. Modals State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [modalType, setModalType] = useState('create'); // 'create' | 'edit'
   const [editingFollowUp, setEditingFollowUp] = useState(null);
+  const [presetDate, setPresetDate] = useState(null); // Click on calendar date prefill
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [activeFollowUp, setActiveFollowUp] = useState(null);
 
-  // 5. Delete Confirm Modal State
+  // 6. Delete Confirm Modal State
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deletingFollowUp, setDeletingFollowUp] = useState(null);
   const [deletingLoading, setDeletingLoading] = useState(false);
@@ -273,14 +280,24 @@ export default function FollowUpAppointment() {
   const handleOpenCreateModal = () => {
     setModalType('create');
     setEditingFollowUp(null);
+    setPresetDate(null);
+    setIsCreateModalOpen(true);
+  };
+
+  // Handler: Open Create Modal with a prefilled date from calendar cell
+  const handleAddNewOnDate = (date) => {
+    setModalType('create');
+    setEditingFollowUp(null);
+    setPresetDate(date);
     setIsCreateModalOpen(true);
   };
 
   // Handler: Open Edit Modal
   const handleEditFollowUp = async (item, e) => {
-    if (e) e.stopPropagation();
+    if (e && e.stopPropagation) e.stopPropagation();
     setModalType('edit');
     setEditingFollowUp(item);
+    setPresetDate(null);
     setIsCreateModalOpen(true);
 
     if (item?.id) {
@@ -331,7 +348,7 @@ export default function FollowUpAppointment() {
 
   // Handler: Click Delete button
   const handleDeleteClick = (item, e) => {
-    if (e) e.stopPropagation();
+    if (e && e.stopPropagation) e.stopPropagation();
     setDeletingFollowUp(item);
     setIsDeleteModalOpen(true);
   };
@@ -356,14 +373,14 @@ export default function FollowUpAppointment() {
 
   // Handler: Open Detail
   const handleViewDetail = (item, e) => {
-    if (e) e.stopPropagation();
+    if (e && e.stopPropagation) e.stopPropagation();
     setActiveFollowUp(item);
     setIsDetailModalOpen(true);
   };
 
   // Handler: Open Print
   const handlePrint = (item, e) => {
-    if (e) e.stopPropagation();
+    if (e && e.stopPropagation) e.stopPropagation();
     setActiveFollowUp(item);
     setIsPrintModalOpen(true);
   };
@@ -398,7 +415,7 @@ export default function FollowUpAppointment() {
         )}
       </div>
 
-      {/* 2. Patient Search Bar & Patient Info Strip (Thiết kế chuẩn nghiệp vụ giống Đơn thuốc) */}
+      {/* 2. Patient Search Bar & Patient Info Strip */}
       <div className="rounded-xl border border-slate-200/90 bg-white shadow-2xs overflow-hidden">
         {/* TẦNG 1: SEARCH BAR DÙNG CHUNG */}
         <PatientSearchBar
@@ -518,14 +535,14 @@ export default function FollowUpAppointment() {
         )}
       </div>
 
-      {/* 3. MAIN SCREEN: BẢNG DANH SÁCH LỊCH TÁI KHÁM */}
+      {/* 3. MAIN CONTAINER: DUAL VIEW MODE TOOLBAR & CONTENT */}
       <div className="border border-slate-300 bg-white shadow-2xs rounded-sm overflow-hidden">
-        {/* Table Header toolbar */}
-        <div className="px-4 py-2.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between">
+        {/* Table/Calendar Toolbar Header */}
+        <div className="px-4 py-2.5 bg-slate-100 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2 flex-wrap">
             <CalendarCheck size={15} className="text-teal-700" />
             <span className="font-bold text-slate-800 text-xs uppercase tracking-wide">
-              DANH SÁCH LỊCH TÁI KHÁM ({displayedFollowUps.length} LỊCH)
+              {viewMode === 'list' ? 'DANH SÁCH LỊCH TÁI KHÁM' : 'LỊCH TÁI KHÁM THEO THÁNG'} ({displayedFollowUps.length} LỊCH)
             </span>
             {selectedSessionId !== 'ALL' && (
               <span className="normal-case text-[10px] font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded-sm border border-teal-200">
@@ -534,22 +551,54 @@ export default function FollowUpAppointment() {
             )}
           </div>
 
-          <div className="flex items-center gap-2.5">
-            {/* Bộ chọn Sắp xếp theo ngày */}
-            <div className="flex items-center gap-1.5 bg-white border border-slate-300 rounded-sm px-2 py-0.5 shadow-2xs">
-              <span className="text-[11px] font-semibold text-slate-600 flex items-center gap-1 whitespace-nowrap">
-                <ArrowUpDown size={12} className="text-teal-700" />
-                Sắp xếp:
-              </span>
-              <select
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value)}
-                className="text-[11px] font-semibold text-slate-800 bg-transparent border-none outline-hidden cursor-pointer py-0.5 pr-1"
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {/* VIEW MODE TOGGLE SWITCHER (Dạng danh sách / Dạng lịch) */}
+            <div className="flex items-center bg-slate-200 p-0.5 rounded-md border border-slate-300 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                className={`flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-sm transition-all cursor-pointer ${
+                  viewMode === 'list'
+                    ? 'bg-teal-700 text-white shadow-2xs'
+                    : 'text-slate-700 hover:text-slate-900 hover:bg-slate-300/60'
+                }`}
+                title="Chuyển sang chế độ Xem Dạng Danh Sách"
               >
-                <option value="asc">Ngày hẹn: Gần nhất trước</option>
-                <option value="desc">Ngày hẹn: Xa nhất trước</option>
-              </select>
+                <List size={13} />
+                <span>Danh sách</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('calendar')}
+                className={`flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-sm transition-all cursor-pointer ${
+                  viewMode === 'calendar'
+                    ? 'bg-teal-700 text-white shadow-2xs'
+                    : 'text-slate-700 hover:text-slate-900 hover:bg-slate-300/60'
+                }`}
+                title="Chuyển sang chế độ xem Lịch tháng"
+              >
+                <CalendarDays size={13} />
+                <span>Lịch</span>
+              </button>
             </div>
+
+            {/* Bộ chọn Sắp xếp theo ngày (chỉ hiển thị khi xem Dạng danh sách) */}
+            {viewMode === 'list' && (
+              <div className="flex items-center gap-1.5 bg-white border border-slate-300 rounded-sm px-2 py-0.5 shadow-2xs">
+                <span className="text-[11px] font-semibold text-slate-600 flex items-center gap-1 whitespace-nowrap">
+                  <ArrowUpDown size={12} className="text-teal-700" />
+                  Sắp xếp:
+                </span>
+                <select
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value)}
+                  className="text-[11px] font-semibold text-slate-800 bg-transparent border-none outline-hidden cursor-pointer py-0.5 pr-1"
+                >
+                  <option value="asc">Ngày hẹn: Gần nhất trước</option>
+                  <option value="desc">Ngày hẹn: Xa nhất trước</option>
+                </select>
+              </div>
+            )}
 
             {selectedPatient && (
               <button
@@ -565,183 +614,197 @@ export default function FollowUpAppointment() {
           </div>
         </div>
 
-        {/* Table Body */}
-        <div className="overflow-x-auto min-h-[300px]">
-          <table className="w-full border-collapse text-left text-xs">
-            <thead className="bg-slate-300 text-slate-700 font-bold text-[11px] select-none border-b border-slate-300">
-              <tr>
-                <th className="w-12 py-2.5 px-3 text-center border-r border-slate-300">STT</th>
-                <th className="w-48 py-2.5 px-3 border-r border-slate-300">Thời gian tái khám</th>
-                <th className="w-40 py-2.5 px-3 border-r border-slate-300">Đợt khám</th>
-                <th className="w-44 py-2.5 px-3 border-r border-slate-300">Bác sĩ phụ trách</th>
-                <th className="w-56 py-2.5 px-3 border-r border-slate-300 min-w-[200px]">Lý do tái khám</th>
-                <th className="py-2.5 px-3 border-r border-slate-300">Ghi chú & Lời dặn</th>
-                <th className="w-32 py-2.5 px-3 text-center border-r border-slate-300">Trạng thái</th>
-                <th className="w-28 py-2.5 px-3 text-center">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 text-slate-800">
-              {loadingFollowUps && followUps.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">
-                    <RefreshCw size={20} className="animate-spin mx-auto mb-2 text-teal-600" />
-                    Đang tải danh sách lịch tái khám...
-                  </td>
-                </tr>
-              ) : !selectedPatient ? (
-                <tr>
-                  <td colSpan={8} className="py-16 text-center text-slate-400">
-                    <CalendarCheck size={36} className="mx-auto mb-2 text-slate-300" />
-                    <p className="font-semibold text-slate-600 mb-1">Chưa chọn bệnh nhân</p>
-                    <p className="text-[11px] text-slate-400">Vui lòng tìm hoặc chọn bệnh nhân từ thanh tìm kiếm ở trên để xem lịch tái khám.</p>
-                  </td>
-                </tr>
-              ) : followUps.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="py-16 text-center text-slate-400">
-                    <FileText size={36} className="mx-auto mb-2 text-slate-300" />
-                    <p className="font-semibold text-slate-600 mb-1">Bệnh nhân chưa có lịch tái khám nào</p>
-                    <p className="text-[11px] text-slate-400 mb-3">Nhấp vào nút "Lên lịch tái khám mới" ở trên để hẹn ngày tái khám cho bệnh nhân này.</p>
-                    <button
-                      type="button"
-                      onClick={handleOpenCreateModal}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 rounded-sm transition-colors cursor-pointer"
-                    >
-                      <Plus size={13} /> Lên lịch tái khám ngay
-                    </button>
-                  </td>
-                </tr>
-              ) : displayedFollowUps.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">
-                    <CalendarCheck size={28} className="mx-auto mb-2 text-slate-300" />
-                    <p className="font-semibold text-slate-700 mb-1">
-                      Đợt khám này chưa có lịch tái khám nào
-                    </p>
-                    <p className="text-[11px] text-slate-500 mb-3">
-                      Bệnh nhân có <strong>{followUps.length}</strong> lịch tái khám ở các đợt khác.
-                    </p>
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedSessionId('ALL')}
-                        className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-sm cursor-pointer transition-colors"
-                      >
-                        Xem tất cả các đợt ({followUps.length} lịch)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleOpenCreateModal}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 rounded-sm cursor-pointer transition-colors"
-                      >
-                        <Plus size={13} /> Lên lịch cho đợt này
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                displayedFollowUps.map((item, idx) => {
-                  return (
-                    <tr
-                      key={item.id || idx}
-                      onDoubleClick={() => handleViewDetail(item)}
-                      className="hover:bg-teal-50/40 cursor-pointer transition-colors duration-150"
-                      title="Nhấp đúp chuột để xem chi tiết phiếu tái khám"
-                    >
-                      <td className="py-2.5 px-3 text-center font-bold text-slate-500 border-r border-slate-200">
-                        {idx + 1}
+        {/* CONTENT VIEW SWITCHING */}
+        {viewMode === 'calendar' ? (
+          /* DẠNG LỊCH THÁNG (CALENDAR VIEW) */
+          <FollowUpCalendarView
+            followUps={displayedFollowUps}
+            selectedPatient={selectedPatient}
+            onSelectFollowUp={handleViewDetail}
+            onEditFollowUp={handleEditFollowUp}
+            onAddNewOnDate={handleAddNewOnDate}
+          />
+        ) : (
+          /* DẠNG DANH SÁCH BẢNG (LIST TABLE VIEW) */
+          <>
+            <div className="overflow-x-auto min-h-[300px]">
+              <table className="w-full border-collapse text-left text-xs">
+                <thead className="bg-slate-300 text-slate-700 font-bold text-[11px] select-none border-b border-slate-300">
+                  <tr>
+                    <th className="w-12 py-2.5 px-3 text-center border-r border-slate-300">STT</th>
+                    <th className="w-48 py-2.5 px-3 border-r border-slate-300">Thời gian tái khám</th>
+                    <th className="w-40 py-2.5 px-3 border-r border-slate-300">Đợt khám</th>
+                    <th className="w-44 py-2.5 px-3 border-r border-slate-300">Bác sĩ phụ trách</th>
+                    <th className="w-56 py-2.5 px-3 border-r border-slate-300 min-w-[200px]">Lý do tái khám</th>
+                    <th className="py-2.5 px-3 border-r border-slate-300">Ghi chú & Lời dặn</th>
+                    <th className="w-32 py-2.5 px-3 text-center border-r border-slate-300">Trạng thái</th>
+                    <th className="w-28 py-2.5 px-3 text-center">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 text-slate-800">
+                  {loadingFollowUps && followUps.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-12 text-center text-slate-400">
+                        <RefreshCw size={20} className="animate-spin mx-auto mb-2 text-teal-600" />
+                        Đang tải danh sách lịch tái khám...
                       </td>
-                      <td className="py-2.5 px-3 font-bold text-teal-900 border-r border-slate-200">
-                        <div className="flex items-center gap-1.5">
-                          <Clock size={13} className="text-teal-700 shrink-0" />
-                          <span>{formatDateTime(item.followUpDate)}</span>
-                        </div>
+                    </tr>
+                  ) : !selectedPatient ? (
+                    <tr>
+                      <td colSpan={8} className="py-16 text-center text-slate-400">
+                        <CalendarCheck size={36} className="mx-auto mb-2 text-slate-300" />
+                        <p className="font-semibold text-slate-600 mb-1">Chưa chọn bệnh nhân</p>
+                        <p className="text-[11px] text-slate-400">Vui lòng tìm hoặc chọn bệnh nhân từ thanh tìm kiếm ở trên để xem lịch tái khám.</p>
                       </td>
-                      <td className="py-2.5 px-3 text-slate-700 border-r border-slate-200">
-                        {item.examinationDate ? (
-                          <span className="font-semibold text-slate-800">
-                            Đợt: {formatDateDisplay(item.examinationDate)}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400 italic">Định kỳ</span>
-                        )}
+                    </tr>
+                  ) : followUps.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-16 text-center text-slate-400">
+                        <FileText size={36} className="mx-auto mb-2 text-slate-300" />
+                        <p className="font-semibold text-slate-600 mb-1">Bệnh nhân chưa có lịch tái khám nào</p>
+                        <p className="text-[11px] text-slate-400 mb-3">Nhấp vào nút "Lên lịch tái khám mới" ở trên để hẹn ngày tái khám cho bệnh nhân này.</p>
+                        <button
+                          type="button"
+                          onClick={handleOpenCreateModal}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 rounded-sm transition-colors cursor-pointer"
+                        >
+                          <Plus size={13} /> Lên lịch tái khám ngay
+                        </button>
                       </td>
-                      <td className="py-2.5 px-3 text-slate-800 font-semibold border-r border-slate-200">
-                        {item.dentistName || doctorName || 'Bác sĩ phụ trách'}
-                      </td>
-                      <td className="py-2.5 px-3 font-bold text-slate-900 border-r border-slate-200">
-                        {item.reason || 'Tái khám kiểm tra định kỳ'}
-                      </td>
-                      <td
-                        className="py-2.5 px-3 text-slate-600 border-r border-slate-200 truncate max-w-xs"
-                        title={item.note || ''}
-                      >
-                        {item.note || '—'}
-                      </td>
-                      <td className="py-2.5 px-3 text-center border-r border-slate-200">
-                        {item.status !== false ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[10px]">
-                            <CheckCircle2 size={11} /> Xác nhận
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 font-bold text-[10px]">
-                            <XCircle size={11} /> Đã hủy
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2.5 px-3 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
+                    </tr>
+                  ) : displayedFollowUps.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-12 text-center text-slate-400">
+                        <CalendarCheck size={28} className="mx-auto mb-2 text-slate-300" />
+                        <p className="font-semibold text-slate-700 mb-1">
+                          Đợt khám này chưa có lịch tái khám nào
+                        </p>
+                        <p className="text-[11px] text-slate-500 mb-3">
+                          Bệnh nhân có <strong>{followUps.length}</strong> lịch tái khám ở các đợt khác.
+                        </p>
+                        <div className="flex items-center justify-center gap-2">
                           <button
                             type="button"
-                            onClick={(e) => handleEditFollowUp(item, e)}
-                            className="p-1 text-slate-600 hover:text-teal-700 hover:bg-slate-100 rounded-sm cursor-pointer"
-                            title="Chỉnh sửa lịch tái khám"
+                            onClick={() => setSelectedSessionId('ALL')}
+                            className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-sm cursor-pointer transition-colors"
                           >
-                            <Pencil size={15} />
+                            Xem tất cả các đợt ({followUps.length} lịch)
                           </button>
                           <button
                             type="button"
-                            onClick={(e) => handlePrint(item, e)}
-                            className="p-1 text-slate-600 hover:text-teal-700 hover:bg-slate-100 rounded-sm cursor-pointer"
-                            title="In giấy hẹn tái khám"
+                            onClick={handleOpenCreateModal}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 rounded-sm cursor-pointer transition-colors"
                           >
-                            <Printer size={15} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => handleDeleteClick(item, e)}
-                            className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-sm cursor-pointer"
-                            title="Xóa lịch tái khám"
-                          >
-                            <Trash2 size={15} />
+                            <Plus size={13} /> Lên lịch cho đợt này
                           </button>
                         </div>
                       </td>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                  ) : (
+                    displayedFollowUps.map((item, idx) => {
+                      return (
+                        <tr
+                          key={item.id || idx}
+                          onDoubleClick={() => handleViewDetail(item)}
+                          className="hover:bg-teal-50/40 cursor-pointer transition-colors duration-150"
+                          title="Nhấp đúp chuột để xem chi tiết phiếu tái khám"
+                        >
+                          <td className="py-2.5 px-3 text-center font-bold text-slate-500 border-r border-slate-200">
+                            {idx + 1}
+                          </td>
+                          <td className="py-2.5 px-3 font-bold text-teal-900 border-r border-slate-200">
+                            <div className="flex items-center gap-1.5">
+                              <Clock size={13} className="text-teal-700 shrink-0" />
+                              <span>{formatDateTime(item.followUpDate)}</span>
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-700 border-r border-slate-200">
+                            {item.examinationDate ? (
+                              <span className="font-semibold text-slate-800">
+                                Đợt: {formatDateDisplay(item.examinationDate)}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 italic">Định kỳ</span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-800 font-semibold border-r border-slate-200">
+                            {item.dentistName || doctorName || 'Bác sĩ phụ trách'}
+                          </td>
+                          <td className="py-2.5 px-3 font-bold text-slate-900 border-r border-slate-200">
+                            {item.reason || 'Tái khám kiểm tra định kỳ'}
+                          </td>
+                          <td
+                            className="py-2.5 px-3 text-slate-600 border-r border-slate-200 truncate max-w-xs"
+                            title={item.note || ''}
+                          >
+                            {item.note || '—'}
+                          </td>
+                          <td className="py-2.5 px-3 text-center border-r border-slate-200">
+                            {item.status !== false ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[10px]">
+                                <CheckCircle2 size={11} /> Xác nhận
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 font-bold text-[10px]">
+                                <XCircle size={11} /> Đã hủy
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={(e) => handleEditFollowUp(item, e)}
+                                className="p-1 text-slate-600 hover:text-teal-700 hover:bg-slate-100 rounded-sm cursor-pointer"
+                                title="Chỉnh sửa lịch tái khám"
+                              >
+                                <Pencil size={15} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => handlePrint(item, e)}
+                                className="p-1 text-slate-600 hover:text-teal-700 hover:bg-slate-100 rounded-sm cursor-pointer"
+                                title="In giấy hẹn tái khám"
+                              >
+                                <Printer size={15} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => handleDeleteClick(item, e)}
+                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-sm cursor-pointer"
+                                title="Xóa lịch tái khám"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
 
-        {/* Table Footer status */}
-        {selectedPatient && (
-          <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
-            <span>
-              Hiển thị <strong>{displayedFollowUps.length}</strong> / <strong>{followUps.length}</strong> lịch tái khám của bệnh nhân <strong>{selectedPatient.fullName}</strong>
-              {selectedSessionId !== 'ALL' && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedSessionId('ALL')}
-                  className="ml-2 text-teal-700 font-semibold hover:underline cursor-pointer"
-                >
-                  (Xem tất cả các đợt)
-                </button>
-              )}
-            </span>
-            <span>Nhấp đúp chuột vào bất kỳ dòng nào để xem chi tiết phiếu hẹn</span>
-          </div>
+            {/* Table Footer status */}
+            {selectedPatient && (
+              <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
+                <span>
+                  Hiển thị <strong>{displayedFollowUps.length}</strong> / <strong>{followUps.length}</strong> lịch tái khám của bệnh nhân <strong>{selectedPatient.fullName}</strong>
+                  {selectedSessionId !== 'ALL' && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSessionId('ALL')}
+                      className="ml-2 text-teal-700 font-semibold hover:underline cursor-pointer"
+                    >
+                      (Xem tất cả các đợt)
+                    </button>
+                  )}
+                </span>
+                <span>Nhấp đúp chuột vào bất kỳ dòng nào để xem chi tiết phiếu hẹn</span>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -751,6 +814,7 @@ export default function FollowUpAppointment() {
         onClose={() => {
           setIsCreateModalOpen(false);
           setEditingFollowUp(null);
+          setPresetDate(null);
         }}
         onSaveFollowUp={handleSaveFollowUp}
         currentDoctorName={doctorName}
@@ -759,6 +823,7 @@ export default function FollowUpAppointment() {
         selectedSessionId={selectedSessionId}
         type={modalType}
         followUpData={editingFollowUp}
+        presetDate={presetDate}
       />
 
       {/* 5. MODAL 2: XEM CHI TIẾT LỊCH TÁI KHÁM */}
