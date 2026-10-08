@@ -322,7 +322,7 @@ export default function EmployeeBilling() {
               }}
               className="w-full bg-slate-50 border border-slate-300 px-3 py-2 text-xs font-bold text-slate-800 rounded-md focus:bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none cursor-pointer"
             >
-              <option value="ALL">-- Tất cả các tháng --</option>
+              <option value="ALL">Tất cả các tháng</option>
               {Array.from({ length: 12 }, (_, i) => {
                 const mStr = (i + 1).toString().padStart(2, '0');
                 return (
@@ -348,7 +348,7 @@ export default function EmployeeBilling() {
               className="w-full bg-slate-50 border border-slate-300 px-3 py-2 text-xs font-bold text-slate-800 rounded-md focus:bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none cursor-pointer"
             >
               <option value="ALL">Tất cả trạng thái</option>
-              <option value="PAID">Đã thanh toán đủ</option>
+              <option value="PAID">Đã thanh toán</option>
               <option value="PARTIALLY_PAID">Thanh toán một phần</option>
               <option value="UNPAID">Chưa thanh toán</option>
             </select>
@@ -388,16 +388,16 @@ export default function EmployeeBilling() {
           <Table sx={{ minWidth: 1000, tableLayout: 'fixed' }} aria-label="billing table">
             <TableHead className="bg-slate-100/80">
               <TableRow>
-                <TableCell sx={{ width: 110, fontWeight: 700, fontSize: '0.75rem', color: '#475569', borderBottom: '1px solid #cbd5e1', whiteSpace: 'nowrap' }}>
+                <TableCell sx={{ width: 100, fontWeight: 700, fontSize: '0.75rem', color: '#475569', borderBottom: '1px solid #cbd5e1', whiteSpace: 'nowrap' }}>
                   Ngày tạo
                 </TableCell>
-                <TableCell sx={{ width: 120, fontWeight: 700, fontSize: '0.75rem', color: '#475569', borderBottom: '1px solid #cbd5e1', whiteSpace: 'nowrap' }}>Mã hóa đơn</TableCell>
+                <TableCell sx={{ width: 180, fontWeight: 700, fontSize: '0.75rem', color: '#475569', borderBottom: '1px solid #cbd5e1', whiteSpace: 'nowrap' }}>Mã hóa đơn</TableCell>
                 <TableCell sx={{ width: 160, fontWeight: 700, fontSize: '0.75rem', color: '#475569', borderBottom: '1px solid #cbd5e1', whiteSpace: 'nowrap' }}>Khách hàng</TableCell>
                 <TableCell align="right" sx={{ width: 100, fontWeight: 700, fontSize: '0.75rem', color: '#475569', borderBottom: '1px solid #cbd5e1', whiteSpace: 'nowrap' }}>Tổng tiền</TableCell>
                 <TableCell align="right" sx={{ width: 100, fontWeight: 700, fontSize: '0.75rem', color: '#475569', borderBottom: '1px solid #cbd5e1', whiteSpace: 'nowrap' }}>Đã thanh toán</TableCell>
                 <TableCell align="right" sx={{ width: 100, fontWeight: 700, fontSize: '0.75rem', color: '#475569', borderBottom: '1px solid #cbd5e1', whiteSpace: 'nowrap' }}>Còn nợ</TableCell>
                 <TableCell sx={{ width: 180, fontWeight: 700, fontSize: '0.75rem', color: '#475569', borderBottom: '1px solid #cbd5e1', whiteSpace: 'nowrap' }}>Người tạo</TableCell>
-                <TableCell align="center" sx={{ width: 150, fontWeight: 700, fontSize: '0.75rem', color: '#475569', borderBottom: '1px solid #cbd5e1', whiteSpace: 'nowrap' }}>Trạng thái</TableCell>
+                <TableCell align="center" sx={{ width: 120, fontWeight: 700, fontSize: '0.75rem', color: '#475569', borderBottom: '1px solid #cbd5e1', whiteSpace: 'nowrap' }}>Trạng thái</TableCell>
                 <TableCell align="center" sx={{ width: 80, fontWeight: 700, fontSize: '0.75rem', color: '#475569', borderBottom: '1px solid #cbd5e1', whiteSpace: 'nowrap' }}>Thao tác</TableCell>
               </TableRow>
             </TableHead>

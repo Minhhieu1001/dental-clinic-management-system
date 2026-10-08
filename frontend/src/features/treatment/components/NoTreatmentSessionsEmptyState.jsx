@@ -40,13 +40,8 @@ export default function NoTreatmentSessionsEmptyState({
         </div>
 
         <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
-          Bệnh nhân {patient?.fullName ? `"${patient.fullName}"` : ''} chưa có đợt điều trị nào được khởi tạo
+          Bệnh nhân {patient?.fullName ? `"${patient.fullName}"` : ''} chưa có đợt điều trị nào.
         </h3>
-
-        <p className="text-xs sm:text-[13px] text-slate-600 leading-relaxed font-normal">
-          Sơ đồ 32 răng (Odontogram), phân tích phim X-quang AI và chẩn đoán ICD-10 cần được lưu trữ theo từng đợt khám cụ thể.
-          Vui lòng bấm nút <strong>&ldquo;+ Khởi tạo đợt điều trị mới&rdquo;</strong> bên dưới để bắt đầu phiên khám bệnh.
-        </p>
       </div>
 
       {/* Thẻ minh họa quy trình 3 bước */}

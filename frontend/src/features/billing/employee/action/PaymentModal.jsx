@@ -18,6 +18,7 @@ import toast from 'react-hot-toast';
 import PrescriptionSelectModal from './PrescriptionSelectModal';
 import VoucherSelectModal from './VoucherSelectModal';
 import PaymentConfirmModal from './PaymentConfirmModal';
+import BankQrPaymentModal from './BankQrPaymentModal';
 
 const PAYMENT_METHODS = [
   { id: 'CASH', label: 'Tiền mặt', icon: Banknote },
@@ -110,6 +111,11 @@ export default function PaymentModal({ open, onClose, invoice, onPaymentSuccess 
 
   // Kiểm tra dữ liệu rồi mở modal xác nhận (modal xác nhận sẽ gọi API)
   const handlePaymentSubmit = () => {
+    if (selectedMethod !== 'CASH' && selectedMethod !== 'BANK_TRANSFER') {
+      const selectedLabel = PAYMENT_METHODS.find((m) => m.id === selectedMethod)?.label || 'Phương thức này';
+      toast.error(`Phương thức thanh toán ${selectedLabel} chưa được triển khai!`);
+      return;
+    }
     if (finalPayable <= 0) {
       toast.error('Số tiền thanh toán phải lớn hơn 0');
       return;
@@ -122,10 +128,10 @@ export default function PaymentModal({ open, onClose, invoice, onPaymentSuccess 
   };
 
   // API thanh toán thành công -> đóng các modal và trả hóa đơn mới cho trang cha
-  const handleConfirmSuccess = async (updatedInvoice) => {
+  const handleConfirmSuccess = async (updatedInvoice, paymentInfo) => {
     setShowConfirmModal(false);
     onClose();
-    await onPaymentSuccess?.(updatedInvoice);
+    await onPaymentSuccess?.(updatedInvoice, paymentInfo || paymentPayload);
   };
 
   return (
@@ -361,9 +367,18 @@ export default function PaymentModal({ open, onClose, invoice, onPaymentSuccess 
         </DialogContent>
       </Dialog>
 
-      {/* MODAL XÁC NHẬN THANH TOÁN (gọi API thanh toán) */}
+      {/* MODAL XÁC NHẬN THANH TOÁN TIỀN MẶT */}
       <PaymentConfirmModal
-        open={showConfirmModal}
+        open={showConfirmModal && selectedMethod === 'CASH'}
+        onClose={() => setShowConfirmModal(false)}
+        invoice={invoice}
+        payment={paymentPayload}
+        onSuccess={handleConfirmSuccess}
+      />
+
+      {/* MODAL XÁC NHẬN THANH TOÁN CHUYỂN KHOẢN (Chỉ mở khi là BANK_TRANSFER) */}
+      <BankQrPaymentModal
+        open={showConfirmModal && selectedMethod === 'BANK_TRANSFER'}
         onClose={() => setShowConfirmModal(false)}
         invoice={invoice}
         payment={paymentPayload}

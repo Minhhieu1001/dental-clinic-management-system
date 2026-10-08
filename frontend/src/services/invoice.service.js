@@ -50,3 +50,36 @@ export const getInvoicesByPatientId = async (patientId) => {
     return [];
   }
 };
+
+// Lấy chi tiết hóa đơn theo ID (dùng để Polling kiểm tra trạng thái thanh toán)
+export const getInvoiceById = async (invoiceId) => {
+  try {
+    const response = await api.get(`/invoices/${invoiceId}`);
+    return response.data?.data ?? response.data?.result ?? response.data;
+  } catch (error) {
+    console.warn('Lỗi lấy thông tin chi tiết hóa đơn:', error);
+    throw error;
+  }
+};
+
+// Khởi tạo mã VietQR động từ Backend (lưu RAM Cache)
+export const initiateQrPayment = async (payload) => {
+  try {
+    const response = await api.post('/payments/initiate-qr', payload);
+    return response.data?.data ?? response.data?.result ?? response.data;
+  } catch (error) {
+    console.warn('Lỗi khởi tạo VietQR:', error);
+    throw error;
+  }
+};
+
+// Hủy bản nháp thanh toán trong RAM Cache
+export const cancelQrDraft = async (invoiceId) => {
+  try {
+    const response = await api.delete(`/payments/qr-draft/${invoiceId}`);
+    return response.data;
+  } catch (error) {
+    console.warn('Lỗi hủy bản nháp thanh toán:', error);
+  }
+};
+
