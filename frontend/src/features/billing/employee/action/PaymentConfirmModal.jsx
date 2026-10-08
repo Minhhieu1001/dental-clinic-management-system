@@ -83,8 +83,13 @@ export default function PaymentConfirmModal({ open, onClose, invoice, payment, o
         patientCode: invoice.patientCode,
       };
 
-      toast.success('Thanh toán thành công!');
-      await onSuccess?.(updated);
+      await onSuccess?.(updated, {
+        ...payment,
+        amount,
+        paymentMethod: payment.paymentMethod || 'CASH',
+        methodLabel: payment.methodLabel || 'Tiền mặt',
+        createdAt: new Date(),
+      });
     } catch (err) {
       console.error('Lỗi thanh toán hóa đơn:', err);
       toast.error(err.response?.data?.message || 'Không thể thực hiện thanh toán!');

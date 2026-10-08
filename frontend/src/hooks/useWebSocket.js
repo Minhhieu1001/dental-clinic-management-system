@@ -1,11 +1,20 @@
 import { useEffect, useRef } from 'react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
+import { useAuthStore } from '../store/authStore';
 
-export function useWebSocket(onAppointmentRealtime, onNotificationRealtime, onRequestRealtime) {
+export function useWebSocket(
+    onAppointmentRealtime,
+    onNotificationRealtime,
+    onRequestRealtime,
+    onPaymentRealtime
+) {
     const clientRef = useRef(null);
 
     useEffect(() => {
+        const currentUser = useAuthStore.getState().user;
+        const employeeId = currentUser?.employeeId || currentUser?.id || null;
+
         const client = new Client({
             webSocketFactory: () => new SockJS('http://localhost:8080/ws'),
             reconnectDelay: 5000,
@@ -35,6 +44,19 @@ export function useWebSocket(onAppointmentRealtime, onNotificationRealtime, onRe
                     const payload = JSON.parse(message.body);
                     if (onRequestRealtime) onRequestRealtime(payload);
                 });
+
+                // 5. Subscribe nhận thông báo thanh toán thành công RIÊNG (Unicast Private)
+                client.subscribe('/user/queue/payments', (message) => {
+                    const payload = JSON.parse(message.body);
+                    if (onPaymentRealtime) onPaymentRealtime(payload);
+                });
+
+                if (employeeId) {
+                    client.subscribe(`/topic/payments/${employeeId}`, (message) => {
+                        const payload = JSON.parse(message.body);
+                        if (onPaymentRealtime) onPaymentRealtime(payload);
+                    });
+                }
             },
         });
 
@@ -44,5 +66,5 @@ export function useWebSocket(onAppointmentRealtime, onNotificationRealtime, onRe
         return () => {
             if (clientRef.current) clientRef.current.deactivate();
         };
-    }, []);
+    }, [onAppointmentRealtime, onNotificationRealtime, onRequestRealtime, onPaymentRealtime]);
 }

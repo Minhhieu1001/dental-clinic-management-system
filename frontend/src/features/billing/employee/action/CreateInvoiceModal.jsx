@@ -569,28 +569,28 @@ export default function CreateInvoiceModal({ open, onClose, onCreateInvoice }) {
                   >
                     <div className="flex items-start justify-between gap-2.5 w-full">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                        <div className="flex items-center gap-2 flex-wrap mb-1 ml-1">
                           <span className="text-xs font-bold text-slate-900 truncate">
                             {plan.planName}
                           </span>
                         </div>
 
                         {/* Mục 2: Ngày lập, Bác sĩ khám, Chẩn đoán của đợt đó */}
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 text-[11px] text-slate-600 mt-1">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-600 mt-1">
                           <span className="flex items-center gap-1">
                             <Calendar size={11} className="text-slate-400 shrink-0" />
-                            <span className="font-medium">Ngày lập:</span> {plan.dateFormatted}
+                            <span className="font-medium text-xs">Ngày lập:</span> {plan.dateFormatted}
                           </span>
                           <span className="flex items-center gap-1 text-slate-700">
                             <User size={11} className="text-teal-600 shrink-0" />
-                            <span className="font-medium">Bác sĩ khám:</span> {plan.doctorName}
+                            <span className="font-medium text-xs">Bác sĩ khám:</span> {plan.doctorName}
                           </span>
                         </div>
 
                         <div className="flex items-start gap-1 text-[11px] text-slate-600 mt-1">
                           <Stethoscope size={11} className="text-teal-700 shrink-0 mt-0.5" />
                           <span className="line-clamp-1">
-                            <strong className="font-semibold text-slate-700">Chẩn đoán:</strong> {plan.diagnosisText}
+                            <strong className="font-semibold text-slate-700 text-xs">Chẩn đoán:</strong> {plan.diagnosisText}
                           </span>
                         </div>
                       </div>
@@ -615,7 +615,7 @@ export default function CreateInvoiceModal({ open, onClose, onCreateInvoice }) {
             <div className="p-3 rounded-md bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <AlertCircle size={15} className="text-amber-600 shrink-0" />
-                <span>Bệnh nhân này hiện không có đợt điều trị nào chưa lập hóa đơn.</span>
+                <span>Bệnh nhân này hiện không có đợt điều trị để lập hóa đơn</span>
               </div>
             </div>
           )}
@@ -626,14 +626,12 @@ export default function CreateInvoiceModal({ open, onClose, onCreateInvoice }) {
           <div className="flex-1 min-w-[260px]">
             <span className="text-[10px] uppercase tracking-wider text-teal-800 font-bold flex items-center gap-1">
               <Layers size={12} className="text-teal-700" />
-              3. TÓM TẮT KẾ HOẠCH ĐIỀU TRỊ ĐANG CHỌN:
+              3. CHI PHÍ DỰ KIẾN:
             </span>
             <h5 className="text-xs font-bold text-slate-900 mt-0.5">
               Tên kế hoạch: <span className="text-teal-900">{selectedPlan ? selectedPlan.planName : ''}</span>
             </h5>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 text-[11px] text-slate-600 mt-0.5">
-              <span><strong>Người lập:</strong> {selectedPlan?.creatorName}</span>
-              <span>•</span>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 text-[13px] text-slate-600 mt-0.5">
               <span><strong>Giai đoạn:</strong> {selectedPlan ? `${selectedPlan.phaseCount} giai đoạn` : ''}</span>
             </div>
           </div>

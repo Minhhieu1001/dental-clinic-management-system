@@ -33,6 +33,7 @@ import PrintInvoiceModal from './PrintInvoiceModal';
 import PaymentModal from './PaymentModal';
 import PaymentHistoryModal from './PaymentHistory';
 import VoucherSelectModal from './VoucherSelectModal';
+import PaymentSuccessModal from './action/PaymentSuccessModal';
 import { createInvoice as createInvoiceApi } from '../../../../services/invoice.service';
 import { getAvailableVoucherByCouponCode } from '../../../../services/promotion.service';
 import { mapBackendInvoiceToUi } from '../../../../utils/invoiceMapper';
@@ -41,6 +42,8 @@ import { DEFAULT_DENTAL_CLINIC_NAME, DEFAULT_DENTAL_CLINIC_ADDRESS, PHONE_NUMBER
 
 export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSuccess, onSaveInvoice, onSaveSuccess }) {
   const user = useAuthStore.getState().user;
+  console.log("user: ", user);
+  console.log("invoice", invoice);
   const [currentInvoice, setCurrentInvoice] = useState(invoice);
   const [savingInvoice, setSavingInvoice] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
@@ -54,6 +57,8 @@ export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSu
   );
 
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successPaymentData, setSuccessPaymentData] = useState(null);
 
   React.useEffect(() => {
     setCurrentInvoice(invoice);
@@ -88,15 +93,30 @@ export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSu
     setShowPaymentModal(true);
   };
 
-  // Thanh toán thành công: cập nhật lại trang chi tiết, rồi báo cho trang cha fetch lại danh sách
-  const handlePaymentDone = async (updatedInvoice) => {
+  // Thanh toán thành công: cập nhật lại trang chi tiết, mở modal thông báo thành công, rồi báo cho trang cha fetch lại danh sách
+  const handlePaymentDone = async (updatedInvoice, paymentInfo) => {
     if (updatedInvoice) setCurrentInvoice(updatedInvoice);
+
+    // Lưu thông tin chi tiết thanh toán để hiển thị trên PaymentSuccessModal
+    setSuccessPaymentData({
+      amount: paymentInfo?.amount ?? (updatedInvoice && activeInvoice ? (updatedInvoice.paidAmount - (activeInvoice.paidAmount || 0)) : null),
+      transactionCode: paymentInfo?.transactionCode || null,
+      invoiceCode: updatedInvoice?.id || updatedInvoice?.code || activeInvoice?.id || activeInvoice?.code,
+      paymentMethod:
+        paymentInfo?.methodLabel ||
+        (paymentInfo?.paymentMethod === 'CASH'
+          ? 'Tiền mặt'
+          : paymentInfo?.paymentMethod === 'BANK_TRANSFER'
+          ? 'Chuyển khoản (VietQR)'
+          : paymentInfo?.paymentMethod || 'Tiền mặt'),
+      transactionTime: paymentInfo?.createdAt || new Date(),
+    });
+    setShowSuccessModal(true);
+
     await onPaymentSuccess?.(updatedInvoice);
   };
 
-  const serviceTotal = (activeInvoice.services && activeInvoice.services.length > 0)
-    ? activeInvoice.services.reduce((sum, s) => sum + s.total, 0)
-    : (activeInvoice.totalAmount || 0);
+  const serviceTotal = activeInvoice.totalAmount || 0;
 
   const calculateDiscount = () => {
     if (isSaved) return Number(activeInvoice?.discountAmount || 0);
@@ -753,6 +773,18 @@ export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSu
         onClose={() => setIsVoucherModalOpen(false)}
         appliedVoucher={appliedVoucher}
         onSelectVoucher={handleSelectVoucher}
+      />
+
+      {/* Modal Thông báo thanh toán thành công */}
+      <PaymentSuccessModal
+        open={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        amount={successPaymentData?.amount}
+        transactionCode={successPaymentData?.transactionCode}
+        invoiceCode={successPaymentData?.invoiceCode}
+        paymentMethod={successPaymentData?.paymentMethod}
+        transactionTime={successPaymentData?.transactionTime}
+        buttonText="Hoàn tất"
       />
     </>
   );

@@ -270,11 +270,9 @@ function ClinicalExaminationContent() {
           </div>
           <div className="max-w-md mx-auto space-y-1.5">
             <h3 className="text-base sm:text-lg font-extrabold text-slate-800">
-              Chưa có bệnh nhân nào được chọn cho phiên khám
+              Chưa có bệnh nhân nào được chọn
             </h3>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Vui lòng chọn bệnh nhân từ <strong>Selectbox số điện thoại</strong> phía trên hoặc nhập số điện thoại để hệ thống tự động tải thông tin bệnh nhân, hồ sơ bệnh án và lịch sử các đợt khám.
-            </p>
+
           </div>
           <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
             <button
