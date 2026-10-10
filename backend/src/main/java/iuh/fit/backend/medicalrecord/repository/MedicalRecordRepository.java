@@ -20,6 +20,8 @@ public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, UU
     @Query("SELECT mr FROM MedicalRecord mr WHERE mr.patient.patientCode = :patientCode ORDER BY mr.recordDate DESC")
     List<MedicalRecord> findByPatientCodeOrderByRecordDateDesc(@Param("patientCode") String patientCode);
 
+    Optional<MedicalRecord> findByMedicalRecordCode(String medicalRecordCode);
+
     List<MedicalRecord> findByDentistIdOrderByRecordDateDesc(UUID dentistId);
 
     Optional<MedicalRecord> findByAppointmentId(UUID appointmentId);

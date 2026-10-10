@@ -46,4 +46,7 @@ public class ToothRecord {
 
     @Column(length = 255)
     private String gingivalCondition;
+
+    @Column(length = 50)
+    private String shake;
 }

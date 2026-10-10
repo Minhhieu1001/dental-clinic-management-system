@@ -8,7 +8,7 @@ export const roleRoutes = {
       { label: 'Tổng quan', to: 'dashboard' },
       { label: 'Hóa đơn', to: 'billing' },
       { label: 'Thuốc', to: 'medicines' },
-      { label: 'Bệnh nhân', to: 'patients' },
+      { label: 'Hồ sơ bệnh án', to: 'patients' },
       { label: 'Nha sĩ', to: 'dentists' },
       { label: 'Nhân viên', to: 'employees' },
       { label: 'Khuyến mãi', to: 'promotions' },

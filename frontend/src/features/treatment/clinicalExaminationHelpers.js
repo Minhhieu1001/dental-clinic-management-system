@@ -91,7 +91,6 @@ export function getCariesDepthLabel(val) {
   );
   return found ? found.label : (val || '—');
 }
-
 // Mức độ đau (Toggle Buttons)
 export const PAIN_LEVEL_OPTIONS = [
   { value: 'NONE', label: 'Không' },
@@ -641,5 +640,3 @@ export const CHIEF_COMPLAINT_SUGGESTIONS = [
   'Đau nhức vùng góc hàm do răng khôn mọc kẹt',
   'Trám răng bị sứt mẻ, vỡ miếng trám cũ',
 ];
-
-

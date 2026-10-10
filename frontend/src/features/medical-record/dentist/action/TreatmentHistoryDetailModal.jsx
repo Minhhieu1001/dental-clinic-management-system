@@ -27,7 +27,7 @@ import {
 // =========================================================================
 
 // Bảng tra cứu tên bệnh theo mã ICD-10 nha khoa
-export const ICD10_LABELS: Record<string, string> = {
+export const ICD10_LABELS = {
   'K02': 'Sâu răng',
   'K02.0': 'Sâu men răng',
   'K02.1': 'Sâu ngà răng',
@@ -60,7 +60,7 @@ export const ICD10_LABELS: Record<string, string> = {
 };
 
 // Map trạng thái răng (Tooth Status) sang định dạng ERP sắc nét
-export const TOOTH_STATUS_MAP: Record<string, { label: string; badgeClass: string }> = {
+export const TOOTH_STATUS_MAP = {
   HEALTHY: {
     label: 'Bình thường',
     badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-300',
@@ -120,7 +120,7 @@ export const TOOTH_STATUS_MAP: Record<string, { label: string; badgeClass: strin
 };
 
 // Map mức độ nghiêm trọng chẩn đoán
-export const DIAGNOSIS_LEVEL_MAP: Record<string, { label: string; badgeClass: string }> = {
+export const DIAGNOSIS_LEVEL_MAP = {
   MILD: {
     label: 'Nhẹ',
     badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-300',
@@ -152,7 +152,7 @@ export const DIAGNOSIS_LEVEL_MAP: Record<string, { label: string; badgeClass: st
 };
 
 // Map độ sâu tổn thương răng
-export const CARIES_DEPTH_MAP: Record<string, string> = {
+export const CARIES_DEPTH_MAP = {
   ENAMEL: 'Men răng',
   DENTIN: 'Ngà răng',
   NEAR_PULP: 'Sát tủy răng',
@@ -163,7 +163,7 @@ export const CARIES_DEPTH_MAP: Record<string, string> = {
 };
 
 // Map vị trí mặt răng tổn thương
-export const CARIES_LOCATION_MAP: Record<string, string> = {
+export const CARIES_LOCATION_MAP = {
   OCCLUSAL: 'Mặt nhai',
   MESIAL: 'Mặt gần',
   DISTAL: 'Mặt xa',
@@ -175,7 +175,7 @@ export const CARIES_LOCATION_MAP: Record<string, string> = {
 };
 
 // Map trạng thái Kế hoạch điều trị
-export const PLAN_STATUS_MAP: Record<string, { label: string; bg: string; dot: string }> = {
+export const PLAN_STATUS_MAP = {
   COMPLETED: {
     label: 'ĐÃ HOÀN THÀNH',
     bg: 'bg-emerald-50 text-emerald-800 border-emerald-300',
@@ -204,7 +204,7 @@ export const PLAN_STATUS_MAP: Record<string, { label: string; bg: string; dot: s
 };
 
 // Map trạng thái Giai đoạn điều trị
-export const PHASE_STATUS_MAP: Record<string, { label: string; className: string }> = {
+export const PHASE_STATUS_MAP = {
   COMPLETED: {
     label: 'Hoàn thành',
     className: 'bg-emerald-50 text-emerald-800 border-emerald-300 font-semibold',
@@ -224,7 +224,7 @@ export const PHASE_STATUS_MAP: Record<string, { label: string; className: string
 };
 
 // Map trạng thái Buổi hẹn / Điều trị
-export const VISIT_STATUS_MAP: Record<string, { label: string; className: string }> = {
+export const VISIT_STATUS_MAP = {
   PENDING: {
     label: 'Chờ khám',
     className: 'bg-slate-100 text-slate-700 border-slate-300',
@@ -264,7 +264,7 @@ export const VISIT_STATUS_MAP: Record<string, { label: string; className: string
 };
 
 // Map thể loại điều trị
-export const TREATMENT_TYPE_MAP: Record<string, string> = {
+export const TREATMENT_TYPE_MAP = {
   ORTHODONTICS: 'Chỉnh nha - Niềng răng',
   ENDODONTICS: 'Nội nha - Chữa tủy',
   PERIODONTICS: 'Nha chu - Chăm sóc nướu',
@@ -281,12 +281,12 @@ export const TREATMENT_TYPE_MAP: Record<string, string> = {
 // 2. CÁC HÀM FORMAT TIỆN ÍCH
 // =========================================================================
 
-export const formatVND = (value: number | string | null | undefined): string | null => {
+export const formatVND = (value) => {
   if (value === null || value === undefined || value === '' || isNaN(Number(value))) return null;
   return new Intl.NumberFormat('vi-VN').format(Number(value)) + ' đ';
 };
 
-export const formatDateDisplay = (dateStr: string | null | undefined): string => {
+export const formatDateDisplay = (dateStr) => {
   if (!dateStr) return 'N/A';
   try {
     const clean = String(dateStr).split('T')[0];
@@ -298,7 +298,7 @@ export const formatDateDisplay = (dateStr: string | null | undefined): string =>
   }
 };
 
-export const formatTimeDisplay = (dateStr: string | null | undefined): string => {
+export const formatTimeDisplay = (dateStr) => {
   if (!dateStr) return '';
   try {
     const str = String(dateStr);
@@ -311,7 +311,7 @@ export const formatTimeDisplay = (dateStr: string | null | undefined): string =>
   }
 };
 
-export const getToothStatusInfo = (status: string | null | undefined) => {
+export const getToothStatusInfo = (status) => {
   const s = String(status || '').toUpperCase();
   return (
     TOOTH_STATUS_MAP[s] || {
@@ -321,7 +321,7 @@ export const getToothStatusInfo = (status: string | null | undefined) => {
   );
 };
 
-export const getDiagnosisLevelInfo = (level: string | null | undefined) => {
+export const getDiagnosisLevelInfo = (level) => {
   const l = String(level || '').toUpperCase();
   return (
     DIAGNOSIS_LEVEL_MAP[l] || {
@@ -331,7 +331,7 @@ export const getDiagnosisLevelInfo = (level: string | null | undefined) => {
   );
 };
 
-export const getPlanStatusBadge = (status: string | null | undefined) => {
+export const getPlanStatusBadge = (status) => {
   const s = String(status || '').toUpperCase();
   return (
     PLAN_STATUS_MAP[s] || {
@@ -342,7 +342,7 @@ export const getPlanStatusBadge = (status: string | null | undefined) => {
   );
 };
 
-export const getPhaseStatusBadge = (status: string | null | undefined) => {
+export const getPhaseStatusBadge = (status) => {
   const s = String(status || '').toUpperCase();
   return (
     PHASE_STATUS_MAP[s] || {
@@ -352,7 +352,7 @@ export const getPhaseStatusBadge = (status: string | null | undefined) => {
   );
 };
 
-export const getVisitStatusBadge = (status: string | null | undefined) => {
+export const getVisitStatusBadge = (status) => {
   const s = String(status || '').toUpperCase();
   return (
     VISIT_STATUS_MAP[s] || {
@@ -362,117 +362,17 @@ export const getVisitStatusBadge = (status: string | null | undefined) => {
   );
 };
 
-export const formatTreatmentType = (type: string | null | undefined): string => {
+export const formatTreatmentType = (type) => {
   if (!type) return '';
   const upper = String(type).toUpperCase();
   return TREATMENT_TYPE_MAP[upper] || type;
 };
 
 // =========================================================================
-// 3. TYPESCRIPT INTERFACES
+// 3. COMPONENT CHÍNH: MODAL FULL-SCREEN ERP STYLE
 // =========================================================================
 
-export interface DiagnosisItem {
-  id?: string;
-  primaryDiagnosis?: string;
-  toothPosition?: string;
-  level?: string;
-  diagnosticNotes?: string;
-}
-
-export interface ToothRecordItem {
-  id?: string;
-  toothNumber?: string | number;
-  toothStatus?: string;
-  cariesDepth?: string;
-  cariesLocation?: string;
-  gingivalCondition?: string;
-  notes?: string;
-}
-
-export interface TreatmentServiceItem {
-  id?: string;
-  serviceName?: string;
-  toothNumber?: string | number;
-  quantity?: number;
-  price?: number;
-  totalAmount?: number;
-  notes?: string;
-}
-
-export interface TreatmentVisitItem {
-  id?: string;
-  visitId?: string;
-  visitName?: string;
-  startDate?: string;
-  appointmentDate?: string;
-  status?: string;
-  assignedDentist?: string;
-  clinicalNotes?: string;
-  notes?: string;
-}
-
-export interface TreatmentPhaseItem {
-  id?: string;
-  phaseName?: string;
-  phaseOrder?: string | number;
-  treatmentType?: string;
-  status?: string;
-  estimatedDuration?: string;
-  expectedStartDate?: string;
-  expectedEndDate?: string;
-  description?: string;
-  treatmentServices?: TreatmentServiceItem[];
-  treatmentVisits?: TreatmentVisitItem[];
-}
-
-export interface TreatmentRecordDetail {
-  id?: string;
-  examinationResultId?: string;
-  treatmentPlanId?: string;
-  medicalRecordId?: string;
-  startDate?: string;
-  endDate?: string;
-  status?: string;
-  dentistName?: string;
-  chiefComplaint?: string;
-  planName?: string;
-  planDescription?: string;
-  estimatedCost?: number | string;
-  diagnoses?: DiagnosisItem[];
-  toothRecords?: ToothRecordItem[];
-  phases?: TreatmentPhaseItem[];
-  rawExam?: any;
-  rawPlan?: any;
-}
-
-export interface PatientInfo {
-  id?: string;
-  fullName?: string;
-  patientName?: string;
-  patientCode?: string;
-  phone?: string;
-  gender?: string;
-  dateOfBirth?: string;
-  allergies?: string;
-  address?: string;
-  email?: string;
-  avatar?: string | null;
-}
-
-export interface TreatmentHistoryDetailModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  record: TreatmentRecordDetail | null;
-  patient?: PatientInfo | null;
-  onOpenPlan?: ((rec: TreatmentRecordDetail) => void) | null;
-}
-
-// =========================================================================
-// 4. COMPONENT CHÍNH: MODAL FULL-SCREEN ERP STYLE, CẠNH VUÔNG NHỌN SẮC NÉT
-// =========================================================================
-
-export const TreatmentHistoryDetailModal: React.FC<TreatmentHistoryDetailModalProps> = ({
+export const TreatmentHistoryDetailModal = ({
   isOpen,
   onClose,
   record,
@@ -481,7 +381,7 @@ export const TreatmentHistoryDetailModal: React.FC<TreatmentHistoryDetailModalPr
 }) => {
   // Đóng bằng phím ESC
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = (e) => {
       if (e.key === 'Escape') onClose();
     };
     if (isOpen) {
@@ -761,7 +661,6 @@ export const TreatmentHistoryDetailModal: React.FC<TreatmentHistoryDetailModalPr
                       <tr className="bg-slate-100 text-slate-700 border-b border-slate-300 font-bold text-[11px]">
                         <th className="py-1.5 px-2.5 border-r border-slate-200 w-20">Răng</th>
                         <th className="py-1.5 px-2.5 border-r border-slate-200">Tình trạng</th>
-                        <th className="py-1.5 px-2.5 border-r border-slate-200">Độ sâu</th>
                         <th className="py-1.5 px-2.5 border-r border-slate-200">Mặt răng</th>
                         <th className="py-1.5 px-2.5">Nướu / Mô mềm</th>
                       </tr>
@@ -770,7 +669,6 @@ export const TreatmentHistoryDetailModal: React.FC<TreatmentHistoryDetailModalPr
                       {Array.isArray(record.toothRecords) && record.toothRecords.length > 0 ? (
                         record.toothRecords.map((tr, idx) => {
                           const statusInfo = getToothStatusInfo(tr.toothStatus);
-                          const depthLabel = CARIES_DEPTH_MAP[String(tr.cariesDepth || '').toUpperCase()] || tr.cariesDepth;
                           const locLabel = CARIES_LOCATION_MAP[String(tr.cariesLocation || '').toUpperCase()] || tr.cariesLocation;
 
                           return (
@@ -782,9 +680,6 @@ export const TreatmentHistoryDetailModal: React.FC<TreatmentHistoryDetailModalPr
                                 <span className={`px-2 py-0.5 border text-[11px] ${statusInfo.badgeClass}`}>
                                   {statusInfo.label}
                                 </span>
-                              </td>
-                              <td className="py-2 px-2.5 border-r border-slate-200 font-medium text-slate-700">
-                                {depthLabel || '-'}
                               </td>
                               <td className="py-2 px-2.5 border-r border-slate-200 text-slate-700">
                                 {locLabel || '-'}
@@ -1069,20 +964,6 @@ export const TreatmentHistoryDetailModal: React.FC<TreatmentHistoryDetailModalPr
             >
               Đóng (ESC)
             </button>
-
-            {onOpenPlan && record.treatmentPlanId && (
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenPlan(record);
-                }}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs border border-teal-500 shadow-xs cursor-pointer transition-colors"
-              >
-                <span>Mở phác đồ chi tiết</span>
-                <ExternalLink size={13} />
-              </button>
-            )}
           </div>
         </div>
       </div>

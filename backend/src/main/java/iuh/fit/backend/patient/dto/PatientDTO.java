@@ -19,6 +19,8 @@ public class PatientDTO {
     private String cccd;
     private String email;
     private String nationality;
+    private String hometown;
+    private String job;
     private Gender gender;
     private LocalDateTime dateOfBirth;
     private String address;

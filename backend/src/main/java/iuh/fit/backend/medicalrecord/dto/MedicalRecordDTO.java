@@ -14,6 +14,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class MedicalRecordDTO {
     private UUID id;
+    private String medicalRecordCode;
 
     // Patient info
     private UUID patientId;
@@ -21,6 +22,14 @@ public class MedicalRecordDTO {
     private String patientCode;
     private String patientPhone;
     private String patientEmail;
+    private String patientGender;
+    private LocalDateTime patientDob;
+    private String patientCccd;
+    private String patientAddress;
+    private String systemicDisease;
+    private String allergies;
+    private String currentMedications;
+    private String surgicalHistory;
 
     // Dentist info
     private UUID dentistId;
@@ -29,9 +38,7 @@ public class MedicalRecordDTO {
     // Appointment info
     private UUID appointmentId;
 
-    private String diagnosis;
     private String treatmentNotes;
-    private String symptoms;
     private LocalDateTime recordDate;
     private String fileName;
     private String address;

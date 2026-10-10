@@ -23,4 +23,5 @@ public class ToothRecordDTO {
     private String painType;
     private String cariesDepth;
     private String gingivalCondition;
+    private String shake;
 }

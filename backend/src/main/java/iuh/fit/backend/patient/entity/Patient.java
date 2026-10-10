@@ -38,6 +38,12 @@ public class Patient {
     @Column(length = 255)
     private String nationality;
 
+    @Column(length = 255)
+    private String hometown;
+
+    @Column(length = 255)
+    private String job;
+
     @Column(length = 50)
     private String phoneNumber;
 

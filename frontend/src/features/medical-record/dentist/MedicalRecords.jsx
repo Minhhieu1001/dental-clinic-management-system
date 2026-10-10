@@ -15,22 +15,22 @@ import {
   getPatientsByPhone,
   getPatients,
   updatePatient,
-} from '../../services/patient.service';
+} from '../../../services/patient.service';
 import {
   getMedicalRecordsByPatientCode,
   getMedicalRecordsByPatientId,
   createMedicalRecord,
   updateMedicalRecord,
-} from '../../services/medicalRecord.service';
-import { getExaminationResultsByMedicalRecordId } from '../../services/examinationResult.service';
-import { getTreatmentPlansByPatientId } from '../../services/treatmentPlan.service';
-import { getDentistsList } from '../../services/dentist.service';
+} from '../../../services/medicalRecord.service';
+import { getExaminationResultsByMedicalRecordId } from '../../../services/examinationResult.service';
+import { getTreatmentPlansByPatientId } from '../../../services/treatmentPlan.service';
+import { getDentistsList } from '../../../services/dentist.service';
 
 import MedicalRecordHeader from './components/MedicalRecordHeader';
 import PatientGeneralInfoForm from './components/PatientGeneralInfoForm';
 import TreatmentHistoryTimeline from './components/TreatmentHistoryTimeline';
 import MedicalRecordEmptyState from './components/MedicalRecordEmptyState';
-import MultiplePatientsModal from '../../components/common/MultiplePatientsModal';
+import MultiplePatientsModal from '../../../components/common/MultiplePatientsModal';
 import {
   createDefaultMedicalRecord,
   DEFAULT_DENTAL_CLINIC_NAME,
@@ -99,7 +99,10 @@ export default function MedicalRecords() {
     patientCode: passedPatient?.patientCode || location.state?.patientCode || '',
     fullName: passedPatient?.fullName || passedPatient?.patientName || location.state?.fullName || '',
     nationality: passedPatient?.nationality || 'Việt Nam',
+    hometown: passedPatient?.hometown || '',
+    job: passedPatient?.job || '',
     phone: passedPatient?.phone || passedPatient?.phoneNumber || location.state?.phone || '',
+    cccd: passedPatient?.cccd || '',
     gender: passedPatient?.gender || 'FEMALE',
     dateOfBirth: passedPatient?.dateOfBirth ? String(passedPatient.dateOfBirth).split('T')[0] : '',
     address: passedPatient?.address || '',
@@ -211,7 +214,7 @@ export default function MedicalRecords() {
             const status = matchedPlan?.status || 'PENDING';
 
             // 3. Lý do khám bệnh: chiefComplaint của examinationResult
-            const chiefComplaint = exam.chiefComplaint || mr.symptoms || 'Khám răng hàm mặt';
+            const chiefComplaint = exam.chiefComplaint || 'Khám răng hàm mặt';
 
             // 4. Chuẩn đoán là gì: diagnoses của examinationResult
             const diagnoses = Array.isArray(exam.diagnoses) && exam.diagnoses.length > 0
@@ -296,7 +299,10 @@ export default function MedicalRecords() {
       patientCode: patientObj.patientCode || `PA-${Math.floor(100000 + Math.random() * 900000)}`,
       fullName: patientObj.fullName || patientObj.patientName || patientObj.user?.fullName || '',
       nationality: patientObj.nationality || 'Việt Nam',
+      hometown: patientObj.hometown || '',
+      job: patientObj.job || '',
       phone: patientObj.phone || patientObj.phoneNumber || patientObj.user?.phone || '',
+      cccd: patientObj.cccd || '',
       gender: patientObj.gender || 'MALE',
       dateOfBirth: patientObj.dateOfBirth ? String(patientObj.dateOfBirth).split('T')[0] : '',
       address: patientObj.address || '',
@@ -312,10 +318,10 @@ export default function MedicalRecords() {
     const pCode = patientObj.patientCode || '';
     setMedicalRecordData((prev) => ({
       ...prev,
+      medicalRecordCode: patientObj.medicalRecordCode || prev.medicalRecordCode || '',
       fileName: patientObj.fileName || generateRecordFileName(pName, pCode),
       dentalClinicName: patientObj.dentalClinicName || DEFAULT_DENTAL_CLINIC_NAME,
       address: patientObj.clinicAddress || DEFAULT_DENTAL_CLINIC_ADDRESS,
-      symptoms: patientObj.symptoms || patientObj.chiefComplaint || prev.symptoms || '',
     }));
 
     // Tự động load MedicalRecord thật của bệnh nhân từ backend
@@ -327,11 +333,10 @@ export default function MedicalRecords() {
             setMedicalRecordData((prev) => ({
               ...prev,
               id: rec.id,
+              medicalRecordCode: rec.medicalRecordCode || `HSBA-${String(rec.id).slice(0, 8).toUpperCase()}`,
               fileName: rec.fileName || prev.fileName,
               dentalClinicName: rec.dentalClinicName || prev.dentalClinicName,
               address: rec.address || prev.address,
-              symptoms: rec.symptoms || prev.symptoms,
-              diagnosis: rec.diagnosis || prev.diagnosis,
               treatmentNotes: rec.treatmentNotes || prev.treatmentNotes,
               recordDate: rec.recordDate || prev.recordDate,
             }));
@@ -359,7 +364,10 @@ export default function MedicalRecords() {
       patientCode: '',
       fullName: '',
       nationality: 'Việt Nam',
+      hometown: '',
+      job: '',
       phone: '',
+      cccd: '',
       gender: 'MALE',
       dateOfBirth: '',
       address: '',
@@ -519,6 +527,9 @@ export default function MedicalRecords() {
           : null,
         address: patientData.address,
         nationality: patientData.nationality,
+        hometown: patientData.hometown || null,
+        job: patientData.job || null,
+        cccd: patientData.cccd || null,
         allergies: patientData.allergies || null,
         currentMedications: patientData.currentMedications || null,
         surgicalHistory: patientData.surgicalHistory || null,
@@ -546,8 +557,6 @@ export default function MedicalRecords() {
         dentalClinicName: medicalRecordData.dentalClinicName,
         address: medicalRecordData.address,
         fileName: medicalRecordData.fileName,
-        symptoms: medicalRecordData.symptoms,
-        diagnosis: medicalRecordData.diagnosis,
         treatmentNotes: medicalRecordData.treatmentNotes,
       };
 
@@ -570,7 +579,10 @@ export default function MedicalRecords() {
           patientCode: updatedPatient.patientCode || prev.patientCode,
           fullName: updatedPatient.fullName || prev.fullName,
           nationality: updatedPatient.nationality || prev.nationality,
+          hometown: updatedPatient.hometown || '',
+          job: updatedPatient.job || '',
           phone: updatedPatient.phone || updatedPatient.phoneNumber || prev.phone,
+          cccd: updatedPatient.cccd || '',
           email: updatedPatient.email !== undefined ? updatedPatient.email : prev.email,
           gender: updatedPatient.gender || prev.gender,
           dateOfBirth: updatedPatient.dateOfBirth
@@ -590,11 +602,10 @@ export default function MedicalRecords() {
         setMedicalRecordData((prev) => ({
           ...prev,
           id: updatedMr.id || prev.id,
+          medicalRecordCode: updatedMr.medicalRecordCode || prev.medicalRecordCode,
           fileName: updatedMr.fileName || prev.fileName,
           dentalClinicName: updatedMr.dentalClinicName || prev.dentalClinicName,
           address: updatedMr.address || prev.address,
-          symptoms: updatedMr.symptoms !== undefined ? updatedMr.symptoms : prev.symptoms,
-          diagnosis: updatedMr.diagnosis || prev.diagnosis,
           treatmentNotes: updatedMr.treatmentNotes || prev.treatmentNotes,
           recordDate: updatedMr.recordDate || prev.recordDate,
         }));
@@ -635,7 +646,7 @@ export default function MedicalRecords() {
       return;
     }
 
-    const currentSymptoms = patientData.symptoms || medicalRecordData?.symptoms || 'Khám răng hàm mặt định kỳ';
+    const currentSymptoms = 'Khám răng hàm mặt định kỳ';
     const currentMrId = medicalRecordData?.id || null;
 
     navigate('/dentist/clinical-exam', {
@@ -718,14 +729,10 @@ export default function MedicalRecords() {
               <PatientGeneralInfoForm
                 patientData={patientData}
                 setPatientData={setPatientData}
-                medicalRecordData={medicalRecordData}
-                setMedicalRecordData={setMedicalRecordData}
                 systemicDiseases={systemicDiseases}
                 handleToggleDisease={handleToggleDisease}
                 isEditing={isEditing}
                 onToggleEdit={() => setIsEditing(!isEditing)}
-                onNavigateTreatment={handleNavigateTreatment}
-                navigatingExam={navigatingExam}
               />
             ) : (
               <MedicalRecordEmptyState
@@ -747,7 +754,6 @@ export default function MedicalRecords() {
                       dateOfBirth: '2004-10-01',
                       nationality: 'Việt Nam',
                       address: '59C Nguyễn Đình Chiểu, P. Xuân Hòa, TP. HCM',
-                      symptoms: 'Trám răng và khám tổng quát',
                     });
                     toast.success('Đã tải hồ sơ bệnh nhân Phạm Minh Hiếu');
                   }

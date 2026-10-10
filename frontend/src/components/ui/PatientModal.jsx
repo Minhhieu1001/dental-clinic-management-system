@@ -25,7 +25,7 @@ import {
   DEFAULT_DENTAL_CLINIC_NAME,
   DEFAULT_DENTAL_CLINIC_ADDRESS,
   DEFAULT_RECORD_FILE_NAME,
-} from '../../features/medical-record/medicalRecordHelpers';
+} from '../../features/medical-record/dentist/medicalRecordHelpers';
 
 const COMMON_SYSTEMIC_DISEASES = [
   'Huyết áp cao',
@@ -37,6 +37,12 @@ const COMMON_SYSTEMIC_DISEASES = [
   'Bệnh dạ dày',
   'Khác',
 ];
+
+const QUICK_MEDICAL_VALUES = {
+  allergies: ['Không', 'Chưa rõ'],
+  currentMedications: ['Không', 'Không nhớ'],
+  surgicalHistory: ['Không', 'Chưa từng phẫu thuật'],
+};
 
 /**
  * Unified Patient Modal for CREATE, EDIT, VIEW, and DELETE operations.
@@ -62,8 +68,11 @@ export default function PatientModal({
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
+    cccd: '',
     email: '',
     nationality: 'Việt Nam',
+    hometown: '',
+    job: '',
     gender: 'MALE',
     dateOfBirth: '',
     address: '',
@@ -82,16 +91,19 @@ export default function PatientModal({
       setFormData({
         fullName: payload.fullName || payload.patientName || '',
         phone: payload.phone || payload.phoneNumber || '',
+        cccd: payload.cccd || '',
         email: payload.email || payload.user?.email || '',
         nationality: payload.nationality || 'Việt Nam',
+        hometown: payload.hometown || '',
+        job: payload.job || '',
         gender: payload.gender || 'MALE',
         dateOfBirth: payload.dateOfBirth ? payload.dateOfBirth.split('T')[0] : '',
         address: payload.address || '',
         systemicDisease: Array.isArray(payload.systemicDisease)
           ? payload.systemicDisease
           : typeof payload.systemicDisease === 'string'
-          ? payload.systemicDisease.split(',').map((s) => s.trim()).filter(Boolean)
-          : [],
+            ? payload.systemicDisease.split(',').map((s) => s.trim()).filter(Boolean)
+            : [],
         allergies: payload.allergies || '',
         currentMedications: payload.currentMedications || '',
         surgicalHistory: payload.surgicalHistory || payload.pastSurgeries || '',
@@ -104,8 +116,11 @@ export default function PatientModal({
       setFormData({
         fullName: '',
         phone: '',
+        cccd: '',
         email: '',
         nationality: 'Việt Nam',
+        hometown: '',
+        job: '',
         gender: 'MALE',
         dateOfBirth: '',
         address: '',
@@ -132,6 +147,10 @@ export default function PatientModal({
         systemicDisease: exists
           ? prev.systemicDisease.filter((d) => d !== disease)
           : [...prev.systemicDisease, disease],
+      };
+
+      const applyQuickMedicalValue = (field, value) => {
+        setFormData((prev) => ({ ...prev, [field]: value }));
       };
     });
   };
@@ -303,6 +322,11 @@ export default function PatientModal({
               </div>
 
               <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+                <span className="text-slate-500 font-medium">CCCD:</span>
+                <span className="font-bold text-slate-800">{payload?.cccd || 'Chưa cập nhật'}</span>
+              </div>
+
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100">
                 <span className="text-slate-500 font-medium flex items-center gap-1.5">
                   <Calendar size={14} className="text-teal-700" /> Ngày sinh:
                 </span>
@@ -316,6 +340,16 @@ export default function PatientModal({
                   <Globe size={14} className="text-teal-700" /> Quốc tịch:
                 </span>
                 <span className="font-bold text-slate-800">{payload?.nationality || 'Việt Nam'}</span>
+              </div>
+
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+                <span className="text-slate-500 font-medium">Quê quán:</span>
+                <span className="font-bold text-slate-800">{payload?.hometown || 'Chưa cập nhật'}</span>
+              </div>
+
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+                <span className="text-slate-500 font-medium">Nghề nghiệp:</span>
+                <span className="font-bold text-slate-800">{payload?.job || 'Chưa cập nhật'}</span>
               </div>
 
               <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100">
@@ -346,8 +380,8 @@ export default function PatientModal({
                     {Array.isArray(payload?.systemicDisease) && payload.systemicDisease.length > 0
                       ? payload.systemicDisease.join(', ')
                       : typeof payload?.systemicDisease === 'string' && payload.systemicDisease.trim()
-                      ? payload.systemicDisease
-                      : 'Chưa ghi nhận bệnh lý toàn thân'}
+                        ? payload.systemicDisease
+                        : 'Chưa ghi nhận bệnh lý toàn thân'}
                   </div>
                 </div>
 
@@ -357,6 +391,24 @@ export default function PatientModal({
                     <div className="bg-amber-50 p-2.5 rounded-lg border border-amber-200 font-semibold text-amber-900 flex items-center gap-2">
                       <AlertTriangle size={14} className="text-amber-600 shrink-0" />
                       <span>{payload.allergies}</span>
+                    </div>
+                  </div>
+                )}
+
+                {payload?.currentMedications && (
+                  <div>
+                    <span className="text-slate-500 font-semibold block mb-1">Thuốc đang sử dụng:</span>
+                    <div className="bg-purple-50 p-2.5 rounded-lg border border-purple-200 font-medium text-purple-900">
+                      {payload.currentMedications}
+                    </div>
+                  </div>
+                )}
+
+                {payload?.surgicalHistory && (
+                  <div>
+                    <span className="text-slate-500 font-semibold block mb-1">Tiền sử phẫu thuật:</span>
+                    <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 font-medium text-slate-800">
+                      {payload.surgicalHistory}
                     </div>
                   </div>
                 )}
@@ -501,6 +553,18 @@ export default function PatientModal({
                 />
               </div>
 
+              {/* CCCD */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">CCCD</label>
+                <input
+                  type="text"
+                  value={formData.cccd}
+                  onChange={(e) => setFormData({ ...formData, cccd: e.target.value })}
+                  placeholder="Nhập số CCCD..."
+                  className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
+                />
+              </div>
+
               {/* Giới tính */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Giới tính</label>
@@ -553,6 +617,30 @@ export default function PatientModal({
                   className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
                 />
               </div>
+
+              {/* Quê quán */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Quê quán</label>
+                <input
+                  type="text"
+                  value={formData.hometown}
+                  onChange={(e) => setFormData({ ...formData, hometown: e.target.value })}
+                  placeholder="Tỉnh/Thành phố quê quán..."
+                  className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
+                />
+              </div>
+
+              {/* Nghề nghiệp */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Nghề nghiệp</label>
+                <input
+                  type="text"
+                  value={formData.job}
+                  onChange={(e) => setFormData({ ...formData, job: e.target.value })}
+                  placeholder="Nhập nghề nghiệp..."
+                  className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
+                />
+              </div>
             </div>
           </div>
 
@@ -573,11 +661,10 @@ export default function PatientModal({
                   return (
                     <label
                       key={dis}
-                      className={`flex items-center gap-2 text-xs p-2 rounded-md border transition-all cursor-pointer select-none ${
-                        isChecked
+                      className={`flex items-center gap-2 text-xs p-2 rounded-md border transition-all cursor-pointer select-none ${isChecked
                           ? 'bg-rose-50 text-rose-900 border-rose-300 font-bold shadow-2xs'
                           : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100/80'
-                      }`}
+                        }`}
                     >
                       <input
                         type="checkbox"
@@ -592,8 +679,8 @@ export default function PatientModal({
               </div>
             </div>
 
-            {/* Dị ứng & Thuốc dùng Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Dị ứng, thuốc đang dùng và tiền sử phẫu thuật */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
                   <AlertTriangle size={13} className="text-amber-600" /> Dị ứng (Lidocaine, Penicillin...):
@@ -605,6 +692,18 @@ export default function PatientModal({
                   placeholder="VD: Dị ứng Thuốc tê Lidocaine..."
                   className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
                 />
+                <div className="flex gap-1.5 mt-1.5">
+                  {QUICK_MEDICAL_VALUES.allergies.map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => applyQuickMedicalValue('allergies', value)}
+                      className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-800 hover:bg-amber-100 cursor-pointer"
+                    >
+                      {value}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div>
@@ -618,6 +717,43 @@ export default function PatientModal({
                   placeholder="VD: Aspirin 81mg, Insulin..."
                   className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
                 />
+                <div className="flex gap-1.5 mt-1.5">
+                  {QUICK_MEDICAL_VALUES.currentMedications.map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => applyQuickMedicalValue('currentMedications', value)}
+                      className="rounded border border-purple-200 bg-purple-50 px-2 py-1 text-[11px] font-semibold text-purple-800 hover:bg-purple-100 cursor-pointer"
+                    >
+                      {value}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
+                  <Stethoscope size={13} className="text-teal-700" /> Tiền sử phẫu thuật:
+                </label>
+                <input
+                  type="text"
+                  value={formData.surgicalHistory}
+                  onChange={(e) => setFormData({ ...formData, surgicalHistory: e.target.value })}
+                  placeholder="VD: Mổ ruột thừa năm 2021..."
+                  className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
+                />
+                <div className="flex gap-1.5 mt-1.5">
+                  {QUICK_MEDICAL_VALUES.surgicalHistory.map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => applyQuickMedicalValue('surgicalHistory', value)}
+                      className="rounded border border-teal-200 bg-teal-50 px-2 py-1 text-[11px] font-semibold text-teal-800 hover:bg-teal-100 cursor-pointer"
+                    >
+                      {value}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 

@@ -483,15 +483,23 @@ export default function FollowUpAppointment() {
               <CalendarCheck size={22} />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-sm sm:text-base font-extrabold uppercase tracking-wide text-slate-900">
-                  QUẢN LÝ LỊCH TÁI KHÁM BỆNH NHÂN
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="flex items-center gap-1.5 text-slate-500 font-bold text-xs sm:text-sm">
+                  <Calendar size={15} className="text-slate-400" />
+                  Lịch hẹn
+                </span>
+                <ChevronRight size={14} className="text-slate-400" />
+                <h1 className="text-sm sm:text-base font-extrabold uppercase tracking-wide text-slate-900 flex items-center gap-1.5">
+                  <CalendarCheck size={18} className="text-teal-700" />
+                  <span>Lịch tái khám</span>
                 </h1>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm bg-teal-50 text-teal-800 text-[10px] font-bold border border-teal-200">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm bg-teal-50 text-teal-800 text-[10px] font-bold border border-teal-200 ml-1">
                   Crown Dental
                 </span>
               </div>
-
+              <p className="text-[11px] font-medium text-slate-500 mt-0.5">
+                Theo dõi tiến độ điều trị, nhắc lịch và chăm sóc tái khám theo từng giai đoạn
+              </p>
             </div>
           </div>
 

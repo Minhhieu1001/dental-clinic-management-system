@@ -180,6 +180,7 @@ public class ExaminationResultServiceImpl implements ExaminationResultService {
                         .painType(trReq.getPainType())
                         .cariesDepth(trReq.getCariesDepth())
                         .gingivalCondition(trReq.getGingivalCondition())
+                        .shake(trReq.getShake())
                         .build();
                 toothRecordList.add(toothRecordRepository.save(tr));
             }
@@ -358,6 +359,7 @@ public class ExaminationResultServiceImpl implements ExaminationResultService {
                             .painType(tr.getPainType())
                             .cariesDepth(tr.getCariesDepth())
                             .gingivalCondition(tr.getGingivalCondition())
+                            .shake(tr.getShake())
                             .build())
                     .collect(Collectors.toList());
         }

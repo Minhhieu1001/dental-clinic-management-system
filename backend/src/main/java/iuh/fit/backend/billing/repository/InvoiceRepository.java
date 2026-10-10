@@ -40,14 +40,27 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
     );
 
 
-    @Query("SELECT " +
-           "COALESCE(SUM(i.finalAmount), 0)     AS totalRevenue, " +
-           "COALESCE(SUM(i.paidAmount), 0)      AS totalPaid, " +
-           "COALESCE(SUM(i.remainingAmount), 0) AS totalDebt, " +
-           "COUNT(i)                            AS totalCount " +
-           "FROM Invoice i " +
-           "WHERE (:year IS NULL OR EXTRACT(YEAR FROM i.invoiceDate) = :year) " +
-           "AND (:month IS NULL OR EXTRACT(MONTH FROM i.invoiceDate) = :month)")
+    @Query(value = """
+            SELECT
+                COALESCE(SUM(i.final_amount), 0) AS "totalRevenue",
+                COALESCE(SUM(i.paid_amount), 0) AS "totalPaid",
+                COALESCE(SUM(i.remaining_amount), 0) AS "totalDebt",
+                COUNT(i.id) AS "totalCount",
+                COALESCE(SUM(COALESCE(tx.total_transaction, 0)), 0) AS "totalTransaction",
+                COALESCE(SUM(COALESCE(tx.total_medicine, 0)), 0) AS "totalMedicine"
+            FROM invoices i
+            LEFT JOIN (
+                SELECT
+                    pt.invoice_id,
+                    SUM(pt.total_amount) AS total_transaction,
+                    SUM(pt.medicine_amount) AS total_medicine
+                FROM payment_transactions pt
+                WHERE pt.status = 'SUCCESS'
+                GROUP BY pt.invoice_id
+            ) tx ON tx.invoice_id = i.id
+            WHERE (:year IS NULL OR EXTRACT(YEAR FROM i.invoice_date) = :year)
+              AND (:month IS NULL OR EXTRACT(MONTH FROM i.invoice_date) = :month)
+            """, nativeQuery = true)
     InvoiceSummaryResponse summarizeByYearAndMonth(
             @Param("year") Integer year,
             @Param("month") Integer month

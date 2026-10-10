@@ -21,8 +21,17 @@ public class MedicalRecordController {
     private final MedicalRecordService medicalRecordService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<MedicalRecordDTO>>> getAll() {
-        List<MedicalRecordDTO> list = medicalRecordService.getAllMedicalRecords();
+    public ResponseEntity<ApiResponse<List<MedicalRecordDTO>>> getAll(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String gender,
+            @RequestParam(required = false) UUID dentistId,
+            @RequestParam(required = false) String dentistName,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month
+    ) {
+        List<MedicalRecordDTO> list = (search != null || gender != null || dentistId != null || dentistName != null || year != null || month != null)
+                ? medicalRecordService.getMedicalRecords(search, gender, dentistId, dentistName, year, month)
+                : medicalRecordService.getAllMedicalRecords();
         return ResponseEntity.ok(
                 ApiResponse.<List<MedicalRecordDTO>>builder()
                         .status(200)
@@ -39,6 +48,18 @@ public class MedicalRecordController {
                 ApiResponse.<MedicalRecordDTO>builder()
                         .status(200)
                         .message("Lấy thông tin hồ sơ bệnh án thành công")
+                        .data(record)
+                        .build()
+        );
+    }
+
+    @GetMapping("/code/{medicalRecordCode}")
+    public ResponseEntity<ApiResponse<MedicalRecordDTO>> getByCode(@PathVariable String medicalRecordCode) {
+        MedicalRecordDTO record = medicalRecordService.getMedicalRecordByCode(medicalRecordCode);
+        return ResponseEntity.ok(
+                ApiResponse.<MedicalRecordDTO>builder()
+                        .status(200)
+                        .message("Lấy hồ sơ bệnh án theo mã thành công")
                         .data(record)
                         .build()
         );

@@ -1,14 +1,20 @@
 import api from './axios';
 
-// Get list of all medical records
-export const getAllMedicalRecords = async () => {
-  const response = await api.get('/medical-records');
+// Get list of all medical records (supports server-side filters: search, gender, dentistName, year, month)
+export const getAllMedicalRecords = async (params = {}) => {
+  const response = await api.get('/medical-records', { params });
   return response.data?.data ?? response.data?.result ?? response.data ?? [];
 };
 
 // Get medical record by ID
 export const getMedicalRecordById = async (id) => {
   const response = await api.get(`/medical-records/${id}`);
+  return response.data?.data ?? response.data?.result ?? response.data;
+};
+
+// Get medical record by management code
+export const getMedicalRecordByCode = async (medicalRecordCode) => {
+  const response = await api.get(`/medical-records/code/${encodeURIComponent(medicalRecordCode)}`);
   return response.data?.data ?? response.data?.result ?? response.data;
 };
 

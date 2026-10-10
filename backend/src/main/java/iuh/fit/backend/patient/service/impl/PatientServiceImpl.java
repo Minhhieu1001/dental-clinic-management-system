@@ -117,6 +117,8 @@ public class PatientServiceImpl implements PatientService {
                 .cccd(normalize(dto.getCccd()))
                 .email(dto.getEmail() != null ? dto.getEmail().trim() : null)
                 .nationality(dto.getNationality())
+                .hometown(normalize(dto.getHometown()))
+                .job(normalize(dto.getJob()))
                 .fullName(dto.getFullName() != null ? dto.getFullName().trim() : "Bệnh nhân mới")
                 .gender(dto.getGender())
                 .dateOfBirth(dto.getDateOfBirth())
@@ -179,17 +181,12 @@ public class PatientServiceImpl implements PatientService {
                     ? dto.getFileName().trim()
                     : defaultFileName;
 
-            String symptoms = (dto.getNotes() != null && !dto.getNotes().trim().isEmpty())
-                    ? dto.getNotes().trim()
-                    : "Khám sức khỏe răng miệng ban đầu";
-
             MedicalRecord medicalRecord = MedicalRecord.builder()
                     .patient(patient)
                     .dentist(assignedDentist)
                     .fileName(fileName)
                     .dentalClinicName(clinicName)
                     .address(clinicAddress)
-                    .symptoms(symptoms)
                     .recordDate(LocalDateTime.now())
                     .build();
 
@@ -217,6 +214,12 @@ public class PatientServiceImpl implements PatientService {
         }
         if (dto.getNationality() != null) {
             patient.setNationality(dto.getNationality().trim());
+        }
+        if (dto.getHometown() != null) {
+            patient.setHometown(normalize(dto.getHometown()));
+        }
+        if (dto.getJob() != null) {
+            patient.setJob(normalize(dto.getJob()));
         }
         if (dto.getDateOfBirth() != null) {
             patient.setDateOfBirth(dto.getDateOfBirth());
@@ -282,6 +285,8 @@ public class PatientServiceImpl implements PatientService {
                         .gender(asEnum(Gender.class, firstRow.get("gender")))
                         .dateOfBirth(asDateTime(firstRow.get("date_of_birth")))
                         .address(asString(firstRow.get("address")))
+                        .hometown(asString(firstRow.get("hometown")))
+                        .job(asString(firstRow.get("job")))
                         .build();
 
         Map<UUID, PlanAggregate> plans = new LinkedHashMap<>();
@@ -418,6 +423,8 @@ public class PatientServiceImpl implements PatientService {
                 .cccd(patient.getCccd())
                 .email(patient.getEmail())
                 .nationality(patient.getNationality())
+                .hometown(patient.getHometown())
+                .job(patient.getJob())
                 .gender(patient.getGender())
                 .dateOfBirth(patient.getDateOfBirth())
                 .address(patient.getAddress())
