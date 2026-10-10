@@ -24,29 +24,15 @@ export const generateRecordFileName = (patientName, patientCode) => {
   return `HSBA_${cleanName}${codePart}`;
 };
 
-// Danh sách các lý do khám bệnh / triệu chứng phổ biến trong nha khoa
-export const COMMON_SYMPTOMS_OPTIONS = [
-  'Đau nhức răng khi ăn nhai',
-  'Ê buốt khi uống nước đá lạnh hoặc đồ ngọt',
-  'Sâu răng, bể mẻ răng',
-  'Chảy máu chân răng / Sưng viêm nướu',
-  'Mất răng / Nhu cầu cấy ghép Implant',
-  'Răng khôn mọc lệch gây sưng đau',
-  'Muốn chỉnh nha / Niềng răng thẩm mỹ',
-  'Khám răng định kỳ & Lấy cao răng',
-];
-
-
 export const createDefaultMedicalRecord = (patient = {}) => {
   const fullName = patient.fullName || patient.patientName || '';
   const patientCode = patient.patientCode || '';
 
   return {
+    medicalRecordCode: patient.medicalRecordCode || '',
     fileName: generateRecordFileName(fullName, patientCode),
     dentalClinicName: DEFAULT_DENTAL_CLINIC_NAME,
     address: DEFAULT_DENTAL_CLINIC_ADDRESS,
-    symptoms: patient.symptoms || patient.chiefComplaint || 'Đau nhức răng hàm dưới bên phải, ê buốt khi ăn nhai',
-    diagnosis: patient.diagnosis || '',
     treatmentNotes: patient.treatmentNotes || '',
     recordDate: new Date().toISOString(),
   };

@@ -30,6 +30,8 @@ public interface PatientRepository extends JpaRepository<Patient, UUID> {
             pa.gender AS gender,
             pa.date_of_birth AS date_of_birth,
             pa.address AS address,
+            pa.hometown AS hometown,
+            pa.job AS job,
             mr.id AS medical_record_id,
             mr.record_date AS record_date,
             ex.id AS examination_result_id,

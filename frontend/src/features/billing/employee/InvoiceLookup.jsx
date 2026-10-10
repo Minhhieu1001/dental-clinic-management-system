@@ -8,6 +8,7 @@ import {
   Eye,
   Printer,
   RotateCcw,
+  RefreshCw,
   AlertCircle,
   ShieldCheck,
   Calendar,
@@ -16,6 +17,7 @@ import {
   Search,
   MoreVertical,
   Plus,
+  ChevronRight,
 } from 'lucide-react';
 import {
   Table,
@@ -38,6 +40,8 @@ import CreateInvoiceModal from './action/CreateInvoiceModal';
 import { getPatients, searchPatient, getPatientById, getPatientsByPhone } from '../../../services/patient.service';
 import { getInvoicesByPatientId } from '../../../services/invoice.service';
 import { mapBackendInvoiceToUi } from '../../../utils/invoiceMapper';
+import Loading from '../../../components/ui/Loading';
+import MonthYearPicker from '../../../components/common/MonthYearPicker';
 
 export default function InvoiceLookup() {
   const [invoices, setInvoices] = useState([]);
@@ -395,8 +399,57 @@ export default function InvoiceLookup() {
     }
   };
 
+  const handleRefresh = async () => {
+    setLoading(true);
+    try {
+      await fetchPatientList();
+      const targetId = activeCustomer?.id || selectedPatientId;
+      if (targetId) {
+        await fetchPatientAndInvoices(targetId);
+        toast.success('Đã làm mới dữ liệu bệnh nhân và hóa đơn!');
+      } else {
+        toast.success('Đã làm mới danh sách!');
+      }
+    } catch (err) {
+      console.warn('Lỗi làm mới dữ liệu:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-3 p-1 w-full">
+      {/* Top Header Row (Breadcrumb: Thanh toán >> Tra cứu hóa đơn & Nút Làm mới) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-3">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="flex items-center gap-1.5 text-slate-500 font-bold text-base sm:text-lg">
+              <CreditCard size={18} className="text-slate-400" />
+              Thanh toán
+            </span>
+            <ChevronRight size={16} className="text-slate-400" />
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-1.5">
+              <Search size={22} className="text-teal-700" />
+              <span>Tra cứu hóa đơn</span>
+            </h1>
+          </div>
+          <p className="text-xs font-semibold text-slate-500 mt-0.5">
+            Tìm kiếm theo SĐT hoặc CCCD để xem toàn bộ lịch sử hóa đơn và trạng thái thanh toán của bệnh nhân
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            title="Làm mới dữ liệu tra cứu"
+            className="flex h-9 w-9 items-center justify-center rounded-lg bg-white border border-slate-300 text-slate-600 hover:bg-slate-50 hover:text-teal-800 transition-all cursor-pointer shadow-xs disabled:opacity-50"
+          >
+            <RefreshCw size={15} className={loading ? 'animate-spin text-teal-700' : ''} />
+          </button>
+        </div>
+      </div>
+
       {/* PANEL 1: TRA CỨU THÔNG TIN BỆNH NHÂN */}
       <div className="bg-white p-3 sm:p-4 rounded border border-slate-200 shadow-2xs space-y-3">
         <div className="flex items-center justify-between border-b border-slate-200 pb-2">
@@ -577,63 +630,23 @@ export default function InvoiceLookup() {
       </div>
 
       {/* PANEL 2: BỘ LỌC DANH SÁCH HÓA ĐƠN */}
-      <div className="bg-white p-3 rounded border border-slate-200 shadow-2xs space-y-2">
-        <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-            <Filter size={15} className="text-teal-700" />
-            Bộ lọc kết quả hóa đơn
-          </span>
-          <button
-            onClick={handleResetFilters}
-            className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-teal-700 transition-colors cursor-pointer"
-          >
-            <RotateCcw size={13} />
-            <span>Đặt lại</span>
-          </button>
-        </div>
-
+      <div className="bg-white p-3 rounded border border-slate-200 shadow-2xs">
         {/* Compact Filters Row */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
           <div className="flex flex-wrap items-center gap-2.5">
-            <div className="w-full sm:w-40">
-              <div className="relative">
-                <Calendar size={14} className="absolute left-2.5 top-2.5 text-slate-400 pointer-events-none" />
-                <select
-                  value={selectedYear}
-                  onChange={(e) => {
-                    setSelectedYear(e.target.value);
-                    setPage(0);
-                  }}
-                  className="w-full bg-slate-50 border border-slate-300 pl-8 pr-2.5 py-1.5 text-xs font-medium text-slate-900 rounded focus:bg-white focus:ring-1 focus:ring-teal-700 focus:outline-none cursor-pointer"
-                >
-                  <option value="ALL">Tất cả năm</option>
-                  <option value="2026">Năm 2026</option>
-                  <option value="2025">Năm 2025</option>
-                  <option value="2024">Năm 2024</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="w-full sm:w-44">
-              <select
-                value={selectedMonth}
-                onChange={(e) => {
-                  setSelectedMonth(e.target.value);
-                  setPage(0);
-                }}
-                className="w-full bg-slate-50 border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-900 rounded focus:bg-white focus:ring-1 focus:ring-teal-700 focus:outline-none cursor-pointer"
-              >
-                <option value="ALL">Tất cả các tháng</option>
-                {Array.from({ length: 12 }, (_, i) => {
-                  const mStr = (i + 1).toString().padStart(2, '0');
-                  return (
-                    <option key={mStr} value={mStr}>
-                      Tháng {i + 1}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
+            {/* Bộ lọc Tháng & Năm (Hỗ trợ vô hạn năm) */}
+            <MonthYearPicker
+              selectedYear={selectedYear}
+              selectedMonth={selectedMonth}
+              onYearChange={(y) => {
+                setSelectedYear(y);
+                setPage(0);
+              }}
+              onMonthChange={(m) => {
+                setSelectedMonth(m);
+                setPage(0);
+              }}
+            />
 
             <div className="w-full sm:w-52">
               <select
@@ -663,7 +676,15 @@ export default function InvoiceLookup() {
       </div>
 
       {/* Results Table Section */}
-      <Paper elevation={0} className="rounded-lg border border-slate-200 overflow-hidden bg-white shadow-xs">
+      <Paper elevation={0} className="relative rounded-lg border border-slate-200 overflow-hidden bg-white shadow-xs min-h-[260px]">
+        {loading && (
+          <Loading
+            overlay={true}
+            title="Đang tải dữ liệu hóa đơn..."
+            subtitle="Hệ thống đang truy xuất thông tin và đối soát hóa đơn"
+            size="md"
+          />
+        )}
         <TableContainer>
           <Table sx={{ minWidth: 750 }}>
             <TableHead className="bg-slate-100/80">
@@ -681,18 +702,9 @@ export default function InvoiceLookup() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {loading ? (
+              {filteredInvoices.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} align="center" sx={{ py: 6, color: '#94a3b8' }}>
-                    <div className="flex flex-col items-center justify-center gap-2">
-                      <Loader2 size={24} className="animate-spin text-teal-700" />
-                      <p className="font-semibold text-xs">Đang tải dữ liệu...</p>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : filteredInvoices.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={9} align="center" sx={{ py: 6, color: '#94a3b8' }}>
+                  <TableCell colSpan={10} align="center" sx={{ py: 6, color: '#94a3b8' }}>
                     <div className="flex flex-col items-center justify-center gap-2">
                       <AlertCircle size={26} className="text-amber-500" />
                       <p className="font-semibold text-xs">

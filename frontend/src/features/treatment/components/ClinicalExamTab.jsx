@@ -20,11 +20,11 @@ import {
   CARIES_STATUS_OPTIONS,
   MOBILITY_OPTIONS,
   CARIES_LOCATION_OPTIONS,
-  GINGIVA_STATUS_OPTIONS,
   CARIES_DEPTH_OPTIONS,
+  GINGIVA_STATUS_OPTIONS,
   PAIN_LEVEL_OPTIONS,
-  getToothQuadrantLabel,
   getCariesDepthLabel,
+  getToothQuadrantLabel,
 } from '../clinicalExaminationHelpers';
 
 // Custom Anatomical SVG Tooth Component
@@ -142,16 +142,16 @@ export default function ClinicalExamTab() {
       options: CARIES_LOCATION_OPTIONS,
     },
     {
-      label: 'Nướu quanh răng',
-      value: gingivaStatus,
-      onChange: (e) => setGingivaStatus(e.target.value),
-      options: GINGIVA_STATUS_OPTIONS,
-    },
-    {
       label: 'Mức độ sâu',
       value: cariesDepth,
       onChange: (e) => setCariesDepth(e.target.value),
       options: CARIES_DEPTH_OPTIONS,
+    },
+    {
+      label: 'Nướu quanh răng',
+      value: gingivaStatus,
+      onChange: (e) => setGingivaStatus(e.target.value),
+      options: GINGIVA_STATUS_OPTIONS,
     },
   ];
 

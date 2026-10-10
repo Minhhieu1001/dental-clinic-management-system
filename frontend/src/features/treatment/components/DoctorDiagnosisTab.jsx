@@ -21,9 +21,6 @@ import {
 } from 'lucide-react';
 
 import { useClinicalExam } from '../ClinicalExamContext';
-import {
-  getCariesDepthLabel,
-} from '../clinicalExaminationHelpers';
 import { DiagnosisModal } from '../action/DiagnosisModal';
 
 // 3 Dữ liệu giả tượng trưng cho kết quả phân tích X-quang và AI
@@ -133,7 +130,7 @@ export default function DoctorDiagnosisTab() {
       toothNumber: toothRecord.toothNumber,
       selectedTeeth: [Number(toothRecord.toothNumber)],
       primaryDiagnosis: isCaries ? 'K02.1' : 'K05.1',
-      severity: toothRecord.cariesDepth === 'PULP' || toothRecord.cariesDepth === 'NEAR_PULP' ? 'Nặng' : 'Trung bình',
+      severity: 'Trung bình',
       notes: isCaries
         ? `Tổn thương sâu răng ${toothRecord.toothNumber}, vị trí: ${toothRecord.cariesLocation || 'Mặt nhai'}`
         : `Theo dõi định kỳ răng ${toothRecord.toothNumber}`,
@@ -338,9 +335,8 @@ export default function DoctorDiagnosisTab() {
                         </td>
                         <td className="py-2 px-2.5 text-slate-700 text-[11px]">
                           {hasCaries ? (
-                            <span>
-                              <strong className="text-slate-900">{getCariesDepthLabel(t.cariesDepth)}</strong>
-                              {t.cariesLocation && t.cariesLocation !== 'Bình thường' ? ` · ${t.cariesLocation}` : ''}
+                            <span className="text-slate-900">
+                              Sâu răng{t.cariesLocation && t.cariesLocation !== 'Bình thường' ? ` · ${t.cariesLocation}` : ''}
                             </span>
                           ) : (
                             <span className="text-slate-400">Không sâu</span>

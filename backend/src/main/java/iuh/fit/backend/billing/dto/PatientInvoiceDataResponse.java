@@ -31,6 +31,8 @@ public class PatientInvoiceDataResponse {
         private Gender gender;
         private LocalDateTime dateOfBirth;
         private String address;
+        private String hometown;
+        private String job;
     }
 
     @Data

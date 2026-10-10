@@ -258,10 +258,11 @@ export function ClinicalExamProvider({ children }) {
           toothNumber: Number(r.toothNumber),
           toothStatus: feStatus,
           toothStatusLabel: condObj.label,
+          severity: r.severity || null,
           cariesStatus: r.hasCaries ? 'YES' : 'NO',
           cariesLocation: mapBackendEnumToLocation(r.cariesLocation),
           cariesDepth: r.cariesDepth || r.severity || 'NORMAL',
-          mobility: 'Bình thường',
+          mobility: r.shake || 'Bình thường',
           gingivaStatus: r.gingivalCondition || 'Bình thường',
           painLevel: r.painType || 'NONE',
           updatedAt: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
@@ -1055,6 +1056,7 @@ export function ClinicalExamProvider({ children }) {
           painType: painLevel,
           cariesDepth: cariesDepth,
           gingivalCondition: gingivaStatus,
+          shake: mobility,
         };
       });
 

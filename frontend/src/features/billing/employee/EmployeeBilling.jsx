@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Calendar,
   ChevronDown,
+  ChevronRight,
   Plus,
   Search,
   Eye,
@@ -16,6 +17,7 @@ import {
   RotateCcw,
   RefreshCw,
   ArrowUpDown,
+  Pill,
 } from 'lucide-react';
 import {
   Menu,
@@ -37,11 +39,11 @@ import InvoiceDetailModal from './action/InvoiceDetailModal';
 import PaymentModal from './action/PaymentModal';
 import PrintInvoiceModal from './action/PrintInvoiceModal';
 import CreateInvoiceModal from './action/CreateInvoiceModal';
+import MonthYearPicker from '../../../components/common/MonthYearPicker';
 import { mapBackendInvoiceToUi } from '../../../utils/invoiceMapper';
 
 
 const CURRENT_YEAR = String(new Date().getFullYear());
-const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => String(Number(CURRENT_YEAR) - i));
 
 
 export default function EmployeeBilling() {
@@ -126,6 +128,8 @@ export default function EmployeeBilling() {
   const computedStats = {
     totalRevenue: Number(summary?.totalRevenue || 0),
     totalPaid: Number(summary?.totalPaid || 0),
+    totalMedicine: Number(summary?.totalMedicine || 0),
+    totalTransaction: Number(summary?.totalTransaction || (Number(summary?.totalPaid || 0) + Number(summary?.totalMedicine || 0))),
     totalDebt: Number(summary?.totalDebt || 0),
     totalCount: Number(summary?.totalCount || 0),
   };
@@ -178,12 +182,20 @@ export default function EmployeeBilling() {
       {/* Top Header Row (Title & Refresh / Create Action Button) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-3.5">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            Thanh toán & Hóa đơn
-            <span className="text-xs font-bold px-2 py-0.5 rounded bg-teal-50 text-teal-800 border border-teal-200 flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="flex items-center gap-1.5 text-slate-500 font-bold text-base sm:text-lg">
+              <CreditCard size={18} className="text-slate-400" />
+              Thanh toán
+            </span>
+            <ChevronRight size={16} className="text-slate-400" />
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-1.5">
+              <Receipt size={22} className="text-teal-700" />
+              <span>Hóa đơn</span>
+            </h1>
+            <span className="text-xs font-bold px-2 py-0.5 rounded bg-teal-50 text-teal-800 border border-teal-200 flex items-center gap-1 ml-1">
               <ArrowUpDown size={12} /> Ngày tạo mới nhất
             </span>
-          </h1>
+          </div>
           <p className="text-xs font-semibold text-slate-500 mt-0.5">
             Quản lý danh sách hóa đơn, theo dõi dư nợ và thu chi phòng khám
           </p>
@@ -212,11 +224,11 @@ export default function EmployeeBilling() {
       </div>
 
       {/* SUMMARY KPI CARDS (DỮ LIỆU ĐƯỢC CẬP NHẬT ĐỘNG THEO BỘ LỌC BÊN DƯỚI) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
         {/* Card 1: Tổng doanh thu */}
         <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-2xs hover:border-slate-300 transition-all">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-500">Tổng doanh thu</span>
+            <span className="text-xs font-bold text-slate-500">Tổng thu HĐ</span>
             <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-700">
               <CreditCard size={18} />
             </div>
@@ -224,13 +236,12 @@ export default function EmployeeBilling() {
           <div className="text-xl font-black text-slate-900 tracking-tight">
             {formatVND(computedStats.totalRevenue)}
           </div>
-          <p className="text-[10px] font-bold text-slate-400 mt-1">Theo năm / tháng hiện tại</p>
         </div>
 
-        {/* Card 2: Đã thanh toán */}
+        {/* Card 2: Đã thanh toán dịch vụ */}
         <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-2xs hover:border-slate-300 transition-all">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-500">Đã thanh toán</span>
+            <span className="text-xs font-bold text-slate-500">Thực thu HĐ</span>
             <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
               <CheckCircle2 size={18} />
             </div>
@@ -238,13 +249,25 @@ export default function EmployeeBilling() {
           <div className="text-xl font-black text-emerald-700 tracking-tight">
             {formatVND(computedStats.totalPaid)}
           </div>
-          <p className="text-[10px] font-bold text-emerald-600/80 mt-1">Thực thu thành công</p>
         </div>
 
-        {/* Card 3: Còn nợ */}
+        {/* Card 3: Tiền thuốc đã thu (MỚI) */}
         <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-2xs hover:border-slate-300 transition-all">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-500">Còn nợ</span>
+            <span className="text-xs font-bold text-slate-500">Thu từ thuốc</span>
+            <div className="w-8 h-8 rounded-lg bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-700">
+              <Pill size={18} />
+            </div>
+          </div>
+          <div className="text-xl font-black text-purple-700 tracking-tight">
+            {formatVND(computedStats.totalMedicine)}
+          </div>
+        </div>
+
+        {/* Card 4: Còn nợ */}
+        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-2xs hover:border-slate-300 transition-all">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-bold text-slate-500">Công nợ</span>
             <div className="w-8 h-8 rounded-lg bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-700">
               <AlertCircle size={18} />
             </div>
@@ -252,10 +275,9 @@ export default function EmployeeBilling() {
           <div className="text-xl font-black text-rose-600 tracking-tight">
             {formatVND(computedStats.totalDebt)}
           </div>
-          <p className="text-[10px] font-bold text-rose-500/80 mt-1">Cần thu hồi nợ</p>
         </div>
 
-        {/* Card 4: Hóa đơn */}
+        {/* Card 5: Hóa đơn */}
         <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-2xs hover:border-slate-300 transition-all">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold text-slate-500">Tổng số hóa đơn</span>
@@ -266,112 +288,72 @@ export default function EmployeeBilling() {
           <div className="text-xl font-black text-slate-900 tracking-tight">
             {computedStats.totalCount} <span className="text-xs font-bold text-slate-400">hóa đơn</span>
           </div>
-          <p className="text-[10px] font-bold text-slate-400 mt-1">Đã sắp xếp mới nhất</p>
         </div>
       </div>
 
-      {/* FILTER BAR - CRISP ERP DESIGN */}
-      <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-2xs space-y-3">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-          <span className="text-xs font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-2">
-            <Filter size={15} className="text-teal-700" />
-            Bộ lọc danh sách hóa đơn
-          </span>
-          <button
-            onClick={handleResetFilters}
-            className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-teal-800 transition-colors cursor-pointer"
-          >
-            <RotateCcw size={13} />
-            <span>Đặt lại bộ lọc</span>
-          </button>
-        </div>
+      {/* FILTER TOOLBAR */}
+      <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-2.5">
+          {/* BÊN TRÁI: CÁC BỘ LỌC THU GỌN VỪA VẶN (ĐÃ BỎ LABEL) */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* 1. Lọc theo Năm & Tháng (Hỗ trợ vô hạn năm) */}
+            <MonthYearPicker
+              selectedYear={selectedYear}
+              selectedMonth={selectedMonth}
+              allowAllYears={false}
+              onYearChange={(y) => {
+                setSelectedYear(y);
+                setPage(0);
+              }}
+              onMonthChange={(m) => {
+                setSelectedMonth(m);
+                setPage(0);
+              }}
+            />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* Filter 1: Lọc theo Năm */}
-          <div>
-            <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">
-              Lọc theo Năm
-            </label>
-            <div className="relative">
-              <Calendar size={15} className="absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
+            {/* 3. Lọc theo Trạng thái */}
+            <div className="w-[155px]">
               <select
-                value={selectedYear}
+                value={statusFilter}
                 onChange={(e) => {
-                  setSelectedYear(e.target.value);
+                  setStatusFilter(e.target.value);
                   setPage(0);
                 }}
-                className="w-full bg-slate-50 border border-slate-300 pl-9 pr-3 py-2 text-xs font-bold text-slate-800 rounded-md focus:bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none cursor-pointer"
+                className="w-full bg-slate-50 border border-slate-300 px-2.5 py-1.5 text-xs font-bold text-slate-800 rounded-md focus:bg-white focus:ring-1 focus:ring-teal-500 focus:outline-none cursor-pointer"
               >
-                {YEAR_OPTIONS.map((y) => (
-                  <option key={y} value={y}>Năm {y}</option>
-                ))}
+                <option value="ALL">Tất cả trạng thái</option>
+                <option value="PAID">Đã thanh toán</option>
+                <option value="PARTIALLY_PAID">Thanh toán một phần</option>
+                <option value="UNPAID">Chưa thanh toán</option>
               </select>
             </div>
           </div>
 
-          {/* Filter 2: Lọc theo Tháng */}
-          <div>
-            <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">
-              Lọc theo Tháng
-            </label>
-            <select
-              value={selectedMonth}
-              onChange={(e) => {
-                setSelectedMonth(e.target.value);
-                setPage(0);
-              }}
-              className="w-full bg-slate-50 border border-slate-300 px-3 py-2 text-xs font-bold text-slate-800 rounded-md focus:bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none cursor-pointer"
-            >
-              <option value="ALL">Tất cả các tháng</option>
-              {Array.from({ length: 12 }, (_, i) => {
-                const mStr = (i + 1).toString().padStart(2, '0');
-                return (
-                  <option key={mStr} value={mStr}>
-                    Tháng {i + 1}
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-
-          {/* Filter 3: Lọc theo Trạng thái */}
-          <div>
-            <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">
-              Trạng thái thanh toán
-            </label>
-            <select
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                setPage(0);
-              }}
-              className="w-full bg-slate-50 border border-slate-300 px-3 py-2 text-xs font-bold text-slate-800 rounded-md focus:bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none cursor-pointer"
-            >
-              <option value="ALL">Tất cả trạng thái</option>
-              <option value="PAID">Đã thanh toán</option>
-              <option value="PARTIALLY_PAID">Thanh toán một phần</option>
-              <option value="UNPAID">Chưa thanh toán</option>
-            </select>
-          </div>
-
-          {/* Filter 4: Tìm kiếm theo mã HĐ hoặc theo tên (CÓ SETTIMEOUT DEBOUNCE 450ms) */}
-          <div>
-            <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1 flex items-center justify-between">
-              <span>Tìm theo Mã HĐ / Tên BN</span>
-              {searchInput !== debouncedSearch && (
-                <span className="text-[10px] font-semibold text-teal-600 animate-pulse">Đang nhập...</span>
-              )}
-            </label>
-            <div className="relative">
-              <Search size={15} className="absolute left-3 top-2.5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Nhập mã HĐ hoặc tên khách hàng..."
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 pl-9 pr-3 py-2 text-xs font-bold text-slate-800 placeholder-slate-400 rounded-md focus:bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
-              />
+          {/* BÊN PHẢI: TÌM KIẾM VÀ ĐẶT LẠI BỘ LỌC */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Ô tìm kiếm */}
+            <div className="w-full sm:w-[240px]">
+              <div className="relative">
+                <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Mã HĐ, Tên BN, SĐT..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 pl-8 pr-3 py-1.5 text-xs font-bold text-slate-800 placeholder-slate-400 rounded-md focus:bg-white focus:ring-1 focus:ring-teal-500 focus:outline-none"
+                />
+              </div>
             </div>
+
+            {/* Nút Đặt lại bộ lọc bên phải */}
+            <button
+              onClick={handleResetFilters}
+              className="flex items-center gap-1.5 h-[31px] px-3 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-600 hover:text-teal-800 text-xs font-bold transition-all cursor-pointer shadow-2xs whitespace-nowrap"
+              title="Đặt lại tất cả bộ lọc về mặc định"
+            >
+              <RotateCcw size={13} />
+              <span>Đặt lại</span>
+            </button>
           </div>
         </div>
       </div>

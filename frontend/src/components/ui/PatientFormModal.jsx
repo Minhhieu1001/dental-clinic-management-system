@@ -42,14 +42,18 @@ export default function PatientFormModal({
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
+    cccd: '',
+    email: '',
     nationality: 'Việt Nam',
+    hometown: '',
+    job: '',
     gender: 'MALE',
     dateOfBirth: '',
     address: '',
     systemicDisease: [],
     allergies: '',
     currentMedications: '',
-    pastSurgeries: '',
+    surgicalHistory: '',
     notes: '',
   });
 
@@ -59,7 +63,11 @@ export default function PatientFormModal({
       setFormData({
         fullName: patient.fullName || patient.patientName || '',
         phone: patient.phone || patient.phoneNumber || '',
+        cccd: patient.cccd || '',
+        email: patient.email || patient.user?.email || '',
         nationality: patient.nationality || 'Việt Nam',
+        hometown: patient.hometown || '',
+        job: patient.job || '',
         gender: patient.gender || 'MALE',
         dateOfBirth: patient.dateOfBirth ? patient.dateOfBirth.split('T')[0] : '',
         address: patient.address || '',
@@ -70,21 +78,25 @@ export default function PatientFormModal({
           : [],
         allergies: patient.allergies || '',
         currentMedications: patient.currentMedications || '',
-        pastSurgeries: patient.pastSurgeries || patient.surgicalHistory || '',
+        surgicalHistory: patient.surgicalHistory || patient.pastSurgeries || '',
         notes: patient.notes || '',
       });
     } else {
       setFormData({
         fullName: '',
         phone: '',
+        cccd: '',
+        email: '',
         nationality: 'Việt Nam',
+        hometown: '',
+        job: '',
         gender: 'MALE',
         dateOfBirth: '',
         address: '',
         systemicDisease: [],
         allergies: '',
         currentMedications: '',
-        pastSurgeries: '',
+        surgicalHistory: '',
         notes: '',
       });
     }
@@ -236,6 +248,30 @@ export default function PatientFormModal({
                   />
                 </div>
 
+                {/* CCCD */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">CCCD</label>
+                  <input
+                    type="text"
+                    value={formData.cccd}
+                    onChange={(e) => setFormData({ ...formData, cccd: e.target.value })}
+                    placeholder="Nhập số CCCD..."
+                    className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
+                  />
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Email liên hệ</label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="VD: patient@example.com"
+                    className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
+                  />
+                </div>
+
                 {/* Giới tính */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Giới tính</label>
@@ -285,6 +321,30 @@ export default function PatientFormModal({
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                     placeholder="Số nhà, Đường, Phường/Xã, Quận/Huyện..."
+                    className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
+                  />
+                </div>
+
+                {/* Quê quán */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Quê quán</label>
+                  <input
+                    type="text"
+                    value={formData.hometown}
+                    onChange={(e) => setFormData({ ...formData, hometown: e.target.value })}
+                    placeholder="Tỉnh/Thành phố quê quán..."
+                    className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
+                  />
+                </div>
+
+                {/* Nghề nghiệp */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Nghề nghiệp</label>
+                  <input
+                    type="text"
+                    value={formData.job}
+                    onChange={(e) => setFormData({ ...formData, job: e.target.value })}
+                    placeholder="Nhập nghề nghiệp..."
                     className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
                   />
                 </div>
@@ -362,8 +422,8 @@ export default function PatientFormModal({
                   </label>
                   <input
                     type="text"
-                    value={formData.pastSurgeries}
-                    onChange={(e) => setFormData({ ...formData, pastSurgeries: e.target.value })}
+                    value={formData.surgicalHistory}
+                    onChange={(e) => setFormData({ ...formData, surgicalHistory: e.target.value })}
                     placeholder="VD: Phẫu thuật mổ ruột thừa 2021..."
                     className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
                   />

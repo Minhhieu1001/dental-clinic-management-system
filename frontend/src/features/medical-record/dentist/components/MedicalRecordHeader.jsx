@@ -13,7 +13,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import PatientSearchBar from '../../../components/ui/search/PatientSearchBar';
+import PatientSearchBar from '../../../../components/ui/search/PatientSearchBar';
 
 export default function MedicalRecordHeader({
   patientName,
@@ -47,15 +47,6 @@ export default function MedicalRecordHeader({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 p-4 bg-gradient-to-r from-teal-50/60 via-white to-teal-50/30 border-b border-slate-200/80">
         {/* Left: Back button & Clinic Details */}
         <div className="flex items-start sm:items-center gap-3 shrink-0">
-          <button
-            type="button"
-            onClick={onBack}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-teal-700 transition-all shadow-2xs cursor-pointer shrink-0 mt-0.5 sm:mt-0"
-            title="Quay lại danh sách"
-          >
-            <ChevronLeft size={20} />
-          </button>
-
           <div>
             <div className="flex items-center gap-2">
               <span className="flex h-7 w-7 items-center justify-center rounded-md bg-teal-100 text-teal-800 border border-teal-200 shrink-0">
@@ -189,6 +180,13 @@ export default function MedicalRecordHeader({
         />
 
         <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-500">Mã hồ sơ:</span>
+            <span className="font-extrabold text-teal-800">
+              {medicalRecordData?.medicalRecordCode || 'Chưa cấp mã'}
+            </span>
+          </div>
+
           <div className="flex items-center gap-1.5">
             <span className="text-slate-500">Bệnh nhân:</span>
             {hasPatientData && patientName ? (

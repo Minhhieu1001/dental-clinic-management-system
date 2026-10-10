@@ -22,7 +22,8 @@ import {
   DEFAULT_DENTAL_CLINIC_NAME,
   DEFAULT_DENTAL_CLINIC_ADDRESS,
   DEFAULT_RECORD_FILE_NAME,
-} from '../medical-record/medicalRecordHelpers';
+} from '../medical-record/dentist/medicalRecordHelpers';
+import { toPatientPayload } from './patientFormMapper';
 
 // Fallback initial patient list
 const INITIAL_PATIENTS = [
@@ -79,7 +80,11 @@ export default function DentistPatients() {
           patientCode: p.patientCode || `PA-${Math.floor(100000 + Math.random() * 900000)}`,
           fullName: p.fullName || p.user?.fullName || 'Bệnh nhân',
           phone: p.phone || p.phoneNumber || p.user?.phone || 'N/A',
+          cccd: p.cccd || '',
           email: p.email || p.user?.email || '',
+          nationality: p.nationality || 'Việt Nam',
+          hometown: p.hometown || '',
+          job: p.job || '',
           gender: p.gender || 'MALE',
           dateOfBirth: p.dateOfBirth ? p.dateOfBirth.split('T')[0] : '',
           address: p.address || 'Chưa cập nhật',
@@ -151,26 +156,11 @@ export default function DentistPatients() {
     try {
       const currentUser = useAuthStore.getState().user;
       const payloadData = {
-        fullName: formData.fullName,
-        phone: formData.phone,
-        email: formData.email,
-        gender: formData.gender,
-        dateOfBirth: formData.dateOfBirth ? `${formData.dateOfBirth}T00:00:00` : null,
-        address: formData.address,
-        nationality: formData.nationality,
-        systemicDisease: Array.isArray(formData.systemicDisease)
-          ? formData.systemicDisease.join(', ')
-          : formData.systemicDisease,
-        allergies: formData.allergies,
-        currentMedications: formData.currentMedications,
-        surgicalHistory: formData.surgicalHistory,
-        notes: formData.notes,
+        ...toPatientPayload(formData, currentUser?.id || null),
         // 3 biến FE: Tên cơ sở/bệnh viện, Địa chỉ bệnh viện, Tên hồ sơ
         dentalClinicName: DEFAULT_DENTAL_CLINIC_NAME,
         clinicAddress: DEFAULT_DENTAL_CLINIC_ADDRESS,
         fileName: DEFAULT_RECORD_FILE_NAME,
-        // Bác sĩ tạo bệnh nhân -> cập nhật luôn ID bác sĩ
-        doctorId: currentUser?.id || null,
       };
 
       if (modalConfig.type === 'EDIT' && formData.id) {
@@ -226,7 +216,7 @@ export default function DentistPatients() {
 
       {/* 2. Filter & Search Controls */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 rounded border border-slate-200 bg-white p-3 shadow-2xs">
-        <div className="relative flex-1">
+        <div className="relative w-full sm:max-w-md">
           <input
             type="text"
             value={searchTerm}

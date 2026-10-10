@@ -10,7 +10,11 @@ public interface MedicalRecordService {
 
     List<MedicalRecordDTO> getAllMedicalRecords();
 
+    List<MedicalRecordDTO> getMedicalRecords(String search, String gender, UUID dentistId, String dentistName, Integer year, Integer month);
+
     MedicalRecordDTO getMedicalRecordById(UUID id);
+
+    MedicalRecordDTO getMedicalRecordByCode(String medicalRecordCode);
 
     List<MedicalRecordDTO> getMedicalRecordsByPatientId(UUID patientId);
 

@@ -16,9 +16,7 @@ public class MedicalRecordRequest {
     private UUID dentistId;
     private UUID appointmentId;
 
-    private String diagnosis;
     private String treatmentNotes;
-    private String symptoms;
     private LocalDateTime recordDate;
     private String fileName;
     private String address;

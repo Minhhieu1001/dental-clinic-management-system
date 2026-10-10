@@ -50,9 +50,88 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<MedicalRecordDTO> getMedicalRecords(String search, String gender, UUID dentistId, String dentistName, Integer year, Integer month) {
+        List<MedicalRecord> list = medicalRecordRepository.findAllByOrderByRecordDateDesc();
+
+        return list.stream()
+                .filter(r -> {
+                    Patient p = r.getPatient();
+                    Dentist d = r.getDentist();
+
+                    // Search filter: medicalRecordCode, patientCode, patientName, patientPhone, cccd
+                    if (search != null && !search.trim().isEmpty()) {
+                        String q = search.trim().toLowerCase();
+                        boolean matchCode = r.getMedicalRecordCode() != null && r.getMedicalRecordCode().toLowerCase().contains(q);
+                        boolean matchPatientCode = p != null && p.getPatientCode() != null && p.getPatientCode().toLowerCase().contains(q);
+                        boolean matchName = p != null && p.getFullName() != null && p.getFullName().toLowerCase().contains(q);
+                        boolean matchPhone = p != null && p.getPhoneNumber() != null && p.getPhoneNumber().toLowerCase().contains(q);
+                        boolean matchCccd = p != null && p.getCccd() != null && p.getCccd().toLowerCase().contains(q);
+                        if (!matchCode && !matchPatientCode && !matchName && !matchPhone && !matchCccd) {
+                            return false;
+                        }
+                    }
+
+                    // Gender filter
+                    if (gender != null && !gender.trim().isEmpty() && !"ALL".equalsIgnoreCase(gender)) {
+                        if (p == null || p.getGender() == null || !p.getGender().name().equalsIgnoreCase(gender.trim())) {
+                            return false;
+                        }
+                    }
+
+                    // Dentist ID filter
+                    if (dentistId != null) {
+                        if (d == null || !dentistId.equals(d.getId())) {
+                            return false;
+                        }
+                    }
+
+                    // Dentist Name filter
+                    if (dentistName != null && !dentistName.trim().isEmpty() && !"ALL".equalsIgnoreCase(dentistName)) {
+                        if (d == null || d.getFullName() == null || !d.getFullName().trim().equalsIgnoreCase(dentistName.trim())) {
+                            return false;
+                        }
+                    }
+
+                    // Year / Month filter
+                    if (year != null && year > 0) {
+                        LocalDateTime date = r.getRecordDate();
+                        if (date == null || date.getYear() != year) {
+                            return false;
+                        }
+                    }
+
+                    if (month != null && month >= 1 && month <= 12) {
+                        LocalDateTime date = r.getRecordDate();
+                        if (date == null || date.getMonthValue() != month) {
+                            return false;
+                        }
+                    }
+
+                    return true;
+                })
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public MedicalRecordDTO getMedicalRecordById(UUID id) {
         MedicalRecord record = medicalRecordRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy hồ sơ bệnh án ID: " + id));
+        return mapToDTO(record);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MedicalRecordDTO getMedicalRecordByCode(String medicalRecordCode) {
+        if (medicalRecordCode == null || medicalRecordCode.trim().isEmpty()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Mã hồ sơ bệnh án không được để trống");
+        }
+
+        MedicalRecord record = medicalRecordRepository.findByMedicalRecordCode(medicalRecordCode.trim())
+                .orElseThrow(() -> new AppException(
+                        ErrorCode.RESOURCE_NOT_FOUND,
+                        "Không tìm thấy hồ sơ bệnh án có mã: " + medicalRecordCode));
         return mapToDTO(record);
     }
 
@@ -106,9 +185,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
                 .patient(patient)
                 .dentist(dentist)
                 .appointment(appointment)
-                .diagnosis(request.getDiagnosis())
                 .treatmentNotes(request.getTreatmentNotes())
-                .symptoms(request.getSymptoms())
                 .recordDate(request.getRecordDate() != null ? request.getRecordDate() : LocalDateTime.now())
                 .fileName(request.getFileName())
                 .address(request.getAddress())
@@ -142,14 +219,8 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
             record.setAppointment(appointment);
         }
 
-        if (request.getDiagnosis() != null) {
-            record.setDiagnosis(request.getDiagnosis());
-        }
         if (request.getTreatmentNotes() != null) {
             record.setTreatmentNotes(request.getTreatmentNotes());
-        }
-        if (request.getSymptoms() != null) {
-            record.setSymptoms(request.getSymptoms());
         }
         if (request.getRecordDate() != null) {
             record.setRecordDate(request.getRecordDate());
@@ -191,17 +262,26 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
 
         return MedicalRecordDTO.builder()
                 .id(record.getId())
+                .medicalRecordCode(record.getMedicalRecordCode() != null
+                        ? record.getMedicalRecordCode()
+                        : "HSBA-" + record.getId().toString().substring(0, 8).toUpperCase())
                 .patientId(p != null ? p.getId() : null)
                 .patientName(p != null ? p.getFullName() : null)
                 .patientCode(p != null ? p.getPatientCode() : null)
                 .patientPhone(p != null ? p.getPhoneNumber() : null)
                 .patientEmail(p != null ? p.getEmail() : null)
+                .patientGender(p != null && p.getGender() != null ? p.getGender().name() : null)
+                .patientDob(p != null ? p.getDateOfBirth() : null)
+                .patientCccd(p != null ? p.getCccd() : null)
+                .patientAddress(p != null ? p.getAddress() : null)
+                .systemicDisease(p != null ? p.getSystemicDisease() : null)
+                .allergies(p != null ? p.getAllergies() : null)
+                .currentMedications(p != null ? p.getCurrentMedications() : null)
+                .surgicalHistory(p != null ? p.getSurgicalHistory() : null)
                 .dentistId(d != null ? d.getId() : null)
                 .dentistName(d != null ? d.getFullName() : null)
                 .appointmentId(record.getAppointment() != null ? record.getAppointment().getId() : null)
-                .diagnosis(record.getDiagnosis())
                 .treatmentNotes(record.getTreatmentNotes())
-                .symptoms(record.getSymptoms())
                 .recordDate(record.getRecordDate())
                 .fileName(record.getFileName())
                 .address(record.getAddress())
@@ -243,6 +323,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
                             .painType(tr.getPainType())
                             .cariesDepth(tr.getCariesDepth())
                             .gingivalCondition(tr.getGingivalCondition())
+                            .shake(tr.getShake())
                             .build())
                     .collect(Collectors.toList());
         }

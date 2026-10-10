@@ -24,6 +24,9 @@ public class MedicalRecord {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Column(name = "medical_record_code", length = 30, unique = true)
+    private String medicalRecordCode;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "patient_id")
     private Patient patient;
@@ -37,13 +40,7 @@ public class MedicalRecord {
     private Appointment appointment;
 
     @Column(columnDefinition = "TEXT")
-    private String diagnosis;
-
-    @Column(columnDefinition = "TEXT")
     private String treatmentNotes;
-
-    @Column(columnDefinition = "TEXT")
-    private String symptoms;
 
     private LocalDateTime recordDate;
 
@@ -68,4 +65,11 @@ public class MedicalRecord {
     @Builder.Default
     @OneToMany(mappedBy = "medicalRecord", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<TreatmentHistorys> treatmentHistorys = new ArrayList<>();
+
+    @PrePersist
+    private void generateMedicalRecordCode() {
+        if (medicalRecordCode == null || medicalRecordCode.isBlank()) {
+            medicalRecordCode = "HSBA-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        }
+    }
 }

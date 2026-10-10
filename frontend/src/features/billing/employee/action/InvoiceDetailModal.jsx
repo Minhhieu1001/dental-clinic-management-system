@@ -38,7 +38,7 @@ import { createInvoice as createInvoiceApi } from '../../../../services/invoice.
 import { getAvailableVoucherByCouponCode } from '../../../../services/promotion.service';
 import { mapBackendInvoiceToUi } from '../../../../utils/invoiceMapper';
 import { useAuthStore } from '../../../../store/authStore';
-import { DEFAULT_DENTAL_CLINIC_NAME, DEFAULT_DENTAL_CLINIC_ADDRESS, PHONE_NUMBER_CLINIC, } from '../../../medical-record/medicalRecordHelpers';
+import { DEFAULT_DENTAL_CLINIC_NAME, DEFAULT_DENTAL_CLINIC_ADDRESS, PHONE_NUMBER_CLINIC, } from '../../../medical-record/dentist/medicalRecordHelpers';
 
 export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSuccess, onSaveInvoice, onSaveSuccess }) {
   const user = useAuthStore.getState().user;
@@ -107,8 +107,8 @@ export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSu
         (paymentInfo?.paymentMethod === 'CASH'
           ? 'Tiền mặt'
           : paymentInfo?.paymentMethod === 'BANK_TRANSFER'
-          ? 'Chuyển khoản (VietQR)'
-          : paymentInfo?.paymentMethod || 'Tiền mặt'),
+            ? 'Chuyển khoản (VietQR)'
+            : paymentInfo?.paymentMethod || 'Tiền mặt'),
       transactionTime: paymentInfo?.createdAt || new Date(),
     });
     setShowSuccessModal(true);

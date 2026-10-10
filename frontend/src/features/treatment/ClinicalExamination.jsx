@@ -121,18 +121,10 @@ function ClinicalExaminationContent() {
       {/* 1. Header Navigation Toolbar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200">
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="flex h-8 w-8 items-center justify-center rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
-            title="Quay lại Hồ sơ Bệnh nhân"
-          >
-            <ChevronLeft size={18} />
-          </button>
           <div>
             <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
               <Stethoscope className="text-teal-700" size={22} />
-              Module Khám Lâm Sàng & Chẩn Đoán AI Nha Khoa
+              Khám Lâm Sàng & Chẩn Đoán AI Nha Khoa
             </h1>
           </div>
         </div>

@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import TreatmentHistoryDetailModal, {
   DIAGNOSIS_LEVEL_MAP,
-} from '../action/TreatmentHistoryDetailModal';
+} from '../action/TreatmentHistoryDetailModal.jsx';
 
 // Bảng tra cứu tên bệnh theo mã ICD-10 nha khoa thông dụng
 const ICD10_LABELS = {

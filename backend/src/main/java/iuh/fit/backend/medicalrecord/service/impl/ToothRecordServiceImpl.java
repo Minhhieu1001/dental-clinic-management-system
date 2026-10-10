@@ -73,6 +73,7 @@ public class ToothRecordServiceImpl implements ToothRecordService {
             record.setPainType(request.getPainType());
             record.setCariesDepth(request.getCariesDepth());
             record.setGingivalCondition(request.getGingivalCondition());
+            record.setShake(request.getShake());
         } else {
             record = ToothRecord.builder()
                     .examinationResult(examResult)
@@ -84,6 +85,7 @@ public class ToothRecordServiceImpl implements ToothRecordService {
                     .painType(request.getPainType())
                     .cariesDepth(request.getCariesDepth())
                     .gingivalCondition(request.getGingivalCondition())
+                    .shake(request.getShake())
                     .build();
         }
 
@@ -126,7 +128,9 @@ public class ToothRecordServiceImpl implements ToothRecordService {
         if (request.getGingivalCondition() != null) {
             record.setGingivalCondition(request.getGingivalCondition());
         }
-
+        if (request.getShake() != null) {
+            record.setShake(request.getShake());
+        }
         record = toothRecordRepository.save(record);
         log.info("Đã cập nhật ghi nhận răng ID: {}", id);
         return mapToDTO(record);
@@ -162,6 +166,7 @@ public class ToothRecordServiceImpl implements ToothRecordService {
                 record.setPainType(req.getPainType());
                 record.setCariesDepth(req.getCariesDepth());
                 record.setGingivalCondition(req.getGingivalCondition());
+                record.setShake(req.getShake());
             } else {
                 record = ToothRecord.builder()
                         .examinationResult(examResult)
@@ -173,6 +178,7 @@ public class ToothRecordServiceImpl implements ToothRecordService {
                         .painType(req.getPainType())
                         .cariesDepth(req.getCariesDepth())
                         .gingivalCondition(req.getGingivalCondition())
+                        .shake(req.getShake())
                         .build();
             }
             savedRecords.add(toothRecordRepository.save(record));
@@ -208,6 +214,7 @@ public class ToothRecordServiceImpl implements ToothRecordService {
                 .painType(record.getPainType())
                 .cariesDepth(record.getCariesDepth())
                 .gingivalCondition(record.getGingivalCondition())
+                .shake(record.getShake())
                 .build();
     }
 }

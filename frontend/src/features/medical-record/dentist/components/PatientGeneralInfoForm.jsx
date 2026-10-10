@@ -1,3 +1,4 @@
+import React from 'react';
 import {
   Phone,
   Mail,
@@ -6,12 +7,10 @@ import {
   AlertTriangle,
   Pill,
   Stethoscope,
-  RefreshCw,
   Edit2,
   Activity,
   Info,
 } from 'lucide-react';
-import { COMMON_SYMPTOMS_OPTIONS } from '../medicalRecordHelpers';
 
 const COMMON_SYSTEMIC_DISEASES = [
   'Huyết áp cao',
@@ -24,17 +23,19 @@ const COMMON_SYSTEMIC_DISEASES = [
   'Khác',
 ];
 
+const QUICK_MEDICAL_VALUES = {
+  allergies: ['Không', 'Chưa rõ'],
+  currentMedications: ['Không', 'Không nhớ'],
+  surgicalHistory: ['Không', 'Chưa từng phẫu thuật'],
+};
+
 export default function PatientGeneralInfoForm({
   patientData = {},
   setPatientData,
-  medicalRecordData = {},
-  setMedicalRecordData,
   systemicDiseases = [],
   handleToggleDisease,
   isEditing,
   onToggleEdit,
-  onNavigateTreatment,
-  navigatingExam = false,
 }) {
   const calculateAge = (dob) => {
     if (!dob) return '--';
@@ -111,7 +112,7 @@ export default function PatientGeneralInfoForm({
           </div>
         </div>
 
-        {/* Action buttons on the right side: Chỉnh sửa & Vào khám */}
+        {/* Action buttons on the right side: Chỉnh sửa */}
         <div className="flex items-center gap-2 shrink-0">
           {onToggleEdit && (
             <button
@@ -135,12 +136,12 @@ export default function PatientGeneralInfoForm({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Họ và tên <span className="text-[11px] font-normal text-slate-400"></span>
+              Họ và tên
             </label>
             <input
               type="text"
               disabled={!isEditing}
-              value={patientData.fullName}
+              value={patientData.fullName || ''}
               onChange={(e) => setPatientData({ ...patientData, fullName: e.target.value })}
               className={`w-full rounded px-3 py-2 text-xs font-bold transition-all ${isEditing
                 ? 'bg-white border-2 border-teal-500 text-slate-900 shadow-2xs focus:outline-none'
@@ -151,13 +152,13 @@ export default function PatientGeneralInfoForm({
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Ngày sinh <span className="text-[11px] font-normal text-slate-400"></span>
+              Ngày sinh
             </label>
             <div className="relative">
               <input
                 type="date"
                 disabled={!isEditing}
-                value={patientData.dateOfBirth}
+                value={patientData.dateOfBirth || ''}
                 onChange={(e) => setPatientData({ ...patientData, dateOfBirth: e.target.value })}
                 className={`w-full rounded px-3 py-2 text-xs font-bold transition-all ${isEditing
                   ? 'bg-white border-2 border-teal-500 text-slate-900 shadow-2xs focus:outline-none'
@@ -170,11 +171,11 @@ export default function PatientGeneralInfoForm({
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Giới tính <span className="text-[11px] font-normal text-slate-400"></span>
+              Giới tính
             </label>
             <select
               disabled={!isEditing}
-              value={patientData.gender}
+              value={patientData.gender || 'FEMALE'}
               onChange={(e) => setPatientData({ ...patientData, gender: e.target.value })}
               className={`w-full rounded px-3 py-2 text-xs font-bold transition-all cursor-pointer ${isEditing
                 ? 'bg-white border-2 border-teal-500 text-slate-900 shadow-2xs focus:outline-none'
@@ -182,17 +183,17 @@ export default function PatientGeneralInfoForm({
                 }`}
             >
               <option value="FEMALE">Nữ</option>
-              <option value="MALE">Nam </option>
+              <option value="MALE">Nam</option>
               <option value="OTHER">Khác</option>
             </select>
           </div>
         </div>
 
-        {/* Row 2: Số điện thoại (phone), Email (email), Quốc tịch (nationality) */}
+        {/* Row 2: Số điện thoại (phone), CCCD (cccd), Email (email) */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Số điện thoại <span className="text-[11px] font-normal text-slate-400"></span>
+              Số điện thoại
             </label>
             <input
               type="text"
@@ -208,7 +209,23 @@ export default function PatientGeneralInfoForm({
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Email liên hệ <span className="text-[11px] font-normal text-slate-400"></span>
+              CCCD
+            </label>
+            <input
+              type="text"
+              disabled={!isEditing}
+              value={patientData.cccd || ''}
+              onChange={(e) => setPatientData({ ...patientData, cccd: e.target.value })}
+              className={`w-full rounded px-3 py-2 text-xs font-bold transition-all ${isEditing
+                ? 'bg-white border-2 border-teal-500 text-slate-900 shadow-2xs focus:outline-none'
+                : 'bg-slate-100/80 border border-slate-200 text-slate-800 font-semibold disabled:opacity-100'
+                }`}
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Email liên hệ
             </label>
             <input
               type="email"
@@ -222,10 +239,13 @@ export default function PatientGeneralInfoForm({
                 }`}
             />
           </div>
+        </div>
 
+        {/* Row 3: Quốc tịch, ngày tạo */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Quốc tịch <span className="text-[11px] font-normal text-slate-400"></span>
+              Quốc tịch
             </label>
             <input
               type="text"
@@ -238,72 +258,64 @@ export default function PatientGeneralInfoForm({
                 }`}
             />
           </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Ngày tạo hồ sơ
+            </label>
+            <input
+              type="text"
+              disabled
+              value={formatDateDisplay(patientData.createdAt)}
+              className="w-full rounded px-3 py-2 text-xs font-bold bg-slate-100/80 border border-slate-200 text-slate-800 disabled:opacity-100"
+            />
+          </div>
         </div>
 
-        {/* Row 3: Địa chỉ (address) */}
+        {/* Row 4: Quê quán (hometown), Nghề nghiệp (job) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Quê quán</label>
+            <input
+              type="text"
+              disabled={!isEditing}
+              value={patientData.hometown || ''}
+              onChange={(e) => setPatientData({ ...patientData, hometown: e.target.value })}
+              className={`w-full rounded px-3 py-2 text-xs font-bold transition-all ${isEditing
+                ? 'bg-white border-2 border-teal-500 text-slate-900 shadow-2xs focus:outline-none'
+                : 'bg-slate-100/80 border border-slate-200 text-slate-800 font-semibold disabled:opacity-100'
+                }`}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Nghề nghiệp</label>
+            <input
+              type="text"
+              disabled={!isEditing}
+              value={patientData.job || ''}
+              onChange={(e) => setPatientData({ ...patientData, job: e.target.value })}
+              className={`w-full rounded px-3 py-2 text-xs font-bold transition-all ${isEditing
+                ? 'bg-white border-2 border-teal-500 text-slate-900 shadow-2xs focus:outline-none'
+                : 'bg-slate-100/80 border border-slate-200 text-slate-800 font-semibold disabled:opacity-100'
+                }`}
+            />
+          </div>
+        </div>
+
+        {/* Row 5: Địa chỉ (address) */}
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Địa chỉ liên hệ <span className="text-[11px] font-normal text-slate-400"></span>
+            Địa chỉ liên hệ
           </label>
           <input
             type="text"
             disabled={!isEditing}
-            value={patientData.address}
+            value={patientData.address || ''}
             onChange={(e) => setPatientData({ ...patientData, address: e.target.value })}
             className={`w-full rounded px-3 py-2 text-xs font-bold transition-all ${isEditing
               ? 'bg-white border-2 border-teal-500 text-slate-900 shadow-2xs focus:outline-none'
               : 'bg-slate-100/80 border border-slate-200 text-slate-800 font-semibold disabled:opacity-100'
               }`}
           />
-        </div>
-
-        {/* Lý do khám bệnh / Triệu chứng ban đầu (symptoms) */}
-        <div className="pt-3 border-t border-slate-100 space-y-2">
-          <label className="block text-xs font-bold text-teal-800 uppercase tracking-wide flex items-center justify-between">
-            <span className="flex items-center gap-1.5">
-              <Stethoscope size={15} className="text-teal-700" />
-              Lý do khám bệnh / Triệu chứng ban đầu{' '}
-              <span className="text-[11px] font-normal text-slate-400 normal-case"></span>
-            </span>
-            {isEditing && (
-              <span className="text-[11px] text-teal-700 font-normal normal-case">Chọn nhanh gợi ý bên dưới</span>
-            )}
-          </label>
-          <textarea
-            rows={2}
-            disabled={!isEditing}
-            placeholder="Nhập lý do đến khám, triệu chứng bệnh nhân mô tả..."
-            value={medicalRecordData?.symptoms || ''}
-            onChange={(e) =>
-              setMedicalRecordData &&
-              setMedicalRecordData({ ...medicalRecordData, symptoms: e.target.value })
-            }
-            className={`w-full rounded px-3 py-2 text-xs font-bold transition-all ${isEditing
-              ? 'bg-white border-2 border-teal-500 text-slate-900 shadow-2xs focus:outline-none'
-              : 'bg-slate-100/80 border border-slate-200 text-slate-800 font-semibold disabled:opacity-100'
-              }`}
-          />
-
-          {/* Gợi ý lý do khám phổ biến */}
-          {isEditing && (
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              {COMMON_SYMPTOMS_OPTIONS.map((sym) => (
-                <button
-                  type="button"
-                  key={sym}
-                  onClick={() => {
-                    const current = medicalRecordData?.symptoms || '';
-                    const next = current ? `${current}, ${sym}` : sym;
-                    setMedicalRecordData &&
-                      setMedicalRecordData({ ...medicalRecordData, symptoms: next });
-                  }}
-                  className="rounded bg-teal-50 border border-teal-200 px-2 py-0.5 text-[11px] font-medium text-teal-800 hover:bg-teal-100 transition-colors cursor-pointer"
-                >
-                  + {sym}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Section Title: Tiền sử Y tế & Bệnh lý toàn thân Checkbox Checklist */}
@@ -317,7 +329,7 @@ export default function PatientGeneralInfoForm({
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
               <Activity size={13} className="text-rose-600" />
-              Bệnh lý toàn thân <span className="text-[11px] font-normal text-slate-400"></span>
+              Bệnh lý toàn thân
             </label>
 
             <div
@@ -351,62 +363,101 @@ export default function PatientGeneralInfoForm({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-1 gap-6.5 pt-4">
+          <div className="space-y-3 pt-2">
             {/* Dị ứng (allergies) */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
-                <AlertTriangle size={13} className="text-amber-600" /> Dị ứng thuốc / thực phẩm{' '}
-                <span className="text-[11px] font-normal text-slate-400"></span>
+                <AlertTriangle size={13} className="text-amber-600" /> Dị ứng thuốc / thực phẩm
               </label>
               <input
                 type="text"
                 disabled={!isEditing}
                 placeholder={isEditing ? 'Nhập thông tin dị ứng (nếu có)...' : ''}
-                value={patientData.allergies}
+                value={patientData.allergies || ''}
                 onChange={(e) => setPatientData({ ...patientData, allergies: e.target.value })}
                 className={`w-full rounded px-3 py-2 text-xs font-bold transition-all ${isEditing
                   ? 'bg-white border-2 border-teal-500 text-slate-900 shadow-2xs focus:outline-none'
                   : 'bg-slate-100/80 border border-slate-200 text-slate-800 font-semibold disabled:opacity-100'
                   }`}
               />
+              {isEditing && (
+                <div className="flex gap-1.5 mt-1.5">
+                  {QUICK_MEDICAL_VALUES.allergies.map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setPatientData({ ...patientData, allergies: value })}
+                      className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-800 hover:bg-amber-100 cursor-pointer"
+                    >
+                      {value}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Thuốc đang dùng (currentMedications) */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
-                <Pill size={13} className="text-purple-600" /> Thuốc đang dùng{' '}
-                <span className="text-[11px] font-normal text-slate-400"></span>
+                <Pill size={13} className="text-purple-600" /> Thuốc đang dùng
               </label>
               <input
                 type="text"
                 disabled={!isEditing}
                 placeholder={isEditing ? 'Nhập danh sách thuốc đang dùng...' : ''}
-                value={patientData.currentMedications}
+                value={patientData.currentMedications || ''}
                 onChange={(e) => setPatientData({ ...patientData, currentMedications: e.target.value })}
                 className={`w-full rounded px-3 py-2 text-xs font-bold transition-all ${isEditing
                   ? 'bg-white border-2 border-teal-500 text-slate-900 shadow-2xs focus:outline-none'
                   : 'bg-slate-100/80 border border-slate-200 text-slate-800 font-semibold disabled:opacity-100'
                   }`}
               />
+              {isEditing && (
+                <div className="flex gap-1.5 mt-1.5">
+                  {QUICK_MEDICAL_VALUES.currentMedications.map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setPatientData({ ...patientData, currentMedications: value })}
+                      className="rounded border border-purple-200 bg-purple-50 px-2 py-1 text-[11px] font-semibold text-purple-800 hover:bg-purple-100 cursor-pointer"
+                    >
+                      {value}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Tiền sử phẫu thuật (surgicalHistory) */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
-                <Stethoscope size={13} className="text-teal-700" /> Tiền sử phẫu thuật{' '}
-                <span className="text-[11px] font-normal text-slate-400"></span>
+                <Stethoscope size={13} className="text-teal-700" /> Tiền sử phẫu thuật
               </label>
               <input
                 type="text"
                 disabled={!isEditing}
                 placeholder={isEditing ? 'Nhập tiền sử phẫu thuật...' : ''}
-                value={patientData.surgicalHistory}
+                value={patientData.surgicalHistory || ''}
                 onChange={(e) => setPatientData({ ...patientData, surgicalHistory: e.target.value })}
                 className={`w-full rounded px-3 py-2 text-xs font-bold transition-all ${isEditing
                   ? 'bg-white border-2 border-teal-500 text-slate-900 shadow-2xs focus:outline-none'
                   : 'bg-slate-100/80 border border-slate-200 text-slate-800 font-semibold disabled:opacity-100'
                   }`}
               />
+              {isEditing && (
+                <div className="flex gap-1.5 mt-1.5">
+                  {QUICK_MEDICAL_VALUES.surgicalHistory.map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setPatientData({ ...patientData, surgicalHistory: value })}
+                      className="rounded border border-teal-200 bg-teal-50 px-2 py-1 text-[11px] font-semibold text-teal-800 hover:bg-teal-100 cursor-pointer"
+                    >
+                      {value}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

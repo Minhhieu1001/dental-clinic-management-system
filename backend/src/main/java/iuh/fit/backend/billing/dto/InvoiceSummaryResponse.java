@@ -6,4 +6,6 @@ public interface InvoiceSummaryResponse {
     BigDecimal getTotalPaid();
     BigDecimal getTotalDebt();
     Long getTotalCount();
+    BigDecimal getTotalTransaction();
+    BigDecimal getTotalMedicine();
 }
