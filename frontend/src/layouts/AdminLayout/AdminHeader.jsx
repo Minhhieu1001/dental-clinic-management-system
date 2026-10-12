@@ -18,10 +18,7 @@ export default function AdminHeader({ config }) {
               <span className="text-base font-black tracking-tight text-slate-900">
                 CROWN<span className="text-[#005f73]">DENTAL</span> <span className="font-medium text-slate-400 text-xs tracking-normal">CLINIC SYSTEM</span>
               </span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200/80 shadow-xs">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                Enterprise Active
-              </span>
+
             </div>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
               Hệ Thống Quản Lý Nha Khoa Thẩm Mỹ & Điều Trị Chuyên Nghiệp
@@ -31,7 +28,7 @@ export default function AdminHeader({ config }) {
 
         {/* Right Side: Actions */}
         <div className="flex items-center gap-2 sm:gap-4 ml-4">
-          
+
           {/* Role Badge (Hidden on mobile) */}
           <div className="hidden sm:flex items-center justify-center rounded-full border border-sky-100 bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-600 shadow-sm">
             {roleLabel}
@@ -52,7 +49,7 @@ export default function AdminHeader({ config }) {
 
           {/* Avatar Profile */}
           <div className="relative">
-            <button 
+            <button
               onClick={() => setIsProfileOpen(!isProfileOpen)}
               className="flex items-center gap-3 rounded-full p-1 pr-3 transition-colors border border-transparent hover:border-slate-200 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500/20"
             >
@@ -70,10 +67,10 @@ export default function AdminHeader({ config }) {
                 </p>
               </div>
             </button>
-            
-            <AdminProfileModal 
-              isOpen={isProfileOpen} 
-              onClose={() => setIsProfileOpen(false)} 
+
+            <AdminProfileModal
+              isOpen={isProfileOpen}
+              onClose={() => setIsProfileOpen(false)}
             />
           </div>
 

@@ -12,6 +12,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -108,6 +109,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolationException(org.springframework.dao.DataIntegrityViolationException ex) {
         log.warn("DataIntegrityViolationException: {}", ex.getMessage());
+        if (ex.getMessage() != null && ex.getMessage().contains("value too long")) {
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.error(HttpStatus.BAD_REQUEST.value(),
+                            "Dữ liệu quá dài. Vui lòng kiểm tra các trường hình ảnh, địa chỉ hoặc nội dung mô tả.")
+            );
+        }
         return ResponseEntity.status(HttpStatus.CONFLICT).body(
                 ApiResponse.error(HttpStatus.CONFLICT.value(), "Dữ liệu đang được sử dụng trong các hồ sơ, hóa đơn hoặc lịch hẹn khác nên không thể xóa!")
         );

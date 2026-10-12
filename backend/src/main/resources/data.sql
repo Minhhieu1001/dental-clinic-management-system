@@ -4,6 +4,11 @@
 -- Dùng ON CONFLICT DO NOTHING để tránh lỗi trùng dữ liệu
 -- ============================================================
 
+-- Cho phép lưu ảnh dạng data URL/Base64 từ giao diện quản trị
+ALTER TABLE clinics ALTER COLUMN logo_url TYPE TEXT;
+ALTER TABLE clinics ALTER COLUMN image TYPE TEXT;
+ALTER TABLE branches ALTER COLUMN image_branch TYPE TEXT;
+
 -- Cập nhật check constraint cho bảng tooth_records và diagnoses hỗ trợ enum Level mới
 ALTER TABLE tooth_records DROP CONSTRAINT IF EXISTS tooth_records_severity_check;
 ALTER TABLE tooth_records ADD CONSTRAINT tooth_records_severity_check 

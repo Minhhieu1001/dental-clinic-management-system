@@ -27,9 +27,13 @@ import {
   RotateCcw,
   CalendarCheck,
   HeartHandshake,
+  Building2,
+  Building,
+  SlidersHorizontal,
 } from 'lucide-react';
 
-const getTabIcon = (to, label) => {
+const getTabIcon = (to, label, customIcon) => {
+  if (customIcon) return customIcon;
   const key = (to || '').toLowerCase();
   const lbl = (label || '').toLowerCase();
 
@@ -53,6 +57,9 @@ const getTabIcon = (to, label) => {
   if (key.includes('employee') || lbl.includes('nhân viên')) return Briefcase;
   if (key.includes('promotion') || lbl.includes('khuyến mãi')) return Tag;
   if (key.includes('service') || lbl.includes('dịch vụ')) return Activity;
+  if (key.includes('branch') || lbl.includes('chi nhánh')) return Building2;
+  if (key.includes('clinic') || lbl.includes('nha khoa') || lbl.includes('phòng khám')) return Building;
+  if (key.includes('general') || lbl.includes('thiết lập') || lbl.includes('chung')) return SlidersHorizontal;
   if (key.includes('setting') || lbl.includes('cài đặt')) return Settings;
 
   return Activity;
@@ -134,7 +141,7 @@ export default function TabBar({ items = [] }) {
       {/* Nav Links List */}
       <div className="flex flex-1 flex-col gap-1 px-2 lg:px-3 py-2 overflow-y-auto custom-scrollbar">
         {items.map((item) => {
-          const IconComponent = getTabIcon(item.to, item.label);
+          const IconComponent = getTabIcon(item.to, item.label, item.icon);
           const hasChildren = item.children && item.children.length > 0;
 
           if (hasChildren) {
@@ -182,7 +189,7 @@ export default function TabBar({ items = [] }) {
                     <p className="px-2 py-1 font-bold text-teal-300 border-b border-slate-700/60 mb-1">{item.label}</p>
                     <div className="flex flex-col gap-1">
                       {item.children.map((c) => {
-                        const ChildIcon = getTabIcon(c.to, c.label);
+                        const ChildIcon = getTabIcon(c.to, c.label, c.icon);
                         return (
                           <NavLink
                             key={c.to}
@@ -211,7 +218,7 @@ export default function TabBar({ items = [] }) {
                   <div className="overflow-hidden">
                     <div className="flex flex-col gap-1 items-center lg:items-stretch pl-0 lg:pl-5 pr-0 lg:pr-1 border-l-0 lg:border-l-2 border-teal-100/80 ml-0 lg:ml-6 my-1">
                       {item.children.map((child) => {
-                        const ChildIcon = getTabIcon(child.to, child.label);
+                        const ChildIcon = getTabIcon(child.to, child.label, child.icon);
                         return (
                           <NavLink
                             key={child.to}
