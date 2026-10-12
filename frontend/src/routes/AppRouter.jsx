@@ -29,7 +29,8 @@ import AdminBilling from '../features/billing/admin/AdminBilling.jsx'
 import MedicationManagement from '../features/prescriptions/admin/MedicationManagement.jsx'
 import Promotions from '../features/promotion/Promotions.jsx'
 import AdminNotifications from '../features/notification/AdminNotifications.jsx'
-import AdminSettings from '../features/user/AdminSettings.jsx'
+import AdminSettings from '../features/setting/AdminSettings.jsx'
+import GeneralSettings from '../features/setting/GeneralSettings.jsx'
 import ServicesAdmin from '../features/treatment/Services.jsx'
 
 // Feature Components - Dentist
@@ -103,7 +104,11 @@ export default function AppRouter() {
             <Route path="medicines" element={<MedicationManagement />} />
             <Route path="promotions" element={<Promotions />} />
             <Route path="notifications" element={<AdminNotifications />} />
-            <Route path="settings" element={<AdminSettings />} />
+            <Route path="clinic-branches" element={<AdminSettings />} />
+            <Route path="general-settings" element={<GeneralSettings />} />
+            <Route path="settings" element={<Navigate to="clinic-branches" replace />} />
+            <Route path="clinic-info" element={<Navigate to="clinic-branches" replace />} />
+            <Route path="branches" element={<Navigate to="clinic-branches" replace />} />
             <Route path="services" element={<ServicesAdmin />} />
           </Route>
         </Route>

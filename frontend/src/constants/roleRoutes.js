@@ -13,8 +13,14 @@ export const roleRoutes = {
       { label: 'Nhân viên', to: 'employees' },
       { label: 'Khuyến mãi', to: 'promotions' },
       { label: 'Dịch vụ', to: 'services' },
-      { label: 'Cài đặt', to: 'settings' },
-
+      {
+        label: 'Cài đặt',
+        to: 'settings',
+        children: [
+          { label: 'Chi Nhánh', to: 'clinic-branches' },
+          { label: 'Thiết Lập Chung', to: 'general-settings' },
+        ],
+      },
     ],
     pages: [
       { path: 'dashboard', title: 'Trang tổng quan Admin' },
@@ -27,6 +33,8 @@ export const roleRoutes = {
       { path: 'promotions', title: 'Quản lý khuyến mãi' },
       { path: 'notifications', title: 'Thông báo hệ thống' },
       { path: 'settings', title: 'Cài đặt hệ thống' },
+      { path: 'clinic-branches', title: 'Thông tin & Chi nhánh' },
+      { path: 'general-settings', title: 'Thiết lập chung' },
       { path: 'services', title: 'Quản lý dịch vụ' },
     ],
   },
