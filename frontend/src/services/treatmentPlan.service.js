@@ -37,7 +37,7 @@ export const deleteTreatmentPlan = async (id) => {
   return response.data?.data ?? response.data?.result ?? response.data;
 };
 
-// Tự động đặt lịch tái khám theo các giai đoạn phác đồ & gửi email lộ trình
+// Tự động đặt lịch tái khám theo các giai đoạn phác đồ
 export const autoScheduleFollowUpAppointments = async (id) => {
   const response = await api.post(`/treatment-plans/${id}/auto-schedule`);
   return response.data?.data ?? response.data?.result ?? response.data;

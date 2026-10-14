@@ -16,7 +16,6 @@ import iuh.fit.backend.appointment.dto.AppointmentDetailDTO;
 import iuh.fit.backend.appointment.entity.Appointment;
 import iuh.fit.backend.appointment.enums.StatusAppointment;
 import iuh.fit.backend.appointment.repository.AppointmentRepository;
-import iuh.fit.backend.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -48,7 +47,6 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
     private final ServiceRepository serviceRepository;
     private final ExaminationResultRepository examinationResultRepository;
     private final AppointmentRepository appointmentRepository;
-    private final NotificationService notificationService;
     private final SimpMessagingTemplate simpMessagingTemplate;
 
     @Override
@@ -184,7 +182,6 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
             savePhases(plan, request.getPhases(), assignedDoctor, request.getDentistName());
         }
 
-        plan.setRoadmapSent(false);
         TreatmentPlan updated = treatmentPlanRepository.save(plan);
 
         try {
@@ -289,15 +286,10 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
 
         String patientName = patient != null ? patient.getFullName() : "Bệnh nhân";
         String phone = (patient != null && patient.getPhoneNumber() != null && !patient.getPhoneNumber().isBlank()) ? patient.getPhoneNumber().trim() : "0343632524";
-        String email = patient != null ? patient.getEmail() : null;
-
         List<TreatmentPhase> phases = plan.getTreatmentPhases();
         if (phases == null || phases.isEmpty()) {
             return mapToResponse(plan);
         }
-
-        StringBuilder roadmapHtml = new StringBuilder();
-        DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("HH:mm - dd/MM/yyyy");
 
         int phaseIndex = 1;
         for (TreatmentPhase phase : phases) {
@@ -308,8 +300,6 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
             } else if (apptDateTime.getHour() == 0 && apptDateTime.getMinute() == 0) {
                 apptDateTime = apptDateTime.withHour(9).withMinute(0);
             }
-
-            String doctorName = dentist != null ? dentist.getFullName() : "BS. Nguyễn Thị Phương";
 
             StringBuilder serviceNames = new StringBuilder();
             if (phase.getTreatmentServices() != null && !phase.getTreatmentServices().isEmpty()) {
@@ -366,64 +356,12 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
                 }
             }
 
-            String phaseTitle = phase.getPhaseName() != null ? phase.getPhaseName().trim() : "";
-            if (!phaseTitle.toLowerCase().startsWith("giai đoạn")) {
-                String orderStr = phase.getPhaseOrder() != null ? String.valueOf(phase.getPhaseOrder()) : String.valueOf(phaseIndex);
-                phaseTitle = "Giai đoạn " + orderStr + ": " + phaseTitle;
-            }
-
-            String statusLabel;
-            String statusBgColor;
-            if (phase.getStatus() == StatusPhase.IN_PROGRESS) {
-                statusLabel = "Đang thực hiện (Giai đoạn hiện tại)";
-                statusBgColor = "#0f766e";
-            } else if (phase.getStatus() == StatusPhase.COMPLETED) {
-                statusLabel = "Đã hoàn thành";
-                statusBgColor = "#16a34a";
-            } else {
-                statusLabel = "Chưa thực hiện";
-                statusBgColor = "#64748b";
-            }
-
-            roadmapHtml.append("""
-                <div style="background:#f8fafc; border:1px solid #cbd5e1; border-left:4px solid %s; border-radius:8px; padding:14px; margin-bottom:12px;">
-                    <div style="font-weight:bold; color:#0f766e; font-size:15px; margin-bottom:6px;">
-                        %s
-                    </div>
-                    <div style="font-size:13px; color:#334155; margin:4px 0;">
-                        <strong>Trạng thái:</strong> <span style="color:%s; font-weight:bold;">%s</span>
-                    </div>
-                    <div style="font-size:13px; color:#334155; margin:4px 0;">
-                        <strong>Lịch tái khám dự kiến:</strong> %s
-                    </div>
-                    <div style="font-size:13px; color:#334155; margin:4px 0;">
-                        <strong>Bác sĩ phụ trách:</strong> %s
-                    </div>
-                    <div style="font-size:12px; color:#64748b; margin-top:6px;">
-                        <strong>Chỉ định điều trị:</strong> %s
-                    </div>
-                </div>
-                """.formatted(
-                    statusBgColor,
-                    phaseTitle,
-                    statusBgColor,
-                    statusLabel,
-                    apptDateTime.format(timeFmt),
-                    doctorName,
-                    serviceNames.toString()
-            ));
-
             phaseIndex++;
         }
 
-        try {
-            notificationService.sendTreatmentRoadmapEmail(email, patientName, phone, plan.getPlanName(), roadmapHtml.toString());
-            log.info("Đã gửi thông báo lộ trình phác đồ điều trị cho bệnh nhân {} (SĐT: {}, Email: {})", patientName, phone, email);
-            plan.setRoadmapSent(true);
-            plan = treatmentPlanRepository.save(plan);
-        } catch (Exception e) {
-            log.error("Lỗi khi gửi email/SMS thông báo lộ trình điều trị: {}", e.getMessage());
-        }
+        plan.setRoadmapSent(true);
+        plan = treatmentPlanRepository.save(plan);
+        log.info("Đã tự động xếp lịch tái khám cho phác đồ ID: {} (tính năng gửi email/SMS lộ trình đã được tắt)", plan.getId());
 
         return mapToResponse(plan);
     }
