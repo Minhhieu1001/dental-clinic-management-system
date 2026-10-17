@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Calendar,
+  Phone,
   RefreshCw,
   CheckCircle2,
   UserCheck,
@@ -21,7 +22,7 @@ import {
   getAppointmentRequestToday,
   updateAppointmentRequestStatus,
 } from '../../../services/appointmentRequest.service';
-import { getAppointments } from '../../../services/appointment.service';
+import { getAppointmentsByDay } from '../../../services/appointment.service';
 
 // Helper to clean up doctor titles (remove awkward "BS." or duplicate "ThS. BS.")
 const cleanDoctorTitle = (nameStr) => {
@@ -32,7 +33,12 @@ const cleanDoctorTitle = (nameStr) => {
     .replace(/^BS\.\s*/i, '');
 };
 
-export default function AppointmentRequests({ onOpenCreateModal, requests: propRequests }) {
+export default function AppointmentRequests({
+  onOpenCreateModal,
+  requests: propRequests,
+  appointments: propAppointments,
+  onRefresh,
+}) {
   const { user } = useAuth();
   const currentUserDisplayName = user?.fullName || user?.username || user?.email?.split('@')[0] || 'Lễ tân';
 
@@ -75,23 +81,22 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
     const rawPhone = dto.phone || dto.phoneNumber;
     const phone = (rawPhone && typeof rawPhone === 'string' && rawPhone.trim()) ? rawPhone.trim() : 'Chưa có SĐT';
 
-    // Cross-reference with existing doctor appointments (match strictly by requestIdStr or completed request status)
+    // Cross-reference with existing doctor appointments (match by requestId or phone)
     const isCompletedRequest = dto.status === 'COMPLETED' || dto.status === 'PROCESSED';
+
+    const cleanPhone = (p) => (typeof p === 'string' ? p.replace(/\D/g, '') : '');
+    const dtoPhoneDigits = cleanPhone(phone);
 
     const matchedApt = Array.isArray(apptsData)
       ? apptsData.find(
         (apt) =>
           (apt.requestIdStr && String(apt.requestIdStr) === String(dto.id)) ||
           (apt.requestId && String(apt.requestId) === String(dto.id)) ||
-          (isCompletedRequest &&
-            apt.phone &&
-            phone &&
-            apt.phone.trim() === phone.trim() &&
-            Math.abs(new Date(apt.createdAt || 0).getTime() - rawDate) < 24 * 3600 * 1000)
+          (dtoPhoneDigits && apt.phone && cleanPhone(apt.phone) === dtoPhoneDigits)
       )
       : null;
 
-    const isScheduled = !!matchedApt;
+    const isScheduled = !!matchedApt || isCompletedRequest;
 
     let scheduledTimeStr = '';
     let doctorNameStr = '';
@@ -118,6 +123,8 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
         } catch (e) {
           scheduledTimeStr = String(matchedApt.appointmentTime).substring(11, 16) || '09:00';
         }
+      } else if (matchedApt.time) {
+        scheduledTimeStr = matchedApt.time;
       } else {
         scheduledTimeStr = '09:00';
       }
@@ -139,9 +146,8 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
     }
 
     const isConfirmed =
-      dto.status === 'COMPLETED' ||
       dto.status === 'confirmed' ||
-      dto.status === 'PROCESSED';
+      dto.status === 'processing';
 
     const isRejected =
       dto.status === 'CANCELLED' ||
@@ -149,7 +155,8 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
       dto.status === 'rejected';
 
     let statusKey = 'new';
-    if (isConfirmed) statusKey = 'confirmed';
+    if (isScheduled) statusKey = 'scheduled';
+    else if (isConfirmed) statusKey = 'confirmed';
     else if (isRejected) statusKey = 'rejected';
     else if (dto.status === 'processing') statusKey = 'processing';
 
@@ -175,6 +182,8 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
       scheduledTimeStr: scheduledTimeStr,
       roomNameStr: roomNameStr,
       serviceNameStr: serviceNameStr,
+      branchId: dto.branchId || null,
+      branchName: dto.branchName || 'Chưa xác định chi nhánh',
     };
   };
 
@@ -195,13 +204,25 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
     return [...unscheduled, ...scheduled, ...rejected];
   };
 
-  // Fetch today's appointment requests AND current doctor appointments to cross-reference
+  // Sync requests and appointments from props to avoid duplicate API calls
+  useEffect(() => {
+    if (propRequests !== undefined) {
+      if (Array.isArray(propRequests)) {
+        const formatted = propRequests.map((dto) => formatRequestItem(dto, propAppointments || []));
+        setRequestList(sortRequests(formatted));
+      } else {
+        setRequestList([]);
+      }
+    }
+  }, [propRequests, propAppointments]);
+
+  // Fallback fetch only if parent did not provide propRequests (standalone usage)
   const fetchRequests = useCallback(async () => {
     setLoading(true);
     try {
       const [requestsRes, apptsRes] = await Promise.all([
         getAppointmentRequestToday().catch(() => []),
-        getAppointments().catch(() => []),
+        getAppointmentsByDay().catch(() => []),
       ]);
 
       const apptsData = Array.isArray(apptsRes) ? apptsRes : [];
@@ -221,8 +242,23 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
   }, []);
 
   useEffect(() => {
-    fetchRequests();
-  }, [fetchRequests, propRequests]);
+    if (propRequests === undefined) {
+      fetchRequests();
+    }
+  }, [propRequests, fetchRequests]);
+
+  const handleRefreshClick = async () => {
+    if (onRefresh) {
+      setLoading(true);
+      try {
+        await onRefresh();
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      await fetchRequests();
+    }
+  };
 
   // Handle Confirm Request: Open modal to schedule appointment without updating status to COMPLETED prematurely
   const handleConfirm = (reqItem) => {
@@ -302,7 +338,7 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
             </span>
             <button
               type="button"
-              onClick={fetchRequests}
+              onClick={handleRefreshClick}
               disabled={loading}
               title="Làm mới danh sách"
               className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-white hover:text-slate-800 transition-colors border border-slate-200/80 disabled:opacity-50 shadow-2xs"
@@ -395,11 +431,18 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
 
                 {/* Row 2: Phone (Left) + Request Date (Right) */}
                 <div className="mt-1 flex items-center justify-between text-xs">
-                  <span className="font-semibold text-slate-800">{req.phone || 'Chưa có SĐT'}</span>
+                  <span className="flex items-center gap-1 font-semibold text-slate-800">
+                    <Phone size={12} className="text-teal-600 shrink-0" />
+                    {req.phone || 'Chưa có SĐT'}
+                  </span>
                   <span className="flex items-center gap-1 text-[11px] text-slate-500 font-medium shrink-0">
                     <Calendar size={11} className="text-slate-400 shrink-0" />
                     {req.date || 'Hôm nay'}
                   </span>
+                </div>
+                <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-teal-800">
+                  <Building size={11} className="shrink-0 text-teal-600" />
+                  <span className="truncate">Chi nhánh: {req.branchName}</span>
                 </div>
 
                 {/* Row 3: Request Note OR Doctor Scheduled Info Box */}
@@ -416,11 +459,6 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
                         {req.scheduledTimeStr}
                       </span>
                     </div>
-                    {req.roomNameStr && (
-                      <div className="text-[11px] text-slate-500 font-medium flex items-center gap-1">
-                        <Building size={11} className="text-slate-400 shrink-0" /> {req.roomNameStr}
-                      </div>
-                    )}
                     {/* Dịch vụ đăng ký / khám bên dưới khi đã xử lý */}
                     {req.serviceNameStr && (
                       <div className="pt-1.5 border-t border-emerald-100 flex items-start gap-1.5 text-[11px]">
@@ -443,10 +481,10 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
                 )}
 
                 {/* Row 4: Action Buttons */}
-                <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-slate-100 pt-2">
+                <div className="mt-1.5 flex items-center justify-between gap-1.5 border-t border-slate-100 pt-1.5">
                   {req.isScheduled ? (
                     <div className="flex w-full items-center justify-between text-[11px]">
-                      <span className="flex items-center gap-1.5 font-medium text-slate-700 bg-slate-50 border border-slate-200/80 px-2.5 py-1 rounded">
+                      <span className="flex items-center gap-1 font-medium text-slate-700 bg-slate-50 border border-slate-200/80 px-2 py-0.5 rounded">
                         <UserCheck size={13} className="text-teal-600 shrink-0" />
                         NV xử lý: <strong className="font-semibold text-slate-900">{req.employeeName || currentUserDisplayName || 'Lễ tân'}</strong>
                       </span>
@@ -468,7 +506,7 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
                     </div>
                   ) : isRejected ? (
                     <div className="flex w-full items-center justify-between text-[11px] text-slate-500">
-                      <span className="flex items-center gap-1.5 font-medium text-slate-600 bg-slate-50 border border-slate-200/80 px-2 py-0.5 rounded">
+                      <span className="flex items-center gap-1 font-medium text-slate-600 bg-slate-50 border border-slate-200/80 px-2 py-0.5 rounded">
                         <UserCheck size={12} className="text-slate-900 shrink-0" />
                         NV xử lý: {req.employeeName || currentUserDisplayName || 'Lễ tân'}
                       </span>
@@ -486,7 +524,7 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
                         type="button"
                         onClick={() => handleOpenRejectModal(req)}
                         disabled={isProcessingThis}
-                        className="rounded border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 disabled:opacity-50 whitespace-nowrap"
+                        className="rounded border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 disabled:opacity-50 whitespace-nowrap"
                       >
                         Từ chối
                       </button>
@@ -494,7 +532,7 @@ export default function AppointmentRequests({ onOpenCreateModal, requests: propR
                         type="button"
                         onClick={() => handleConfirm(req)}
                         disabled={isProcessingThis}
-                        className="flex items-center gap-1.5 rounded bg-teal-700 px-3.5 py-1 text-xs font-bold text-white transition-colors hover:bg-teal-800 disabled:opacity-50 shadow-2xs whitespace-nowrap"
+                        className="flex items-center gap-1 rounded bg-teal-700 px-3 py-1 text-xs font-bold text-white transition-colors hover:bg-teal-800 disabled:opacity-50 shadow-2xs whitespace-nowrap"
                       >
                         {isProcessingThis && (
                           <div className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />

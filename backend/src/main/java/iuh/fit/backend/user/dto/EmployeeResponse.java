@@ -7,13 +7,14 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record EmployeeResponse(
-        UUID id,
-        UUID userId,
-        String username,
-        String email,
-        Position position,
-        BigDecimal salary,
-        LocalDateTime hireDate,
-        Boolean status
-) {
+                UUID id,
+                UUID userId,
+                String username,
+                String email,
+                Position position,
+                BigDecimal salary,
+                LocalDateTime hireDate,
+                Boolean status,
+                String branchId,
+                String branchName) {
 }

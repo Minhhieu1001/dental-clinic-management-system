@@ -43,7 +43,5 @@ public class TreatmentService {
     @Column(name = "total_amount", precision = 15, scale = 2)
     private BigDecimal totalAmount;
 
-    @Builder.Default
-    @OneToMany(mappedBy = "treatmentService", fetch = FetchType.LAZY)
-    private List<InvoiceDetail> invoiceDetails = new ArrayList<>();
+
 }

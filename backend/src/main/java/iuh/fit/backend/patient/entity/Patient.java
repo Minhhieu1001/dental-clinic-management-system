@@ -3,6 +3,7 @@ package iuh.fit.backend.patient.entity;
 import iuh.fit.backend.appointment.entity.AppointmentRequest;
 import iuh.fit.backend.appointment.entity.Appointment;
 import iuh.fit.backend.billing.entity.Invoice;
+import iuh.fit.backend.billing.entity.PaymentTransactions;
 import iuh.fit.backend.medicalrecord.entity.MedicalRecord;
 import iuh.fit.backend.patient.enums.Gender;
 import iuh.fit.backend.prescription.entity.Prescription;
@@ -92,4 +93,6 @@ public class Patient {
     @Builder.Default
     @OneToMany(mappedBy = "patient", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<Invoice> invoices = new ArrayList<>();
+
+
 }

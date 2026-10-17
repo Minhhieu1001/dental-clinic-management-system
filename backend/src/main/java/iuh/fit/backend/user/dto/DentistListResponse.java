@@ -23,6 +23,8 @@ public record DentistListResponse(
         LocalDateTime createdAt,
         StatusUser statusUser,
         String shift,
-        List<CertificateDTO> certificates
+        List<CertificateDTO> certificates,
+        String branchId,
+        String branchName
 ) {
 }

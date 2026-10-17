@@ -176,7 +176,6 @@ public class DentalServiceImpl implements DentalService {
 
         try { serviceRepository.deletePromotionServicesByServiceId(id); } catch (Exception ignored) {}
         try { serviceRepository.deleteTreatmentServicesByServiceId(id); } catch (Exception ignored) {}
-        try { serviceRepository.deleteInvoiceDetailsByServiceId(id); } catch (Exception ignored) {}
 
         serviceRepository.deleteServiceByIdNative(id);
     }

@@ -1,6 +1,7 @@
 package iuh.fit.backend.billing.entity;
 
 import iuh.fit.backend.billing.enums.PaymentStatus;
+import iuh.fit.backend.inforclinic.entity.Branch;
 import iuh.fit.backend.patient.entity.Patient;
 import iuh.fit.backend.promotion.entity.Promotion;
 import iuh.fit.backend.treatment.entity.TreatmentPlan;
@@ -80,4 +81,8 @@ public class Invoice {
     @Builder.Default
     @OneToMany(mappedBy = "invoice", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<PaymentTransactions> paymentTransactions = new ArrayList<>();
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "branch_id", nullable = true)
+    private Branch branch;
 }

@@ -1,6 +1,7 @@
 import {
   Calendar,
   CalendarRange,
+  Building2,
   Clock,
   LockKeyhole,
   Mail,
@@ -159,6 +160,11 @@ export default function EmployeeDetailPanel({ isOpen, onClose, employee, onEdit,
                       <StatusDot status={employee.displayStatus} />
                     </div>
                   </DetailRow>
+                  <DetailRow icon={Building2} label="Chi nhánh">
+                    <p className="text-xs font-semibold text-slate-700">
+                      {employee.branchName || 'Chưa phân chi nhánh'}
+                    </p>
+                  </DetailRow>
                 </div>
               </div>
             </div>
@@ -200,4 +206,3 @@ export default function EmployeeDetailPanel({ isOpen, onClose, employee, onEdit,
     </div>
   );
 }
-

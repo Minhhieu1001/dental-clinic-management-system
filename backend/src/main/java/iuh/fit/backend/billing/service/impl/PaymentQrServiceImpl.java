@@ -8,6 +8,7 @@ import iuh.fit.backend.billing.enums.PaymentMethod;
 import iuh.fit.backend.billing.repository.InvoiceRepository;
 import iuh.fit.backend.billing.service.InvoiceService;
 import iuh.fit.backend.billing.service.PaymentQrService;
+import iuh.fit.backend.inforclinic.repository.BranchRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,6 +30,7 @@ public class PaymentQrServiceImpl implements PaymentQrService {
     private final InvoiceRepository invoiceRepository;
     private final InvoiceService invoiceService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final BranchRepository branchRepository;
 
     @Value("${app.clinic.bank-id:MB}")
     private String bankId;
@@ -41,7 +43,7 @@ public class PaymentQrServiceImpl implements PaymentQrService {
 
     @Value("${app.clinic.qr-template:compact2}")
     private String qrTemplate;
-        
+
     @Override
     @Transactional(readOnly = true)
     public InitiateQrResponse initiateQrPayment(InitiateQrRequest request) {
@@ -58,21 +60,34 @@ public class PaymentQrServiceImpl implements PaymentQrService {
             throw new IllegalArgumentException("Số tiền thanh toán phải lớn hơn 0");
         }
 
+        String branchId = request.getBranchId();
+        if (branchId != null && !branchId.isBlank()) {
+            branchId = branchRepository.findById(branchId.trim())
+                    .orElseThrow(
+                            () -> new IllegalArgumentException("Không tìm thấy chi nhánh: " + request.getBranchId()))
+                    .getBranchId();
+        } else {
+            branchId = null;
+        }
+
         // Xoá bản nháp cũ của hóa đơn này nếu thu ngân đổi ý thay đổi số tiền
         paymentDraftCache.removeByInvoiceId(invoiceId);
 
-        // Tạo mã giao dịch duy nhất dựa trên Mã hóa đơn (VD: THANHTOAN HDINV20261006095258)
+        // Tạo mã giao dịch duy nhất dựa trên Mã hóa đơn (VD: THANHTOAN
+        // HDINV20261006095258)
         String cleanCode = invoice.getInvoiceCode().replaceAll("[^a-zA-Z0-9]", "");
         String transactionCode = "THANHTOAN HD" + cleanCode;
 
         // Lưu bản nháp vào RAM Cache mà KHÔNG ghi xuống DB SQL
         PaymentDraft draft = PaymentDraft.builder()
+                .branchId(branchId)
                 .transactionCode(transactionCode)
                 .invoiceId(invoiceId)
                 .amount(amount)
                 .serviceAmount(request.getServiceAmount() != null ? request.getServiceAmount() : amount)
                 .medicineAmount(request.getMedicineAmount() != null ? request.getMedicineAmount() : BigDecimal.ZERO)
-                .paymentMethod(request.getPaymentMethod() != null ? request.getPaymentMethod() : PaymentMethod.BANK_TRANSFER)
+                .paymentMethod(
+                        request.getPaymentMethod() != null ? request.getPaymentMethod() : PaymentMethod.BANK_TRANSFER)
                 .employeeId(request.getEmployeeId())
                 .note(request.getNote())
                 .build();
@@ -89,10 +104,10 @@ public class PaymentQrServiceImpl implements PaymentQrService {
                 qrTemplate,
                 amount.toPlainString(),
                 encodedAddInfo,
-                encodedAccName
-        );
+                encodedAccName);
 
-        log.info("Khởi tạo mã QR chuyển khoản thành công: invoiceId={}, code={}, qrUrl={}", invoiceId, transactionCode, qrUrl);
+        log.info("Khởi tạo mã QR chuyển khoản thành công: invoiceId={}, code={}, qrUrl={}", invoiceId, transactionCode,
+                qrUrl);
 
         return InitiateQrResponse.builder()
                 .transactionCode(transactionCode)
@@ -119,7 +134,8 @@ public class PaymentQrServiceImpl implements PaymentQrService {
             String description = cassotx.getDescription();
             BigDecimal amountPaid = cassotx.getAmount();
 
-            if (description == null || amountPaid == null) continue;
+            if (description == null || amountPaid == null)
+                continue;
 
             log.info("Xử lý giao dịch Casso Webhook: desc='{}', amount={}đ", description, amountPaid);
 
@@ -138,20 +154,24 @@ public class PaymentQrServiceImpl implements PaymentQrService {
                 continue;
             }
 
-            // Gọi InvoiceService để chính thức ghi nhận thanh toán vào DB SQL và gạch nợ hóa đơn
+            // Gọi InvoiceService để chính thức ghi nhận thanh toán vào DB SQL và gạch nợ
+            // hóa đơn
             PaymentRequest paymentRequest = PaymentRequest.builder()
+                    .branchId(matchedDraft.getBranchId())
                     .amount(matchedDraft.getAmount())
                     .serviceAmount(matchedDraft.getServiceAmount())
                     .medicineAmount(matchedDraft.getMedicineAmount())
                     .amountReceived(amountPaid)
                     .paymentMethod(matchedDraft.getPaymentMethod())
                     .employeeId(matchedDraft.getEmployeeId())
-                    .note((matchedDraft.getNote() != null ? matchedDraft.getNote() + " | " : "") + "Casso TID: " + cassotx.getTid())
+                    .note((matchedDraft.getNote() != null ? matchedDraft.getNote() + " | " : "") + "Casso TID: "
+                            + cassotx.getTid())
                     .build();
 
             try {
                 invoiceService.processPayment(matchedDraft.getInvoiceId(), paymentRequest);
-                log.info("Xác nhận thanh toán SQL thành công từ Casso Webhook cho invoiceId={}", matchedDraft.getInvoiceId());
+                log.info("Xác nhận thanh toán SQL thành công từ Casso Webhook cho invoiceId={}",
+                        matchedDraft.getInvoiceId());
 
                 // Gửi thông báo WebSocket Real-time riêng cho Nhân viên tạo yêu cầu thanh toán
                 UUID employeeId = matchedDraft.getEmployeeId();
@@ -161,8 +181,7 @@ public class PaymentQrServiceImpl implements PaymentQrService {
                         "status", "SUCCESS",
                         "transactionCode", matchedDraft.getTransactionCode(),
                         "amount", matchedDraft.getAmount(),
-                        "message", "Thanh toán chuyển khoản qua ngân hàng thành công!"
-                );
+                        "message", "Thanh toán chuyển khoản qua ngân hàng thành công!");
 
                 if (employeeId != null) {
                     messagingTemplate.convertAndSendToUser(employeeId.toString(), "/queue/payments", paymentWsPayload);

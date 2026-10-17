@@ -59,6 +59,8 @@ export const mapEmployeeFromApi = (employee) => {
     displayCreatedAt: formatDate(employee.createdAt || employee.hireDate),
     displayGender: mapGender(employee.gender),
     address: employee.address || '',
+    branchId: employee.branchId || '',
+    branchName: employee.branchName || 'Chưa phân chi nhánh',
   };
 };
 

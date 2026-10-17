@@ -2,6 +2,7 @@ package iuh.fit.backend.billing.entity;
 
 import iuh.fit.backend.billing.enums.PaymentMethod;
 import iuh.fit.backend.billing.enums.TransactionStatus;
+import iuh.fit.backend.inforclinic.entity.Branch;
 import iuh.fit.backend.user.entity.Employee;
 import jakarta.persistence.*;
 import lombok.*;
@@ -72,4 +73,8 @@ public class PaymentTransactions {
     // Reserved for linking a payment to a prescription in a later billing flow.
     @Column(name = "prescription_id", columnDefinition = "TEXT")
     private String prescriptionId;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "branch_id", nullable = true)
+    private Branch branch;
 }

@@ -11,18 +11,21 @@ import java.util.UUID;
 
 @Repository
 public interface AppointmentRequestRepository extends JpaRepository<AppointmentRequest, UUID> {
-    List<AppointmentRequest> findByCreateAtGreaterThanEqualAndCreateAtLessThanOrderByCreateAtDesc(
+    List<AppointmentRequest> findByBranch_BranchIdAndCreateAtGreaterThanEqualAndCreateAtLessThanOrderByCreateAtDesc(
+            String branchId,
             LocalDateTime startOfDay,
             LocalDateTime startOfNextDay
     );
 
-    List<AppointmentRequest> findByStatustAppointmentRequestAndCreateAtGreaterThanEqualAndCreateAtLessThanOrderByCreateAtDesc(
+    List<AppointmentRequest> findByBranch_BranchIdAndStatustAppointmentRequestAndCreateAtGreaterThanEqualAndCreateAtLessThanOrderByCreateAtDesc(
+            String branchId,
             StatustAppointmentRequest status,
             LocalDateTime startOfDay,
             LocalDateTime startOfNextDay
     );
 
-    long countByCreateAtGreaterThanEqualAndCreateAtLessThan(
+    long countByBranch_BranchIdAndCreateAtGreaterThanEqualAndCreateAtLessThan(
+            String branchId,
             LocalDateTime startOfDay,
             LocalDateTime startOfNextDay
     );

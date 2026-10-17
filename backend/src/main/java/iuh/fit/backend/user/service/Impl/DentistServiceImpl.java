@@ -4,6 +4,8 @@ import iuh.fit.backend.user.dto.*;
 import iuh.fit.backend.user.entity.Dentist;
 import iuh.fit.backend.user.entity.User;
 import iuh.fit.backend.user.entity.Certificate;
+import iuh.fit.backend.inforclinic.entity.Branch;
+import iuh.fit.backend.inforclinic.repository.BranchRepository;
 import iuh.fit.backend.user.repository.DentistRepository;
 import iuh.fit.backend.user.repository.UserRepository;
 import iuh.fit.backend.user.service.DentistService;
@@ -30,6 +32,7 @@ public class DentistServiceImpl implements DentistService {
     private final DentistRepository dentistRepository;
     private final UserRepository userRepository;
     private final UserService userService;
+    private final BranchRepository branchRepository;
 
     @Override
     public List<DentistResponse> getAllDentists() {
@@ -169,6 +172,12 @@ public class DentistServiceImpl implements DentistService {
             dentist.setDescription(request.description());
         }
 
+        if (request.branchId() != null && !request.branchId().isBlank()) {
+            dentist.setBranch(resolveBranch(request.branchId()));
+        } else if (!isUpdate) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Branch is required when creating a dentist.");
+        }
+
         if (request.certificates() != null) {
             dentist.getCertificates().clear();
             for (CertificateCreateRequest cc : request.certificates()) {
@@ -192,6 +201,12 @@ public class DentistServiceImpl implements DentistService {
         }
         return userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + userId));
+    }
+
+    private Branch resolveBranch(String branchId) {
+        return branchRepository.findById(branchId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Branch not found: " + branchId));
     }
 
     private void validateDentistUserIsAvailable(UUID userId, UUID currentDentistId) {
@@ -220,7 +235,9 @@ public class DentistServiceImpl implements DentistService {
                 user != null ? user.getEmail() : null,
                 user != null ? user.getAvatarUrl() : null,
                 dentist.getExperienceYears(),
-                dentist.getEducation()
+                dentist.getEducation(),
+                dentist.getBranch() != null ? dentist.getBranch().getBranchId() : null,
+                dentist.getBranch() != null ? dentist.getBranch().getBranchName() : null
         );
     }
 
@@ -257,7 +274,9 @@ public class DentistServiceImpl implements DentistService {
                 user != null ? user.getCreatedAt() : null,
                 user != null ? user.getStatus() : null,
                 null,
-                certificates
+                certificates,
+                dentist.getBranch() != null ? dentist.getBranch().getBranchId() : null,
+                dentist.getBranch() != null ? dentist.getBranch().getBranchName() : null
         );
     }
 

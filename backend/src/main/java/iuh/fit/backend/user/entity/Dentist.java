@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import iuh.fit.backend.appointment.entity.Appointment;
 import iuh.fit.backend.appointment.entity.FollowUpAppointment;
 import iuh.fit.backend.appointment.entity.Shift;
+import iuh.fit.backend.inforclinic.entity.Branch;
 import iuh.fit.backend.medicalrecord.entity.ExaminationResult;
 import iuh.fit.backend.medicalrecord.entity.MedicalRecord;
 import iuh.fit.backend.medicalrecord.entity.TreatmentHistorys;
@@ -84,5 +85,9 @@ public class Dentist {
     @Builder.Default
     @OneToMany(mappedBy = "dentist", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<FollowUpAppointment> followUpAppointments = new ArrayList<>();
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "branch_id", nullable = true)
+    private Branch branch;
 
 }

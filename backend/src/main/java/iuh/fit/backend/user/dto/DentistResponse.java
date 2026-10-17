@@ -10,6 +10,8 @@ public record DentistResponse(
         String email,
         String avatarUrl,
         Integer experienceYears,
-        String education
+        String education,
+        String branchId,
+        String branchName
 ) {
 }

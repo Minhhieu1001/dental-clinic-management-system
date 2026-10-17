@@ -12,6 +12,8 @@ public record AppointmentResponseDTO(
         LocalDateTime createAt,
         StatustAppointmentRequest status,
         UUID employeeId,
-        String employeeName
+        String employeeName,
+        String branchId,
+        String branchName
         ) {
 }

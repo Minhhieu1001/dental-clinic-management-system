@@ -1,15 +1,13 @@
 package iuh.fit.backend.inforclinic.entity;
 
+import iuh.fit.backend.appointment.entity.Appointment;
+import iuh.fit.backend.appointment.entity.AppointmentRequest;
+import iuh.fit.backend.billing.entity.Invoice;
+import iuh.fit.backend.billing.entity.PaymentTransactions;
 import iuh.fit.backend.inforclinic.enums.BranchStatus;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import iuh.fit.backend.user.entity.Dentist;
+import iuh.fit.backend.user.entity.Employee;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -17,6 +15,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -62,4 +62,29 @@ public class Branch {
     @Column(length = 20, nullable = false)
     @Builder.Default
     private BranchStatus status = BranchStatus.ACTIVE;
+
+    @Builder.Default
+    @OneToMany(mappedBy = "branch", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    private List<Employee> employees = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "branch", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    private List<Dentist> dentists = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "branch", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    private List<AppointmentRequest> appointmentRequests = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "branch", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    private List<Appointment> appointments = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "branch", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    private List<Invoice> invoices = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "branch", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    private List<PaymentTransactions> paymentTransactions = new ArrayList<>();
+
 }

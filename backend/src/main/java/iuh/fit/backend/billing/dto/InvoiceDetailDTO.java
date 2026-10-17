@@ -14,13 +14,10 @@ import java.util.UUID;
 @AllArgsConstructor
 public class InvoiceDetailDTO {
     private UUID id;
-    private UUID treatmentServiceId;
+    private String treatmentServiceId;
     private String itemName;
     private Integer quantity;
     private BigDecimal unitPrice;
     private BigDecimal subtotal;
     private Boolean status;
-    private UUID phaseId;
-    private String phaseName;
-    private String phaseOrder;
 }

@@ -19,6 +19,9 @@ public class AppointmentDetailDTO {
     private String patientName;
     private String patientCode;
     private String phone;
+    private String branchId;
+    private String branchName;
+    private String branchAddress;
     private UUID dentistId;
     private String dentistName;
     private UUID employeeId;
@@ -36,5 +39,4 @@ public class AppointmentDetailDTO {
     private String requestIdStr;
     private LocalDateTime createdAt;
 }
-
 
