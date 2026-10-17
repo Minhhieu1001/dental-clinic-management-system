@@ -11,9 +11,6 @@ import iuh.fit.backend.notification.repository.notificationRepository;
 import iuh.fit.backend.notification.service.NotificationService;
 import iuh.fit.backend.patient.entity.Patient;
 import iuh.fit.backend.patient.repository.PatientRepository;
-import iuh.fit.backend.treatment.entity.TreatmentPlan;
-import iuh.fit.backend.treatment.repository.TreatmentPlanRepository;
-import iuh.fit.backend.treatment.service.TreatmentPlanService;
 import iuh.fit.backend.user.entity.User;
 import iuh.fit.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -35,8 +32,6 @@ public class AppointmentReminderScheduler {
     private final FollowUpAppointmentRepository followUpAppointmentRepository;
     private final PatientRepository patientRepository;
     private final UserRepository userRepository;
-    private final TreatmentPlanRepository treatmentPlanRepository;
-    private final TreatmentPlanService treatmentPlanService;
     private final NotificationService notificationService;
     private final notificationRepository notificationRepository;
     private final SimpMessagingTemplate simpMessagingTemplate;
@@ -67,30 +62,14 @@ public class AppointmentReminderScheduler {
 
     /**
      * Tiến trình chạy ngầm tự động:
-     * 1. Tự động quét các phác đồ đang ở trạng thái 'ĐANG ĐIỀU TRỊ' (IN_PROGRESS) để xếp lịch tái khám & gửi Email lộ trình về cho bệnh nhân.
-     * 2. Tự động nhắc lịch hẹn tái khám trước 1 ngày (24 giờ) — cho cả Appointment và FollowUpAppointment.
-     * 3. Tự động nhắc lịch hẹn tái khám trước 1 giờ — cho cả Appointment và FollowUpAppointment.
+     * 1. Tự động nhắc lịch hẹn tái khám trước 1 ngày (24 giờ) — cho cả Appointment và FollowUpAppointment.
+     * 2. Tự động nhắc lịch hẹn tái khám trước 1 giờ — cho cả Appointment và FollowUpAppointment.
      * Chạy định kỳ 5 phút một lần.
      */
     @Scheduled(initialDelay = 10000, fixedRate = 300000)
     @Transactional
     public void processAppointmentReminders() {
         LocalDateTime now = LocalDateTime.now();
-
-        // 0. TỰ ĐỘNG GỬI LỘ TRÌNH TÁI KHÁM KHI PHÁC ĐỒ CÓ TRẠNG THÁI 'ĐANG ĐIỀU TRỊ' (IN_PROGRESS)
-        try {
-            List<TreatmentPlan> activePlans = treatmentPlanRepository.findPlansNeedingRoadmapNotification();
-            for (TreatmentPlan plan : activePlans) {
-                try {
-                    treatmentPlanService.autoScheduleFollowUpAppointments(plan.getId());
-                    log.info("[SCHEDULER ROADMAP] Đã tự động gửi email/SMS lộ trình phác đồ & xếp lịch tái khám cho phác đồ ID: {}", plan.getId());
-                } catch (Exception ex) {
-                    log.error("[SCHEDULER ROADMAP ERROR] Lỗi gửi lộ trình phác đồ ID {}: {}", plan.getId(), ex.getMessage());
-                }
-            }
-        } catch (Exception e) {
-            log.error("[SCHEDULER ROADMAP FATAL] Lỗi khi quét danh sách phác đồ đang điều trị: {}", e.getMessage());
-        }
 
         // ============================================================
         // A. NHẮC LỊCH CHO APPOINTMENT (Lịch hẹn khám)

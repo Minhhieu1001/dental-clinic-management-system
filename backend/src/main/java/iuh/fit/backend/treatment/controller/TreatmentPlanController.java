@@ -98,7 +98,7 @@ public class TreatmentPlanController {
         return ResponseEntity.ok(
                 ApiResponse.<TreatmentPlanResponse>builder()
                         .status(200)
-                        .message("Tự động đặt lịch tái khám theo các giai đoạn và gửi lộ trình điều trị thành công")
+                        .message("Tự động đặt lịch tái khám theo các giai đoạn thành công")
                         .data(response)
                         .build()
         );

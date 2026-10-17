@@ -604,7 +604,7 @@ export default function TreatmentPlans() {
     }
 
     setSchedulingFollowUp(true);
-    const toastId = toast.loading('Đang tự động xếp lịch tái khám & gửi email lộ trình phác đồ cho bệnh nhân...');
+    const toastId = toast.loading('Đang tự động xếp lịch tái khám cho các giai đoạn...');
     try {
       let targetId = selectedPlanId;
       if (!targetId || targetId === 'NEW' || String(targetId).length <= 10) {
@@ -621,8 +621,8 @@ export default function TreatmentPlans() {
         await autoScheduleFollowUpAppointments(targetId);
       }
       toast.success(
-        `Đã tự động xếp lịch tái khám cho ${phases.length} giai đoạn & gửi email thông báo lộ trình phác đồ cho bệnh nhân!`,
-        { id: toastId, duration: 4500 }
+        `Đã tự động xếp lịch tái khám cho ${phases.length} giai đoạn thành công!`,
+        { id: toastId, duration: 3000 }
       );
 
       if (patient?.id) {
@@ -1627,11 +1627,6 @@ export default function TreatmentPlans() {
               <span className="text-xs font-semibold text-slate-600">
                 Tổng số: <strong className="text-teal-800">{phases.length} giai đoạn</strong>
               </span>
-
-              <div className="inline-flex items-center gap-1.5 rounded-lg bg-teal-50 border border-teal-200 px-3 py-1.5 text-xs font-bold text-teal-800 shadow-2xs">
-                <Sparkles size={14} className="text-teal-600 animate-pulse" />
-                <span>Tự động gửi lộ trình tái khám (Email/SĐT) & Nhắc trước 1 ngày / 1h</span>
-              </div>
 
               <motion.button
                 whileHover={{ scale: 1.02 }}

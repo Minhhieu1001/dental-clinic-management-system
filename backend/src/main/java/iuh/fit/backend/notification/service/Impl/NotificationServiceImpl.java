@@ -34,71 +34,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void sendTreatmentRoadmapEmail(String email, String patientName, String phone, String planName, String roadmapDetailsHtml) {
-        String recipientPhone = (phone != null && !phone.isBlank()) ? phone.trim() : "0343632524";
-
-        // Gửi SMS Brandname từ SĐT Hệ Thống (0343632524) tới SĐT Bệnh nhân
-        String smsContent = "Crown Dental (0343632524): Thong bao lo trinh tai kham phac do '" + planName + "' cua Benh nhan " + patientName + ". Chi tiet da duoc gui ve Email. Hotline: 0343632524";
-        smsService.sendSms(recipientPhone, smsContent);
-
-        // Gửi Email lộ trình tái khám chi tiết
-        if (email == null || email.isBlank()) {
-            log.warn("[EMAIL SERVICE] Bệnh nhân {} (SĐT: {}) chưa cập nhật Email. Không thể gửi email thông báo lộ trình.", patientName, recipientPhone);
-            return;
-        }
-
-        String htmlContent = """
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="utf-8">
-                    <style>
-                        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
-                        .container { max-width: 650px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.08); border: 1px solid #e2e8f0; }
-                        .header { background: linear-gradient(135deg, #0f766e, #134e4a); padding: 24px; text-align: center; color: #ffffff; }
-                        .header h1 { margin: 0; font-size: 22px; letter-spacing: 0.5px; }
-                        .header p { margin: 6px 0 0 0; font-size: 13px; opacity: 0.9; }
-                        .body { padding: 28px; }
-                        .greeting { font-size: 16px; font-weight: bold; color: #0f766e; margin-bottom: 12px; }
-                        .info-box { background-color: #f0fdf4; border-left: 4px solid #0d9488; padding: 14px 16px; border-radius: 6px; margin-bottom: 20px; font-size: 13px; }
-                        .section-title { font-size: 15px; font-weight: bold; color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; margin-top: 24px; margin-bottom: 14px; text-transform: uppercase; }
-                        .footer { background-color: #f8fafc; padding: 18px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; }
-                    </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <div class="header">
-                            <h1>NHA KHOA QUỐC TẾ CROWN DENTAL</h1>
-                            <p>THÔNG BÁO LỘ TRÌNH ĐIỀU TRỊ & KHÁM TÁI KHÁM</p>
-                        </div>
-                        <div class="body">
-                            <div class="greeting">Kính gửi Quý khách: %s</div>
-                            <p style="font-size: 14px; line-height: 1.6;">Crown Dental xin thông báo chi tiết lộ trình các giai đoạn trong phác đồ điều trị của Quý khách theo kế hoạch: <strong>%s</strong>.</p>
-                            
-                            <div class="info-box">
-                                <strong>Thông tin liên hệ bệnh nhân:</strong><br>
-                                • Họ và tên: <strong>%s</strong><br>
-                                • Số điện thoại: <strong>%s</strong><br>
-                                • Email: <strong>%s</strong>
-                            </div>
-
-                            <div class="section-title">Lộ Trình Các Giai Đoạn Tái Khám Chi Tiết</div>
-                            %s
-
-                            <p style="font-size: 13px; color: #475569; margin-top: 24px; line-height: 1.5;">
-                                * Hệ thống của Crown Dental sẽ tự động nhắn tin SMS từ tổng đài hệ thống (<strong>0343632524</strong>) & gửi email nhắc lịch cho Quý khách <strong>trước 1 ngày</strong> và <strong>trước 1 giờ</strong> trước mỗi buổi tái khám.
-                            </p>
-                        </div>
-                        <div class="footer">
-                            <p style="margin: 0 0 4px 0;"><strong>Nha Khoa Quốc Tế Crown Dental</strong></p>
-                            <p style="margin: 0;">Địa chỉ: 12 Nguyễn Văn Bảo, Phường 4, Q. Gò Vấp, TP. Hồ Chí Minh | Hotline hệ thống: 0343632524</p>
-                        </div>
-                    </div>
-                </body>
-                </html>
-                """.formatted(patientName, planName, patientName, recipientPhone, email, roadmapDetailsHtml);
-
-        emailService.send(email, "[Crown Dental] Thông báo Lộ trình Điều trị & Lịch tái khám - " + patientName, htmlContent);
-        log.info("[EMAIL SERVICE] Đã gửi Email lộ trình điều trị thành công tới {} ({})", patientName, email);
+        log.info("[NOTIFICATION] Tính năng gửi email/SMS lộ trình phác đồ điều trị đã được tắt.");
     }
 
     @Override
