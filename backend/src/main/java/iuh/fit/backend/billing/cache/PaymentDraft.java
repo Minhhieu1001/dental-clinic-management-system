@@ -15,6 +15,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PaymentDraft {
+    private String branchId;
     private String transactionCode;
     private UUID invoiceId;
     private BigDecimal amount;

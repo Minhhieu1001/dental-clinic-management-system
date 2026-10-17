@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, UserRound, Mail, Phone, Lock, MapPin, Building2, Banknote, CalendarDays, Loader2, ImagePlus, User, Camera } from 'lucide-react';
 import { createUser, createEmployee } from '../../services/employee.service';
+import { getBranches } from '../../services/clinic.service';
 import { uploadImage } from '../../services/media.service';
 import { toast } from 'react-hot-toast';
 
@@ -9,6 +10,7 @@ export default function AddEmployeeModal({ isOpen, onClose, onSuccess }) {
   const [error, setError] = useState(null);
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
+  const [branches, setBranches] = useState([]);
   const fileInputRef = useRef(null);
 
   const [mounted, setMounted] = useState(false);
@@ -37,8 +39,20 @@ export default function AddEmployeeModal({ isOpen, onClose, onSuccess }) {
     address: '',
     position: 'RECEPTIONIST',
     salary: 5000000,
-    hireDate: new Date().toISOString().split('T')[0]
+    hireDate: new Date().toISOString().split('T')[0],
+    branchId: ''
   });
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    getBranches()
+      .then(setBranches)
+      .catch((err) => {
+        console.error('Failed to load branches:', err);
+        setError('Không thể tải danh sách chi nhánh.');
+      });
+  }, [isOpen]);
 
   if (!mounted) return null;
 
@@ -107,7 +121,8 @@ export default function AddEmployeeModal({ isOpen, onClose, onSuccess }) {
         hireDate: formData.hireDate + "T00:00:00",
         status: true,
         gender: formData.gender,
-        address: formData.address
+        address: formData.address,
+        branchId: formData.branchId
       };
 
       await createEmployee(employeeRequest);
@@ -299,6 +314,29 @@ export default function AddEmployeeModal({ isOpen, onClose, onSuccess }) {
                         <option value="OTHER">Khác</option>
                       </select>
                     </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-1.5">
+                  <label className="text-xs font-medium text-slate-700">
+                    Chi nhánh <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <select
+                      required
+                      name="branchId"
+                      value={formData.branchId}
+                      onChange={handleChange}
+                      className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 transition-all bg-white cursor-pointer"
+                    >
+                      <option value="">-- Chọn chi nhánh --</option>
+                      {branches.map((branch) => (
+                        <option key={branch.branchId} value={branch.branchId}>
+                          {branch.branchName} ({branch.branchCode})
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 

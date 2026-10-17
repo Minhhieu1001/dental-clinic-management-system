@@ -32,7 +32,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { getDentistsList } from '../../services/dentist.service';
-import { getMyAppointments, getAppointments, updateAppointmentStatus } from '../../services/appointment.service';
+import { getMyAppointments, getAppointments, updateAppointment } from '../../services/appointment.service';
 import { getInventory } from '../../services/inventory.service';
 import ClinicalExamModal from '../../components/ui/ClinicalExamModal';
 import AppointmentTable from './dentist/AppointmentTable';
@@ -168,7 +168,7 @@ export default function DentistDashboard() {
     setActionLoadingId(appointmentId);
     try {
       if (appointmentId && !String(appointmentId).startsWith('mock-')) {
-        await updateAppointmentStatus(appointmentId, newStatus).catch((err) => {
+        await updateAppointment(appointmentId, { status: newStatus }).catch((err) => {
           console.warn('Cập nhật trạng thái API:', err);
         });
       }
@@ -188,7 +188,7 @@ export default function DentistDashboard() {
     setActionLoadingId(apt.id);
     try {
       if (apt.id && !String(apt.id).startsWith('mock-')) {
-        await updateAppointmentStatus(apt.id, 'CALLED').catch((err) =>
+        await updateAppointment(apt.id, { status: 'CALLED' }).catch((err) =>
           console.warn('Lỗi API cập nhật trạng thái:', err)
         );
       }
@@ -207,7 +207,7 @@ export default function DentistDashboard() {
     setActionLoadingId(apt.id);
     try {
       if (apt.id && !String(apt.id).startsWith('mock-')) {
-        await updateAppointmentStatus(apt.id, 'IN_PROGRESS').catch((err) =>
+        await updateAppointment(apt.id, { status: 'IN_PROGRESS' }).catch((err) =>
           console.warn('Lỗi API cập nhật trạng thái:', err)
         );
       }

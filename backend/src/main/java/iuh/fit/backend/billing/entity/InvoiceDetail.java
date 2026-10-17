@@ -1,8 +1,5 @@
 package iuh.fit.backend.billing.entity;
 
-import iuh.fit.backend.billing.enums.ItemType;
-import iuh.fit.backend.prescription.entity.Prescription;
-import iuh.fit.backend.treatment.entity.TreatmentService;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -25,9 +22,8 @@ public class InvoiceDetail {
     @JoinColumn(name = "invoice_id")
     private Invoice invoice;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "treatment_service_id")
-    private TreatmentService treatmentService;
+    @Column(name = "treatment_service_id")
+    private String treatmentServiceId;
 
 
     @Column(name = "item_name", length = 255)

@@ -16,7 +16,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { updateClinicalExam, updateAppointmentStatus } from '../../services/appointment.service';
+import { updateAppointment } from '../../services/appointment.service';
 
 export default function ClinicalExamModal({ isOpen, onClose, appointment, onSuccess }) {
   const [submitting, setSubmitting] = useState(false);
@@ -64,10 +64,8 @@ export default function ClinicalExamModal({ isOpen, onClose, appointment, onSucc
     setSubmitting(true);
     try {
       if (appointment.id && !String(appointment.id).startsWith('mock-')) {
-        await updateClinicalExam(appointment.id, formData).catch((err) => console.warn('Lỗi API exam:', err));
-        if (appointment.status !== 'IN_PROGRESS' && appointment.status !== 'COMPLETED') {
-          await updateAppointmentStatus(appointment.id, 'IN_PROGRESS').catch((err) => console.warn('Lỗi API status:', err));
-        }
+        const status = (appointment.status !== 'IN_PROGRESS' && appointment.status !== 'COMPLETED') ? 'IN_PROGRESS' : undefined;
+        await updateAppointment(appointment.id, { ...formData, status }).catch((err) => console.warn('Lỗi API update appointment:', err));
       }
       toast.success('Đã lưu tạm thời hồ sơ khám bệnh!');
       if (onSuccess) onSuccess();
@@ -93,10 +91,8 @@ export default function ClinicalExamModal({ isOpen, onClose, appointment, onSucc
     setSubmitting(true);
     try {
       if (appointment.id && !String(appointment.id).startsWith('mock-')) {
-        await updateClinicalExam(appointment.id, formData).catch((err) => console.warn('Lỗi API exam:', err));
-        if (!isCompleted) {
-          await updateAppointmentStatus(appointment.id, 'COMPLETED').catch((err) => console.warn('Lỗi API status:', err));
-        }
+        const status = !isCompleted ? 'COMPLETED' : undefined;
+        await updateAppointment(appointment.id, { ...formData, status }).catch((err) => console.warn('Lỗi API update appointment:', err));
       }
       toast.success(
         isCompleted
@@ -125,13 +121,12 @@ export default function ClinicalExamModal({ isOpen, onClose, appointment, onSucc
       <div className="w-full max-w-2xl rounded-[4px] bg-white shadow-2xl ring-1 ring-slate-900/10 overflow-hidden">
         {/* Modal Header */}
         <div
-          className={`flex items-center justify-between border-b border-slate-100 px-6 py-4 text-white transition-colors ${
-            isCompleted
+          className={`flex items-center justify-between border-b border-slate-100 px-6 py-4 text-white transition-colors ${isCompleted
               ? 'bg-gradient-to-r from-emerald-800 via-teal-800 to-emerald-700'
               : isProcessing
-              ? 'bg-gradient-to-r from-purple-800 via-teal-800 to-purple-700'
-              : 'bg-gradient-to-r from-teal-800 via-teal-700 to-sky-700'
-          }`}
+                ? 'bg-gradient-to-r from-purple-800 via-teal-800 to-purple-700'
+                : 'bg-gradient-to-r from-teal-800 via-teal-700 to-sky-700'
+            }`}
         >
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-[4px] bg-white/15 backdrop-blur-md border border-white/20 text-white shadow-md">
@@ -143,13 +138,12 @@ export default function ClinicalExamModal({ isOpen, onClose, appointment, onSucc
                   {isCompleted ? 'Hồ Sơ Ca Khám Đã Hoàn Thành' : 'Phiếu Khám & Hồ Sơ Điều Trị'}
                 </span>
                 <span
-                  className={`rounded-[3px] px-2 py-0.5 text-[10px] font-extrabold flex items-center gap-1 ${
-                    isCompleted
+                  className={`rounded-[3px] px-2 py-0.5 text-[10px] font-extrabold flex items-center gap-1 ${isCompleted
                       ? 'bg-emerald-500/30 text-emerald-100 border border-emerald-400/40'
                       : isProcessing
-                      ? 'bg-purple-500/30 text-purple-100 border border-purple-400/40'
-                      : 'bg-sky-500/30 text-sky-100 border border-sky-400/40'
-                  }`}
+                        ? 'bg-purple-500/30 text-purple-100 border border-purple-400/40'
+                        : 'bg-sky-500/30 text-sky-100 border border-sky-400/40'
+                    }`}
                 >
                   {isCompleted && <ShieldCheck size={12} />}
                   {isCompleted ? 'Đã hoàn thành' : isProcessing ? 'Đang tiến hành khám' : 'Chưa khám (Chờ khám)'}
@@ -234,11 +228,10 @@ export default function ClinicalExamModal({ isOpen, onClose, appointment, onSucc
               value={formData.reason}
               onChange={handleChange}
               placeholder="VD: Tư vấn niềng răng, Trám răng composite..."
-              className={`w-full rounded-[4px] border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-800 outline-none transition-all ${
-                !isEditMode
+              className={`w-full rounded-[4px] border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-800 outline-none transition-all ${!isEditMode
                   ? 'bg-slate-100/70 text-slate-700 cursor-not-allowed'
                   : 'bg-slate-50/50 focus:border-teal-500 focus:bg-white focus:ring-1 focus:ring-teal-500'
-              }`}
+                }`}
             />
           </div>
 
@@ -257,11 +250,10 @@ export default function ClinicalExamModal({ isOpen, onClose, appointment, onSucc
               value={formData.symptoms}
               onChange={handleChange}
               placeholder="Mô tả triệu chứng bệnh nhân (VD: Ê buốt răng khi ăn uống đồ lạnh, sưng nướu nhẹ...)"
-              className={`w-full rounded-[4px] border border-slate-200 px-3 py-2 text-xs text-slate-800 outline-none resize-none transition-all ${
-                !isEditMode
+              className={`w-full rounded-[4px] border border-slate-200 px-3 py-2 text-xs text-slate-800 outline-none resize-none transition-all ${!isEditMode
                   ? 'bg-slate-100/70 text-slate-700 cursor-not-allowed'
                   : 'focus:border-teal-500 focus:ring-1 focus:ring-teal-500'
-              }`}
+                }`}
             />
           </div>
 
@@ -281,11 +273,10 @@ export default function ClinicalExamModal({ isOpen, onClose, appointment, onSucc
               value={formData.diagnosis}
               onChange={handleChange}
               placeholder="Nhập chẩn đoán bác sĩ (VD: Sâu răng mặt nhai R36, Viêm nướu răng hàm dưới...)"
-              className={`w-full rounded-[4px] border border-slate-200 px-3 py-2 text-xs font-bold text-slate-800 outline-none resize-none transition-all ${
-                !isEditMode
+              className={`w-full rounded-[4px] border border-slate-200 px-3 py-2 text-xs font-bold text-slate-800 outline-none resize-none transition-all ${!isEditMode
                   ? 'bg-slate-100/70 text-slate-700 cursor-not-allowed'
                   : 'focus:border-teal-500 focus:ring-1 focus:ring-teal-500'
-              }`}
+                }`}
             />
           </div>
 
@@ -304,11 +295,10 @@ export default function ClinicalExamModal({ isOpen, onClose, appointment, onSucc
               value={formData.treatmentNotes}
               onChange={handleChange}
               placeholder="Chi tiết phương án điều trị (VD: Trám composite thẩm mỹ R36, mài viền, lấy vôi răng...)"
-              className={`w-full rounded-[4px] border border-slate-200 px-3 py-2 text-xs text-slate-800 outline-none resize-none transition-all ${
-                !isEditMode
+              className={`w-full rounded-[4px] border border-slate-200 px-3 py-2 text-xs text-slate-800 outline-none resize-none transition-all ${!isEditMode
                   ? 'bg-slate-100/70 text-slate-700 cursor-not-allowed'
                   : 'focus:border-teal-500 focus:ring-1 focus:ring-teal-500'
-              }`}
+                }`}
             />
           </div>
 
@@ -327,11 +317,10 @@ export default function ClinicalExamModal({ isOpen, onClose, appointment, onSucc
               value={formData.notes}
               onChange={handleChange}
               placeholder="VD: Giữ vệ sinh răng miệng, kiêng đồ quá cứng, tái khám sau 1 tuần..."
-              className={`w-full rounded-[4px] border border-slate-200 px-3 py-2 text-xs text-slate-800 outline-none transition-all ${
-                !isEditMode
+              className={`w-full rounded-[4px] border border-slate-200 px-3 py-2 text-xs text-slate-800 outline-none transition-all ${!isEditMode
                   ? 'bg-slate-100/70 text-slate-700 cursor-not-allowed'
                   : 'focus:border-teal-500 focus:bg-white focus:ring-1 focus:ring-teal-500'
-              }`}
+                }`}
             />
           </div>
 
@@ -376,11 +365,10 @@ export default function ClinicalExamModal({ isOpen, onClose, appointment, onSucc
                 <button
                   type="submit"
                   disabled={submitting}
-                  className={`flex items-center gap-1.5 rounded-[4px] px-5 py-2 text-xs font-bold text-white shadow-md transition-colors disabled:opacity-50 ${
-                    isCompleted
+                  className={`flex items-center gap-1.5 rounded-[4px] px-5 py-2 text-xs font-bold text-white shadow-md transition-colors disabled:opacity-50 ${isCompleted
                       ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
                       : 'bg-teal-700 hover:bg-teal-800 shadow-teal-700/20'
-                  }`}
+                    }`}
                 >
                   {submitting ? (
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />

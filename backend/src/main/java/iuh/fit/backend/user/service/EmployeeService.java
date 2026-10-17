@@ -15,6 +15,8 @@ public interface EmployeeService {
 
     EmployeeResponse getEmployeeById(UUID id);
 
+    EmployeeListResponse getEmployeeWithBranchById(UUID id);
+
     EmployeeResponse createEmployee(EmployeeRequest request);
 
     EmployeeResponse updateEmployee(UUID id, EmployeeRequest request);
