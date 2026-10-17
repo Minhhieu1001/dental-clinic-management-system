@@ -39,13 +39,13 @@ import { getAvailableVoucherByCouponCode } from '../../../../services/promotion.
 import { mapBackendInvoiceToUi } from '../../../../utils/invoiceMapper';
 import { useAuthStore } from '../../../../store/authStore';
 import { DEFAULT_DENTAL_CLINIC_NAME, DEFAULT_DENTAL_CLINIC_ADDRESS, PHONE_NUMBER_CLINIC, } from '../../../medical-record/dentist/medicalRecordHelpers';
+import { getEmployeeAddressById } from '../../../../services/employee.service';
 
 export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSuccess, onSaveInvoice, onSaveSuccess }) {
   const user = useAuthStore.getState().user;
-  console.log("user: ", user);
-  console.log("invoice", invoice);
   const [currentInvoice, setCurrentInvoice] = useState(invoice);
   const [savingInvoice, setSavingInvoice] = useState(false);
+  const [branchInfo, setBranchInfo] = useState(null);
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
@@ -60,6 +60,31 @@ export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSu
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successPaymentData, setSuccessPaymentData] = useState(null);
 
+  const activeInvoice = currentInvoice || invoice;
+
+  // Lấy thông tin chi nhánh của nhân viên tạo hóa đơn (CHỈ khi tạo mới / hóa đơn chưa lưu)
+  React.useEffect(() => {
+    // Nếu hóa đơn đã được lưu trên BE (isSave = true), lấy trực tiếp từ BE, KHÔNG gọi lấy thông tin nhân viên
+    if (activeInvoice?.isSave) {
+      setBranchInfo(null);
+      return;
+    }
+
+    const empId = user?.employeeId || user?.id;
+    if (empId) {
+      getEmployeeAddressById(empId)
+        .then((res) => {
+          const data = res?.data || res;
+          if (data) {
+            setBranchInfo(data);
+          }
+        })
+        .catch((err) => {
+          console.warn('Lỗi lấy thông tin chi nhánh của nhân viên:', err);
+        });
+    }
+  }, [activeInvoice?.isSave, user?.employeeId, user?.id]);
+
   React.useEffect(() => {
     setCurrentInvoice(invoice);
     if (invoice) {
@@ -73,7 +98,6 @@ export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSu
     }
   }, [invoice]);
 
-  const activeInvoice = currentInvoice || invoice;
   if (!activeInvoice) return null;
   const isSaved = Boolean(activeInvoice.isSave);
 
@@ -153,7 +177,11 @@ export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSu
     if (savingInvoice) return;
     setSavingInvoice(true);
     try {
+      // Khi tạo hóa đơn mới: Lấy chi nhánh của nhân viên tạo map vào
+      const effectiveBranchId = branchInfo?.branchId || user?.branchId || null;
+
       const payload = {
+        branchId: effectiveBranchId,
         patientId: activeInvoice.patientId,
         treatmentPlanId: activeInvoice.treatmentPlanId,
         employeeId: user?.employeeId,
@@ -180,6 +208,10 @@ export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSu
       let officialInvoice = mapBackendInvoiceToUi(savedBackendInvoice);
       officialInvoice = {
         ...officialInvoice,
+        branchId: savedBackendInvoice.branchId || effectiveBranchId,
+        branchName: savedBackendInvoice.branchName || branchInfo?.branchName,
+        branchAddress: savedBackendInvoice.branchAddress || branchInfo?.branchAddress,
+        branchPhone: savedBackendInvoice.branchPhone || branchInfo?.phone,
         patientName: activeInvoice.patientName || officialInvoice.patientName,
         patientPhone: activeInvoice.patientPhone || officialInvoice.patientPhone,
         patientCode: activeInvoice.patientCode || officialInvoice.patientCode,
@@ -244,6 +276,33 @@ export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSu
       toast.error(errorMsg);
       setAppliedVoucher(null);
     }
+  };
+
+  // Chi nhánh chỉ lấy từ 1 nguồn duy nhất theo ngữ cảnh:
+  // - Khi get/xem hóa đơn đã lưu (activeInvoice.isSave = true): Lấy 100% từ resp BE của hóa đơn
+  // - Khi tạo hóa đơn mới (chưa lưu): Lấy thông tin chi nhánh của nhân viên đăng nhập map vào
+  const displayBranchName = activeInvoice?.isSave
+    ? (activeInvoice?.branchName || 'Chi Nhánh 1 Cơ Sở TPHCM')
+    : (branchInfo?.branchName || 'Chi Nhánh 1 Cơ Sở TPHCM');
+
+  const displayBranchAddress = activeInvoice?.isSave
+    ? (activeInvoice?.branchAddress || DEFAULT_DENTAL_CLINIC_ADDRESS)
+    : (branchInfo?.branchAddress || DEFAULT_DENTAL_CLINIC_ADDRESS);
+
+  const displayBranchPhone = activeInvoice?.isSave
+    ? (activeInvoice?.branchPhone || PHONE_NUMBER_CLINIC)
+    : (branchInfo?.phone || PHONE_NUMBER_CLINIC);
+
+  const displayBranchId = activeInvoice?.isSave
+    ? activeInvoice?.branchId
+    : (branchInfo?.branchId || user?.branchId || null);
+
+  const invoiceForActions = {
+    ...activeInvoice,
+    branchId: displayBranchId,
+    branchName: displayBranchName,
+    branchAddress: displayBranchAddress,
+    branchPhone: displayBranchPhone,
   };
 
   return (
@@ -422,9 +481,10 @@ export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSu
                           <Stethoscope size={20} />
                         </div>
                         <div className="space-y-1 text-xs">
-                          <h4 className="font-bold text-slate-900 text-sm">{DEFAULT_DENTAL_CLINIC_NAME}</h4>
-                          <p className="text-slate-500 leading-relaxed">{DEFAULT_DENTAL_CLINIC_ADDRESS}</p>
-                          <p className="text-slate-500">Điện thoại: <span className="font-semibold text-slate-700">{PHONE_NUMBER_CLINIC}</span></p>
+                          <h4 className="font-bold text-slate-900 text-sm">Nha Khoa Quốc Tế Crown Dental</h4>
+                          <p className="text-slate-800 font-semibold">{displayBranchName}</p>
+                          <p className="text-slate-500 leading-relaxed">{displayBranchAddress}</p>
+                          <p className="text-slate-500">Điện thoại: <span className="font-semibold text-slate-700">{displayBranchPhone}</span></p>
                         </div>
                       </div>
                     </div>
@@ -757,13 +817,13 @@ export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSu
       />
 
       {/* Printable PDF Modal */}
-      <PrintInvoiceModal open={showPrintModal} onClose={() => setShowPrintModal(false)} invoice={activeInvoice} />
+      <PrintInvoiceModal open={showPrintModal} onClose={() => setShowPrintModal(false)} invoice={invoiceForActions} />
 
       {/* Payment Processing Modal */}
       <PaymentModal
         open={showPaymentModal}
         onClose={() => setShowPaymentModal(false)}
-        invoice={activeInvoice}
+        invoice={invoiceForActions}
         onPaymentSuccess={handlePaymentDone}
       />
 

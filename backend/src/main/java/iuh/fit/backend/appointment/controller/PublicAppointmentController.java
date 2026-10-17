@@ -30,6 +30,7 @@ public class PublicAppointmentController {
             AppointmentCreateDTO dto = AppointmentCreateDTO.builder()
                     .fullName(request.getFullName())
                     .phone(request.getPhone())
+                    .branchName(request.getBranchName())
                     .appointmentDate(request.getDate())
                     .appointmentTime(request.getTime())
                     .reason("Đặt lịch trực tuyến: Dịch vụ " + (request.getServiceName() != null ? request.getServiceName() : "Khám tổng quát"))

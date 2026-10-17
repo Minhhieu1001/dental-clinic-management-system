@@ -192,9 +192,7 @@ export default function EmployeeBilling() {
               <Receipt size={22} className="text-teal-700" />
               <span>Hóa đơn</span>
             </h1>
-            <span className="text-xs font-bold px-2 py-0.5 rounded bg-teal-50 text-teal-800 border border-teal-200 flex items-center gap-1 ml-1">
-              <ArrowUpDown size={12} /> Ngày tạo mới nhất
-            </span>
+
           </div>
           <p className="text-xs font-semibold text-slate-500 mt-0.5">
             Quản lý danh sách hóa đơn, theo dõi dư nợ và thu chi phòng khám

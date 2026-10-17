@@ -31,13 +31,24 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class MedicalRecordServiceImpl implements MedicalRecordService {
 
     private final MedicalRecordRepository medicalRecordRepository;
     private final PatientRepository patientRepository;
     private final DentistRepository dentistRepository;
     private final AppointmentRepository appointmentRepository;
+
+    public MedicalRecordServiceImpl(
+            MedicalRecordRepository medicalRecordRepository,
+            PatientRepository patientRepository,
+            DentistRepository dentistRepository,
+            AppointmentRepository appointmentRepository
+    ) {
+        this.medicalRecordRepository = medicalRecordRepository;
+        this.patientRepository = patientRepository;
+        this.dentistRepository = dentistRepository;
+        this.appointmentRepository = appointmentRepository;
+    }
 
     @Override
     @Transactional(readOnly = true)

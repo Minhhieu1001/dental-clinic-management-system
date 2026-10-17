@@ -6,6 +6,20 @@ export const getAppointments = async (params = {}) => {
   return response.data;
 };
 
+// Get appointments for employee's branch by day (optional date: YYYY-MM-DD)
+export const getAppointmentsByDay = async (date) => {
+  const params = date ? { date } : {};
+  const response = await api.get('/appointments/day', { params });
+  return response.data;
+};
+
+// Get appointments for employee's branch by week (optional date: YYYY-MM-DD)
+export const getAppointmentsByWeek = async (date) => {
+  const params = date ? { date } : {};
+  const response = await api.get('/appointments/week', { params });
+  return response.data;
+};
+
 // Create new appointment for dentist
 export const createAppointment = async (data) => {
   const response = await api.post('/appointments', data);
@@ -24,15 +38,7 @@ export const getMyAppointments = async () => {
   return response.data;
 };
 
-// Update status of an appointment (e.g. IN_PROGRESS, COMPLETED, CANCELLED)
-export const updateAppointmentStatus = async (id, status) => {
-  const response = await api.patch(`/appointments/${id}/status`, null, {
-    params: { status },
-  });
-  return response.data;
-};
-
-// Update appointment details (Reschedule)
+// Cập nhật thông tin và trạng thái lịch hẹn qua PUT /appointments/{id}
 export const updateAppointment = async (id, data) => {
   const response = await api.put(`/appointments/${id}`, data);
   return response.data;

@@ -20,6 +20,9 @@ public record EmployeeListResponse(
         Boolean status,
         StatusUser statusUser,
         String gender,
-        String address
+        String address,
+        String branchId,
+        String branchName,
+        String branchAddress
 ) {
 }

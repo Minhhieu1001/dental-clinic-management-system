@@ -14,6 +14,7 @@ public record DentistRequest(
         List<CertificateCreateRequest> certificates,
         Integer experienceYears,
         String qualification,
-        String description
+        String description,
+        String branchId
 ) {
 }

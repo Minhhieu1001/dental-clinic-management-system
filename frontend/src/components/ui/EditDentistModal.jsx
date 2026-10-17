@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
     Award,
+    Building2,
     Calendar,
     Camera,
     Check,
@@ -24,8 +25,9 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { updateDentist, updateUser } from '../../services/dentist.service';
+import { getBranches } from '../../services/clinic.service';
 import { uploadImage } from '../../services/media.service';
-import { CERTIFICATE_TYPE_OPTIONS, getCertificateTypeLabel } from '../../features/dentist/dentistHelpers';
+import { DEFAULT_DENTIST_SPECIALIZATION, SPECIALIZATION_OPTIONS } from '../../features/dentist/dentistHelpers';
 
 const EMPTY_CERTIFICATE = {
     certificate_name: '',
@@ -35,7 +37,7 @@ const EMPTY_CERTIFICATE = {
     expiry_date: '',
     certificate_file: null,
     certificate_file_preview: null,
-    certificate_type: 'GENERAL_DENTISTRY',
+    specialization: DEFAULT_DENTIST_SPECIALIZATION,
 };
 
 const STEPS = [
@@ -116,15 +118,15 @@ function CertificateCard({ cert, index, onChange, onRemove, onFileChange, canRem
                 )}
             </div>
 
-            {cert.certificate_type !== undefined && (
+            {cert.specialization !== undefined && (
                 <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-slate-600">Loại chứng chỉ <span className="text-red-400">*</span></label>
+                    <label className="text-xs font-medium text-slate-600">Chuyên khoa <span className="text-red-400">*</span></label>
                     <select
-                        value={cert.certificate_type}
-                        onChange={(e) => onChange(index, 'certificate_type', e.target.value)}
+                        value={cert.specialization}
+                        onChange={(e) => onChange(index, 'specialization', e.target.value)}
                         className="w-full px-3 h-9 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm bg-white"
                     >
-                        {CERTIFICATE_TYPE_OPTIONS.filter(item => item.value !== 'PRACTICE_LICENSE').map((item) => (
+                        {SPECIALIZATION_OPTIONS.map((item) => (
                             <option key={item.value} value={item.value}>{item.label}</option>
                         ))}
                     </select>
@@ -262,7 +264,9 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
         gender: 'Nam',
         education: '',
         description: '',
+        branchId: '',
     });
+    const [branches, setBranches] = useState([]);
 
     // Practice license certificate (required)
     const [practiceLicense, setPracticeLicense] = useState({
@@ -289,6 +293,7 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                 gender: dentist.gender || 'Nam',
                 education: dentist.education || dentist.qualification || '',
                 description: dentist.description || '',
+                branchId: dentist.branchId || '',
             });
             setAvatarPreview(dentist.avatar || null);
             setAvatarFile(null);
@@ -329,7 +334,7 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                         issued_by: c.issued_by || '',
                         issue_date: c.issue_date || '',
                         expiry_date: c.expiry_date || '',
-                        certificate_type: c.certificate_type || 'GENERAL_DENTISTRY',
+                        specialization: c.specialization || DEFAULT_DENTIST_SPECIALIZATION,
                         certificate_file: null,
                         certificate_file_preview: c.certificate_file_url || null,
                     }))
@@ -349,24 +354,17 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
         }
     }, [isOpen, dentist]);
 
-    const [mounted, setMounted] = useState(false);
-    const [active, setActive] = useState(false);
-
     useEffect(() => {
-        if (isOpen) {
-            setMounted(true);
-            const timer = setTimeout(() => setActive(true), 20);
-            document.body.style.overflow = 'hidden';
-            return () => clearTimeout(timer);
-        } else {
-            setActive(false);
-            const timer = setTimeout(() => setMounted(false), 250);
-            document.body.style.overflow = 'unset';
-            return () => clearTimeout(timer);
-        }
+        if (!isOpen) return;
+        getBranches()
+            .then(setBranches)
+            .catch((err) => {
+                console.error('Failed to load branches:', err);
+                setError('Không thể tải danh sách chi nhánh.');
+            });
     }, [isOpen]);
 
-    if (!mounted) return null;
+    if (!isOpen) return null;
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -449,7 +447,7 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
     };
 
     const isStep1Valid = () => {
-        return formData.username.trim() && formData.phone.trim() && formData.education.trim();
+        return formData.username.trim() && formData.phone.trim() && formData.education.trim() && formData.branchId;
     };
 
     const isStep2Valid = () => {
@@ -512,8 +510,12 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                 });
             }
 
+            const specializations = specCertificates.length > 0
+                ? specCertificates.map((c) => c.specialization)
+                : [DEFAULT_DENTIST_SPECIALIZATION];
+
             // Helper to upload certificate file and map to DTO
-            const uploadAndMapCertificate = async (cert, certType) => {
+            const uploadAndMapCertificate = async (cert) => {
                 let fileUrl = cert.certificate_file_preview || '';
                 // Only upload if it's a new file (not a string URL)
                 if (cert.certificate_file) {
@@ -527,15 +529,14 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                     issueDate: cert.issue_date ? new Date(cert.issue_date).toISOString() : null,
                     expiryDate: cert.expiry_date ? new Date(cert.expiry_date).toISOString() : null,
                     certificateFileUrl: fileUrl,
-                    certificateType: certType,
                 };
             };
 
             const isCertValid = (c) => c && c.certificate_name?.trim() && c.certificate_number?.trim();
 
-            const practiceCertData = isCertValid(practiceLicense) ? await uploadAndMapCertificate(practiceLicense, 'PRACTICE_LICENSE') : null;
+            const practiceCertData = isCertValid(practiceLicense) ? await uploadAndMapCertificate(practiceLicense) : null;
             const specCertsData = await Promise.all(
-                specCertificates.filter(isCertValid).map(c => uploadAndMapCertificate(c, c.certificate_type))
+                specCertificates.filter(isCertValid).map(uploadAndMapCertificate)
             );
             const allCertificates = [practiceCertData, ...specCertsData].filter(Boolean);
 
@@ -543,11 +544,14 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                 fullName: formData.username,
                 dateOfBirth: formData.dateOfBirth || null,
                 address: formData.address || null,
+                specialization: specializations[0],
+                specializations: specializations,
                 certificates: allCertificates,
                 experienceYears: formData.experienceYears,
                 gender: formData.gender,
                 qualification: formData.education,
                 description: formData.description,
+                branchId: formData.branchId,
             });
             // ⚠️ Note: the actual backend may need a specific endpoint to update certificates
 
@@ -731,6 +735,29 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                 </div>
 
                 <div className="mt-4 space-y-1.5">
+                    <label className="text-sm font-medium text-slate-700">
+                        <span className="inline-flex items-center gap-1">
+                            <Building2 className="w-4 h-4 text-blue-500" /> Chi nhánh
+                        </span>
+                        <span className="text-red-400"> *</span>
+                    </label>
+                    <select
+                        required
+                        name="branchId"
+                        value={formData.branchId}
+                        onChange={handleChange}
+                        className="w-full px-3 h-10 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm bg-white cursor-pointer"
+                    >
+                        <option value="">-- Chọn chi nhánh --</option>
+                        {branches.map((branch) => (
+                            <option key={branch.branchId} value={branch.branchId}>
+                                {branch.branchName} ({branch.branchCode})
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="mt-4 space-y-1.5">
                     <label className="text-sm font-medium text-slate-700">Mô tả / Giới thiệu</label>
                     <textarea
                         name="description"
@@ -883,21 +910,18 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                         </h4>
                         <div className="space-y-3">
                             {specCertsDisplay.map((cert, idx) => (
-                                <div key={idx} className="flex gap-4 items-start p-3 rounded-lg bg-slate-50">
+                                <div key={idx} className="flex gap-3 items-start p-3 rounded-lg bg-slate-50">
                                     {cert.certificate_file_preview && (
                                         <img
                                             src={cert.certificate_file_preview}
                                             alt="Certificate"
-                                            className="w-24 h-16 object-cover rounded-lg border border-slate-200"
+                                            className="w-16 h-12 object-cover rounded-md border border-slate-200"
                                         />
                                     )}
-                                    <div className="text-sm space-y-1 flex-1 min-w-0">
-                                        <p className="font-medium text-slate-700">{cert.certificate_name}</p>
-                                        <p className="text-slate-400">Loại: {getCertificateTypeLabel(cert.certificate_type)}</p>
-                                        <p className="text-slate-400">Số: {cert.certificate_number}</p>
-                                        <p className="text-slate-400">Nơi cấp: {cert.issued_by}</p>
-                                        <p className="text-slate-400">
-                                            {cert.issue_date} → {cert.expiry_date}
+                                    <div className="text-sm space-y-0.5 flex-1 min-w-0">
+                                        <p className="font-medium text-slate-700 truncate">{cert.certificate_name}</p>
+                                        <p className="text-xs text-slate-400">
+                                            {cert.specialization} • Số: {cert.certificate_number}
                                         </p>
                                     </div>
                                 </div>
@@ -910,27 +934,14 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
     };
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-            {/* Backdrop */}
-            <div
-                className={`fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-300 ${
-                    active ? 'opacity-100' : 'opacity-0'
-                }`}
-                onClick={!loading ? onClose : undefined}
-            />
-
-            {/* Modal Content */}
-            <div
-                className={`relative w-full max-w-3xl bg-white rounded-lg shadow-xl border border-slate-200 flex flex-col max-h-[92vh] transition-all duration-300 ease-out transform ${
-                    active ? 'scale-100 opacity-100 translate-y-0' : 'scale-95 opacity-0 -translate-y-3'
-                }`}
-            >
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <div className="w-full max-w-3xl bg-white rounded-2xl shadow-xl flex flex-col max-h-[92vh]">
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
                     <h2 className="text-lg font-bold text-slate-800">Cập nhật thông tin Bác sĩ</h2>
                     <button
                         onClick={onClose}
-                        className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
+                        className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-colors"
                     >
                         <X className="w-5 h-5" />
                     </button>
@@ -942,7 +953,7 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                 {/* Content */}
                 <div className="p-6 overflow-y-auto flex-1 bg-slate-50/30">
                     {error && (
-                        <div className="mb-6 p-4 rounded-lg bg-red-50 text-red-600 text-sm flex items-start gap-3 border border-red-100">
+                        <div className="mb-6 p-4 rounded-xl bg-red-50 text-red-600 text-sm flex items-start gap-3">
                             <Info className="w-5 h-5 shrink-0 mt-0.5" />
                             <p>{error}</p>
                         </div>
@@ -956,7 +967,7 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                 </div>
 
                 {/* Footer */}
-                <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-white rounded-b-lg">
+                <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-white rounded-b-2xl">
                     <div>
                         {currentStep > 0 && (
                             <button

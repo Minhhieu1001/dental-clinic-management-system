@@ -14,6 +14,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CreateInvoiceRequest {
+    private String branchId;
     private UUID patientId;
     private UUID employeeId;
     private UUID promotionId;
@@ -28,7 +29,7 @@ public class CreateInvoiceRequest {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class InvoiceDetailRequest {
-        private UUID treatmentServiceId;
+        private String treatmentServiceId;
         private String itemName;
         private Integer quantity;
         private BigDecimal unitPrice;

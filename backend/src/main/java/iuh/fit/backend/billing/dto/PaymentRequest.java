@@ -14,6 +14,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PaymentRequest {
+    private String branchId;
     private BigDecimal amount;
     private BigDecimal amountReceived;
     private BigDecimal serviceAmount;

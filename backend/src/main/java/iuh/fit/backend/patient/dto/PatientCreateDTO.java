@@ -35,4 +35,5 @@ public class PatientCreateDTO {
 
     // Doctor/Dentist ID (để trống nếu là lễ tân, có ID nếu là bác sĩ)
     private UUID doctorId;
+
 }

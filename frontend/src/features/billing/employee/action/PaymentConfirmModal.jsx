@@ -65,6 +65,7 @@ export default function PaymentConfirmModal({ open, onClose, invoice, payment, o
     try {
       const employeeId = useAuthStore.getState().user?.employeeId || null;
       const res = await payInvoice(invoiceId, {
+        branchId: payment?.branchId || null,
         amount,
         serviceAmount: payment.serviceAmount,
         medicineAmount: payment.medicineAmount,

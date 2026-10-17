@@ -39,9 +39,7 @@ public class AuthServiceImpl implements AuthService {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             request.email(),
-                            request.password()
-                    )
-            );
+                            request.password()));
 
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
             User user = userDetails.getUser();
@@ -102,8 +100,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         String email = jwtTokenProvider.getEmailFromToken(refreshToken);
-        CustomUserDetails userDetails =
-                (CustomUserDetails) userDetailsService.loadUserByUsername(email);
+        CustomUserDetails userDetails = (CustomUserDetails) userDetailsService.loadUserByUsername(email);
         try {
             validateAccountStatus(userDetails.getUser());
         } catch (AppException ex) {
@@ -148,8 +145,7 @@ public class AuthServiceImpl implements AuthService {
                 user.getAvatarUrl(),
                 employeeRepository.findByUserId(user.getId())
                         .map(employee -> employee.getId())
-                        .orElse(null)
-        );
+                        .orElse(null));
     }
 
     private void validateAccountStatus(User user) {

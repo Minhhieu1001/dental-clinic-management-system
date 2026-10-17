@@ -20,6 +20,12 @@ public class InvoiceResponse {
     private String invoiceCode;
     private LocalDateTime invoiceDate;
     private Boolean isSave;
+
+    // Branch Info
+    private String branchId;
+    private String branchName;
+    private String branchAddress;
+    private String branchPhone;
     
     // Patient Info
     private UUID patientId;

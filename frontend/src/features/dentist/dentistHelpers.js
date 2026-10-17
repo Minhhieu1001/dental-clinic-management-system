@@ -121,6 +121,8 @@ export const mapDentistFromApi = (dentist, index = 0) => {
     qualifications: parseQualifications(dentist.qualification),
     education: dentist.qualification,
     description: dentist.description || '',
+    branchId: dentist.branchId || '',
+    branchName: dentist.branchName || 'Chưa phân chi nhánh',
     certificates: certs.map((cert, i) => {
       const certType = cert.certificateType || cert.certificate_type || null;
       const isPracticeLicense = certType === 'PRACTICE_LICENSE'

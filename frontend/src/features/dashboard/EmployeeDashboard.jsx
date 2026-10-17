@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Loading from '../../components/ui/Loading';
 import DashboardHeader from './receptionist/DashboardHeader';
 import StatsRow from './receptionist/StatsRow';
 import AppointmentTable from './receptionist/AppointmentTable';
@@ -9,7 +10,7 @@ import { useReceptionistDashboard } from '../../hooks/useReceptionistDashboard';
 import { staffName } from './receptionist/receptionistData';
 
 export default function EmployeeDashboard() {
-  const { stats, appointments, requests, loading, refetch } = useReceptionistDashboard();
+  const { stats, appointments, requests, loading, refetch, updateAppointmentInState } = useReceptionistDashboard();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState('add'); // 'add' | 'edit'
   const [modalPayload, setModalPayload] = useState(null);
@@ -30,7 +31,8 @@ export default function EmployeeDashboard() {
   };
 
   return (
-    <div className="mx-auto max-w-[1400px] px-1">
+    <div className="relative mx-auto max-w-[1400px] px-1" aria-busy={loading}>
+      {loading && appointments.length === 0 && <Loading overlay title="Đang tải dữ liệu..." />}
       {/* Header */}
       <DashboardHeader
         staffName={staffName}
@@ -51,6 +53,7 @@ export default function EmployeeDashboard() {
           <AppointmentTable
             appointments={appointments}
             onRefresh={refetch}
+            onUpdateAppointment={updateAppointmentInState}
             onOpenEditModal={(apt) => handleOpenModal('edit', apt)}
           />
         </div>
@@ -59,6 +62,8 @@ export default function EmployeeDashboard() {
         <div className="flex flex-[27] flex-col gap-3">
           <AppointmentRequests
             requests={requests}
+            appointments={appointments}
+            onRefresh={refetch}
             onOpenCreateModal={(reqData) => handleOpenModal('add', reqData)}
           />
           <QuickActions onOpenCreateModal={() => handleOpenModal('add', null)} />
