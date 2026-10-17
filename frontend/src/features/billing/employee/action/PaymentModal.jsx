@@ -19,8 +19,6 @@ import PrescriptionSelectModal from './PrescriptionSelectModal';
 import VoucherSelectModal from './VoucherSelectModal';
 import PaymentConfirmModal from './PaymentConfirmModal';
 import BankQrPaymentModal from './BankQrPaymentModal';
-import { useAuthStore } from '../../../../store/authStore';
-import { getEmployeeAddressById } from '../../../../services/employee.service';
 
 const PAYMENT_METHODS = [
   { id: 'CASH', label: 'Tiền mặt', icon: Banknote },
@@ -32,26 +30,6 @@ const PAYMENT_METHODS = [
 
 export default function PaymentModal({ open, onClose, invoice, onPaymentSuccess }) {
   if (!invoice) return null;
-
-  const user = useAuthStore.getState().user;
-  const [employeeBranchId, setEmployeeBranchId] = useState(null);
-
-  // Lấy chi nhánh của nhân viên đăng nhập thực hiện thanh toán qua getEmployeeAddressById
-  useEffect(() => {
-    const empId = user?.employeeId || user?.id;
-    if (empId) {
-      getEmployeeAddressById(empId)
-        .then((res) => {
-          const data = res?.data || res;
-          if (data?.branchId) {
-            setEmployeeBranchId(data.branchId);
-          }
-        })
-        .catch((err) => {
-          console.warn('Lỗi lấy thông tin chi nhánh nhân viên thanh toán:', err);
-        });
-    }
-  }, [user?.employeeId, user?.id]);
 
   const [selectedMethod, setSelectedMethod] = useState('CASH');
   const [payAmount, setPayAmount] = useState(invoice.debtAmount);
@@ -123,7 +101,6 @@ export default function PaymentModal({ open, onClose, invoice, onPaymentSuccess 
   };
 
   const paymentPayload = {
-    branchId: employeeBranchId || null, // Lấy chi nhánh của nhân viên đăng nhập thực hiện thanh toán, KHÔNG lấy của hóa đơn
     amount: finalPayable,
     serviceAmount: servicePayAmount,
     medicineAmount: rxTotal,

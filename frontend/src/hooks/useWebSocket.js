@@ -40,7 +40,7 @@ export function useWebSocket(
                 });
 
                 // 4. Subscribe nhận yêu cầu đặt lịch hẹn mới từ Web (Online Requests)
-                client.subscribe('/user/queue/appointment-requests', (message) => {
+                client.subscribe('/topic/appointment-requests', (message) => {
                     const payload = JSON.parse(message.body);
                     if (onRequestRealtime) onRequestRealtime(payload);
                 });

@@ -1,8 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
-import { Award, Building2, Calendar, Camera, Check, ChevronLeft, ChevronRight, FileText, GraduationCap, ImagePlus, Info, Loader2, Lock, Mail, MapPin, Phone, Plus, ShieldCheck, Stethoscope, Trash2, Upload, UserRound, X, } from 'lucide-react';
+import { Award, Calendar, Camera, Check, ChevronLeft, ChevronRight, FileText, GraduationCap, ImagePlus, Info, Loader2, Lock, Mail, MapPin, Phone, Plus, ShieldCheck, Stethoscope, Trash2, Upload, UserRound, X, } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { createDentist, createUser } from '../../services/dentist.service';
-import { getBranches } from '../../services/clinic.service';
 import { uploadImage } from '../../services/media.service';
 import { CERTIFICATE_TYPE_OPTIONS, getCertificateTypeLabel } from '../../features/dentist/dentistHelpers';
 
@@ -243,9 +242,7 @@ export default function AddDentistModal({ isOpen, onClose, onSuccess, mockMode =
     gender: 'Nam',
     education: '',
     description: '',
-    branchId: '',
   });
-  const [branches, setBranches] = useState([]);
 
   // Practice license certificate (required)
   const [practiceLicense, setPracticeLicense] = useState({
@@ -284,7 +281,7 @@ export default function AddDentistModal({ isOpen, onClose, onSuccess, mockMode =
       setCurrentStep(0);
       setError(null);
       setFormData({
-      username: '', email: '', phone: '', password: '', address: '', dateOfBirth: '', experienceYears: 1, gender: 'Nam', education: '', description: '', branchId: '',
+        username: '', email: '', phone: '', password: '', address: '', dateOfBirth: '', experienceYears: 1, gender: 'Nam', education: '', description: '',
       });
       setPracticeLicense({
         certificate_name: 'Chứng chỉ hành nghề bác sĩ', certificate_number: '', issued_by: '', issue_date: '', expiry_date: '', certificate_file: null, certificate_file_preview: null,
@@ -293,17 +290,6 @@ export default function AddDentistModal({ isOpen, onClose, onSuccess, mockMode =
       setAvatarFile(null);
       setAvatarPreview(null);
     }
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    getBranches()
-      .then(setBranches)
-      .catch((err) => {
-        console.error('Failed to load branches:', err);
-        setError('Không thể tải danh sách chi nhánh.');
-      });
   }, [isOpen]);
 
   if (!mounted) return null;
@@ -389,12 +375,7 @@ export default function AddDentistModal({ isOpen, onClose, onSuccess, mockMode =
   };
 
   const isStep1Valid = () => {
-    return formData.username.trim()
-      && formData.email.trim()
-      && formData.phone.trim()
-      && formData.password.trim()
-      && formData.education.trim()
-      && formData.branchId;
+    return formData.username.trim() && formData.email.trim() && formData.phone.trim() && formData.password.trim() && formData.education.trim();
   };
 
   const isStep2Valid = () => {
@@ -499,7 +480,6 @@ export default function AddDentistModal({ isOpen, onClose, onSuccess, mockMode =
         gender: formData.gender,
         qualification: formData.education,
         description: formData.description,
-        branchId: formData.branchId,
       };
 
       console.log('========== DỮ LIỆU GỬI XUỐNG BACKEND ==========');
@@ -710,28 +690,6 @@ export default function AddDentistModal({ isOpen, onClose, onSuccess, mockMode =
                 placeholder="VD: Tiến sĩ, Thạc sĩ..."
                 className="w-full pl-10 pr-4 h-10 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm"
               />
-            </div>
-          </div>
-          <div className="col-span-2 space-y-1.5">
-            <label className="text-sm font-medium text-slate-700">
-              Chi nhánh <span className="text-red-400">*</span>
-            </label>
-            <div className="relative">
-              <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <select
-                required
-                name="branchId"
-                value={formData.branchId}
-                onChange={handleChange}
-                className="w-full pl-10 pr-4 h-10 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm bg-white cursor-pointer"
-              >
-                <option value="">-- Chọn chi nhánh --</option>
-                {branches.map((branch) => (
-                  <option key={branch.branchId} value={branch.branchId}>
-                    {branch.branchName} ({branch.branchCode})
-                  </option>
-                ))}
-              </select>
             </div>
           </div>
           <div className="col-span-2 space-y-1.5">

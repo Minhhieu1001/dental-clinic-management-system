@@ -33,7 +33,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { getDentistsList } from '../../services/dentist.service';
-import { getAppointments, updateAppointment } from '../../services/appointment.service';
+import { getAppointments, updateAppointmentStatus } from '../../services/appointment.service';
 import { getAppointmentRequestToday, updateAppointmentRequestStatus } from '../../services/appointmentRequest.service';
 import CreateAppointmentModal from '../../components/ui/CreateAppointmentModal';
 
@@ -159,8 +159,6 @@ export default function EmployeeAppointments() {
               dentistName: req.dentistName || null,
               employeeId: req.employeeId || null,
               employeeName: req.employeeId ? 'employee01' : null,
-              branchId: req.branchId || null,
-              branchName: req.branchName || 'Chưa xác định chi nhánh',
               isOnlineRequest: true,
             });
           }
@@ -202,8 +200,6 @@ export default function EmployeeAppointments() {
       phone: apt.phone,
       description: apt.reason || apt.notes,
       requestId: apt.id,
-      branchId: apt.branchId || null,
-      branchName: apt.branchName || 'Chưa xác định chi nhánh',
     });
     setIsCreateModalOpen(true);
   };
@@ -229,7 +225,7 @@ export default function EmployeeAppointments() {
     try {
       if (aptId && !String(aptId).startsWith('mock-')) {
         await updateAppointmentRequestStatus(aptId, 'CANCELLED').catch(() =>
-          updateAppointment(aptId, { status: 'CANCELLED' })
+          updateAppointmentStatus(aptId, 'CANCELLED')
         );
       }
       setAppointments((prev) =>
@@ -987,7 +983,6 @@ export default function EmployeeAppointments() {
                   <th className="p-3">Thời gian</th>
                   <th className="p-3">Bệnh nhân</th>
                   <th className="p-3">Số điện thoại</th>
-                  <th className="p-3">Chi nhánh</th>
                   <th className="p-3">Bác sĩ phụ trách</th>
                   <th className="p-3">Dịch vụ / Lý do</th>
                   <th className="p-3">Trạng thái</th>
@@ -997,7 +992,7 @@ export default function EmployeeAppointments() {
               <tbody className="divide-y divide-slate-100">
                 {listFilteredAppointments.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-slate-400 font-medium">
+                    <td colSpan={7} className="p-8 text-center text-slate-400 font-medium">
                       Không tìm thấy lịch hẹn nào phù hợp với bộ lọc.
                     </td>
                   </tr>
@@ -1024,9 +1019,6 @@ export default function EmployeeAppointments() {
                         </td>
                         <td className="p-3 font-semibold text-slate-600">
                           {apt.phone || 'Chưa có'}
-                        </td>
-                        <td className="p-3 font-semibold text-teal-800 max-w-[180px] truncate">
-                          {apt.branchName || 'Chưa xác định chi nhánh'}
                         </td>
                         <td className="p-3 font-semibold text-slate-800">
                           {apt.dentistName || <span className="text-amber-600 italic">Chưa phân công</span>}

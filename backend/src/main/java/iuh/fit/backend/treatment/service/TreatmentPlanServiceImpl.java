@@ -36,6 +36,7 @@ import java.util.UUID;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class TreatmentPlanServiceImpl implements TreatmentPlanService {
 
     private final TreatmentPlanRepository treatmentPlanRepository;
@@ -49,31 +50,6 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
     private final AppointmentRepository appointmentRepository;
     private final NotificationService notificationService;
     private final SimpMessagingTemplate simpMessagingTemplate;
-
-    public TreatmentPlanServiceImpl(
-            TreatmentPlanRepository treatmentPlanRepository,
-            TreatmentPhaseRepository treatmentPhaseRepository,
-            TreatmentServiceRepository treatmentServiceRepository,
-            TreatmentVisitsRepository treatmentVisitsRepository,
-            PatientRepository patientRepository,
-            DentistRepository dentistRepository,
-            ServiceRepository serviceRepository,
-            ExaminationResultRepository examinationResultRepository,
-            AppointmentRepository appointmentRepository,
-            NotificationService notificationService,
-            SimpMessagingTemplate simpMessagingTemplate) {
-        this.treatmentPlanRepository = treatmentPlanRepository;
-        this.treatmentPhaseRepository = treatmentPhaseRepository;
-        this.treatmentServiceRepository = treatmentServiceRepository;
-        this.treatmentVisitsRepository = treatmentVisitsRepository;
-        this.patientRepository = patientRepository;
-        this.dentistRepository = dentistRepository;
-        this.serviceRepository = serviceRepository;
-        this.examinationResultRepository = examinationResultRepository;
-        this.appointmentRepository = appointmentRepository;
-        this.notificationService = notificationService;
-        this.simpMessagingTemplate = simpMessagingTemplate;
-    }
 
     @Override
     @Transactional
@@ -92,10 +68,8 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
                 examinationResult.setDentist(dentist);
                 examinationResultRepository.save(examinationResult);
             }
-            // Quan hệ 1-1: Nếu đợt khám này đã có kế hoạch điều trị, cập nhật kế hoạch hiện
-            // có
-            Optional<TreatmentPlan> existingPlan = treatmentPlanRepository
-                    .findByExaminationResultId(request.getExaminationResultId());
+            // Quan hệ 1-1: Nếu đợt khám này đã có kế hoạch điều trị, cập nhật kế hoạch hiện có
+            Optional<TreatmentPlan> existingPlan = treatmentPlanRepository.findByExaminationResultId(request.getExaminationResultId());
             if (existingPlan.isPresent()) {
                 return updateTreatmentPlan(existingPlan.get().getId(), request);
             }
@@ -138,8 +112,7 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
     @Transactional(readOnly = true)
     public TreatmentPlanResponse getTreatmentPlanById(UUID id) {
         TreatmentPlan plan = treatmentPlanRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND,
-                        "Không tìm thấy kế hoạch điều trị với ID: " + id));
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy kế hoạch điều trị với ID: " + id));
         return mapToResponse(plan);
     }
 
@@ -162,26 +135,17 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
     @Transactional
     public TreatmentPlanResponse updateTreatmentPlan(UUID id, TreatmentPlanRequest request) {
         TreatmentPlan plan = treatmentPlanRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND,
-                        "Không tìm thấy kế hoạch điều trị với ID: " + id));
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy kế hoạch điều trị với ID: " + id));
 
-        if (request.getPlanName() != null)
-            plan.setPlanName(request.getPlanName());
-        if (request.getDescription() != null)
-            plan.setDescription(request.getDescription());
-        if (request.getEstimatedCost() != null)
-            plan.setEstimatedCost(request.getEstimatedCost());
-        if (request.getStatus() != null)
-            plan.setStatus(request.getStatus());
-        if (request.getStartDate() != null)
-            plan.setStartDate(parseDateTime(request.getStartDate()));
-        if (request.getEndDate() != null)
-            plan.setEndDate(parseDateTime(request.getEndDate()));
+        if (request.getPlanName() != null) plan.setPlanName(request.getPlanName());
+        if (request.getDescription() != null) plan.setDescription(request.getDescription());
+        if (request.getEstimatedCost() != null) plan.setEstimatedCost(request.getEstimatedCost());
+        if (request.getStatus() != null) plan.setStatus(request.getStatus());
+        if (request.getStartDate() != null) plan.setStartDate(parseDateTime(request.getStartDate()));
+        if (request.getEndDate() != null) plan.setEndDate(parseDateTime(request.getEndDate()));
         if (request.getExaminationResultId() != null) {
-            ExaminationResult exam = examinationResultRepository.findById(request.getExaminationResultId())
-                    .orElse(null);
-            if (exam != null)
-                plan.setExaminationResult(exam);
+            ExaminationResult exam = examinationResultRepository.findById(request.getExaminationResultId()).orElse(null);
+            if (exam != null) plan.setExaminationResult(exam);
         }
         if (request.getDentistId() != null) {
             Dentist dentist = dentistRepository.findById(request.getDentistId())
@@ -212,12 +176,9 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
                 treatmentPlanRepository.saveAndFlush(plan);
             }
 
-            Dentist assignedDoctor = plan.getExaminationResult() != null
-                    && plan.getExaminationResult().getDentist() != null
-                            ? plan.getExaminationResult().getDentist()
-                            : (request.getDentistId() != null
-                                    ? dentistRepository.findById(request.getDentistId()).orElse(null)
-                                    : null);
+            Dentist assignedDoctor = plan.getExaminationResult() != null && plan.getExaminationResult().getDentist() != null
+                    ? plan.getExaminationResult().getDentist()
+                    : (request.getDentistId() != null ? dentistRepository.findById(request.getDentistId()).orElse(null) : null);
 
             // Lưu danh sách phases mới kèm services và visits
             savePhases(plan, request.getPhases(), assignedDoctor, request.getDentistName());
@@ -235,8 +196,7 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
         return mapToResponse(updated);
     }
 
-    private void savePhases(TreatmentPlan plan, List<TreatmentPlanRequest.PhaseRequest> phaseRequests, Dentist dentist,
-            String dentistNameFromRequest) {
+    private void savePhases(TreatmentPlan plan, List<TreatmentPlanRequest.PhaseRequest> phaseRequests, Dentist dentist, String dentistNameFromRequest) {
         if (phaseRequests == null || phaseRequests.isEmpty()) {
             return;
         }
@@ -317,12 +277,10 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
     @Transactional
     public TreatmentPlanResponse autoScheduleFollowUpAppointments(UUID id) {
         TreatmentPlan plan = treatmentPlanRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND,
-                        "Không tìm thấy kế hoạch điều trị ID: " + id));
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy kế hoạch điều trị ID: " + id));
 
         ExaminationResult exam = plan.getExaminationResult();
-        Patient patient = (exam != null && exam.getMedicalRecord() != null) ? exam.getMedicalRecord().getPatient()
-                : null;
+        Patient patient = (exam != null && exam.getMedicalRecord() != null) ? exam.getMedicalRecord().getPatient() : null;
         Dentist dentist = exam != null ? exam.getDentist() : null;
 
         if (dentist == null && exam != null && exam.getMedicalRecord() != null) {
@@ -330,9 +288,7 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
         }
 
         String patientName = patient != null ? patient.getFullName() : "Bệnh nhân";
-        String phone = (patient != null && patient.getPhoneNumber() != null && !patient.getPhoneNumber().isBlank())
-                ? patient.getPhoneNumber().trim()
-                : "0343632524";
+        String phone = (patient != null && patient.getPhoneNumber() != null && !patient.getPhoneNumber().isBlank()) ? patient.getPhoneNumber().trim() : "0343632524";
         String email = patient != null ? patient.getEmail() : null;
 
         List<TreatmentPhase> phases = plan.getTreatmentPhases();
@@ -358,8 +314,7 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
             StringBuilder serviceNames = new StringBuilder();
             if (phase.getTreatmentServices() != null && !phase.getTreatmentServices().isEmpty()) {
                 for (TreatmentService ts : phase.getTreatmentServices()) {
-                    if (serviceNames.length() > 0)
-                        serviceNames.append(", ");
+                    if (serviceNames.length() > 0) serviceNames.append(", ");
                     if (ts.getService() != null) {
                         serviceNames.append(ts.getService().getServiceName());
                         if (ts.getToothNumber() != null && !ts.getToothNumber().isBlank()) {
@@ -379,9 +334,11 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
 
             // Kiểm tra trùng lịch hẹn đã có
             List<Appointment> existingAppts = appointmentRepository.findAll();
-            boolean exists = existingAppts.stream().anyMatch(a -> a.getPhone() != null && a.getPhone().equals(phone)
-                    && a.getReason() != null && a.getReason().contains(phase.getPhaseName())
-                    && a.getStatus() != StatusAppointment.CANCELLED);
+            boolean exists = existingAppts.stream().anyMatch(a ->
+                    a.getPhone() != null && a.getPhone().equals(phone)
+                            && a.getReason() != null && a.getReason().contains(phase.getPhaseName())
+                            && a.getStatus() != StatusAppointment.CANCELLED
+            );
 
             if (!exists) {
                 Appointment appt = Appointment.builder()
@@ -400,8 +357,7 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
                         .build();
 
                 appt = appointmentRepository.save(appt);
-                log.info("Tự động tạo lịch hẹn tái khám cho giai đoạn '{}' - Bệnh nhân {} lúc {}", phase.getPhaseName(),
-                        patientName, apptDateTime);
+                log.info("Tự động tạo lịch hẹn tái khám cho giai đoạn '{}' - Bệnh nhân {} lúc {}", phase.getPhaseName(), patientName, apptDateTime);
 
                 try {
                     simpMessagingTemplate.convertAndSend("/topic/appointments", mapAppointmentToDTO(appt));
@@ -412,8 +368,7 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
 
             String phaseTitle = phase.getPhaseName() != null ? phase.getPhaseName().trim() : "";
             if (!phaseTitle.toLowerCase().startsWith("giai đoạn")) {
-                String orderStr = phase.getPhaseOrder() != null ? String.valueOf(phase.getPhaseOrder())
-                        : String.valueOf(phaseIndex);
+                String orderStr = phase.getPhaseOrder() != null ? String.valueOf(phase.getPhaseOrder()) : String.valueOf(phaseIndex);
                 phaseTitle = "Giai đoạn " + orderStr + ": " + phaseTitle;
             }
 
@@ -430,43 +385,40 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
                 statusBgColor = "#64748b";
             }
 
-            roadmapHtml
-                    .append("""
-                            <div style="background:#f8fafc; border:1px solid #cbd5e1; border-left:4px solid %s; border-radius:8px; padding:14px; margin-bottom:12px;">
-                                <div style="font-weight:bold; color:#0f766e; font-size:15px; margin-bottom:6px;">
-                                    %s
-                                </div>
-                                <div style="font-size:13px; color:#334155; margin:4px 0;">
-                                    <strong>Trạng thái:</strong> <span style="color:%s; font-weight:bold;">%s</span>
-                                </div>
-                                <div style="font-size:13px; color:#334155; margin:4px 0;">
-                                    <strong>Lịch tái khám dự kiến:</strong> %s
-                                </div>
-                                <div style="font-size:13px; color:#334155; margin:4px 0;">
-                                    <strong>Bác sĩ phụ trách:</strong> %s
-                                </div>
-                                <div style="font-size:12px; color:#64748b; margin-top:6px;">
-                                    <strong>Chỉ định điều trị:</strong> %s
-                                </div>
-                            </div>
-                            """
-                            .formatted(
-                                    statusBgColor,
-                                    phaseTitle,
-                                    statusBgColor,
-                                    statusLabel,
-                                    apptDateTime.format(timeFmt),
-                                    doctorName,
-                                    serviceNames.toString()));
+            roadmapHtml.append("""
+                <div style="background:#f8fafc; border:1px solid #cbd5e1; border-left:4px solid %s; border-radius:8px; padding:14px; margin-bottom:12px;">
+                    <div style="font-weight:bold; color:#0f766e; font-size:15px; margin-bottom:6px;">
+                        %s
+                    </div>
+                    <div style="font-size:13px; color:#334155; margin:4px 0;">
+                        <strong>Trạng thái:</strong> <span style="color:%s; font-weight:bold;">%s</span>
+                    </div>
+                    <div style="font-size:13px; color:#334155; margin:4px 0;">
+                        <strong>Lịch tái khám dự kiến:</strong> %s
+                    </div>
+                    <div style="font-size:13px; color:#334155; margin:4px 0;">
+                        <strong>Bác sĩ phụ trách:</strong> %s
+                    </div>
+                    <div style="font-size:12px; color:#64748b; margin-top:6px;">
+                        <strong>Chỉ định điều trị:</strong> %s
+                    </div>
+                </div>
+                """.formatted(
+                    statusBgColor,
+                    phaseTitle,
+                    statusBgColor,
+                    statusLabel,
+                    apptDateTime.format(timeFmt),
+                    doctorName,
+                    serviceNames.toString()
+            ));
 
             phaseIndex++;
         }
 
         try {
-            notificationService.sendTreatmentRoadmapEmail(email, patientName, phone, plan.getPlanName(),
-                    roadmapHtml.toString());
-            log.info("Đã gửi thông báo lộ trình phác đồ điều trị cho bệnh nhân {} (SĐT: {}, Email: {})", patientName,
-                    phone, email);
+            notificationService.sendTreatmentRoadmapEmail(email, patientName, phone, plan.getPlanName(), roadmapHtml.toString());
+            log.info("Đã gửi thông báo lộ trình phác đồ điều trị cho bệnh nhân {} (SĐT: {}, Email: {})", patientName, phone, email);
             plan.setRoadmapSent(true);
             plan = treatmentPlanRepository.save(plan);
         } catch (Exception e) {
@@ -494,8 +446,7 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
     }
 
     private LocalDateTime parseDateTime(String str) {
-        if (str == null || str.trim().isEmpty())
-            return null;
+        if (str == null || str.trim().isEmpty()) return null;
         try {
             if (str.length() == 10) {
                 return LocalDate.parse(str).atStartOfDay();
@@ -512,8 +463,7 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
         if (dentist == null && exam != null && exam.getMedicalRecord() != null) {
             dentist = exam.getMedicalRecord().getDentist();
         }
-        Patient patient = (exam != null && exam.getMedicalRecord() != null) ? exam.getMedicalRecord().getPatient()
-                : null;
+        Patient patient = (exam != null && exam.getMedicalRecord() != null) ? exam.getMedicalRecord().getPatient() : null;
 
         UUID dentistId = null;
         String dentistName = null;
@@ -542,8 +492,8 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
                 .status(plan.getStatus())
                 .startDate(plan.getStartDate())
                 .endDate(plan.getEndDate())
-                .phases((plan.getTreatmentPhases() != null ? plan.getTreatmentPhases() : List.<TreatmentPhase>of())
-                        .stream().map(ph -> TreatmentPlanResponse.PhaseResponse.builder()
+                .phases((plan.getTreatmentPhases() != null ? plan.getTreatmentPhases() : List.<TreatmentPhase>of()).stream().map(ph ->
+                        TreatmentPlanResponse.PhaseResponse.builder()
                                 .id(ph.getId())
                                 .phaseName(ph.getPhaseName())
                                 .phaseOrder(ph.getPhaseOrder())
@@ -553,9 +503,8 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
                                 .estimatedDuration(ph.getEstimatedDuration())
                                 .expectedStartDate(ph.getExpectedStartDate())
                                 .expectedEndDate(ph.getExpectedEndDate())
-                                .treatmentServices((ph.getTreatmentServices() != null ? ph.getTreatmentServices()
-                                        : List.<TreatmentService>of()).stream()
-                                        .map(ts -> TreatmentPlanResponse.ServiceItemResponse.builder()
+                                .treatmentServices((ph.getTreatmentServices() != null ? ph.getTreatmentServices() : List.<TreatmentService>of()).stream().map(ts ->
+                                        TreatmentPlanResponse.ServiceItemResponse.builder()
                                                 .id(ts.getId())
                                                 .serviceId(ts.getService() != null ? ts.getService().getId() : null)
                                                 .serviceName(ts.getServiceName())
@@ -563,11 +512,10 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
                                                 .quantity(ts.getQuantity())
                                                 .price(ts.getPrice())
                                                 .totalAmount(ts.getTotalAmount())
-                                                .build())
-                                        .toList())
-                                .treatmentVisits((ph.getTreatmentVisits() != null ? ph.getTreatmentVisits()
-                                        : List.<TreatmentVisits>of()).stream()
-                                        .map(tv -> TreatmentPlanResponse.VisitItemResponse.builder()
+                                                .build()
+                                ).toList())
+                                .treatmentVisits((ph.getTreatmentVisits() != null ? ph.getTreatmentVisits() : List.<TreatmentVisits>of()).stream().map(tv ->
+                                        TreatmentPlanResponse.VisitItemResponse.builder()
                                                 .visitId(tv.getVisitId())
                                                 .visitName(tv.getVisitName())
                                                 .visitOrder(tv.getVisitOrder())
@@ -575,10 +523,10 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
                                                 .status(tv.getStatus())
                                                 .clinicalNotes(tv.getClinicalNotes())
                                                 .assignedDentist(tv.getAssignedDentist())
-                                                .build())
-                                        .toList())
-                                .build())
-                        .toList())
+                                                .build()
+                                ).toList())
+                                .build()
+                ).toList())
                 .build();
     }
 }

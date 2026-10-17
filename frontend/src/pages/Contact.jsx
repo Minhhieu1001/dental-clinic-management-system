@@ -72,7 +72,6 @@ export default function Contact() {
       await createAppointmentRequest({
         fullName: fullName.trim(),
         phone: phone.trim(),
-        branchName: selectedBranch.split(' - ')[0].trim(),
         description: `Dịch vụ: ${selectedService || 'Chưa chọn'} | Cơ sở: ${selectedBranch} | Ngày: ${date || 'Chưa chọn'} | Giờ: ${time} | Ghi chú: ${message.trim()}`,
       })
 

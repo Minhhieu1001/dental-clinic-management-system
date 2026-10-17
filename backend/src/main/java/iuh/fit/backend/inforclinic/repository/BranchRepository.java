@@ -9,5 +9,4 @@ public interface BranchRepository extends JpaRepository<Branch, String> {
     List<Branch> findAllByClinicClinicIdOrderByBranchNameAsc(String clinicId);
     boolean existsByBranchCodeIgnoreCase(String branchCode);
     boolean existsByBranchCodeIgnoreCaseAndBranchIdNot(String branchCode, String branchId);
-    java.util.Optional<Branch> findFirstByBranchNameIgnoreCase(String branchName);
 }

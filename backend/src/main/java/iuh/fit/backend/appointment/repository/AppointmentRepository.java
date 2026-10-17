@@ -14,38 +14,28 @@ import java.util.UUID;
 @Repository
 public interface AppointmentRepository extends JpaRepository<Appointment, UUID> {
 
-  @Query("""
-      SELECT a FROM Appointment a
-      WHERE a.branch.branchId = :branchId
-        AND a.appointmentDate >= :start
-        AND a.appointmentDate < :end
-      ORDER BY a.appointmentDate ASC, a.appointmentTime ASC
-      """)
-  List<Appointment> findByBranchAndDateRange(@Param("branchId") String branchId,
-      @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+    List<Appointment> findByDentistIdOrderByAppointmentDateAscAppointmentTimeAsc(UUID dentistId);
 
-  List<Appointment> findByDentistIdOrderByAppointmentDateAscAppointmentTimeAsc(UUID dentistId);
+    List<Appointment> findByDentistIdInOrderByAppointmentDateAscAppointmentTimeAsc(List<UUID> dentistIds);
 
-  List<Appointment> findByDentistIdInOrderByAppointmentDateAscAppointmentTimeAsc(List<UUID> dentistIds);
+    @Query("SELECT a FROM Appointment a WHERE (a.dentist IS NOT NULL AND (a.dentist.user.id = :userId OR a.dentist.id = :userId)) ORDER BY a.appointmentDate ASC, a.appointmentTime ASC")
+    List<Appointment> findByDentistUserIdOrderByAppointmentDateAscAppointmentTimeAsc(@Param("userId") UUID userId);
 
-  @Query("SELECT a FROM Appointment a WHERE (a.dentist IS NOT NULL AND (a.dentist.user.id = :userId OR a.dentist.id = :userId)) ORDER BY a.appointmentDate ASC, a.appointmentTime ASC")
-  List<Appointment> findByDentistUserIdOrderByAppointmentDateAscAppointmentTimeAsc(@Param("userId") UUID userId);
 
-  List<Appointment> findByAppointmentDateBetweenOrderByAppointmentDateAscAppointmentTimeAsc(LocalDateTime start,
-      LocalDateTime end);
+    List<Appointment> findByAppointmentDateBetweenOrderByAppointmentDateAscAppointmentTimeAsc(LocalDateTime start, LocalDateTime end);
 
-  List<Appointment> findByDentistIdAndAppointmentDateBetweenOrderByAppointmentDateAscAppointmentTimeAsc(
-      UUID dentistId, LocalDateTime start, LocalDateTime end);
+    List<Appointment> findByDentistIdAndAppointmentDateBetweenOrderByAppointmentDateAscAppointmentTimeAsc(
+            UUID dentistId, LocalDateTime start, LocalDateTime end
+    );
 
-  List<Appointment> findByStatusOrderByAppointmentDateAscAppointmentTimeAsc(StatusAppointment status);
+    List<Appointment> findByStatusOrderByAppointmentDateAscAppointmentTimeAsc(StatusAppointment status);
 
-  List<Appointment> findAllByOrderByAppointmentDateDescAppointmentTimeDesc();
+    List<Appointment> findAllByOrderByAppointmentDateDescAppointmentTimeDesc();
 
-  @Query("SELECT a FROM Appointment a WHERE (a.status = 'CONFIRMED' OR a.status = 'PENDING' OR a.status = 'WAITING') AND (a.reminded1Day IS NULL OR a.reminded1Day = false) AND a.appointmentTime >= :startTime AND a.appointmentTime <= :endTime")
-  List<Appointment> findAppointmentsNeeding1DayReminder(@Param("startTime") LocalDateTime startTime,
-      @Param("endTime") LocalDateTime endTime);
+    @Query("SELECT a FROM Appointment a WHERE (a.status = 'CONFIRMED' OR a.status = 'PENDING' OR a.status = 'WAITING') AND (a.reminded1Day IS NULL OR a.reminded1Day = false) AND a.appointmentTime >= :startTime AND a.appointmentTime <= :endTime")
+    List<Appointment> findAppointmentsNeeding1DayReminder(@Param("startTime") LocalDateTime startTime, @Param("endTime") LocalDateTime endTime);
 
-  @Query("SELECT a FROM Appointment a WHERE (a.status = 'CONFIRMED' OR a.status = 'PENDING' OR a.status = 'WAITING') AND (a.reminded1Hour IS NULL OR a.reminded1Hour = false) AND a.appointmentTime >= :startTime AND a.appointmentTime <= :endTime")
-  List<Appointment> findAppointmentsNeeding1HourReminder(@Param("startTime") LocalDateTime startTime,
-      @Param("endTime") LocalDateTime endTime);
+    @Query("SELECT a FROM Appointment a WHERE (a.status = 'CONFIRMED' OR a.status = 'PENDING' OR a.status = 'WAITING') AND (a.reminded1Hour IS NULL OR a.reminded1Hour = false) AND a.appointmentTime >= :startTime AND a.appointmentTime <= :endTime")
+    List<Appointment> findAppointmentsNeeding1HourReminder(@Param("startTime") LocalDateTime startTime, @Param("endTime") LocalDateTime endTime);
 }
+

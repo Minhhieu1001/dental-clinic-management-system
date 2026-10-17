@@ -5,7 +5,6 @@ import iuh.fit.backend.appointment.entity.AppointmentRequest;
 import iuh.fit.backend.appointment.entity.Shift;
 import iuh.fit.backend.billing.entity.Invoice;
 import iuh.fit.backend.billing.entity.PaymentTransactions;
-import iuh.fit.backend.inforclinic.entity.Branch;
 import iuh.fit.backend.user.enums.Position;
 import iuh.fit.backend.inventory.entity.InventoryTransaction;
 import jakarta.persistence.*;
@@ -75,8 +74,4 @@ public class Employee {
     @Builder.Default
     @OneToMany(mappedBy = "employee", fetch = FetchType.LAZY)
     private List<PaymentTransactions> paymentTransactions = new ArrayList<>();
-
-    @ManyToOne(fetch = FetchType.LAZY, optional = true)
-    @JoinColumn(name = "branch_id", nullable = true)
-    private Branch branch;
 }

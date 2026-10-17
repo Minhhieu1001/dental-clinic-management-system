@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, UserRound, Mail, Phone, MapPin, Building2, Banknote, CalendarDays, Loader2, ImagePlus, User, Camera } from 'lucide-react';
 import { updateUser, updateEmployee, getEmployeeById } from '../../services/employee.service';
-import { getBranches } from '../../services/clinic.service';
 import { uploadImage } from '../../services/media.service';
 import { toast } from 'react-hot-toast';
 
@@ -13,7 +12,6 @@ export default function EditEmployeeModal({ isOpen, onClose, onSuccess, employee
   const fileInputRef = useRef(null);
   const [userId, setUserId] = useState(null);
   const [fetchingUser, setFetchingUser] = useState(false);
-  const [branches, setBranches] = useState([]);
 
   const [mounted, setMounted] = useState(false);
   const [active, setActive] = useState(false);
@@ -40,8 +38,7 @@ export default function EditEmployeeModal({ isOpen, onClose, onSuccess, employee
     address: '',
     position: 'RECEPTIONIST',
     salary: 5000000,
-    hireDate: new Date().toISOString().split('T')[0],
-    branchId: ''
+    hireDate: new Date().toISOString().split('T')[0]
   });
 
   // Populate form when employee data changes
@@ -59,8 +56,7 @@ export default function EditEmployeeModal({ isOpen, onClose, onSuccess, employee
           ? employee.hireDate.split('T')[0]
           : employee.createdAt
             ? employee.createdAt.split('T')[0]
-            : new Date().toISOString().split('T')[0],
-        branchId: employee.branchId || ''
+            : new Date().toISOString().split('T')[0]
       });
       setAvatarPreview(employee.avatar || null);
       setAvatarFile(null);
@@ -87,16 +83,6 @@ export default function EditEmployeeModal({ isOpen, onClose, onSuccess, employee
       }
     }
   }, [employee, isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    getBranches()
-      .then(setBranches)
-      .catch((err) => {
-        console.error('Failed to load branches:', err);
-        setError('Không thể tải danh sách chi nhánh.');
-      });
-  }, [isOpen]);
 
   if (!mounted || !employee) return null;
 
@@ -164,8 +150,7 @@ export default function EditEmployeeModal({ isOpen, onClose, onSuccess, employee
         hireDate: formData.hireDate + "T00:00:00",
         status: employee.status !== undefined ? employee.status : true,
         gender: formData.gender,
-        address: formData.address,
-        branchId: formData.branchId
+        address: formData.address
       };
 
       await updateEmployee(employee.id, employeeRequest);
@@ -342,26 +327,6 @@ export default function EditEmployeeModal({ isOpen, onClose, onSuccess, employee
                         </select>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="mt-4 space-y-1.5">
-                    <label className="text-xs font-medium text-slate-700">
-                      Chi nhánh <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      required
-                      name="branchId"
-                      value={formData.branchId}
-                      onChange={handleChange}
-                      className="w-full rounded-lg border border-slate-200 py-2 px-3 text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 transition-all bg-white cursor-pointer"
-                    >
-                      <option value="">-- Chọn chi nhánh --</option>
-                      {branches.map((branch) => (
-                        <option key={branch.branchId} value={branch.branchId}>
-                          {branch.branchName} ({branch.branchCode})
-                        </option>
-                      ))}
-                    </select>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">

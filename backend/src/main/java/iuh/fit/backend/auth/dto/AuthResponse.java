@@ -8,5 +8,5 @@ public record AuthResponse(
         String username,
         String role,
         String avatarUrl,
-        UUID employeeId) {
-}
+        UUID employeeId
+) {}

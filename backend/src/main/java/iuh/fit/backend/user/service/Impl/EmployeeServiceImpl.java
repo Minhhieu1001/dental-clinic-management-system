@@ -5,8 +5,6 @@ import iuh.fit.backend.user.dto.EmployeeResponse;
 import iuh.fit.backend.user.dto.EmployeeListResponse;
 import iuh.fit.backend.user.entity.Employee;
 import iuh.fit.backend.user.entity.User;
-import iuh.fit.backend.inforclinic.entity.Branch;
-import iuh.fit.backend.inforclinic.repository.BranchRepository;
 import iuh.fit.backend.user.enums.StatusUser;
 import iuh.fit.backend.user.repository.EmployeeRepository;
 import iuh.fit.backend.user.repository.UserRepository;
@@ -29,7 +27,6 @@ import java.util.UUID;
 public class EmployeeServiceImpl implements EmployeeService {
     private final EmployeeRepository employeeRepository;
     private final UserRepository userRepository;
-    private final BranchRepository branchRepository;
 
     @Override
     public List<EmployeeResponse> getAllEmployees() {
@@ -50,12 +47,6 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     public EmployeeResponse getEmployeeById(UUID id) {
         return toEmployeeResponse(findEmployee(id));
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public EmployeeListResponse getEmployeeWithBranchById(UUID id) {
-        return toEmployeeListResponse(findEmployee(id));
     }
 
     @Override
@@ -82,7 +73,8 @@ public class EmployeeServiceImpl implements EmployeeService {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Cannot delete employee because it is referenced by other data.",
-                    exception);
+                    exception
+            );
         }
     }
 
@@ -129,11 +121,6 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setStatus(request.status());
         employee.setGender(request.gender());
         employee.setAddress(request.address());
-        if (request.branchId() != null && !request.branchId().isBlank()) {
-            employee.setBranch(resolveBranch(request.branchId()));
-        } else if (currentEmployeeId == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Branch is required when creating an employee.");
-        }
     }
 
     private User resolveUser(UUID userId) {
@@ -144,12 +131,6 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + userId));
     }
 
-    private Branch resolveBranch(String branchId) {
-        return branchRepository.findById(branchId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Branch not found: " + branchId));
-    }
-
     private void validateEmployeeUserIsAvailable(UUID userId, UUID currentEmployeeId) {
         if (userId == null) {
             return;
@@ -157,8 +138,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         employeeRepository.findByUserId(userId)
                 .filter(employee -> !employee.getId().equals(currentEmployeeId))
                 .ifPresent(employee -> {
-                    throw new ResponseStatusException(HttpStatus.CONFLICT,
-                            "User is already assigned to another employee.");
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "User is already assigned to another employee.");
                 });
     }
 
@@ -177,9 +157,8 @@ public class EmployeeServiceImpl implements EmployeeService {
                 employee.getPosition(),
                 employee.getSalary(),
                 employee.getHireDate(),
-                employee.getStatus(),
-                employee.getBranch() != null ? employee.getBranch().getBranchId() : null,
-                employee.getBranch() != null ? employee.getBranch().getBranchName() : null);
+                employee.getStatus()
+        );
     }
 
     private EmployeeListResponse toEmployeeListResponse(Employee employee) {
@@ -197,9 +176,7 @@ public class EmployeeServiceImpl implements EmployeeService {
                 employee.getStatus(),
                 user != null ? user.getStatus() : null,
                 employee.getGender(),
-                employee.getAddress(),
-                employee.getBranch() != null ? employee.getBranch().getBranchId() : null,
-                employee.getBranch() != null ? employee.getBranch().getBranchName() : null,
-                employee.getBranch() != null ? employee.getBranch().getAddress() : null);
+                employee.getAddress()
+        );
     }
 }

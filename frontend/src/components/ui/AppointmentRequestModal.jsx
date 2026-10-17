@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, Phone, FileText, CalendarCheck, Sparkles, CheckCircle2, Tag } from 'lucide-react';
 import { createAppointmentRequest } from '../../services/appointmentRequest.service';
-import { getBranches } from '../../services/clinic.service';
 import toast from 'react-hot-toast';
 
 const QUICK_TAGS = [
@@ -10,6 +9,8 @@ const QUICK_TAGS = [
   'Tư vấn niềng răng',
   'Trồng răng Implant',
   'Răng sứ thẩm mỹ',
+  'Tẩy trắng răng',
+  'Nhổ răng khôn',
 ];
 
 export default function AppointmentRequestModal({ isOpen, onClose }) {
@@ -17,19 +18,9 @@ export default function AppointmentRequestModal({ isOpen, onClose }) {
     fullName: '',
     phone: '',
     description: '',
-    branchId: '',
   });
-  const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    getBranches().then(setBranches).catch((error) => {
-      console.error('Failed to load branches:', error);
-      toast.error('Không thể tải danh sách chi nhánh');
-    });
-  }, [isOpen]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -46,8 +37,8 @@ export default function AppointmentRequestModal({ isOpen, onClose }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.fullName.trim() || !formData.phone.trim() || !formData.branchId) {
-      toast.error('Vui lòng nhập đầy đủ Họ tên, Số điện thoại và Chi nhánh!');
+    if (!formData.fullName.trim() || !formData.phone.trim()) {
+      toast.error('Vui lòng nhập đầy đủ Họ tên và Số điện thoại!');
       return;
     }
 
@@ -64,7 +55,6 @@ export default function AppointmentRequestModal({ isOpen, onClose }) {
         fullName: formData.fullName.trim(),
         phone: formData.phone.trim(),
         description: formData.description.trim(),
-        branchId: formData.branchId,
       });
 
       setIsSuccess(true);
@@ -80,7 +70,7 @@ export default function AppointmentRequestModal({ isOpen, onClose }) {
   };
 
   const handleResetAndClose = () => {
-    setFormData({ fullName: '', phone: '', description: '', branchId: '' });
+    setFormData({ fullName: '', phone: '', description: '' });
     setIsSuccess(false);
     onClose();
   };
@@ -104,45 +94,34 @@ export default function AppointmentRequestModal({ isOpen, onClose }) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="relative w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-900/5 z-10 my-auto"
+            className="relative w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-900/5 z-10 my-auto"
           >
             {/* Modal Header */}
-            <div className="relative bg-gradient-to-r from-[#1f4fb2] to-[#00a859] px-6 py-3.5 sm:py-4 text-white">
+            <div className="relative bg-gradient-to-r from-[#1f4fb2] to-[#00a859] px-6 py-6 text-white">
               <button
                 type="button"
                 onClick={handleResetAndClose}
-                className="absolute right-4 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-white/15 text-white/90 backdrop-blur-md transition hover:bg-white/25 hover:text-white cursor-pointer"
+                className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white/80 backdrop-blur-md transition hover:bg-white/20 hover:text-white"
               >
                 <X size={18} />
               </button>
 
-              <div className="pr-10">
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <h3 className="text-lg sm:text-xl font-bold leading-tight text-white">
-                    Đăng Ký Yêu Cầu Lịch Hẹn
-                  </h3>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-md">
-                    <Sparkles size={11} className="text-yellow-300" />
-                    Crown Dental
-                  </span>
-                </div>
-                <p className="mt-0.5 text-xs text-white/85 font-normal">
-                  Vui lòng nhập thông tin bên dưới, lễ tân phòng khám sẽ sớm liên hệ xác nhận xếp lịch hẹn.
-                </p>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white backdrop-blur-md">
+                  <Sparkles size={13} className="text-yellow-300" />
+                  Crown Dental Clinic
+                </span>
               </div>
+              <h3 className="text-2xl font-black leading-tight text-white">
+                Đăng Ký Yêu Cầu Lịch Hẹn
+              </h3>
+              <p className="mt-1 text-xs text-white/90 font-medium">
+                Vui lòng nhập thông tin bên dưới. Lễ tân phòng khám sẽ liên hệ gọi lại xác nhận xếp lịch hẹn!
+              </p>
             </div>
 
             {/* Form Content */}
             <div className="p-6 sm:p-8">
-              <div className="grid gap-8 md:grid-cols-[0.9fr_1.1fr] md:items-center">
-                <div className="hidden min-h-[360px] max-h-[420px] overflow-hidden rounded-2xl bg-slate-100 md:block">
-                  <img
-                    src="https://images.unsplash.com/photo-1609840114035-3c981b782dfe?auto=format&fit=crop&w=900&q=85"
-                    alt="Không gian phòng khám nha khoa"
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-                <div>
               {isSuccess ? (
                 <div className="py-6 text-center space-y-4">
                   <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
@@ -203,26 +182,6 @@ export default function AppointmentRequestModal({ isOpen, onClose }) {
                         className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 py-3 pl-10 pr-4 text-sm text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-[#1f4fb2] focus:bg-white focus:ring-4 focus:ring-[#1f4fb2]/10"
                       />
                     </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                      Chi nhánh <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      name="branchId"
-                      required
-                      value={formData.branchId}
-                      onChange={handleChange}
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 py-3 px-4 text-sm text-slate-800 outline-none focus:border-[#1f4fb2] focus:bg-white focus:ring-4 focus:ring-[#1f4fb2]/10"
-                    >
-                      <option value="">-- Chọn chi nhánh --</option>
-                      {branches.map((branch) => (
-                        <option key={branch.branchId} value={branch.branchId}>
-                          {branch.branchName} ({branch.branchCode})
-                        </option>
-                      ))}
-                    </select>
                   </div>
 
                   {/* Mô tả / Ghi chú */}
@@ -287,8 +246,6 @@ export default function AppointmentRequestModal({ isOpen, onClose }) {
                   </p>
                 </form>
               )}
-                </div>
-              </div>
             </div>
           </motion.div>
         </div>

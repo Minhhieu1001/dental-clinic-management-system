@@ -11,12 +11,11 @@ import iuh.fit.backend.billing.repository.InvoiceRepository;
 import iuh.fit.backend.billing.repository.PaymentTransactionRepository;
 import iuh.fit.backend.billing.service.InvoiceService;
 import iuh.fit.backend.common.security.CustomUserDetails;
-import iuh.fit.backend.inforclinic.entity.Branch;
-import iuh.fit.backend.inforclinic.repository.BranchRepository;
 import iuh.fit.backend.patient.entity.Patient;
 import iuh.fit.backend.patient.repository.PatientRepository;
 import iuh.fit.backend.treatment.entity.TreatmentPlan;
 import iuh.fit.backend.treatment.repository.TreatmentPlanRepository;
+import iuh.fit.backend.treatment.repository.TreatmentServiceRepository;
 import iuh.fit.backend.promotion.entity.Promotion;
 import iuh.fit.backend.promotion.repository.PromotionRepository;
 import iuh.fit.backend.user.entity.Employee;
@@ -48,10 +47,10 @@ public class InvoiceServiceImpl implements InvoiceService {
     private final PaymentTransactionRepository paymentTransactionRepository;
     private final PatientRepository patientRepository;
     private final EmployeeRepository employeeRepository;
+    private final TreatmentServiceRepository treatmentServiceRepository;
     private final TreatmentPlanRepository treatmentPlanRepository;
     private final UserRepository userRepository;
     private final PromotionRepository promotionRepository;
-    private final BranchRepository branchRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -141,7 +140,6 @@ public class InvoiceServiceImpl implements InvoiceService {
         List<InvoiceDetail> details = new ArrayList<>();
 
         Invoice invoice = Invoice.builder()
-                .branch(resolveBranch(request.getBranchId(), employee != null ? employee.getBranch() : null))
                 .invoiceCode(code)
                 .invoiceDate(LocalDateTime.now())
                 .isSave(true)
@@ -166,7 +164,9 @@ public class InvoiceServiceImpl implements InvoiceService {
 
                 InvoiceDetail detail = InvoiceDetail.builder()
                         .invoice(invoice)
-                        .treatmentServiceId(item.getTreatmentServiceId())
+                        .treatmentService(item.getTreatmentServiceId() != null
+                                ? treatmentServiceRepository.findById(item.getTreatmentServiceId()).orElse(null)
+                                : null)
                         .itemName(item.getItemName())
                         .quantity(qty)
                         .unitPrice(unitPrice)
@@ -178,10 +178,9 @@ public class InvoiceServiceImpl implements InvoiceService {
             }
         }
 
-        BigDecimal totalAmount = request.getTotalAmount() != null
-                && request.getTotalAmount().compareTo(BigDecimal.ZERO) > 0
-                        ? request.getTotalAmount()
-                        : calculatedTotal;
+        BigDecimal totalAmount = request.getTotalAmount() != null && request.getTotalAmount().compareTo(BigDecimal.ZERO) > 0
+                ? request.getTotalAmount()
+                : calculatedTotal;
         BigDecimal discount = invoice.getDiscountAmount();
         BigDecimal finalAmt = request.getFinalAmount() != null
                 ? request.getFinalAmount()
@@ -236,8 +235,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         BigDecimal remainingBeforePayment = finalAmount.subtract(currentPaid).max(BigDecimal.ZERO);
 
         if (serviceAmount.compareTo(remainingBeforePayment) > 0) {
-            throw new IllegalArgumentException("Số tiền thanh toán nợ hóa đơn (" + serviceAmount
-                    + " đ) không được vượt quá số tiền còn nợ (" + remainingBeforePayment + " đ)");
+            throw new IllegalArgumentException("Số tiền thanh toán nợ hóa đơn (" + serviceAmount + " đ) không được vượt quá số tiền còn nợ (" + remainingBeforePayment + " đ)");
         }
 
         BigDecimal amountReceived = request.getAmountReceived() != null
@@ -258,7 +256,6 @@ public class InvoiceServiceImpl implements InvoiceService {
 
         LocalDateTime paymentTime = LocalDateTime.now();
         PaymentTransactions tx = PaymentTransactions.builder()
-                .branch(resolveBranch(request.getBranchId(), null))
                 .invoice(invoice)
                 .employee(employee)
                 .paymentTransactionsName("Thanh toán hóa đơn " + invoice.getInvoiceCode())
@@ -293,14 +290,6 @@ public class InvoiceServiceImpl implements InvoiceService {
         return mapToResponse(updated);
     }
 
-    private Branch resolveBranch(String branchId, Branch fallback) {
-        if (branchId == null || branchId.isBlank()) {
-            return fallback;
-        }
-        return branchRepository.findById(branchId.trim())
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy chi nhánh: " + branchId));
-    }
-
     private BigDecimal defaultAmount(BigDecimal amount) {
         return amount != null ? amount : BigDecimal.ZERO;
     }
@@ -314,44 +303,53 @@ public class InvoiceServiceImpl implements InvoiceService {
     private InvoiceResponse mapToResponse(Invoice inv) {
         List<InvoiceDetailDTO> detailDTOs = new ArrayList<>();
         if (inv.getInvoiceDetails() != null) {
-            detailDTOs = inv.getInvoiceDetails().stream().map(d -> InvoiceDetailDTO.builder()
-                    .id(d.getId())
-                    .treatmentServiceId(d.getTreatmentServiceId())
-                    .itemName(d.getItemName())
-                    .quantity(d.getQuantity())
-                    .unitPrice(d.getUnitPrice())
-                    .subtotal(d.getSubtotal())
-                    .status(d.getStatus())
-                    .build()).collect(Collectors.toList());
+            detailDTOs = inv.getInvoiceDetails().stream().map(d ->
+                            InvoiceDetailDTO.builder()
+                            .id(d.getId())
+                            .treatmentServiceId(d.getTreatmentService() != null ? d.getTreatmentService().getId() : null)
+                            .itemName(d.getItemName())
+                            .quantity(d.getQuantity())
+                            .unitPrice(d.getUnitPrice())
+                            .subtotal(d.getSubtotal())
+                            .status(d.getStatus())
+                            .phaseId(d.getTreatmentService() != null && d.getTreatmentService().getTreatmentPhase() != null
+                                    ? d.getTreatmentService().getTreatmentPhase().getId() : null)
+                            .phaseName(d.getTreatmentService() != null && d.getTreatmentService().getTreatmentPhase() != null
+                                    ? d.getTreatmentService().getTreatmentPhase().getPhaseName() : null)
+                            .phaseOrder(d.getTreatmentService() != null && d.getTreatmentService().getTreatmentPhase() != null
+                                    ? d.getTreatmentService().getTreatmentPhase().getPhaseOrder() : null)
+                            .build()
+            ).collect(Collectors.toList());
         }
 
         List<PaymentTransactionDTO> txDTOs = new ArrayList<>();
         if (inv.getPaymentTransactions() != null) {
-            txDTOs = inv.getPaymentTransactions().stream().map(tx -> PaymentTransactionDTO.builder()
-                    .id(tx.getId())
-                    .invoiceId(inv.getId())
-                    .paymentTransactionsName(tx.getPaymentTransactionsName())
-                    .patientId(inv.getPatient() != null ? inv.getPatient().getId() : null)
-                    .patientCode(inv.getPatient() != null ? inv.getPatient().getPatientCode() : null)
-                    .patientName(inv.getPatient() != null ? inv.getPatient().getFullName() : null)
-                    .patientPhone(inv.getPatient() != null ? inv.getPatient().getPhoneNumber() : null)
-                    .employeeId(tx.getEmployee() != null ? tx.getEmployee().getId() : null)
-                    .employeeCode(tx.getEmployee() != null && tx.getEmployee().getUser() != null
-                            ? tx.getEmployee().getUser().getUsername()
-                            : null)
-                    .serviceAmount(tx.getServiceAmount())
-                    .medicineAmount(tx.getMedicineAmount())
-                    .totalAmount(tx.getTotalAmount())
-                    .amountReceived(tx.getAmountReceived())
-                    .changeAmount(tx.getChangeAmount())
-                    .paymentMethod(tx.getPaymentMethod() != null ? tx.getPaymentMethod().name() : null)
-                    .transactionCode(tx.getTransactionCode())
-                    .paymentTime(tx.getPaymentTime())
-                    .status(tx.getStatus() != null ? tx.getStatus().name() : null)
-                    .note(tx.getNote())
-                    .employeeName(tx.getEmployee() != null ? tx.getEmployee().getFullName() : null)
-                    .prescriptionId(tx.getPrescriptionId())
-                    .build()).collect(Collectors.toList());
+            txDTOs = inv.getPaymentTransactions().stream().map(tx ->
+                            PaymentTransactionDTO.builder()
+                            .id(tx.getId())
+                            .invoiceId(inv.getId())
+                            .paymentTransactionsName(tx.getPaymentTransactionsName())
+                            .patientId(inv.getPatient() != null ? inv.getPatient().getId() : null)
+                            .patientCode(inv.getPatient() != null ? inv.getPatient().getPatientCode() : null)
+                            .patientName(inv.getPatient() != null ? inv.getPatient().getFullName() : null)
+                            .patientPhone(inv.getPatient() != null ? inv.getPatient().getPhoneNumber() : null)
+                            .employeeId(tx.getEmployee() != null ? tx.getEmployee().getId() : null)
+                            .employeeCode(tx.getEmployee() != null && tx.getEmployee().getUser() != null
+                                    ? tx.getEmployee().getUser().getUsername() : null)
+                            .serviceAmount(tx.getServiceAmount())
+                            .medicineAmount(tx.getMedicineAmount())
+                            .totalAmount(tx.getTotalAmount())
+                            .amountReceived(tx.getAmountReceived())
+                            .changeAmount(tx.getChangeAmount())
+                            .paymentMethod(tx.getPaymentMethod() != null ? tx.getPaymentMethod().name() : null)
+                            .transactionCode(tx.getTransactionCode())
+                            .paymentTime(tx.getPaymentTime())
+                            .status(tx.getStatus() != null ? tx.getStatus().name() : null)
+                            .note(tx.getNote())
+                            .employeeName(tx.getEmployee() != null ? tx.getEmployee().getFullName() : null)
+                            .prescriptionId(tx.getPrescriptionId())
+                            .build()
+            ).collect(Collectors.toList());
         }
 
         String empName = null;
@@ -363,10 +361,6 @@ public class InvoiceServiceImpl implements InvoiceService {
         }
 
         return InvoiceResponse.builder()
-                .branchId(inv.getBranch() != null ? inv.getBranch().getBranchId() : null)
-                .branchName(inv.getBranch() != null ? inv.getBranch().getBranchName() : null)
-                .branchAddress(inv.getBranch() != null ? inv.getBranch().getAddress() : null)
-                .branchPhone(inv.getBranch() != null ? inv.getBranch().getPhoneNumber() : null)
                 .id(inv.getId())
                 .invoiceCode(inv.getInvoiceCode())
                 .invoiceDate(inv.getInvoiceDate())

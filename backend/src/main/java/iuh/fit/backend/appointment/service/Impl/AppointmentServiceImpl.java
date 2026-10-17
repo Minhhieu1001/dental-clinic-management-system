@@ -13,9 +13,6 @@ import iuh.fit.backend.appointment.repository.RoomRepository;
 import iuh.fit.backend.appointment.service.AppointmentService;
 import iuh.fit.backend.common.exception.AppException;
 import iuh.fit.backend.common.exception.ErrorCode;
-import iuh.fit.backend.common.security.CustomUserDetails;
-import iuh.fit.backend.inforclinic.entity.Branch;
-import iuh.fit.backend.inforclinic.repository.BranchRepository;
 import iuh.fit.backend.notification.dto.NotificationResponseDTO;
 import iuh.fit.backend.notification.entity.Notification;
 import iuh.fit.backend.notification.enums.NotificationType;
@@ -39,9 +36,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.DayOfWeek;
-import java.time.ZoneId;
-import java.time.temporal.TemporalAdjusters;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -64,55 +58,16 @@ public class AppointmentServiceImpl implements AppointmentService {
     private final UserRepository userRepository;
     private final DentistRepository dentistRepository;
     private final EmployeeRepository employeeRepository;
-    private final BranchRepository branchRepository;
     private final RoomRepository roomRepository;
     private final notificationRepository notificationRepository;
     private final SimpMessagingTemplate simpMessagingTemplate;
 
     @Override
-    @Transactional(readOnly = true)
-    public List<AppointmentDetailDTO> getAppointmentsByDay(LocalDate date) {
-        String branchId = getCurrentEmployeeBranchId();
-        LocalDate selectedDate = date != null ? date : LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
-        return appointmentRepository.findByBranchAndDateRange(
-                branchId, selectedDate.atStartOfDay(), selectedDate.plusDays(1).atStartOfDay())
-                .stream().map(this::mapToDTO).collect(Collectors.toList());
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<AppointmentDetailDTO> getAppointmentsByWeek(LocalDate date) {
-        String branchId = getCurrentEmployeeBranchId();
-        LocalDate selectedDate = date != null ? date : LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
-        LocalDate startOfWeek = selectedDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-        return appointmentRepository.findByBranchAndDateRange(
-                branchId, startOfWeek.atStartOfDay(), startOfWeek.plusWeeks(1).atStartOfDay())
-                .stream().map(this::mapToDTO).collect(Collectors.toList());
-    }
-
-    private String getCurrentEmployeeBranchId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()
-                || !(authentication.getPrincipal() instanceof CustomUserDetails userDetails)) {
-            throw new AppException(ErrorCode.UNAUTHORIZED);
-        }
-
-        Employee employee = employeeRepository.findByUserId(userDetails.getUser().getId())
-                .orElseThrow(() -> new AppException(ErrorCode.CURRENT_USER_NOT_EMPLOYEE));
-        if (employee.getBranch() == null || employee.getBranch().getBranchId() == null) {
-            throw new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Nhân viên hiện tại chưa được phân công chi nhánh.");
-        }
-        return employee.getBranch().getBranchId();
-    }
-
-    @Override
     @Transactional
     public AppointmentDetailDTO createAppointment(AppointmentCreateDTO dto) {
-        log.info("Creating appointment for dentistId: {}, patientName: {}, phone: {}", dto.getDentistId(),
-                dto.getFullName(), dto.getPhone());
+        log.info("Creating appointment for dentistId: {}, patientName: {}, phone: {}", dto.getDentistId(), dto.getFullName(), dto.getPhone());
 
-        String patientName = (dto.getFullName() != null && !dto.getFullName().isBlank()) ? dto.getFullName().trim()
-                : "Bệnh nhân mới";
+        String patientName = (dto.getFullName() != null && !dto.getFullName().isBlank()) ? dto.getFullName().trim() : "Bệnh nhân mới";
         String phone = (dto.getPhone() != null && !dto.getPhone().isBlank()) ? dto.getPhone().trim() : "";
 
         if (patientName.isBlank() && phone.isBlank()) {
@@ -123,8 +78,7 @@ public class AppointmentServiceImpl implements AppointmentService {
         Dentist dentist = null;
         if (dto.getDentistId() != null) {
             dentist = dentistRepository.findById(dto.getDentistId())
-                    .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND,
-                            "Không tìm thấy Bác sĩ với ID: " + dto.getDentistId()));
+                    .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy Bác sĩ với ID: " + dto.getDentistId()));
         } else {
             List<Dentist> dentists = dentistRepository.findAll();
             if (!dentists.isEmpty()) {
@@ -178,15 +132,12 @@ public class AppointmentServiceImpl implements AppointmentService {
             log.warn("Could not resolve logged-in employee: {}", e.getMessage());
         }
 
-        Branch branch = resolveBranch(dto);
-
         // 5. Build Appointment entity with direct patientName and phone
         Appointment appointment = Appointment.builder()
                 .patientName(patientName)
                 .phone(phone)
                 .dentist(dentist)
                 .employee(employee)
-                .branch(branch)
                 .appointmentDate(apptDate)
                 .appointmentTime(apptTime)
                 .reason(dto.getReason() != null ? dto.getReason() : "Tư vấn & khám bệnh")
@@ -213,8 +164,7 @@ public class AppointmentServiceImpl implements AppointmentService {
 
         AppointmentDetailDTO resultDto = mapToDTO(appointment);
 
-        // 6.5 Notify assigned dentist and active receptionists about the newly created
-        // appointment
+        // 6.5 Notify assigned dentist and active receptionists about the newly created appointment
         try {
             Set<User> recipients = new HashSet<>();
 
@@ -230,17 +180,14 @@ public class AppointmentServiceImpl implements AppointmentService {
             List<User> activeEmployees = userRepository.findByRoleAndStatus(Role.EMPLOYEE, StatusUser.ACTIVE);
             recipients.addAll(activeEmployees);
 
-            String doctorNameStr = appointment.getDentist() != null ? appointment.getDentist().getFullName()
-                    : "chưa chỉ định";
+            String doctorNameStr = appointment.getDentist() != null ? appointment.getDentist().getFullName() : "chưa chỉ định";
 
             for (User recipient : recipients) {
-                String targetUrl = (recipient.getRole() == Role.DENTIST) ? "/dentist/appointments"
-                        : "/employee/appointments";
+                String targetUrl = (recipient.getRole() == Role.DENTIST) ? "/dentist/appointments" : "/employee/appointments";
                 Notification notif = Notification.builder()
                         .user(recipient)
                         .title("Lịch hẹn mới được xếp")
-                        .content("Lịch khám của bệnh nhân " + appointment.getPatientName() + " ("
-                                + appointment.getPhone() + ") đã được tạo cho bác sĩ " + doctorNameStr + ".")
+                        .content("Lịch khám của bệnh nhân " + appointment.getPatientName() + " (" + appointment.getPhone() + ") đã được tạo cho bác sĩ " + doctorNameStr + ".")
                         .type(NotificationType.PATIENT_CHECKIN)
                         .targetUrl(targetUrl)
                         .isRead(false)
@@ -258,8 +205,7 @@ public class AppointmentServiceImpl implements AppointmentService {
                         .createdAt(notif.getCreatedAt() != null ? notif.getCreatedAt() : LocalDateTime.now())
                         .build();
 
-                simpMessagingTemplate.convertAndSendToUser(recipient.getId().toString(), "/queue/notifications",
-                        notifDto);
+                simpMessagingTemplate.convertAndSendToUser(recipient.getId().toString(), "/queue/notifications", notifDto);
                 simpMessagingTemplate.convertAndSend("/topic/notifications", notifDto);
             }
         } catch (Exception e) {
@@ -287,24 +233,19 @@ public class AppointmentServiceImpl implements AppointmentService {
                     LocalDate date = LocalDate.parse(dateStr);
                     LocalDateTime start = date.atStartOfDay();
                     LocalDateTime end = date.atTime(23, 59, 59);
-                    appointments = appointmentRepository
-                            .findByDentistIdAndAppointmentDateBetweenOrderByAppointmentDateAscAppointmentTimeAsc(
-                                    dentistId, start, end);
+                    appointments = appointmentRepository.findByDentistIdAndAppointmentDateBetweenOrderByAppointmentDateAscAppointmentTimeAsc(dentistId, start, end);
                 } catch (Exception e) {
-                    appointments = appointmentRepository
-                            .findByDentistIdOrderByAppointmentDateAscAppointmentTimeAsc(dentistId);
+                    appointments = appointmentRepository.findByDentistIdOrderByAppointmentDateAscAppointmentTimeAsc(dentistId);
                 }
             } else {
-                appointments = appointmentRepository
-                        .findByDentistIdOrderByAppointmentDateAscAppointmentTimeAsc(dentistId);
+                appointments = appointmentRepository.findByDentistIdOrderByAppointmentDateAscAppointmentTimeAsc(dentistId);
             }
         } else if (dateStr != null && !dateStr.isBlank()) {
             try {
                 LocalDate date = LocalDate.parse(dateStr);
                 LocalDateTime start = date.atStartOfDay();
                 LocalDateTime end = date.atTime(23, 59, 59);
-                appointments = appointmentRepository
-                        .findByAppointmentDateBetweenOrderByAppointmentDateAscAppointmentTimeAsc(start, end);
+                appointments = appointmentRepository.findByAppointmentDateBetweenOrderByAppointmentDateAscAppointmentTimeAsc(start, end);
             } catch (Exception e) {
                 appointments = appointmentRepository.findAllByOrderByAppointmentDateDescAppointmentTimeDesc();
             }
@@ -329,14 +270,9 @@ public class AppointmentServiceImpl implements AppointmentService {
         List<Dentist> allDentists = dentistRepository.findAllWithUser();
         List<UUID> matchingDentistIds = allDentists.stream()
                 .filter(d -> {
-                    if (d.getId().equals(dentistId))
-                        return true;
-                    if (targetDentist.getUser() != null && d.getUser() != null
-                            && targetDentist.getUser().getId().equals(d.getUser().getId()))
-                        return true;
-                    String name1 = targetDentist.getFullName() != null
-                            ? targetDentist.getFullName().trim().toLowerCase()
-                            : "";
+                    if (d.getId().equals(dentistId)) return true;
+                    if (targetDentist.getUser() != null && d.getUser() != null && targetDentist.getUser().getId().equals(d.getUser().getId())) return true;
+                    String name1 = targetDentist.getFullName() != null ? targetDentist.getFullName().trim().toLowerCase() : "";
                     String name2 = d.getFullName() != null ? d.getFullName().trim().toLowerCase() : "";
                     return !name1.isEmpty() && name1.equals(name2);
                 })
@@ -355,27 +291,17 @@ public class AppointmentServiceImpl implements AppointmentService {
         List<Dentist> allDentists = dentistRepository.findAllWithUser();
         List<UUID> matchingDentistIds = allDentists.stream()
                 .filter(d -> {
-                    if (d.getUser() != null && d.getUser().getId().equals(userId))
-                        return true;
-                    if (d.getId().equals(userId))
-                        return true;
+                    if (d.getUser() != null && d.getUser().getId().equals(userId)) return true;
+                    if (d.getId().equals(userId)) return true;
                     if (user != null) {
-                        if (d.getUser() != null && user.getEmail() != null
-                                && user.getEmail().equalsIgnoreCase(d.getUser().getEmail()))
-                            return true;
-                        if (d.getUser() != null && user.getUsername() != null
-                                && user.getUsername().equalsIgnoreCase(d.getUser().getUsername()))
-                            return true;
-                        String dName = d.getFullName() != null ? d.getFullName()
-                                : (d.getUser() != null ? d.getUser().getUsername() : "");
+                        if (d.getUser() != null && user.getEmail() != null && user.getEmail().equalsIgnoreCase(d.getUser().getEmail())) return true;
+                        if (d.getUser() != null && user.getUsername() != null && user.getUsername().equalsIgnoreCase(d.getUser().getUsername())) return true;
+                        String dName = d.getFullName() != null ? d.getFullName() : (d.getUser() != null ? d.getUser().getUsername() : "");
                         String uName = user.getUsername() != null ? user.getUsername() : "";
                         if (!dName.isEmpty() && !uName.isEmpty()) {
-                            String cleanD = dName.replaceAll("(?i)^(ThS\\.|BS\\.|TS\\.|Dr\\.)\\s*", "").trim()
-                                    .toLowerCase();
-                            String cleanU = uName.replaceAll("(?i)^(bs\\.|dr\\.)", "").replace(".", " ").trim()
-                                    .toLowerCase();
-                            if (cleanD.contains(cleanU) || cleanU.contains(cleanD))
-                                return true;
+                            String cleanD = dName.replaceAll("(?i)^(ThS\\.|BS\\.|TS\\.|Dr\\.)\\s*", "").trim().toLowerCase();
+                            String cleanU = uName.replaceAll("(?i)^(bs\\.|dr\\.)", "").replace(".", " ").trim().toLowerCase();
+                            if (cleanD.contains(cleanU) || cleanU.contains(cleanD)) return true;
                         }
                     }
                     return false;
@@ -392,8 +318,16 @@ public class AppointmentServiceImpl implements AppointmentService {
                 .stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 
-    private void notifyAppointmentStatusChanged(Appointment appointment) {
-        StatusAppointment status = appointment.getStatus();
+    @Override
+    @Transactional
+    public AppointmentDetailDTO updateAppointmentStatus(UUID appointmentId, StatusAppointment status) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy lịch hẹn ID: " + appointmentId));
+        appointment.setStatus(status);
+        appointment = appointmentRepository.save(appointment);
+
+        AppointmentDetailDTO resultDto = mapToDTO(appointment);
+
         // Notify active Dentist and active Employees/Admins
         try {
             Set<User> recipients = new HashSet<>();
@@ -451,8 +385,7 @@ public class AppointmentServiceImpl implements AppointmentService {
             }
 
             for (User recipient : recipients) {
-                String targetUrl = (recipient.getRole() == Role.DENTIST) ? "/dentist/appointments"
-                        : "/employee/appointments";
+                String targetUrl = (recipient.getRole() == Role.DENTIST) ? "/dentist/appointments" : "/employee/appointments";
                 Notification notif = Notification.builder()
                         .user(recipient)
                         .title(title)
@@ -474,33 +407,32 @@ public class AppointmentServiceImpl implements AppointmentService {
                         .createdAt(notif.getCreatedAt() != null ? notif.getCreatedAt() : LocalDateTime.now())
                         .build();
 
-                simpMessagingTemplate.convertAndSendToUser(recipient.getId().toString(), "/queue/notifications",
-                        notifDto);
+                simpMessagingTemplate.convertAndSendToUser(recipient.getId().toString(), "/queue/notifications", notifDto);
                 simpMessagingTemplate.convertAndSend("/topic/notifications", notifDto);
             }
-            log.info(">>> [NOTIF SUCCESS] Đã lưu & gửi thông báo đổi trạng thái '{}' cho {} người nhận.", status,
-                    recipients.size());
+            log.info(">>> [NOTIF SUCCESS] Đã lưu & gửi thông báo đổi trạng thái '{}' cho {} người nhận.", status, recipients.size());
         } catch (Exception e) {
-            log.warn("Failed to create or send appointment status notifications: {}", e.getMessage(), e);
+            log.warn("Failed to create or send notifications in updateAppointmentStatus: {}", e.getMessage(), e);
         }
 
+        // Realtime broadcast for appointment table updates
+        try {
+            simpMessagingTemplate.convertAndSend("/topic/appointments", resultDto);
+        } catch (Exception e) {
+            log.warn("Realtime WebSocket broadcast failed in updateAppointmentStatus: {}", e.getMessage());
+        }
+
+        return resultDto;
     }
 
     @Override
     @Transactional
     public AppointmentDetailDTO updateAppointment(UUID appointmentId, AppointmentCreateDTO dto) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND,
-                        "Không tìm thấy lịch hẹn ID: " + appointmentId));
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy lịch hẹn ID: " + appointmentId));
 
-        StatusAppointment previousStatus = appointment.getStatus();
-        boolean updatingSchedule = (dto.getAppointmentDate() != null && !dto.getAppointmentDate().isBlank())
-                || (dto.getAppointmentTime() != null && !dto.getAppointmentTime().isBlank())
-                || dto.getDentistId() != null || dto.getRoomId() != null;
-        if (updatingSchedule && previousStatus != StatusAppointment.CONFIRMED
-                && previousStatus != StatusAppointment.PENDING) {
-            throw new AppException(ErrorCode.VALIDATION_ERROR,
-                    "Lịch hẹn đã check-in hoặc đang tiến hành khám, không thể đổi lịch!");
+        if (appointment.getStatus() != StatusAppointment.CONFIRMED && appointment.getStatus() != StatusAppointment.PENDING) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Lịch hẹn đã check-in hoặc đang tiến hành khám, không thể đổi lịch!");
         }
 
         if (dto.getFullName() != null && !dto.getFullName().isBlank()) {
@@ -513,8 +445,7 @@ public class AppointmentServiceImpl implements AppointmentService {
 
         if (dto.getDentistId() != null) {
             Dentist dentist = dentistRepository.findById(dto.getDentistId())
-                    .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND,
-                            "Không tìm thấy Bác sĩ ID: " + dto.getDentistId()));
+                    .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy Bác sĩ ID: " + dto.getDentistId()));
             appointment.setDentist(dentist);
         }
 
@@ -523,19 +454,17 @@ public class AppointmentServiceImpl implements AppointmentService {
             appointment.setRoom(room);
         }
 
-        boolean hasDate = dto.getAppointmentDate() != null && !dto.getAppointmentDate().isBlank();
-        boolean hasTime = dto.getAppointmentTime() != null && !dto.getAppointmentTime().isBlank();
-        if (hasDate || hasTime) {
+        if (dto.getAppointmentDate() != null && !dto.getAppointmentDate().isBlank()) {
             try {
-                LocalDate parsedDate = hasDate ? LocalDate.parse(dto.getAppointmentDate())
-                        : appointment.getAppointmentDate().toLocalDate();
-                LocalTime parsedTime = hasTime ? LocalTime.parse(dto.getAppointmentTime())
-                        : appointment.getAppointmentTime().toLocalTime();
+                LocalDate parsedDate = LocalDate.parse(dto.getAppointmentDate(), DateTimeFormatter.ISO_LOCAL_DATE);
                 appointment.setAppointmentDate(parsedDate.atStartOfDay());
-                appointment.setAppointmentTime(parsedDate.atTime(parsedTime));
-            } catch (java.time.format.DateTimeParseException e) {
-                throw new AppException(ErrorCode.VALIDATION_ERROR,
-                        "Ngày hoặc giờ hẹn không hợp lệ. Định dạng yêu cầu: yyyy-MM-dd và HH:mm.");
+
+                if (dto.getAppointmentTime() != null && !dto.getAppointmentTime().isBlank()) {
+                    LocalTime parsedTime = LocalTime.parse(dto.getAppointmentTime());
+                    appointment.setAppointmentTime(parsedDate.atTime(parsedTime));
+                }
+            } catch (Exception e) {
+                log.warn("Failed to parse date/time in updateAppointment: {}", e.getMessage());
             }
         }
 
@@ -547,39 +476,21 @@ public class AppointmentServiceImpl implements AppointmentService {
             appointment.setNotes(dto.getNotes());
         }
 
-        if (dto.getStatus() != null) {
-            appointment.setStatus(dto.getStatus());
-        }
         appointment = appointmentRepository.save(appointment);
-        AppointmentDetailDTO resultDto = mapToDTO(appointment);
-        if (appointment.getStatus() != previousStatus) {
-            notifyAppointmentStatusChanged(appointment);
-        }
-        try {
-            simpMessagingTemplate.convertAndSend("/topic/appointments", resultDto);
-        } catch (Exception e) {
-            log.warn("Realtime WebSocket broadcast failed in updateAppointment: {}", e.getMessage());
-        }
-        return resultDto;
+        return mapToDTO(appointment);
     }
 
     @Override
     @Transactional
     public AppointmentDetailDTO updateClinicalExam(UUID appointmentId, AppointmentCreateDTO dto) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND,
-                        "Không tìm thấy lịch hẹn ID: " + appointmentId));
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy lịch hẹn ID: " + appointmentId));
 
-        if (dto.getDiagnosis() != null)
-            appointment.setDiagnosis(dto.getDiagnosis());
-        if (dto.getSymptoms() != null)
-            appointment.setSymptoms(dto.getSymptoms());
-        if (dto.getTreatmentNotes() != null)
-            appointment.setTreatmentNotes(dto.getTreatmentNotes());
-        if (dto.getNotes() != null)
-            appointment.setNotes(dto.getNotes());
-        if (dto.getReason() != null)
-            appointment.setReason(dto.getReason());
+        if (dto.getDiagnosis() != null) appointment.setDiagnosis(dto.getDiagnosis());
+        if (dto.getSymptoms() != null) appointment.setSymptoms(dto.getSymptoms());
+        if (dto.getTreatmentNotes() != null) appointment.setTreatmentNotes(dto.getTreatmentNotes());
+        if (dto.getNotes() != null) appointment.setNotes(dto.getNotes());
+        if (dto.getReason() != null) appointment.setReason(dto.getReason());
 
         appointment = appointmentRepository.save(appointment);
         return mapToDTO(appointment);
@@ -594,16 +505,12 @@ public class AppointmentServiceImpl implements AppointmentService {
     }
 
     private AppointmentDetailDTO mapToDTO(Appointment apt) {
-        Branch branch = apt.getBranch();
         return AppointmentDetailDTO.builder()
                 .id(apt.getId())
                 .patientId(null)
                 .patientName(apt.getPatientName() != null ? apt.getPatientName() : "N/A")
                 .patientCode("N/A")
                 .phone(apt.getPhone() != null ? apt.getPhone() : "")
-                .branchId(branch != null ? branch.getBranchId() : null)
-                .branchName(branch != null ? branch.getBranchName() : null)
-                .branchAddress(branch != null ? branch.getAddress() : null)
                 .dentistId(apt.getDentist() != null ? apt.getDentist().getId() : null)
                 .dentistName(apt.getDentist() != null ? apt.getDentist().getFullName() : "Chưa phân công")
                 .employeeId(apt.getEmployee() != null ? apt.getEmployee().getId() : null)
@@ -623,18 +530,6 @@ public class AppointmentServiceImpl implements AppointmentService {
                 .build();
     }
 
-    private Branch resolveBranch(AppointmentCreateDTO dto) {
-        if (dto.getBranchId() == null || dto.getBranchId().isBlank()) {
-            throw new AppException(
-                    ErrorCode.RESOURCE_NOT_FOUND,
-                    "Không tìm thấy chi nhánh trong yêu cầu tạo lịch hẹn.");
-        }
-
-        return branchRepository.findById(dto.getBranchId().trim())
-                .orElseThrow(() -> new AppException(
-                        ErrorCode.RESOURCE_NOT_FOUND,
-                        "Không tìm thấy chi nhánh: " + dto.getBranchId()));
-    }
 
     private String resolveEmployeeName(Employee employee) {
         if (employee == null) {
@@ -663,3 +558,4 @@ public class AppointmentServiceImpl implements AppointmentService {
         return roomRepository.findAll();
     }
 }
+

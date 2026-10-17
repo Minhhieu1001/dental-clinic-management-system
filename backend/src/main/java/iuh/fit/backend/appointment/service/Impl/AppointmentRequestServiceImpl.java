@@ -5,8 +5,6 @@ import iuh.fit.backend.appointment.dto.AppointmentResponseDTO;
 import iuh.fit.backend.appointment.entity.AppointmentRequest;
 import iuh.fit.backend.appointment.enums.StatustAppointmentRequest;
 import iuh.fit.backend.appointment.repository.AppointmentRequestRepository;
-import iuh.fit.backend.inforclinic.entity.Branch;
-import iuh.fit.backend.inforclinic.repository.BranchRepository;
 import iuh.fit.backend.appointment.service.AppointmentRequestService;
 import iuh.fit.backend.common.exception.AppException;
 import iuh.fit.backend.common.exception.ErrorCode;
@@ -44,7 +42,6 @@ public class AppointmentRequestServiceImpl implements AppointmentRequestService 
     private final UserRepository userRepository;
     private final notificationRepository notificationRepository;
     private final SimpMessagingTemplate simpMessagingTemplate;
-    private final BranchRepository branchRepository;
 
     // tạo yêu cầu đặt lịch hẹn
     @Override
@@ -57,18 +54,14 @@ public class AppointmentRequestServiceImpl implements AppointmentRequestService 
                 .description(trimToNull(requestDTO.description()))
                 .createAt(LocalDateTime.now())
                 .statustAppointmentRequest(StatustAppointmentRequest.PENDING)
-                .branch(resolveBranch(requestDTO))
                 .employee(null)
                 .build();
 
         AppointmentRequest savedRequest = appointmentRequestRepository.save(appointmentRequest);
-        AppointmentResponseDTO responseDto = toResponse(savedRequest);
 
-        // Notify only active employees of the selected branch.
+        // Notify all active receptionists / employees
         try {
-            List<User> activeEmployees = savedRequest.getBranch() == null ? List.of()
-                    : userRepository.findByRoleAndStatusAndEmployee_Branch_BranchId(
-                            Role.EMPLOYEE, StatusUser.ACTIVE, savedRequest.getBranch().getBranchId());
+            List<User> activeEmployees = userRepository.findByRoleAndStatus(Role.EMPLOYEE, StatusUser.ACTIVE);
             for (User empUser : activeEmployees) {
                 Notification notif = Notification.builder()
                         .user(empUser)
@@ -91,12 +84,20 @@ public class AppointmentRequestServiceImpl implements AppointmentRequestService 
                         .createdAt(notif.getCreatedAt() != null ? notif.getCreatedAt() : LocalDateTime.now())
                         .build();
 
-                // WebSocket Principal uses the email from CustomUserDetails.getUsername().
-                simpMessagingTemplate.convertAndSendToUser(empUser.getEmail(), "/queue/notifications", notifDto);
-                simpMessagingTemplate.convertAndSendToUser(empUser.getEmail(), "/queue/appointment-requests", responseDto);
+                simpMessagingTemplate.convertAndSendToUser(empUser.getId().toString(), "/queue/notifications", notifDto);
+                simpMessagingTemplate.convertAndSend("/topic/notifications", notifDto);
             }
         } catch (Exception e) {
             log.warn("Failed to send notification for new appointment request: {}", e.getMessage());
+        }
+
+        AppointmentResponseDTO responseDto = toResponse(savedRequest);
+
+        // Broadcast realtime appointment request update for receptionist UI
+        try {
+            simpMessagingTemplate.convertAndSend("/topic/appointment-requests", responseDto);
+        } catch (Exception e) {
+            log.warn("Realtime WebSocket broadcast failed in createAppointRequest: {}", e.getMessage());
         }
 
         return responseDto;
@@ -109,7 +110,6 @@ public class AppointmentRequestServiceImpl implements AppointmentRequestService 
                 .orElseThrow(() -> new AppException(ErrorCode.APPOINTMENT_REQUEST_NOT_FOUND));
 
         Employee currentEmployee = getCurrentEmployee();
-        ensureRequestBelongsToEmployeeBranch(appointmentRequest, currentEmployee);
 
         Employee assignedEmployee = appointmentRequest.getEmployee();
         if (assignedEmployee != null && !assignedEmployee.getId().equals(currentEmployee.getId())) {
@@ -133,7 +133,6 @@ public class AppointmentRequestServiceImpl implements AppointmentRequestService 
                 .orElseThrow(() -> new AppException(ErrorCode.APPOINTMENT_REQUEST_NOT_FOUND));
 
         Employee currentEmployee = getCurrentEmployee();
-        ensureRequestBelongsToEmployeeBranch(appointmentRequest, currentEmployee);
 
         appointmentRequest.setEmployee(currentEmployee);
         appointmentRequest.setStatustAppointmentRequest(status);
@@ -146,10 +145,8 @@ public class AppointmentRequestServiceImpl implements AppointmentRequestService 
         LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
         LocalDateTime startOfNextDay = startOfDay.plusDays(1);
 
-        String branchId = getCurrentEmployeeBranchId();
         return appointmentRequestRepository
-                .findByBranch_BranchIdAndCreateAtGreaterThanEqualAndCreateAtLessThanOrderByCreateAtDesc(
-                        branchId,
+                .findByCreateAtGreaterThanEqualAndCreateAtLessThanOrderByCreateAtDesc(
                         startOfDay,
                         startOfNextDay
                 )
@@ -163,10 +160,8 @@ public class AppointmentRequestServiceImpl implements AppointmentRequestService 
         LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
         LocalDateTime startOfNextDay = startOfDay.plusDays(1);
 
-        String branchId = getCurrentEmployeeBranchId();
         return appointmentRequestRepository
-                .findByBranch_BranchIdAndStatustAppointmentRequestAndCreateAtGreaterThanEqualAndCreateAtLessThanOrderByCreateAtDesc(
-                        branchId,
+                .findByStatustAppointmentRequestAndCreateAtGreaterThanEqualAndCreateAtLessThanOrderByCreateAtDesc(
                         StatustAppointmentRequest.PENDING,
                         startOfDay,
                         startOfNextDay
@@ -182,9 +177,7 @@ public class AppointmentRequestServiceImpl implements AppointmentRequestService 
         LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
         LocalDateTime startOfNextDay = startOfDay.plusDays(1);
 
-        String branchId = getCurrentEmployeeBranchId();
-        return appointmentRequestRepository.countByBranch_BranchIdAndCreateAtGreaterThanEqualAndCreateAtLessThan(
-                branchId,
+        return appointmentRequestRepository.countByCreateAtGreaterThanEqualAndCreateAtLessThan(
                 startOfDay,
                 startOfNextDay
         );
@@ -194,7 +187,6 @@ public class AppointmentRequestServiceImpl implements AppointmentRequestService 
         if (requestDTO == null) {
             throw new AppException(ErrorCode.APPOINTMENT_REQUEST_DATA_REQUIRED);
         }
-
         if (isBlank(requestDTO.fullName())) {
             throw new AppException(ErrorCode.APPOINTMENT_REQUEST_FULL_NAME_REQUIRED);
         }
@@ -202,15 +194,7 @@ public class AppointmentRequestServiceImpl implements AppointmentRequestService 
             throw new AppException(ErrorCode.APPOINTMENT_REQUEST_PHONE_REQUIRED);
         }
     }
-    // Tìm chi nhánh từ dữ liệu gửi lên
-    private Branch resolveBranch(AppointmentRequestDTO requestDTO) {
-        if (!isBlank(requestDTO.branchId())) {
-            return branchRepository.findById(requestDTO.branchId())
-                    .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND));
-        }
-        return null;
-    }
-    //Lấy nhân viên đang đăng nhập
+
     private Employee getCurrentEmployee() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()
@@ -223,23 +207,6 @@ public class AppointmentRequestServiceImpl implements AppointmentRequestService 
                 .orElseThrow(() -> new AppException(ErrorCode.CURRENT_USER_NOT_EMPLOYEE));
     }
 
-    // Lấy ID chi nhánh của nhân viên
-    private String getCurrentEmployeeBranchId() {
-        Employee employee = getCurrentEmployee();
-        if (employee.getBranch() == null || employee.getBranch().getBranchId() == null) {
-            return "__EMPLOYEE_WITHOUT_BRANCH__";
-        }
-        return employee.getBranch().getBranchId();
-    }
-    //Kiểm tra yêu cầu có thuộc chi nhánh của nhân viên không
-    private void ensureRequestBelongsToEmployeeBranch(AppointmentRequest appointmentRequest, Employee employee) {
-        if (employee.getBranch() == null
-                || appointmentRequest.getBranch() == null
-                || !employee.getBranch().getBranchId().equals(appointmentRequest.getBranch().getBranchId())) {
-            throw new AppException(ErrorCode.APPOINTMENT_REQUEST_NOT_FOUND);
-        }
-    }
-
     private AppointmentResponseDTO toResponse(AppointmentRequest appointmentRequest) {
         Employee employee = appointmentRequest.getEmployee();
         return new AppointmentResponseDTO(
@@ -250,9 +217,7 @@ public class AppointmentRequestServiceImpl implements AppointmentRequestService 
                 appointmentRequest.getCreateAt(),
                 appointmentRequest.getStatustAppointmentRequest(),
                 employee != null ? employee.getId() : null,
-                resolveEmployeeName(employee),
-                appointmentRequest.getBranch() != null ? appointmentRequest.getBranch().getBranchId() : null,
-                appointmentRequest.getBranch() != null ? appointmentRequest.getBranch().getBranchName() : null
+                resolveEmployeeName(employee)
         );
     }
 

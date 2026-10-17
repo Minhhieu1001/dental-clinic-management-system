@@ -3,7 +3,6 @@ import { Award, Users, Sparkles, Star, Cpu, Stethoscope, ShieldCheck, CheckCircl
 import { getServices, getDentists, getReviews, createAppointment } from '../services/api'
 import { getDentistsList } from '../services/dentist.service'
 import { createAppointmentRequest } from '../services/appointmentRequest.service'
-import { getBranches } from '../services/clinic.service'
 import toast from 'react-hot-toast'
 import AppointmentRequestModal from '../components/ui/AppointmentRequestModal'
 
@@ -232,19 +231,11 @@ export default function Home() {
     fullName: '',
     phone: '',
     description: '',
-    branchId: '',
   })
-  const [branches, setBranches] = useState([])
   const [bookingStatus, setBookingStatus] = useState({ loading: false, success: false, error: null })
 
   // Carousel state now follows the hero showcase cards
   const SLIDE_COUNT = HERO_SLIDES.length
-
-  useEffect(() => {
-    getBranches().then(setBranches).catch((error) => {
-      console.error('Failed to load branches:', error)
-    })
-  }, [])
 
 
   useEffect(() => {
@@ -314,7 +305,7 @@ export default function Home() {
   // Handle booking form submission — Exactly matching AppointmentRequestModal
   const handleBookingSubmit = async (e) => {
     e.preventDefault()
-    if (!bookingForm.fullName.trim() || !bookingForm.phone.trim() || !bookingForm.branchId) {
+    if (!bookingForm.fullName.trim() || !bookingForm.phone.trim()) {
       toast.error('Vui lòng nhập đầy đủ Họ tên và Số điện thoại!')
       return
     }
@@ -331,7 +322,6 @@ export default function Home() {
         fullName: bookingForm.fullName.trim(),
         phone: bookingForm.phone.trim(),
         description: bookingForm.description.trim(),
-        branchId: bookingForm.branchId,
       })
 
       setBookingStatus({ loading: false, success: true, error: null })
@@ -1295,7 +1285,7 @@ export default function Home() {
                     <button
                       type="button"
                       onClick={() => {
-                        setBookingForm({ fullName: '', phone: '', description: '', branchId: '' })
+                        setBookingForm({ fullName: '', phone: '', description: '' })
                         setBookingStatus({ loading: false, success: false, error: null })
                       }}
                       className="w-full rounded-2xl bg-gradient-to-r from-[#1f4fb2] to-[#00a859] py-3 text-sm font-bold text-white shadow-lg transition hover:opacity-95 cursor-pointer"
@@ -1351,25 +1341,6 @@ export default function Home() {
                     </label>
                     <div className="relative">
                       <FileText size={18} className="absolute left-3.5 top-3.5 text-slate-400" />
-                      <div className="mb-4">
-                        <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                          Chi nhánh <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          name="branchId"
-                          required
-                          value={bookingForm.branchId}
-                          onChange={handleInputChange}
-                          className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 py-3 px-4 text-sm text-slate-800 outline-none transition-all focus:border-[#1f4fb2] focus:bg-white focus:ring-4 focus:ring-[#1f4fb2]/10"
-                        >
-                          <option value="">-- Chọn chi nhánh --</option>
-                          {branches.map((branch) => (
-                            <option key={branch.branchId} value={branch.branchId}>
-                              {branch.branchName} ({branch.branchCode})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
                       <textarea
                         name="description"
                         rows={3}

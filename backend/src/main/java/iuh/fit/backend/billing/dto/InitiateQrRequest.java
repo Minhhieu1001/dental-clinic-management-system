@@ -14,7 +14,6 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class InitiateQrRequest {
-    private String branchId;
     private UUID invoiceId;
     private BigDecimal amount;
     private BigDecimal serviceAmount;

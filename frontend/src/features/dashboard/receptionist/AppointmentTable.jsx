@@ -10,12 +10,10 @@ import {
   CheckCircle2,
   RefreshCw,
   Calendar,
-  XCircle,
-  X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { appointmentStatusConfig } from './receptionistData';
-import { updateAppointment, getAppointmentById } from '../../../services/appointment.service';
+import { updateAppointmentStatus, getAppointmentById } from '../../../services/appointment.service';
 import AppointmentDetail from './action/AppointmentDetail';
 
 const filterTabs = [
@@ -33,7 +31,7 @@ const isReschedulableStatus = (status) => {
   return s === 'CONFIRMED' || s === 'PENDING' || status === 'not-arrived';
 };
 
-export default function AppointmentTable({ appointments, onRefresh, onUpdateAppointment, onOpenEditModal, onOpenCreateModal }) {
+export default function AppointmentTable({ appointments, onRefresh, onOpenEditModal, onOpenCreateModal }) {
   const [dateScope, setDateScope] = useState('today'); // 'today' | 'week'
   const [activeFilter, setActiveFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -62,86 +60,6 @@ export default function AppointmentTable({ appointments, onRefresh, onUpdateAppo
   useMemo(() => {
     setLocalAppointments(appointments);
   }, [appointments]);
-
-  // Cancel Appointment Modal state
-  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
-  const [cancelTargetApt, setCancelTargetApt] = useState(null);
-  const [cancelReason, setCancelReason] = useState('');
-  const [isCancelling, setIsCancelling] = useState(false);
-
-  const handleHeaderCancelClick = () => {
-    let targetId = selectedAptId;
-    if (!targetId) {
-      if (filtered.length > 0) {
-        targetId = filtered[0].id;
-        setSelectedAptId(targetId);
-      } else {
-        toast.error('Vui lòng chọn 1 dòng lịch hẹn trong bảng để hủy lịch!');
-        return;
-      }
-    }
-
-    const aptData = localAppointments.find((a) => a.id === targetId);
-    if (!aptData) {
-      toast.error('Không tìm thấy thông tin lịch hẹn đã chọn!');
-      return;
-    }
-
-    const isAlreadyCancelled =
-      aptData.status === 'CANCELLED' ||
-      aptData.status === 'cancelled' ||
-      aptData.rawStatus === 'CANCELLED';
-
-    if (isAlreadyCancelled) {
-      toast.error('Lịch hẹn này đã ở trạng thái hủy!');
-      return;
-    }
-
-    setCancelTargetApt(aptData);
-    setCancelReason('');
-    setIsCancelModalOpen(true);
-  };
-
-  const handleConfirmCancel = async () => {
-    if (!cancelTargetApt) return;
-    const trimmedReason = cancelReason.trim();
-    if (!trimmedReason) {
-      toast.error('Vui lòng nhập lý do hủy lịch hẹn!');
-      return;
-    }
-
-    setIsCancelling(true);
-    try {
-      if (cancelTargetApt.id && !String(cancelTargetApt.id).startsWith('mock-')) {
-        await updateAppointment(cancelTargetApt.id, { status: 'CANCELLED', notes: trimmedReason });
-      }
-
-      const updatedCancel = {
-        ...cancelTargetApt,
-        status: 'CANCELLED',
-        rawStatus: 'CANCELLED',
-        notes: trimmedReason,
-      };
-
-      setLocalAppointments((prev) =>
-        prev.map((item) => (item.id === cancelTargetApt.id ? updatedCancel : item))
-      );
-
-      if (onUpdateAppointment) {
-        onUpdateAppointment(updatedCancel);
-      }
-
-      toast.success(`Đã hủy lịch hẹn của bệnh nhân ${cancelTargetApt.patientName}!`);
-      setIsCancelModalOpen(false);
-      setCancelTargetApt(null);
-      setCancelReason('');
-    } catch (err) {
-      console.error('Lỗi khi hủy lịch hẹn:', err);
-      toast.error('Không thể hủy lịch hẹn, vui lòng thử lại.');
-    } finally {
-      setIsCancelling(false);
-    }
-  };
 
   const handleTableRefresh = async () => {
     if (onRefresh) {
@@ -203,24 +121,14 @@ export default function AppointmentTable({ appointments, onRefresh, onUpdateAppo
   const handleCheckin = async (apt) => {
     setActionLoadingId(apt.id);
     try {
-      let updatedData = { ...apt, status: 'WAITING', rawStatus: 'WAITING' };
       if (apt.id && !String(apt.id).startsWith('mock-')) {
-        const res = await updateAppointment(apt.id, { status: 'WAITING' });
-        if (res) {
-          updatedData = { ...updatedData, ...res };
-        }
+        await updateAppointmentStatus(apt.id, 'WAITING');
       }
-
       setLocalAppointments((prev) =>
         prev.map((item) => (item.id === apt.id ? { ...item, status: 'WAITING', rawStatus: 'WAITING' } : item))
       );
-
-      // Cập nhật trực tiếp lên State Dashboard cha (không cần gọi lại API refresh)
-      if (onUpdateAppointment) {
-        onUpdateAppointment(updatedData);
-      }
-
       toast.success(`Đã check-in cho bệnh nhân ${apt.patientName}!`);
+      if (onRefresh) onRefresh();
     } catch (err) {
       console.warn('Lỗi check-in:', err);
       toast.error('Không thể thực hiện check-in.');
@@ -354,7 +262,7 @@ export default function AppointmentTable({ appointments, onRefresh, onUpdateAppo
           </div>
 
           <h3 className="text-[15px] font-semibold text-slate-700">
-            {dateScope === 'today' ? 'Lịch hẹn hôm nay' : 'Lịch hẹn trong tuần'}
+            {dateScope === 'today' ? 'Lịch hẹn hôm nay' : 'Danh sách lịch hẹn trong tuần'}
           </h3>
         </div>
 
@@ -391,21 +299,18 @@ export default function AppointmentTable({ appointments, onRefresh, onUpdateAppo
             <span>Đổi lịch</span>
           </button>
 
-          {/* Header Action: Cancel Appointment */}
-          <button
-            type="button"
-            onClick={handleHeaderCancelClick}
-            className={`flex items-center gap-1 rounded-[4px] border px-3 py-1 text-[11px] font-bold transition-all shadow-2xs ${selectedApt && (selectedApt.status === 'CANCELLED' || selectedApt.rawStatus === 'CANCELLED')
-              ? 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
-              : selectedAptId
-                ? 'border-rose-500 bg-rose-500 text-white hover:bg-rose-600 cursor-pointer'
-                : 'border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 cursor-pointer'
-              }`}
-            title="Chọn 1 dòng và bấm Hủy lịch để hủy ca khám"
-          >
-            <XCircle size={13} />
-            <span>Hủy lịch</span>
-          </button>
+          {onRefresh && (
+            <button
+              type="button"
+              onClick={handleTableRefresh}
+              disabled={isRefreshing}
+              className="flex items-center gap-1 rounded-[4px] border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 hover:text-teal-700 transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
+              title="Tải lại danh sách lịch hẹn"
+            >
+              <RefreshCw size={12} className={isRefreshing ? 'animate-spin text-teal-600' : 'text-slate-500'} />
+              <span>Làm mới</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -426,7 +331,6 @@ export default function AppointmentTable({ appointments, onRefresh, onUpdateAppo
           <tbody>
             {paginatedRows.map((apt, idx) => {
               const statusConf = appointmentStatusConfig[apt.status] || appointmentStatusConfig.CONFIRMED;
-              const isCancelled = apt.status === 'CANCELLED' || apt.status === 'cancelled' || apt.rawStatus === 'CANCELLED';
               const isConfirmed = apt.status === 'CONFIRMED' || apt.status === 'not-arrived';
               const isCalled = apt.status === 'CALLED' || apt.status === 'called';
               const isInProgress = apt.status === 'IN_PROGRESS' || apt.status === 'in-progress';
@@ -488,14 +392,7 @@ export default function AppointmentTable({ appointments, onRefresh, onUpdateAppo
 
                   {/* Ghi chú */}
                   <td className="px-3 py-2.5 overflow-hidden">
-                    {isCancelled ? (
-                      <span
-                        className="text-[11px] text-rose-600 font-medium block truncate"
-                        title={apt.notes ? `Lý do hủy: ${apt.notes}` : 'Đã hủy lịch'}
-                      >
-                        {apt.notes || 'Đã hủy lịch'}
-                      </span>
-                    ) : isCalled || isInProgress ? (
+                    {isCalled || isInProgress ? (
                       <span className="inline-flex items-center rounded bg-purple-50 px-2 py-0.5 text-[11px] font-medium text-purple-700 border border-purple-200 truncate max-w-full" title={apt.roomName || 'Phòng 101'}>
                         {`${apt.roomName || 'Phòng 101'}`}
                       </span>
@@ -509,12 +406,7 @@ export default function AppointmentTable({ appointments, onRefresh, onUpdateAppo
                   {/* Action */}
                   <td className="px-3 py-2.5 text-right whitespace-nowrap">
                     <div className="inline-flex items-center justify-end gap-1">
-                      {isCancelled ? (
-                        <span className="inline-flex items-center gap-1 rounded-[3px] bg-rose-50 text-rose-700 border border-rose-200/80 px-2 py-0.5 text-[11px] font-medium cursor-default">
-                          <XCircle size={11} strokeWidth={1.8} />
-                          Đã hủy
-                        </span>
-                      ) : isConfirmed ? (
+                      {isConfirmed ? (
                         <button
                           type="button"
                           disabled={actionLoadingId === apt.id}
@@ -527,7 +419,16 @@ export default function AppointmentTable({ appointments, onRefresh, onUpdateAppo
                           <UserCheck size={11} strokeWidth={2} />
                           Check-in
                         </button>
-                      ) : isWaiting || isCalled || isInProgress ? (
+                      ) : isWaiting ? (
+                        <button
+                          type="button"
+                          disabled
+                          className="inline-flex items-center gap-1 rounded-[3px] bg-emerald-50 text-emerald-700 border border-emerald-200/80 px-2 py-0.5 text-[11px] font-medium cursor-not-allowed"
+                        >
+                          <CheckCircle2 size={11} strokeWidth={1.8} />
+                          Đã Check-in
+                        </button>
+                      ) : isCalled ? (
                         <button
                           type="button"
                           disabled
@@ -540,9 +441,10 @@ export default function AppointmentTable({ appointments, onRefresh, onUpdateAppo
                         <button
                           type="button"
                           disabled
-                          className="inline-flex items-center gap-1 rounded-[3px] bg-slate-100 text-slate-600 border border-slate-200 px-2 py-0.5 text-[11px] font-medium cursor-not-allowed"
+                          className="inline-flex items-center gap-1 rounded-[3px] bg-emerald-50 text-emerald-700 border border-emerald-200/80 px-2 py-0.5 text-[11px] font-medium cursor-not-allowed"
                         >
-                          {statusConf.label}
+                          <CheckCircle2 size={11} strokeWidth={1.8} />
+                          Đã Check-in
                         </button>
                       )}
                     </div>
@@ -610,129 +512,6 @@ export default function AppointmentTable({ appointments, onRefresh, onUpdateAppo
         appointment={detailApt}
         onCheckin={handleCheckin}
       />
-
-      {/* Modal Nhập lý do hủy lịch hẹn (ERP Design) */}
-      {isCancelModalOpen && cancelTargetApt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-md rounded-[4px] border border-slate-200 bg-white shadow-xl overflow-hidden">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 bg-rose-50/70 px-4 py-3">
-              <div className="flex items-center gap-2 text-rose-800">
-                <div className="flex h-7 w-7 items-center justify-center rounded-[4px] bg-rose-100 border border-rose-200">
-                  <XCircle size={16} className="text-rose-600" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900">Xác nhận hủy lịch hẹn</h4>
-                  <p className="text-[11px] text-slate-500">Trạng thái lịch sẽ chuyển sang Đã hủy và lưu lý do</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!isCancelling) {
-                    setIsCancelModalOpen(false);
-                    setCancelTargetApt(null);
-                  }
-                }}
-                className="text-slate-400 hover:text-slate-600 rounded-[3px] p-1 hover:bg-slate-100 transition-colors cursor-pointer"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-4 space-y-3">
-              {/* Target Appointment Info */}
-              <div className="rounded-[4px] border border-slate-200 bg-slate-50/70 p-3 text-xs space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Bệnh nhân:</span>
-                  <span className="font-bold text-slate-800">{cancelTargetApt.patientName} ({cancelTargetApt.phone})</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Thời gian:</span>
-                  <span className="font-semibold text-slate-700">
-                    {cancelTargetApt.time} - {cancelTargetApt.appointmentDate ? String(cancelTargetApt.appointmentDate).split('T')[0] : 'Hôm nay'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Bác sĩ:</span>
-                  <span className="font-semibold text-slate-700">{cancelTargetApt.dentist}</span>
-                </div>
-              </div>
-
-              {/* Reason Input */}
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  Lý do hủy lịch khám <span className="text-rose-500">*</span>
-                </label>
-                <textarea
-                  rows={3}
-                  value={cancelReason}
-                  onChange={(e) => setCancelReason(e.target.value)}
-                  placeholder="Nhập lý do hủy ca khám (Ví dụ: Bệnh nhân bận việc đột xuất, đổi ý không đến...)"
-                  className="w-full rounded-[4px] border border-slate-200 p-2 text-xs text-slate-800 focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500 resize-none"
-                  autoFocus
-                />
-              </div>
-
-              {/* Quick suggestion chips */}
-              <div className="space-y-1">
-                <span className="text-[10px] font-medium text-slate-500">Gợi ý lý do nhanh:</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {[
-                    'Bệnh nhân bận đột xuất',
-                    'Bệnh nhân đổi lịch hẹn khác',
-                    'Không liên lạc được bệnh nhân',
-                    'Bệnh nhân yêu cầu hủy',
-                  ].map((chip) => (
-                    <button
-                      key={chip}
-                      type="button"
-                      onClick={() => setCancelReason(chip)}
-                      className="rounded-[3px] border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-600 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-700 transition-colors cursor-pointer"
-                    >
-                      {chip}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="flex items-center justify-end gap-2 border-t border-slate-100 bg-slate-50/50 px-4 py-2.5">
-              <button
-                type="button"
-                disabled={isCancelling}
-                onClick={() => {
-                  setIsCancelModalOpen(false);
-                  setCancelTargetApt(null);
-                }}
-                className="rounded-[4px] border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50 cursor-pointer"
-              >
-                Bỏ qua
-              </button>
-              <button
-                type="button"
-                disabled={isCancelling || !cancelReason.trim()}
-                onClick={handleConfirmCancel}
-                className="flex items-center gap-1.5 rounded-[4px] border border-rose-600 bg-rose-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-rose-700 active:bg-rose-800 transition-colors shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-              >
-                {isCancelling ? (
-                  <>
-                    <RefreshCw size={12} className="animate-spin" />
-                    <span>Đang hủy...</span>
-                  </>
-                ) : (
-                  <>
-                    <XCircle size={13} />
-                    <span>Xác nhận hủy</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

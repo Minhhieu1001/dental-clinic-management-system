@@ -26,6 +26,10 @@ public interface ServiceRepository extends JpaRepository<Service, UUID> {
     void deleteTreatmentServicesByServiceId(@Param("id") UUID id);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "DELETE FROM invoice_details WHERE treatment_service_id IN (SELECT id FROM treatment_services WHERE service_id = :id)", nativeQuery = true)
+    void deleteInvoiceDetailsByServiceId(@Param("id") UUID id);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = "DELETE FROM services WHERE id = :id", nativeQuery = true)
     void deleteServiceByIdNative(@Param("id") UUID id);
 }

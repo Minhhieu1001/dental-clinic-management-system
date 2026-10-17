@@ -1,6 +1,5 @@
 import {
     Award,
-    Building2,
     Calendar,
     CalendarRange,
     FileText,
@@ -215,11 +214,6 @@ export default function DentistDetailPanel({ isOpen, onClose, dentist, onEdit, o
                                     <DetailRow icon={GraduationCap} label="Học vấn">
                                         <p className="text-xs font-semibold text-slate-700">{dentist.education || 'Chưa cập nhật'}</p>
                                     </DetailRow>
-                                    <DetailRow icon={Building2} label="Chi nhánh">
-                                        <p className="text-xs font-semibold text-slate-700">
-                                            {dentist.branchName || 'Chưa phân chi nhánh'}
-                                        </p>
-                                    </DetailRow>
 
                                     <div className="grid grid-cols-2 gap-3">
                                         <DetailRow icon={CalendarRange} label="Ngày tham gia">
@@ -301,3 +295,4 @@ export default function DentistDetailPanel({ isOpen, onClose, dentist, onEdit, o
         </div>
     );
 }
+

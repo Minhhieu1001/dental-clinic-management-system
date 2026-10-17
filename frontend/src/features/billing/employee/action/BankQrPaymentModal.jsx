@@ -85,7 +85,6 @@ export default function BankQrPaymentModal({ open, onClose, invoice, payment, on
         const employeeId = useAuthStore.getState().user?.employeeId || null;
         const res = await initiateQrPayment({
           invoiceId: invoice.rawId,
-          branchId: payment?.branchId || null,
           amount,
           serviceAmount: payment.serviceAmount,
           medicineAmount: payment.medicineAmount,
@@ -141,7 +140,6 @@ export default function BankQrPaymentModal({ open, onClose, invoice, payment, on
     try {
       const employeeId = useAuthStore.getState().user?.employeeId || null;
       const res = await payInvoice(invoiceId, {
-        branchId: payment?.branchId || null,
         amount,
         serviceAmount: payment.serviceAmount,
         medicineAmount: payment.medicineAmount,

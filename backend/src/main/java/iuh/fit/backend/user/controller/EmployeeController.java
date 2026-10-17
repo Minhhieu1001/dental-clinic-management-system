@@ -51,11 +51,6 @@ public class EmployeeController {
         return employeeService.getEmployeeById(id);
     }
 
-    @GetMapping("/{id}/branch")
-    public EmployeeListResponse getEmployeeWithBranchById(@PathVariable UUID id) {
-        return employeeService.getEmployeeWithBranchById(id);
-    }
-
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public EmployeeResponse createEmployee(@RequestBody EmployeeRequest request) {

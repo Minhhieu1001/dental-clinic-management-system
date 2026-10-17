@@ -14,13 +14,10 @@ import {
   ShieldAlert,
   Sparkles,
   Award,
-  MapPin,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useAuth } from '../../hooks/useAuth';
 import { getDentistsList } from '../../services/dentist.service';
 import { createAppointment, updateAppointment } from '../../services/appointment.service';
-import { getEmployeeAddressById } from '../../services/employee.service';
 import api from '../../services/axios';
 
 const COMMON_SERVICES = [
@@ -91,7 +88,6 @@ export default function CreateAppointmentModal({
   initialData = null,
   onSuccess,
 }) {
-  const { user } = useAuth();
   const [dentists, setDentists] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [loadingDentists, setLoadingDentists] = useState(false);
@@ -109,9 +105,6 @@ export default function CreateAppointmentModal({
   const [formData, setFormData] = useState({
     appointmentId: null,
     requestId: null,
-    branchId: '',
-    branchName: '',
-    branchAddress: '',
     fullName: '',
     phone: '',
     gender: 'Nam',
@@ -235,9 +228,6 @@ export default function CreateAppointmentModal({
           ...prev,
           appointmentId: aptId,
           requestId: null,
-          branchId: targetData.branchId || '',
-          branchName: targetData.branchName || '',
-          branchAddress: targetData.branchAddress || '',
           fullName: targetData.patientName || targetData.fullName || targetData.name || '',
           phone: targetData.phone || '',
           gender: targetData.gender || 'Nam',
@@ -248,7 +238,6 @@ export default function CreateAppointmentModal({
           appointmentTime: timeVal,
           reason: targetData.service || targetData.reason || targetData.note || targetData.description || COMMON_SERVICES[0],
           notes: targetData.notes || '',
-          status: targetData.status || targetData.rawStatus || null,
         }));
       } else {
         // Add mode (Creating new appointment from request or empty)
@@ -256,9 +245,6 @@ export default function CreateAppointmentModal({
           ...prev,
           appointmentId: null,
           requestId: targetData.id || targetData.requestId || null,
-          branchId: targetData.branchId || '',
-          branchName: targetData.branchName || '',
-          branchAddress: targetData.branchAddress || '',
           fullName: targetData.name || targetData.fullName || targetData.patientName || '',
           phone: targetData.phone || '',
           gender: targetData.gender || 'Nam',
@@ -275,9 +261,6 @@ export default function CreateAppointmentModal({
       setFormData({
         appointmentId: null,
         requestId: null,
-        branchId: '',
-        branchName: '',
-        branchAddress: '',
         fullName: '',
         phone: '',
         gender: 'Nam',
@@ -292,31 +275,6 @@ export default function CreateAppointmentModal({
       });
     }
   }, [isOpen, targetData, type]);
-
-  // Lấy chi nhánh của nhân viên khi tạo lịch hẹn cho khách vãng lai / khách đến bất ngờ
-  useEffect(() => {
-    if (!isOpen) return;
-    if (targetData?.branchId) return;
-
-    const empId = user?.employeeId || user?.id;
-    if (!empId) return;
-
-    getEmployeeAddressById(empId)
-      .then((res) => {
-        const emp = res?.data || res;
-        if (emp) {
-          setFormData((prev) => ({
-            ...prev,
-            branchId: emp.branchId || '',
-            branchName: emp.branchName || '',
-            branchAddress: emp.branchAddress || '',
-          }));
-        }
-      })
-      .catch((err) => {
-        console.warn('Lỗi khi lấy chi nhánh của nhân viên:', err);
-      });
-  }, [isOpen, targetData, user]);
 
   if (!isOpen) return null;
 
@@ -354,8 +312,6 @@ export default function CreateAppointmentModal({
     try {
       const payloadData = {
         requestId: isValidUUID(formData.requestId) ? formData.requestId : null,
-        branchId: formData.branchId || null,
-        branchName: formData.branchName || null,
         fullName: formData.fullName.trim(),
         phone: formData.phone.trim(),
         dentistId: isValidUUID(formData.dentistId) ? formData.dentistId : null,
@@ -364,7 +320,6 @@ export default function CreateAppointmentModal({
         appointmentTime: formData.appointmentTime,
         reason: formData.reason.trim(),
         notes: `${formData.priority === 'URGENT' ? '[ƯU TIÊN / CẤP CỨU] ' : ''}${formData.notes.trim()}`,
-        status: isEditMode && formData.status ? formData.status : undefined,
       };
 
       if (isEditMode && formData.appointmentId && !String(formData.appointmentId).startsWith('mock-')) {
@@ -482,26 +437,6 @@ export default function CreateAppointmentModal({
                   className="w-full rounded-sm border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-800 bg-white focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
                 />
               </div>
-
-              <div className="sm:col-span-2">
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  {targetData?.id || targetData?.requestId ? 'Chi nhánh khách đã đặt hẹn' : 'Chi nhánh tiếp nhận khám'}
-                </label>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 rounded-sm border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-800">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Building size={14} className="text-teal-700 shrink-0" />
-                    <span className="font-bold truncate">
-                      {formData.branchName || 'Đang tải thông tin chi nhánh...'}
-                    </span>
-                  </div>
-                  {formData.branchAddress && (
-                    <div className="flex items-center gap-1 text-[11px] text-slate-600 font-normal shrink-0">
-                      <MapPin size={13} className="text-rose-500 shrink-0" />
-                      <span>{formData.branchAddress}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
             </div>
           </div>
 
@@ -580,15 +515,17 @@ export default function CreateAppointmentModal({
                         <div
                           key={doc.id}
                           onClick={() => handleSelectDoctor(doc)}
-                          className={`flex items-center justify-between p-2.5 rounded-sm cursor-pointer transition-all ${isSelected
-                            ? 'bg-teal-700 text-white font-bold shadow-2xs'
-                            : 'hover:bg-slate-50 text-slate-800'
-                            }`}
+                          className={`flex items-center justify-between p-2.5 rounded-sm cursor-pointer transition-all ${
+                            isSelected
+                              ? 'bg-teal-700 text-white font-bold shadow-2xs'
+                              : 'hover:bg-slate-50 text-slate-800'
+                          }`}
                         >
                           <div className="flex items-center gap-2.5">
                             <div
-                              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-sm font-bold text-xs ${isSelected ? 'bg-white text-teal-800' : 'bg-teal-50 text-teal-700 border border-teal-200'
-                                }`}
+                              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-sm font-bold text-xs ${
+                                isSelected ? 'bg-white text-teal-800' : 'bg-teal-50 text-teal-700 border border-teal-200'
+                              }`}
                             >
                               {initials}
                             </div>
@@ -598,8 +535,9 @@ export default function CreateAppointmentModal({
                                   {docName}
                                 </p>
                                 <span
-                                  className={`rounded-sm px-1.5 py-0.2 text-[9px] font-bold ${isSelected ? 'bg-white/20 text-white' : 'bg-teal-50 text-teal-700 border border-teal-200'
-                                    }`}
+                                  className={`rounded-sm px-1.5 py-0.2 text-[9px] font-bold ${
+                                    isSelected ? 'bg-white/20 text-white' : 'bg-teal-50 text-teal-700 border border-teal-200'
+                                  }`}
                                 >
                                   {doc.experienceYears || 8}+ năm KN
                                 </span>
@@ -738,14 +676,14 @@ export default function CreateAppointmentModal({
           {/* Notes & Medical History */}
           <div>
             <label className="block text-[11px] font-bold text-slate-700 mb-1">
-              Ghi chú
+              Ghi chú thêm & Tiền sử bệnh lý (Dị ứng thuốc, bệnh nền,...)
             </label>
             <textarea
               name="notes"
               rows={2}
               value={formData.notes}
               onChange={handleChange}
-              placeholder=""
+              placeholder="Nhập tiền sử bệnh lý hoặc lời dặn của bệnh nhân..."
               className="w-full rounded-sm border border-slate-200 px-3 py-1.5 text-xs text-slate-800 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600 resize-none"
             />
           </div>

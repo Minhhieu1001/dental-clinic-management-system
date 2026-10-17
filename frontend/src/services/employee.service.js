@@ -34,8 +34,3 @@ export const updateUser = async (id, data) => {
   const response = await api.put(`/users/${id}`, data);
   return response.data;
 };
-
-export const getEmployeeAddressById = async (id) => {
-  const response = await api.get(`/employees/${id}/branch`);
-  return response.data;
-};

@@ -13,7 +13,7 @@ public record EmployeeRequest(
         LocalDateTime hireDate,
         Boolean status,
         String gender,
-        String address,
-        String branchId
+        String address
 ) {
 }
+

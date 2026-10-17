@@ -116,13 +116,13 @@ export default function PrintInvoiceModal({ open, onClose, invoice }) {
                   <Stethoscope size={22} />
                 </div>
                 <div>
-                  <h2 className="font-extrabold text-base text-slate-900 tracking-tight leading-tight">NHA KHOA QUỐC TẾ CROWN DENTAL</h2>
-                  <p className="text-[11px] text-slate-700 font-semibold">{invoice.branchName || 'Chi Nhánh 1 Cơ Sở TPHCM'}</p>
+                  <h2 className="font-extrabold text-lg text-slate-900 tracking-tight leading-tight">NHA KHOA TÂM AN</h2>
+                  <p className="text-[11px] text-slate-500 font-medium">Nụ cười khỏe - Cuộc sống đẹp</p>
                 </div>
               </div>
               <div className="text-left sm:text-right text-[11px] text-slate-600 space-y-0.5">
-                <p><span className="text-slate-500">Địa chỉ:</span> <span className="font-bold text-slate-800">{invoice.branchAddress || '59C Nguyễn Đình Chiểu, Phường Võ Thị Sáu, Quận 3, TP.HCM'}</span></p>
-                <p><span className="text-slate-500">Hotline:</span> <span className="font-bold text-slate-800">{invoice.branchPhone || '0777888555'}</span></p>
+                <p><span className="text-slate-500">Địa chỉ:</span> <span className="font-bold text-slate-800">123 Nguyễn Văn Cừ, Quận 1, TP.HCM</span></p>
+                <p><span className="text-slate-500">Hotline:</span> <span className="font-bold text-slate-800">028 3827 1234</span></p>
               </div>
             </div>
 
@@ -137,19 +137,19 @@ export default function PrintInvoiceModal({ open, onClose, invoice }) {
               <div className="space-y-0.5  pb-2 sm:pb-0 sm:pr-4">
                 <p className="flex items-center">
                   <span className="text-slate-500 font-medium w-24 shrink-0">Họ và tên:</span>
-                  <strong className="text-slate-900 font-bold">{invoice.patientName || 'Khách hàng'}</strong>
+                  <strong className="text-slate-900 font-bold">{invoice.patientName}</strong>
                 </p>
                 <p className="flex items-center">
                   <span className="text-slate-500 font-medium w-24 shrink-0">Số điện thoại:</span>
-                  <strong className="text-slate-800 font-semibold">{invoice.patientPhone || '-'}</strong>
+                  <strong className="text-slate-800 font-semibold">{invoice.patientPhone || '0912345678'}</strong>
                 </p>
                 <p className="flex items-center">
                   <span className="text-slate-500 font-medium w-24 shrink-0">Ngày sinh:</span>
-                  <span className="text-slate-800 font-medium">{invoice.patientDob || '-'}</span>
+                  <span className="text-slate-800 font-medium">{invoice.patientDob || '15/08/1990'}</span>
                 </p>
                 <p className="flex items-start">
                   <span className="text-slate-500 font-medium w-24 shrink-0">Địa chỉ:</span>
-                  <span className="text-slate-800 font-medium">{invoice.patientAddress || '-'}</span>
+                  <span className="text-slate-800 font-medium">{invoice.patientAddress || '456 Lê Văn Sỹ, P.14, Q.3, TP.HCM'}</span>
                 </p>
               </div>
 
@@ -161,11 +161,7 @@ export default function PrintInvoiceModal({ open, onClose, invoice }) {
                 </p>
                 <p className="flex sm:justify-end items-center gap-2">
                   <span className="text-slate-500 font-medium">Ngày tạo:</span>
-                  <strong className="text-slate-800 font-bold">{invoice.date}</strong>
-                </p>
-                <p className="flex sm:justify-end items-center gap-2">
-                  <span className="text-slate-500 font-medium">Người lập:</span>
-                  <strong className="text-slate-800 font-semibold">{invoice.employeeName || 'Nhân viên'}</strong>
+                  <strong className="text-slate-800 font-bold">{invoice.date} 10:24</strong>
                 </p>
               </div>
             </div>
@@ -233,20 +229,20 @@ export default function PrintInvoiceModal({ open, onClose, invoice }) {
               <div className="text-center px-4">
                 <p className="font-bold text-slate-800">Khách hàng ký tên</p>
                 <div className="h-14"></div>
-                <p className="text-[11px] text-slate-500 font-medium">{invoice.patientName || 'Khách hàng'}</p>
+                <p className="text-[11px] text-slate-500 font-medium">{invoice.patientName}</p>
               </div>
 
               <div className="text-center px-4">
-                <p className="font-bold text-slate-800">Người lập hóa đơn</p>
+                <p className="font-bold text-slate-800">Nhân viên thu ngân</p>
                 <div className="h-14"></div>
-                <p className="text-[11px] text-slate-600 font-semibold">{invoice.employeeName || invoice.creator || 'Nhân viên'}</p>
+                <p className="text-[11px] text-slate-500 font-medium">{invoice.creator || 'Nguyễn Thị Mai'}</p>
               </div>
             </div>
 
             {/* Footer Thank You Note */}
             <div className="text-center pt-2 pb-1">
               <p className="text-[11px] font-medium text-slate-400 italic">
-                Cảm ơn quý khách đã sử dụng dịch vụ tại Nha Khoa Quốc Tế Crown Dental!
+                Cảm ơn quý khách đã sử dụng dịch vụ tại Nha Khoa Tâm An!
               </p>
             </div>
 

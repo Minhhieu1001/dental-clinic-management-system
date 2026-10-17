@@ -1,7 +1,6 @@
 package iuh.fit.backend.appointment.entity;
 
 import iuh.fit.backend.appointment.enums.StatustAppointmentRequest;
-import iuh.fit.backend.inforclinic.entity.Branch;
 import iuh.fit.backend.user.entity.Employee;
 import jakarta.persistence.*;
 import lombok.*;
@@ -34,11 +33,4 @@ public class AppointmentRequest {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id", nullable = true)
     private Employee employee;
-
-    @ManyToOne(fetch = FetchType.LAZY, optional = true)
-    @JoinColumn(name = "branch_id", nullable = true)
-    private Branch branch;
-
-
-
 }

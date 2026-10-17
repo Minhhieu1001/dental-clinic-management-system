@@ -302,7 +302,6 @@ export default function EmployeeManagement() {
                 <th className="px-5 py-3 text-left text-[12px] font-semibold text-slate-600">Số điện thoại</th>
                 <th className="px-5 py-3 text-left text-[12px] font-semibold text-slate-600">Ngày vào làm</th>
                 <th className="px-5 py-3 text-left text-[12px] font-semibold text-slate-600">Vai trò</th>
-                <th className="px-5 py-3 text-left text-[12px] font-semibold text-slate-600">Chi nhánh</th>
                 <th className="px-5 py-3 text-left text-[12px] font-semibold text-slate-600">Trạng thái tài khoản</th>
                 <th className="px-5 py-3 text-center text-[12px] font-semibold text-slate-600">Thao tác</th>
               </tr>
@@ -310,13 +309,13 @@ export default function EmployeeManagement() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-16 text-center text-slate-400">
+                  <td colSpan={7} className="px-6 py-16 text-center text-slate-400">
                     Đang tải dữ liệu...
                   </td>
                 </tr>
               ) : paginatedEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-16 text-center text-slate-400">
+                  <td colSpan={7} className="px-6 py-16 text-center text-slate-400">
                     Không tìm thấy nhân viên phù hợp.
                   </td>
                 </tr>
@@ -348,9 +347,6 @@ export default function EmployeeManagement() {
                       <td className="px-5 py-3 text-xs text-slate-600 font-medium">{formatDate(emp.createdAt)}</td>
                       <td className="px-5 py-3">
                         <RoleBadge role={emp.displayRole} />
-                      </td>
-                      <td className="px-5 py-3 text-xs text-slate-600 font-medium whitespace-nowrap">
-                        {emp.branchName || 'Chưa phân chi nhánh'}
                       </td>
                       <td className="px-5 py-3">
                         <StatusDot status={emp.displayStatus} />
