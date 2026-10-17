@@ -4,6 +4,7 @@ import iuh.fit.backend.common.exception.AppException;
 import iuh.fit.backend.common.exception.ErrorCode;
 import iuh.fit.backend.medicalrecord.entity.ExaminationResult;
 import iuh.fit.backend.medicalrecord.repository.ExaminationResultRepository;
+import iuh.fit.backend.notification.service.NotificationService;
 import iuh.fit.backend.patient.entity.Patient;
 import iuh.fit.backend.patient.repository.PatientRepository;
 import iuh.fit.backend.treatment.dto.TreatmentPlanRequest;
@@ -35,6 +36,7 @@ import java.util.UUID;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class TreatmentPlanServiceImpl implements TreatmentPlanService {
 
     private final TreatmentPlanRepository treatmentPlanRepository;
@@ -48,30 +50,6 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
     private final AppointmentRepository appointmentRepository;
     private final SimpMessagingTemplate simpMessagingTemplate;
 
-    public TreatmentPlanServiceImpl(
-            TreatmentPlanRepository treatmentPlanRepository,
-            TreatmentPhaseRepository treatmentPhaseRepository,
-            TreatmentServiceRepository treatmentServiceRepository,
-            TreatmentVisitsRepository treatmentVisitsRepository,
-            PatientRepository patientRepository,
-            DentistRepository dentistRepository,
-            ServiceRepository serviceRepository,
-            ExaminationResultRepository examinationResultRepository,
-            AppointmentRepository appointmentRepository,
-            NotificationService notificationService,
-            SimpMessagingTemplate simpMessagingTemplate) {
-        this.treatmentPlanRepository = treatmentPlanRepository;
-        this.treatmentPhaseRepository = treatmentPhaseRepository;
-        this.treatmentServiceRepository = treatmentServiceRepository;
-        this.treatmentVisitsRepository = treatmentVisitsRepository;
-        this.patientRepository = patientRepository;
-        this.dentistRepository = dentistRepository;
-        this.serviceRepository = serviceRepository;
-        this.examinationResultRepository = examinationResultRepository;
-        this.appointmentRepository = appointmentRepository;
-        this.notificationService = notificationService;
-        this.simpMessagingTemplate = simpMessagingTemplate;
-    }
 
     @Override
     @Transactional

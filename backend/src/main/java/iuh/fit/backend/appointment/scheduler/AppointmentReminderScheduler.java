@@ -11,6 +11,8 @@ import iuh.fit.backend.notification.repository.notificationRepository;
 import iuh.fit.backend.notification.service.NotificationService;
 import iuh.fit.backend.patient.entity.Patient;
 import iuh.fit.backend.patient.repository.PatientRepository;
+import iuh.fit.backend.treatment.repository.TreatmentPlanRepository;
+import iuh.fit.backend.treatment.service.TreatmentPlanService;
 import iuh.fit.backend.user.entity.User;
 import iuh.fit.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +28,7 @@ import java.util.List;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class AppointmentReminderScheduler {
 
     private final AppointmentRepository appointmentRepository;
@@ -35,28 +38,9 @@ public class AppointmentReminderScheduler {
     private final NotificationService notificationService;
     private final notificationRepository notificationRepository;
     private final SimpMessagingTemplate simpMessagingTemplate;
+    private final TreatmentPlanRepository treatmentPlanRepository;
 
-    public AppointmentReminderScheduler(
-            AppointmentRepository appointmentRepository,
-            FollowUpAppointmentRepository followUpAppointmentRepository,
-            PatientRepository patientRepository,
-            UserRepository userRepository,
-            TreatmentPlanRepository treatmentPlanRepository,
-            TreatmentPlanService treatmentPlanService,
-            NotificationService notificationService,
-            notificationRepository notificationRepository,
-            SimpMessagingTemplate simpMessagingTemplate
-    ) {
-        this.appointmentRepository = appointmentRepository;
-        this.followUpAppointmentRepository = followUpAppointmentRepository;
-        this.patientRepository = patientRepository;
-        this.userRepository = userRepository;
-        this.treatmentPlanRepository = treatmentPlanRepository;
-        this.treatmentPlanService = treatmentPlanService;
-        this.notificationService = notificationService;
-        this.notificationRepository = notificationRepository;
-        this.simpMessagingTemplate = simpMessagingTemplate;
-    }
+
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm - dd/MM/yyyy");
 
