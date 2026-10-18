@@ -21,6 +21,7 @@ export interface AuthResponse {
   role: UserRole;
   avatarUrl: string | null;
   employeeId: string | null;
+  dentistId: string | null;
 }
 
 // ==================== User Types ====================
@@ -34,6 +35,7 @@ export interface User {
   role: UserRole;
   avatarUrl: string | null;
   employeeId: string | null;
+  dentistId: string | null;
 }
 
 // ==================== Role Routing Map ====================

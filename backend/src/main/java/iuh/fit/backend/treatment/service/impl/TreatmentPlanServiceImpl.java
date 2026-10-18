@@ -1,16 +1,16 @@
-package iuh.fit.backend.treatment.service;
+package iuh.fit.backend.treatment.service.impl;
 
 import iuh.fit.backend.common.exception.AppException;
 import iuh.fit.backend.common.exception.ErrorCode;
 import iuh.fit.backend.medicalrecord.entity.ExaminationResult;
 import iuh.fit.backend.medicalrecord.repository.ExaminationResultRepository;
-import iuh.fit.backend.notification.service.NotificationService;
 import iuh.fit.backend.patient.entity.Patient;
-import iuh.fit.backend.patient.repository.PatientRepository;
 import iuh.fit.backend.treatment.dto.TreatmentPlanRequest;
 import iuh.fit.backend.treatment.dto.TreatmentPlanResponse;
+import iuh.fit.backend.treatment.dto.TreatmentStatusResponse;
 import iuh.fit.backend.treatment.entity.*;
 import iuh.fit.backend.treatment.repository.*;
+import iuh.fit.backend.treatment.service.TreatmentPlanService;
 import iuh.fit.backend.user.entity.Dentist;
 import iuh.fit.backend.user.repository.DentistRepository;
 import iuh.fit.backend.appointment.dto.AppointmentDetailDTO;
@@ -27,7 +27,6 @@ import iuh.fit.backend.treatment.enums.StatusPhase;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,12 +39,7 @@ import java.util.UUID;
 public class TreatmentPlanServiceImpl implements TreatmentPlanService {
 
     private final TreatmentPlanRepository treatmentPlanRepository;
-    private final TreatmentPhaseRepository treatmentPhaseRepository;
-    private final TreatmentServiceRepository treatmentServiceRepository;
-    private final TreatmentVisitsRepository treatmentVisitsRepository;
-    private final PatientRepository patientRepository;
     private final DentistRepository dentistRepository;
-    private final ServiceRepository serviceRepository;
     private final ExaminationResultRepository examinationResultRepository;
     private final AppointmentRepository appointmentRepository;
     private final SimpMessagingTemplate simpMessagingTemplate;
@@ -54,6 +48,10 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
     @Override
     @Transactional
     public TreatmentPlanResponse createTreatmentPlan(TreatmentPlanRequest request) {
+        validatePlanRequest(request);
+        if (request.getPlanName() == null) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Tên kế hoạch không được để trống");
+        }
         Dentist dentist = null;
         if (request.getDentistId() != null) {
             dentist = dentistRepository.findById(request.getDentistId())
@@ -68,12 +66,11 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
                 examinationResult.setDentist(dentist);
                 examinationResultRepository.save(examinationResult);
             }
-            // Quan hệ 1-1: Nếu đợt khám này đã có kế hoạch điều trị, cập nhật kế hoạch hiện
-            // có
+            // Mỗi đợt khám chỉ có một kế hoạch; API tạo không cập nhật kế hoạch cũ.
             Optional<TreatmentPlan> existingPlan = treatmentPlanRepository
                     .findByExaminationResultId(request.getExaminationResultId());
             if (existingPlan.isPresent()) {
-                return updateTreatmentPlan(existingPlan.get().getId(), request);
+                throw new AppException(ErrorCode.RESOURCE_IN_USE, "Đợt khám đã có kế hoạch điều trị. Hãy dùng API cập nhật.");
             }
         }
 
@@ -92,20 +89,6 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
                 .build();
 
         TreatmentPlan savedPlan = treatmentPlanRepository.save(plan);
-
-        Dentist assignedDoctor = examinationResult != null && examinationResult.getDentist() != null
-                ? examinationResult.getDentist()
-                : dentist;
-
-        if (request.getPhases() != null && !request.getPhases().isEmpty()) {
-            savePhases(savedPlan, request.getPhases(), assignedDoctor, request.getDentistName());
-        }
-
-        try {
-            autoScheduleFollowUpAppointments(savedPlan.getId());
-        } catch (Exception e) {
-            log.warn("Auto scheduling follow up appointments failed on creation: {}", e.getMessage());
-        }
 
         return mapToResponse(savedPlan);
     }
@@ -137,6 +120,7 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
     @Override
     @Transactional
     public TreatmentPlanResponse updateTreatmentPlan(UUID id, TreatmentPlanRequest request) {
+        validatePlanRequest(request);
         TreatmentPlan plan = treatmentPlanRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND,
                         "Không tìm thấy kế hoạch điều trị với ID: " + id));
@@ -169,123 +153,37 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
             }
         }
 
-        if (request.getPhases() != null) {
-            // Xóa các phase cũ và các child service / visit thuộc về phase đó
-            List<TreatmentPhase> currentPhases = plan.getTreatmentPhases();
-            if (currentPhases != null && !currentPhases.isEmpty()) {
-                for (TreatmentPhase oldPhase : new ArrayList<>(currentPhases)) {
-                    if (oldPhase.getTreatmentServices() != null && !oldPhase.getTreatmentServices().isEmpty()) {
-                        treatmentServiceRepository.deleteAll(oldPhase.getTreatmentServices());
-                        oldPhase.getTreatmentServices().clear();
-                    }
-                    if (oldPhase.getTreatmentVisits() != null && !oldPhase.getTreatmentVisits().isEmpty()) {
-                        treatmentVisitsRepository.deleteAll(oldPhase.getTreatmentVisits());
-                        oldPhase.getTreatmentVisits().clear();
-                    }
-                }
-                treatmentPhaseRepository.deleteAll(currentPhases);
-                plan.getTreatmentPhases().clear();
-                treatmentPlanRepository.saveAndFlush(plan);
-            }
-
-            Dentist assignedDoctor = plan.getExaminationResult() != null
-                    && plan.getExaminationResult().getDentist() != null
-                            ? plan.getExaminationResult().getDentist()
-                            : (request.getDentistId() != null
-                                    ? dentistRepository.findById(request.getDentistId()).orElse(null)
-                                    : null);
-
-            // Lưu danh sách phases mới kèm services và visits
-            savePhases(plan, request.getPhases(), assignedDoctor, request.getDentistName());
-        }
-
         TreatmentPlan updated = treatmentPlanRepository.save(plan);
 
-        try {
-            autoScheduleFollowUpAppointments(updated.getId());
-        } catch (Exception e) {
-            log.warn("Auto scheduling follow up appointments failed on update: {}", e.getMessage());
-        }
 
         return mapToResponse(updated);
     }
 
-    private void savePhases(TreatmentPlan plan, List<TreatmentPlanRequest.PhaseRequest> phaseRequests, Dentist dentist,
-            String dentistNameFromRequest) {
-        if (phaseRequests == null || phaseRequests.isEmpty()) {
-            return;
+    @Override
+    @Transactional
+    public TreatmentStatusResponse updateTreatmentPlanStatus(UUID id, StatusPhase status) {
+        if (status == null) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Trạng thái điều trị không được để trống");
         }
-        for (TreatmentPlanRequest.PhaseRequest phaseReq : phaseRequests) {
-            TreatmentPhase phase = TreatmentPhase.builder()
-                    .treatmentPlan(plan)
-                    .phaseName(phaseReq.getPhaseName())
-                    .phaseOrder(phaseReq.getPhaseOrder())
-                    .treatmentType(phaseReq.getTreatmentType())
-                    .description(phaseReq.getDescription())
-                    .status(phaseReq.getStatus() != null ? phaseReq.getStatus() : StatusPhase.PENDING)
-                    .estimatedDuration(phaseReq.getEstimatedDuration())
-                    .expectedStartDate(parseDateTime(phaseReq.getExpectedStartDate()))
-                    .expectedEndDate(parseDateTime(phaseReq.getExpectedEndDate()))
-                    .treatmentServices(new ArrayList<>())
-                    .treatmentVisits(new ArrayList<>())
-                    .build();
-
-            TreatmentPhase savedPhase = treatmentPhaseRepository.save(phase);
-
-            if (phaseReq.getTreatmentServices() != null) {
-                for (TreatmentPlanRequest.ServiceItemRequest sReq : phaseReq.getTreatmentServices()) {
-                    iuh.fit.backend.treatment.entity.Service service = null;
-                    if (sReq.getServiceId() != null) {
-                        service = serviceRepository.findById(sReq.getServiceId()).orElse(null);
-                    }
-                    TreatmentService ts = TreatmentService.builder()
-                            .treatmentPhase(savedPhase)
-                            .service(service)
-                            .serviceName(service != null ? service.getServiceName() : null)
-                            .toothNumber(sReq.getToothNumber())
-                            .quantity(sReq.getQuantity())
-                            .price(sReq.getPrice())
-                            .totalAmount(sReq.getTotalAmount())
-                            .build();
-                    treatmentServiceRepository.save(ts);
-                    savedPhase.getTreatmentServices().add(ts);
-                }
-            }
-
-            if (phaseReq.getTreatmentVisits() != null) {
-                for (TreatmentPlanRequest.VisitItemRequest vReq : phaseReq.getTreatmentVisits()) {
-                    String visitDentist = vReq.getAssignedDentist();
-                    if ((visitDentist == null || visitDentist.isBlank()) && dentistNameFromRequest != null) {
-                        visitDentist = dentistNameFromRequest;
-                    }
-                    if ((visitDentist == null || visitDentist.isBlank()) && dentist != null) {
-                        visitDentist = dentist.getFullName();
-                    }
-                    TreatmentVisits tv = TreatmentVisits.builder()
-                            .treatmentPhase(savedPhase)
-                            .visitName(vReq.getVisitName())
-                            .visitOrder(vReq.getVisitOrder())
-                            .startDate(vReq.getStartDate())
-                            .status(vReq.getStatus() != null ? vReq.getStatus() : StatusPhase.PENDING)
-                            .clinicalNotes(vReq.getClinicalNotes())
-                            .assignedDentist(visitDentist)
-                            .build();
-                    treatmentVisitsRepository.save(tv);
-                    savedPhase.getTreatmentVisits().add(tv);
-                }
-            }
-
-            plan.getTreatmentPhases().add(savedPhase);
-        }
+        TreatmentPlan entity = treatmentPlanRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND,
+                        "Không tìm thấy kế hoạch điều trị với ID: " + id));
+        entity.setStatus(status);
+        treatmentPlanRepository.save(entity);
+        return new TreatmentStatusResponse(id, entity.getStatus());
     }
 
     @Override
     @Transactional
     public void deleteTreatmentPlan(UUID id) {
-        if (!treatmentPlanRepository.existsById(id)) {
-            throw new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy kế hoạch điều trị với ID: " + id);
+        TreatmentPlan plan = treatmentPlanRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy kế hoạch điều trị: " + id));
+        if (!plan.getTreatmentPhases().isEmpty() || !plan.getTreatmentHistorys().isEmpty() || plan.getInvoice() != null) {
+            throw new AppException(ErrorCode.RESOURCE_IN_USE,
+                    "Kế hoạch còn giai đoạn, lịch sử điều trị hoặc hóa đơn. Không thể xóa.");
         }
-        treatmentPlanRepository.deleteById(id);
+        treatmentPlanRepository.delete(plan);
+        treatmentPlanRepository.flush();
     }
 
     @Override
@@ -403,6 +301,18 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
                 .build();
     }
 
+    private void validatePlanRequest(TreatmentPlanRequest request) {
+        if (request.getPhases() != null) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR,
+                    "Hãy dùng API riêng để tạo hoặc cập nhật giai đoạn và buổi điều trị.");
+        }
+        if (request.getPlanName() != null && request.getPlanName().isBlank()) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Tên kế hoạch không được để trống");
+        }
+        if (request.getEstimatedCost() != null && request.getEstimatedCost().signum() < 0) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Chi phí không được âm");
+        }
+    }
     private LocalDateTime parseDateTime(String str) {
         if (str == null || str.trim().isEmpty())
             return null;
@@ -412,7 +322,7 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
             }
             return LocalDateTime.parse(str.replace("Z", ""));
         } catch (DateTimeParseException e) {
-            return null;
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Ngày giờ không hợp lệ: " + str);
         }
     }
 
@@ -485,6 +395,8 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
                                                 .status(tv.getStatus())
                                                 .clinicalNotes(tv.getClinicalNotes())
                                                 .assignedDentist(tv.getAssignedDentist())
+                                                .facilityName(tv.getFacilityName())
+                                                .facilityAddress(tv.getFacilityAddress())
                                                 .build())
                                         .toList())
                                 .build())

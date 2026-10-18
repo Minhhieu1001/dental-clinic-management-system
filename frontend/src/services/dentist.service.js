@@ -31,4 +31,9 @@ export const updateUser = async (id, data) => {
   return response.data;
 };
 
+export const getDentistAddressById = async (id) => {
+  const response = await api.get(`/dentists/${id}/branch`);
+  return response.data;
+};
+
 export { createUser };

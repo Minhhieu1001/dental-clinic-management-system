@@ -11,6 +11,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class MedicalRecordRequest {
+    private String branchId;
     private UUID patientId;
     private String patientCode;
     private UUID dentistId;
@@ -18,7 +19,4 @@ public class MedicalRecordRequest {
 
     private String treatmentNotes;
     private LocalDateTime recordDate;
-    private String fileName;
-    private String address;
-    private String dentalClinicName;
 }

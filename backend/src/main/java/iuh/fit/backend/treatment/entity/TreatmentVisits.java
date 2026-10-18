@@ -6,12 +6,13 @@ import lombok.*;
 
 import java.util.UUID;
 
-@Getter
-@Setter
-@Builder
+
+@Entity
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
+@Builder
+@Setter
+@Getter
 @Table(name = "treatment_visits")
 public class TreatmentVisits {
 
@@ -39,15 +40,14 @@ public class TreatmentVisits {
     @Column(name = "assigned_dentist", length = 255)
     private String assignedDentist;
 
+    @Column(name = "facility_name", length = 255)
+    private String facilityName;
+
+    @Column(name = "facility_address", length = 500)
+    private String facilityAddress;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "treatment_phase_id")
     private TreatmentPhase treatmentPhase;
 
-    public UUID getId() {
-        return visitId;
-    }
-
-    public void setId(UUID id) {
-        this.visitId = id;
-    }
 }

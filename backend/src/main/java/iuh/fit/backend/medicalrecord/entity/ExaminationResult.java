@@ -1,6 +1,7 @@
 package iuh.fit.backend.medicalrecord.entity;
 
 import iuh.fit.backend.appointment.entity.FollowUpAppointment;
+import iuh.fit.backend.inforclinic.entity.Branch;
 import iuh.fit.backend.prescription.entity.Prescription;
 import iuh.fit.backend.treatment.entity.TreatmentPlan;
 import iuh.fit.backend.user.entity.Dentist;
@@ -31,6 +32,10 @@ public class ExaminationResult {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dentist_id")
     private Dentist dentist;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "branch_id", nullable = true)
+    private Branch branch;
 
     @Column(columnDefinition = "TEXT")
     private String chiefComplaint;

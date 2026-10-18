@@ -21,6 +21,7 @@ public class ExaminationResultRequest {
     private String chiefComplaint;
     private LocalDateTime examinationDate;
     private DiagnosisRequest diagnosis;
+    private String branchId;
     @Builder.Default
     private List<DiagnosisRequest> diagnoses = new ArrayList<>();
 

@@ -32,6 +32,7 @@ public enum ErrorCode {
     CURRENT_USER_NOT_EMPLOYEE(HttpStatus.FORBIDDEN, "Tài khoản hiện tại không phải nhân viên"),
 
     // Generic
+    RESOURCE_IN_USE(HttpStatus.CONFLICT, "Tài nguyên đã tồn tại hoặc đang được sử dụng"),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Lỗi hệ thống. Vui lòng thử lại sau"),
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "Dữ liệu không hợp lệ"),
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy tài nguyên"),

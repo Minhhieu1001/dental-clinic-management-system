@@ -80,7 +80,7 @@ public class UserServiceImpl implements UserService {
         if (request.email() != null && !request.email().trim().equalsIgnoreCase(user.getEmail()) && userRepository.existsByEmail(request.email().trim())) {
             throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
-        applyUserRequest(user, request);
+        applyUserUpdate(user, request);
         return toUserResponse(userRepository.save(user));
     }
 
@@ -104,6 +104,19 @@ public class UserServiceImpl implements UserService {
                     exception
             );
         }
+    }
+
+    private void applyUserUpdate(User user, UserRequest request) {
+        // Update forms send only the fields they edit; retain omitted account data.
+        if (request.username() != null) user.setUsername(request.username());
+        if (request.password() != null && !request.password().isBlank()) {
+            user.setPassword(passwordEncoder.encode(request.password()));
+        }
+        if (request.email() != null) user.setEmail(request.email());
+        if (request.phone() != null) user.setPhone(request.phone());
+        if (request.avatarUrl() != null) user.setAvatarUrl(request.avatarUrl());
+        if (request.role() != null) user.setRole(request.role());
+        if (request.status() != null) user.setStatus(request.status());
     }
 
     private void applyUserRequest(User user, UserRequest request) {

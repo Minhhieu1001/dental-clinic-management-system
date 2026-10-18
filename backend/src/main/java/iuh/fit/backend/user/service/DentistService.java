@@ -17,6 +17,8 @@ public interface DentistService {
 
     DentistListResponse getDentistById(UUID id);
 
+    DentistListResponse getDentistWithBranchById(UUID id);
+
     DentistResponse createDentist(DentistRequest request);
 
     DentistListResponse updateDentist(UUID id, DentistRequest request);

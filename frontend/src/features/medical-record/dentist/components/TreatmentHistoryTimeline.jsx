@@ -19,6 +19,7 @@ import {
   DollarSign,
   User,
   Info,
+  Building2,
 } from 'lucide-react';
 import TreatmentHistoryDetailModal, {
   DIAGNOSIS_LEVEL_MAP,
@@ -289,7 +290,7 @@ export default function TreatmentHistoryTimeline({
 
                   {/* THẺ TÓM TẮT CA ĐIỀU TRỊ */}
                   <div
-                    onClick={() => handleOpenDetail(rec)}
+                    onDoubleClick={() => handleOpenDetail(rec)}
                     className="rounded-xl border border-slate-200/90 bg-slate-50/60 hover:bg-white p-3.5 space-y-2.5 text-xs hover:shadow-md hover:border-teal-300 transition-all duration-200 cursor-pointer"
                   >
                     {/* TÊN KẾ HOẠCH ĐIỀU TRỊ & TỔNG CHI PHÍ */}
@@ -348,7 +349,7 @@ export default function TreatmentHistoryTimeline({
                           {rec.diagnoses.map((diag, dIdx) => {
                             const code = diag.primaryDiagnosis || '';
                             const friendlyName = ICD10_LABELS[code] || diag.primaryDiagnosis || 'Chẩn đoán nha khoa';
-                            const tooth = diag.toothPosition ? `[Răng: ${diag.toothPosition}] ` : '';
+                            const tooth = diag.toothPosition ? `${diag.toothPosition}` : '';
 
                             return (
                               <span
@@ -381,7 +382,7 @@ export default function TreatmentHistoryTimeline({
                         <div className="space-y-1">
                           {rec.phases.map((phase, pIdx) => {
                             const pBadge = getPhaseStatusBadge(phase.status);
-                            const visitCount = phase.treatmentVisits?.length || 0;
+
 
                             return (
                               <div
@@ -395,11 +396,6 @@ export default function TreatmentHistoryTimeline({
                                   <span className="font-bold text-slate-800 truncate">
                                     {phase.phaseName || `Giai đoạn ${pIdx + 1}`}
                                   </span>
-                                  {visitCount > 0 && (
-                                    <span className="text-[10px] text-slate-400 shrink-0 font-medium">
-                                      ({visitCount} buổi hẹn)
-                                    </span>
-                                  )}
                                 </div>
 
                                 <span
@@ -428,8 +424,8 @@ export default function TreatmentHistoryTimeline({
                         }}
                         className="inline-flex items-center gap-1 text-[11.5px] font-bold text-teal-700 hover:text-teal-900 transition-colors cursor-pointer"
                       >
-                        <Eye size={12.5} />
-                        <span>Xem chi tiết ca khám</span>
+                        <Building2 size={14} className="shrink-0" aria-hidden="true" />
+                        <span className="text-left break-words" title="Xem chi tiết ca khám">{rec.branchName || 'Chưa có thông tin cơ sở'}</span>
                       </button>
 
                       {onOpenPlan && rec.treatmentPlanId && (

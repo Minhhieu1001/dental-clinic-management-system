@@ -23,6 +23,7 @@ public record EmployeeListResponse(
         String address,
         String branchId,
         String branchName,
-        String branchAddress
+        String branchAddress,
+        String dentalClinicName
 ) {
 }

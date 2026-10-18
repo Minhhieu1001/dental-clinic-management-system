@@ -24,16 +24,14 @@ export const generateRecordFileName = (patientName, patientCode) => {
   return `HSBA_${cleanName}${codePart}`;
 };
 
-export const createDefaultMedicalRecord = (patient = {}) => {
-  const fullName = patient.fullName || patient.patientName || '';
-  const patientCode = patient.patientCode || '';
-
-  return {
-    medicalRecordCode: patient.medicalRecordCode || '',
-    fileName: generateRecordFileName(fullName, patientCode),
-    dentalClinicName: DEFAULT_DENTAL_CLINIC_NAME,
-    address: DEFAULT_DENTAL_CLINIC_ADDRESS,
-    treatmentNotes: patient.treatmentNotes || '',
-    recordDate: new Date().toISOString(),
-  };
-};
+export const createDefaultMedicalRecord = () => ({
+  id: null,
+  medicalRecordCode: '',
+  branchId: null,
+  branchName: '',
+  branchAddress: '',
+  clinicId: null,
+  dentalClinicName: '',
+  treatmentNotes: '',
+  recordDate: null,
+});

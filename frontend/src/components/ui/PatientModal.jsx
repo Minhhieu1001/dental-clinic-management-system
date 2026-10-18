@@ -21,11 +21,9 @@ import {
   Building2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import {
-  DEFAULT_DENTAL_CLINIC_NAME,
-  DEFAULT_DENTAL_CLINIC_ADDRESS,
-  DEFAULT_RECORD_FILE_NAME,
-} from '../../features/medical-record/dentist/medicalRecordHelpers';
+import { useAuthStore } from '../../store/authStore';
+import { getEmployeeAddressById } from '../../services/employee.service';
+import { getDentistAddressById } from '../../services/dentist.service';
 
 const COMMON_SYSTEMIC_DISEASES = [
   'Huyết áp cao',
@@ -63,6 +61,47 @@ export default function PatientModal({
   onConfirmDelete,
 }) {
   const [submitting, setSubmitting] = useState(false);
+  const user = useAuthStore((state) => state.user);
+  const [branchInfo, setBranchInfo] = useState(null);
+  const [branchLoading, setBranchLoading] = useState(false);
+  const [branchError, setBranchError] = useState('');
+  const [branchRetry, setBranchRetry] = useState(0);
+  const role = user?.role;
+  const staffId = role === 'DENTIST' ? user?.dentistId : user?.employeeId;
+  const isCreate = type === 'CREATE';
+  const isEdit = type === 'EDIT';
+  const isView = type === 'VIEW';
+  const isReadOnly = isView;
+
+  useEffect(() => {
+    if (!open || type === 'DELETE') return;
+    let cancelled = false;
+    const loadBranch = async () => {
+      setBranchInfo(null);
+      setBranchError('');
+      setBranchLoading(true);
+      try {
+        if (!staffId || !['EMPLOYEE', 'DENTIST'].includes(role)) {
+          throw new Error('Không xác định được thông tin nhân viên hoặc bác sĩ đang đăng nhập.');
+        }
+        const profile = role === 'DENTIST'
+          ? await getDentistAddressById(staffId)
+          : await getEmployeeAddressById(staffId);
+        if (!profile?.branchId) {
+          throw new Error('Tài khoản chưa được gán chi nhánh. Vui lòng liên hệ quản trị viên.');
+        }
+        if (!cancelled) setBranchInfo({ ...profile, staffId, role });
+      } catch (error) {
+        if (!cancelled) setBranchError(error.response?.data?.message || error.message || 'Không tải được thông tin chi nhánh.');
+      } finally {
+        if (!cancelled) setBranchLoading(false);
+      }
+    };
+    loadBranch();
+    return () => { cancelled = true; };
+  }, [open, type, role, staffId, branchRetry]);
+
+  const currentBranch = branchInfo?.staffId === staffId && branchInfo?.role === role ? branchInfo : null;
 
   // Form state initialized from payload
   const [formData, setFormData] = useState({
@@ -81,9 +120,6 @@ export default function PatientModal({
     currentMedications: '',
     surgicalHistory: '',
     notes: '',
-    dentalClinicName: DEFAULT_DENTAL_CLINIC_NAME,
-    clinicAddress: DEFAULT_DENTAL_CLINIC_ADDRESS,
-    fileName: DEFAULT_RECORD_FILE_NAME,
   });
 
   useEffect(() => {
@@ -108,9 +144,6 @@ export default function PatientModal({
         currentMedications: payload.currentMedications || '',
         surgicalHistory: payload.surgicalHistory || payload.pastSurgeries || '',
         notes: payload.notes || '',
-        dentalClinicName: payload.dentalClinicName || DEFAULT_DENTAL_CLINIC_NAME,
-        clinicAddress: payload.clinicAddress || DEFAULT_DENTAL_CLINIC_ADDRESS,
-        fileName: payload.fileName || DEFAULT_RECORD_FILE_NAME,
       });
     } else if (type === 'CREATE') {
       setFormData({
@@ -129,9 +162,6 @@ export default function PatientModal({
         currentMedications: '',
         surgicalHistory: '',
         notes: '',
-        dentalClinicName: DEFAULT_DENTAL_CLINIC_NAME,
-        clinicAddress: DEFAULT_DENTAL_CLINIC_ADDRESS,
-        fileName: DEFAULT_RECORD_FILE_NAME,
       });
     }
   }, [open, type, payload]);
@@ -140,6 +170,7 @@ export default function PatientModal({
 
   // Handle disease checkbox toggle
   const handleToggleDisease = (disease) => {
+    if (isReadOnly) return;
     setFormData((prev) => {
       const exists = prev.systemicDisease.includes(disease);
       return {
@@ -149,10 +180,12 @@ export default function PatientModal({
           : [...prev.systemicDisease, disease],
       };
 
-      const applyQuickMedicalValue = (field, value) => {
-        setFormData((prev) => ({ ...prev, [field]: value }));
-      };
     });
+  };
+
+  const applyQuickMedicalValue = (field, value) => {
+    if (isReadOnly) return;
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   // Submit Handler
@@ -179,14 +212,16 @@ export default function PatientModal({
       return;
     }
 
+    if (type === 'CREATE' && (branchLoading || !currentBranch?.branchId)) {
+      toast.error(branchError || 'Vui lòng chờ tải thông tin chi nhánh.');
+      return;
+    }
     setSubmitting(true);
     try {
       if (onSave) {
         await onSave({
           ...formData,
-          dentalClinicName: DEFAULT_DENTAL_CLINIC_NAME,
-          clinicAddress: DEFAULT_DENTAL_CLINIC_ADDRESS,
-          fileName: DEFAULT_RECORD_FILE_NAME,
+          ...(type === 'CREATE' ? { branchId: currentBranch.branchId } : {}),
           id: payload?.id,
           patientCode: payload?.patientCode,
         });
@@ -194,7 +229,7 @@ export default function PatientModal({
       onClose();
     } catch (err) {
       console.error('Error saving patient profile:', err);
-      toast.error('Có lỗi xảy ra khi lưu hồ sơ bệnh nhân');
+      toast.error(err.response?.data?.message || err.message || 'Có lỗi xảy ra khi lưu hồ sơ bệnh nhân');
     } finally {
       setSubmitting(false);
     }
@@ -241,13 +276,18 @@ export default function PatientModal({
               onClick={onClose}
               className="rounded-lg border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
             >
-              Hủy bỏ
+              {isView ? 'Đóng' : 'Hủy bỏ'}
             </button>
             <button
               type="button"
-              onClick={() => {
-                if (onConfirmDelete) onConfirmDelete(payload);
-                onClose();
+              onClick={async () => {
+                if (!onConfirmDelete) return;
+                try {
+                  await onConfirmDelete(payload);
+                  onClose();
+                } catch (error) {
+                  toast.error(error.response?.data?.message || error.message || 'Không thể xóa bệnh nhân');
+                }
               }}
               className="rounded-lg bg-rose-600 px-5 py-2 text-xs font-bold text-white shadow-md hover:bg-rose-700 transition-colors cursor-pointer"
             >
@@ -260,203 +300,27 @@ export default function PatientModal({
   }
 
   // =========================================================================
-  // TYPE 3: VIEW PATIENT DETAILS MODAL
-  // =========================================================================
-  if (type === 'VIEW') {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fadeIn">
-        <div className="w-full max-w-2xl rounded-xl bg-white shadow-2xl overflow-hidden border border-slate-200 animate-scaleUp">
-          {/* Header */}
-          <div className="flex items-center justify-between bg-slate-800 px-6 py-4 text-white">
-            <div className="flex items-center gap-2.5">
-              <FileText size={20} className="text-teal-400" />
-              <div>
-                <h3 className="text-base font-bold leading-tight">
-                  Chi Tiết Hồ Sơ Bệnh Nhân
-                </h3>
-                <p className="text-xs text-slate-300">
-                  Mã BN: <span className="font-bold text-teal-300">{payload?.patientCode || 'N/A'}</span>
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg p-1 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors cursor-pointer"
-            >
-              <X size={20} />
-            </button>
-          </div>
-
-          {/* Body */}
-          <div className="p-6 space-y-4 max-h-[78vh] overflow-y-auto">
-            <div className="flex items-center gap-4 bg-slate-50/80 p-4 rounded-xl border border-slate-200">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-teal-700 text-white font-extrabold text-xl shrink-0 shadow-xs">
-                {payload?.fullName?.charAt(0) || 'P'}
-              </div>
-              <div className="space-y-0.5">
-                <h4 className="font-bold text-slate-900 text-lg">{payload?.fullName}</h4>
-                <div className="flex items-center gap-2 text-xs text-slate-600 font-semibold">
-                  <span className="rounded bg-teal-50 px-2.5 py-0.5 text-teal-800 border border-teal-200 font-bold">
-                    {payload?.patientCode || 'N/A'}
-                  </span>
-                  <span>•</span>
-                  <span>{payload?.gender === 'FEMALE' ? '♀ Nữ' : '♂ Nam'}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-2">
-              <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100">
-                <span className="text-slate-500 font-medium flex items-center gap-1.5">
-                  <Phone size={14} className="text-teal-700" /> Số điện thoại:
-                </span>
-                <span className="font-bold text-slate-800">{payload?.phone || 'N/A'}</span>
-              </div>
-
-              <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100">
-                <span className="text-slate-500 font-medium flex items-center gap-1.5">
-                  <Mail size={14} className="text-teal-700" /> Email:
-                </span>
-                <span className="font-bold text-slate-800">{payload?.email || payload?.user?.email || 'Chưa cập nhật'}</span>
-              </div>
-
-              <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100">
-                <span className="text-slate-500 font-medium">CCCD:</span>
-                <span className="font-bold text-slate-800">{payload?.cccd || 'Chưa cập nhật'}</span>
-              </div>
-
-              <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100">
-                <span className="text-slate-500 font-medium flex items-center gap-1.5">
-                  <Calendar size={14} className="text-teal-700" /> Ngày sinh:
-                </span>
-                <span className="font-bold text-slate-800">
-                  {formatDateDisplay(payload?.dateOfBirth)} {calculateAge(payload?.dateOfBirth)}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100">
-                <span className="text-slate-500 font-medium flex items-center gap-1.5">
-                  <Globe size={14} className="text-teal-700" /> Quốc tịch:
-                </span>
-                <span className="font-bold text-slate-800">{payload?.nationality || 'Việt Nam'}</span>
-              </div>
-
-              <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100">
-                <span className="text-slate-500 font-medium">Quê quán:</span>
-                <span className="font-bold text-slate-800">{payload?.hometown || 'Chưa cập nhật'}</span>
-              </div>
-
-              <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100">
-                <span className="text-slate-500 font-medium">Nghề nghiệp:</span>
-                <span className="font-bold text-slate-800">{payload?.job || 'Chưa cập nhật'}</span>
-              </div>
-
-              <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100">
-                <span className="text-slate-500 font-medium flex items-center gap-1.5">
-                  <Clock size={14} className="text-teal-700" /> Ngày tạo:
-                </span>
-                <span className="font-bold text-slate-800">{formatDateDisplay(payload?.createdAt)}</span>
-              </div>
-
-              <div className="sm:col-span-2 flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100">
-                <span className="text-slate-500 font-medium flex items-center gap-1.5">
-                  <MapPin size={14} className="text-teal-700" /> Địa chỉ:
-                </span>
-                <span className="font-bold text-slate-800">{payload?.address || 'Chưa cập nhật'}</span>
-              </div>
-            </div>
-
-            {/* Medical History Section */}
-            <div className="pt-3 border-t border-slate-100 space-y-2.5">
-              <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
-                <HeartPulse size={15} className="text-rose-600" /> Tiền sử y tế & Lâm sàng
-              </h5>
-
-              <div className="space-y-2 text-xs">
-                <div>
-                  <span className="text-slate-500 font-semibold block mb-1">Bệnh lý toàn thân:</span>
-                  <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 font-medium text-slate-800">
-                    {Array.isArray(payload?.systemicDisease) && payload.systemicDisease.length > 0
-                      ? payload.systemicDisease.join(', ')
-                      : typeof payload?.systemicDisease === 'string' && payload.systemicDisease.trim()
-                        ? payload.systemicDisease
-                        : 'Chưa ghi nhận bệnh lý toàn thân'}
-                  </div>
-                </div>
-
-                {payload?.allergies && (
-                  <div>
-                    <span className="text-slate-500 font-semibold block mb-1">Dị ứng:</span>
-                    <div className="bg-amber-50 p-2.5 rounded-lg border border-amber-200 font-semibold text-amber-900 flex items-center gap-2">
-                      <AlertTriangle size={14} className="text-amber-600 shrink-0" />
-                      <span>{payload.allergies}</span>
-                    </div>
-                  </div>
-                )}
-
-                {payload?.currentMedications && (
-                  <div>
-                    <span className="text-slate-500 font-semibold block mb-1">Thuốc đang sử dụng:</span>
-                    <div className="bg-purple-50 p-2.5 rounded-lg border border-purple-200 font-medium text-purple-900">
-                      {payload.currentMedications}
-                    </div>
-                  </div>
-                )}
-
-                {payload?.surgicalHistory && (
-                  <div>
-                    <span className="text-slate-500 font-semibold block mb-1">Tiền sử phẫu thuật:</span>
-                    <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 font-medium text-slate-800">
-                      {payload.surgicalHistory}
-                    </div>
-                  </div>
-                )}
-
-                {payload?.notes && (
-                  <div>
-                    <span className="text-slate-500 font-semibold block mb-1">Ghi chú lưu ý:</span>
-                    <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-slate-700 font-medium">
-                      {payload.notes}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-end bg-slate-50 px-6 py-3.5 border-t border-slate-200">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg bg-slate-800 px-5 py-2 text-xs font-bold text-white hover:bg-slate-900 transition-colors cursor-pointer"
-            >
-              Đóng
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // =========================================================================
-  // TYPE 1 & 2: CREATE / EDIT PATIENT MODAL (Form View)
+  // CREATE / EDIT / VIEW: shared patient form
   // =========================================================================
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 sm:p-6 backdrop-blur-xs overflow-y-auto animate-fadeIn">
-      <div className="w-full max-w-4xl rounded-xl bg-white shadow-2xl overflow-hidden border border-slate-200/80 my-4 transform transition-all duration-300 animate-scaleUp">
+      <div className="w-full max-w-6xl rounded-xl bg-white shadow-2xl overflow-hidden border border-slate-200/80 my-4 transform transition-all duration-300 animate-scaleUp">
         {/* Header Bar */}
         <div className="flex items-center justify-between bg-gradient-to-r from-teal-800 to-teal-900 px-6 py-4 text-white shadow-xs">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-700/60 border border-teal-500/30 text-teal-200">
-              {type === 'EDIT' ? <Edit size={22} /> : <UserPlus size={22} />}
+              {isView ? <FileText size={22} /> : isEdit ? <Edit size={22} /> : <UserPlus size={22} />}
             </div>
             <div>
               <h3 className="text-lg font-bold leading-tight">
-                {type === 'EDIT' ? 'Chỉnh Sửa Hồ Sơ Bệnh Nhân' : 'Tạo Hồ Sơ Bệnh Nhân Mới'}
+                {isCreate
+                  ? 'Tạo Hồ Sơ Bệnh Nhân Mới'
+                  : isEdit
+                    ? 'Chỉnh Sửa Hồ Sơ Bệnh Nhân'
+                    : 'Chi Tiết Hồ Sơ Bệnh Nhân'}
               </h3>
               <p className="text-xs text-teal-200/90 font-medium pt-0.5">
-                {payload?.patientCode ? `Mã BN: ${payload.patientCode} · ` : ''}Nhập thông tin bệnh nhân và tiền sử y tế
+                {payload?.patientCode ? `Mã BN: ${payload.patientCode} · ` : ''}{isView ? 'Thông tin bệnh nhân và tiền sử y tế' : 'Nhập thông tin bệnh nhân và tiền sử y tế'}
               </p>
             </div>
           </div>
@@ -481,26 +345,31 @@ export default function PatientModal({
               <div>
                 <div className="flex items-center gap-2">
                   <h4 className="text-sm font-black text-teal-950 uppercase tracking-wide">
-                    {DEFAULT_DENTAL_CLINIC_NAME}
+                    {currentBranch?.dentalClinicName || (branchLoading ? 'Đang tải nha khoa...' : 'Chưa có tên nha khoa')}
                   </h4>
-                  <span className="text-[10px] font-extrabold text-teal-800 bg-teal-100 px-2 py-0.5 rounded-full border border-teal-200">
-                    Bệnh án điện tử
-                  </span>
                 </div>
                 <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5 pt-0.5">
                   <MapPin size={12} className="text-rose-500 shrink-0" />
-                  <span>{DEFAULT_DENTAL_CLINIC_ADDRESS}</span>
+                  <span>{currentBranch?.branchAddress || 'Chưa có địa chỉ chi nhánh'}</span>
                 </p>
               </div>
             </div>
 
             <div className="flex sm:flex-col items-center sm:items-end justify-between border-t sm:border-t-0 pt-2 sm:pt-0 border-teal-100/80">
-              <span className="text-[11px] text-slate-400 font-semibold">Tên hồ sơ khởi tạo:</span>
+              <span className="text-[11px] text-slate-400 font-semibold">{isCreate ? 'Chi nhánh tạo hồ sơ:' : 'Chi nhánh đang làm việc:'}</span>
               <span className="text-xs font-bold text-teal-900 bg-white px-2.5 py-1 rounded-md border border-teal-200 shadow-2xs">
-                {DEFAULT_RECORD_FILE_NAME}
+                {currentBranch?.branchName || 'Chưa xác định chi nhánh'}
               </span>
             </div>
           </div>
+
+          {branchError && (
+            <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              {branchError}
+              <button type="button" onClick={() => setBranchRetry((value) => value + 1)}
+                className="ml-3 font-semibold underline">Thử lại</button>
+            </div>
+          )}
 
           {/* Personal Info Grid */}
           <div className="space-y-4">
@@ -516,10 +385,11 @@ export default function PatientModal({
                 </label>
                 <input
                   type="text"
-                  required
+                  required={!isView}
                   value={formData.fullName}
                   onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                   placeholder="Nhập họ và tên bệnh nhân..."
+                  readOnly={isReadOnly}
                   className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
                 />
               </div>
@@ -532,10 +402,11 @@ export default function PatientModal({
                 </label>
                 <input
                   type="text"
-                  required
+                  required={!isView}
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   placeholder="VD: 0901234567"
+                  readOnly={isReadOnly}
                   className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
                 />
               </div>
@@ -550,6 +421,7 @@ export default function PatientModal({
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="VD: patient@example.com"
+                  readOnly={isReadOnly}
                   className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
                 />
               </div>
@@ -562,6 +434,7 @@ export default function PatientModal({
                   value={formData.cccd}
                   onChange={(e) => setFormData({ ...formData, cccd: e.target.value })}
                   placeholder="Nhập số CCCD..."
+                  readOnly={isReadOnly}
                   className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
                 />
               </div>
@@ -572,6 +445,7 @@ export default function PatientModal({
                 <select
                   value={formData.gender}
                   onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                  disabled={isReadOnly}
                   className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none cursor-pointer transition-all shadow-2xs"
                 >
                   <option value="MALE">Nam (MALE)</option>
@@ -589,6 +463,7 @@ export default function PatientModal({
                   type="date"
                   value={formData.dateOfBirth}
                   onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                  readOnly={isReadOnly}
                   className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
                 />
               </div>
@@ -603,6 +478,7 @@ export default function PatientModal({
                   value={formData.nationality}
                   onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
                   placeholder="VD: Việt Nam, Mỹ, Nhật..."
+                  readOnly={isReadOnly}
                   className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
                 />
               </div>
@@ -615,6 +491,7 @@ export default function PatientModal({
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   placeholder="Số nhà, Đường, Quận/Huyện..."
+                  readOnly={isReadOnly}
                   className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
                 />
               </div>
@@ -627,6 +504,7 @@ export default function PatientModal({
                   value={formData.hometown}
                   onChange={(e) => setFormData({ ...formData, hometown: e.target.value })}
                   placeholder="Tỉnh/Thành phố quê quán..."
+                  readOnly={isReadOnly}
                   className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
                 />
               </div>
@@ -639,6 +517,7 @@ export default function PatientModal({
                   value={formData.job}
                   onChange={(e) => setFormData({ ...formData, job: e.target.value })}
                   placeholder="Nhập nghề nghiệp..."
+                  readOnly={isReadOnly}
                   className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
                 />
               </div>
@@ -663,13 +542,14 @@ export default function PatientModal({
                     <label
                       key={dis}
                       className={`flex items-center gap-2 text-xs p-2 rounded-md border transition-all cursor-pointer select-none ${isChecked
-                          ? 'bg-rose-50 text-rose-900 border-rose-300 font-bold shadow-2xs'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100/80'
+                        ? 'bg-rose-50 text-rose-900 border-rose-300 font-bold shadow-2xs'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100/80'
                         }`}
                     >
                       <input
                         type="checkbox"
                         checked={isChecked}
+                        disabled={isReadOnly}
                         onChange={() => handleToggleDisease(dis)}
                         className="rounded text-rose-600 focus:ring-rose-500 cursor-pointer"
                       />
@@ -691,6 +571,7 @@ export default function PatientModal({
                   value={formData.allergies}
                   onChange={(e) => setFormData({ ...formData, allergies: e.target.value })}
                   placeholder="VD: Dị ứng Thuốc tê Lidocaine..."
+                  readOnly={isReadOnly}
                   className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
                 />
                 <div className="flex gap-1.5 mt-1.5">
@@ -698,6 +579,7 @@ export default function PatientModal({
                     <button
                       key={value}
                       type="button"
+                      disabled={isReadOnly}
                       onClick={() => applyQuickMedicalValue('allergies', value)}
                       className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-800 hover:bg-amber-100 cursor-pointer"
                     >
@@ -716,6 +598,7 @@ export default function PatientModal({
                   value={formData.currentMedications}
                   onChange={(e) => setFormData({ ...formData, currentMedications: e.target.value })}
                   placeholder="VD: Aspirin 81mg, Insulin..."
+                  readOnly={isReadOnly}
                   className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
                 />
                 <div className="flex gap-1.5 mt-1.5">
@@ -723,6 +606,7 @@ export default function PatientModal({
                     <button
                       key={value}
                       type="button"
+                      disabled={isReadOnly}
                       onClick={() => applyQuickMedicalValue('currentMedications', value)}
                       className="rounded border border-purple-200 bg-purple-50 px-2 py-1 text-[11px] font-semibold text-purple-800 hover:bg-purple-100 cursor-pointer"
                     >
@@ -741,6 +625,7 @@ export default function PatientModal({
                   value={formData.surgicalHistory}
                   onChange={(e) => setFormData({ ...formData, surgicalHistory: e.target.value })}
                   placeholder="VD: Mổ ruột thừa năm 2021..."
+                  readOnly={isReadOnly}
                   className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
                 />
                 <div className="flex gap-1.5 mt-1.5">
@@ -748,6 +633,7 @@ export default function PatientModal({
                     <button
                       key={value}
                       type="button"
+                      disabled={isReadOnly}
                       onClick={() => applyQuickMedicalValue('surgicalHistory', value)}
                       className="rounded border border-teal-200 bg-teal-50 px-2 py-1 text-[11px] font-semibold text-teal-800 hover:bg-teal-100 cursor-pointer"
                     >
@@ -768,6 +654,7 @@ export default function PatientModal({
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 placeholder="Tiền sử phẫu thuật, lưu ý khi nhổ răng/khám..."
+                readOnly={isReadOnly}
                 className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
               />
             </div>
@@ -780,16 +667,18 @@ export default function PatientModal({
               onClick={onClose}
               className="rounded-lg border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
             >
-              Hủy bỏ
+              {isView ? 'Đóng' : 'Hủy bỏ'}
             </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="flex items-center gap-2 rounded-lg bg-teal-700 px-5 py-2 text-xs font-bold text-white shadow-md hover:bg-teal-800 disabled:opacity-50 transition-colors cursor-pointer"
-            >
-              <Save size={15} />
-              <span>{submitting ? 'Đang lưu...' : type === 'EDIT' ? 'Lưu cập nhật' : 'Tạo hồ sơ bệnh nhân'}</span>
-            </button>
+            {!isView && (
+              <button
+                type="submit"
+                disabled={submitting || (type === 'CREATE' && (branchLoading || !currentBranch?.branchId))}
+                className="flex items-center gap-2 rounded-lg bg-teal-700 px-5 py-2 text-xs font-bold text-white shadow-md hover:bg-teal-800 disabled:opacity-50 transition-colors cursor-pointer"
+              >
+                <Save size={15} />
+                <span>{submitting ? 'Đang lưu...' : type === 'EDIT' ? 'Lưu cập nhật' : 'Tạo hồ sơ bệnh nhân'}</span>
+              </button>
+            )}
           </div>
         </form>
       </div>

@@ -3,6 +3,8 @@ import {
     Layers,
     ClipboardList,
     CalendarCheck,
+    Building2,
+    MapPin,
 } from 'lucide-react';
 import {
     formatDateDisplay,
@@ -223,6 +225,8 @@ export default function TreatmentPlanTab({ detailPlans = [], selectedRecord }) {
                                                                             <th className="py-1.5 px-2.5 border-r border-slate-200 w-28">Buổi điều trị</th>
                                                                             <th className="py-1.5 px-2.5 border-r border-slate-200 w-28">Ngày hẹn</th>
                                                                             <th className="py-1.5 px-2.5 border-r border-slate-200 w-36">Bác sĩ thực hiện</th>
+                                                                            <th className="py-1.5 px-2.5 border-r border-slate-200 min-w-40">Tên cơ sở</th>
+                                                                            <th className="py-1.5 px-2.5 border-r border-slate-200 min-w-56">Địa chỉ</th>
                                                                             <th className="py-1.5 px-2.5 border-r border-slate-200 w-28 text-center">Trạng thái</th>
                                                                             <th className="py-1.5 px-2.5 min-w-36">Nội dung thủ thuật / Diễn tiến</th>
                                                                         </tr>
@@ -244,6 +248,18 @@ export default function TreatmentPlanTab({ detailPlans = [], selectedRecord }) {
                                                                                         <td className="py-2 px-2.5 border-r border-slate-200 font-medium text-slate-900">
                                                                                             {vis.assignedDentist || plan.dentistName || selectedRecord?.dentistName || 'Chưa phân công'}
                                                                                         </td>
+                                                                                        <td className="py-2 px-2.5 border-r border-slate-200 text-teal-800">
+                                                                                            <div className="flex items-start gap-1.5">
+                                                                                                <Building2 size={14} className="mt-0.5 shrink-0 text-teal-700" aria-hidden="true" />
+                                                                                                <span className="font-semibold break-words">{vis.facilityName || vis.branchName || 'Chưa có thông tin cơ sở'}</span>
+                                                                                            </div>
+                                                                                        </td>
+                                                                                        <td className="py-2 px-2.5 border-r border-slate-200 text-slate-600">
+                                                                                            <div className="flex items-start gap-1.5">
+                                                                                                <MapPin size={14} className="mt-0.5 shrink-0 text-teal-700" aria-hidden="true" />
+                                                                                                <span className="break-words">{vis.facilityAddress || vis.branchAddress || 'Chưa có thông tin địa chỉ'}</span>
+                                                                                            </div>
+                                                                                        </td>
                                                                                         <td className="py-2 px-2.5 border-r border-slate-200 text-center">
                                                                                             <span className={`inline-block px-2 py-0.5 rounded-sm text-[10.5px] border ${vStatus.badge}`}>
                                                                                                 {vStatus.label}
@@ -257,7 +273,7 @@ export default function TreatmentPlanTab({ detailPlans = [], selectedRecord }) {
                                                                             })
                                                                         ) : (
                                                                             <tr>
-                                                                                <td colSpan={5} className="py-2.5 px-2 text-center text-slate-400 italic">
+                                                                                <td colSpan={7} className="py-2.5 px-2 text-center text-slate-400 italic">
                                                                                     Chưa thiết lập lịch buổi điều trị nào cho giai đoạn này.
                                                                                 </td>
                                                                             </tr>

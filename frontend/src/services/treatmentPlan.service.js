@@ -42,3 +42,10 @@ export const autoScheduleFollowUpAppointments = async (id) => {
   const response = await api.post(`/treatment-plans/${id}/auto-schedule`);
   return response.data?.data ?? response.data?.result ?? response.data;
 };
+
+// Cập nhật trạng thái kế hoạch điều trị (PENDING, IN_PROGRESS, COMPLETED, CANCEL)
+export const updateTreatmentPlanStatus = async (id, status) => {
+  const response = await api.patch(`/treatment-plans/${id}/status`, { status });
+  return response.data?.data ?? response.data?.result ?? response.data;
+};
+

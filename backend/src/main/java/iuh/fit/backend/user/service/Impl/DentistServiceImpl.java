@@ -99,6 +99,12 @@ public class DentistServiceImpl implements DentistService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public DentistListResponse getDentistWithBranchById(UUID id) {
+        return toDentistListResponse(findDentist(id));
+    }
+
+    @Override
     public DentistResponse createDentist(DentistRequest request) {
         Dentist dentist = new Dentist();
         applyDentistRequest(dentist, request, null);
@@ -276,7 +282,10 @@ public class DentistServiceImpl implements DentistService {
                 null,
                 certificates,
                 dentist.getBranch() != null ? dentist.getBranch().getBranchId() : null,
-                dentist.getBranch() != null ? dentist.getBranch().getBranchName() : null
+                dentist.getBranch() != null ? dentist.getBranch().getBranchName() : null,
+                dentist.getBranch() != null ? dentist.getBranch().getAddress() : null,
+                dentist.getBranch() != null && dentist.getBranch().getClinic() != null
+                        ? dentist.getBranch().getClinic().getLegalName() : null
         );
     }
 

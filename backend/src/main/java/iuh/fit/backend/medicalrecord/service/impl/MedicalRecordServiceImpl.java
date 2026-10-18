@@ -1,6 +1,8 @@
 package iuh.fit.backend.medicalrecord.service.impl;
 
 import iuh.fit.backend.appointment.entity.Appointment;
+import iuh.fit.backend.inforclinic.entity.Branch;
+import iuh.fit.backend.inforclinic.repository.BranchRepository;
 import iuh.fit.backend.appointment.repository.AppointmentRepository;
 import iuh.fit.backend.common.exception.AppException;
 import iuh.fit.backend.common.exception.ErrorCode;
@@ -35,6 +37,7 @@ import java.util.stream.Collectors;
 public class MedicalRecordServiceImpl implements MedicalRecordService {
 
     private final MedicalRecordRepository medicalRecordRepository;
+    private final BranchRepository branchRepository;
     private final PatientRepository patientRepository;
     private final DentistRepository dentistRepository;
     private final AppointmentRepository appointmentRepository;
@@ -159,6 +162,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
     @Override
     @Transactional
     public MedicalRecordDTO createMedicalRecord(MedicalRecordRequest request) {
+        Branch branch = findBranch(request.getBranchId());
         // Resolve patient
         Patient patient = null;
         if (request.getPatientId() != null) {
@@ -182,14 +186,12 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         }
 
         MedicalRecord record = MedicalRecord.builder()
+                .branch(branch)
                 .patient(patient)
                 .dentist(dentist)
                 .appointment(appointment)
                 .treatmentNotes(request.getTreatmentNotes())
                 .recordDate(request.getRecordDate() != null ? request.getRecordDate() : LocalDateTime.now())
-                .fileName(request.getFileName())
-                .address(request.getAddress())
-                .dentalClinicName(request.getDentalClinicName())
                 .build();
 
         record = medicalRecordRepository.save(record);
@@ -219,20 +221,15 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
             record.setAppointment(appointment);
         }
 
+        if (request.getBranchId() != null) {
+            record.setBranch(findBranch(request.getBranchId()));
+        }
+
         if (request.getTreatmentNotes() != null) {
             record.setTreatmentNotes(request.getTreatmentNotes());
         }
         if (request.getRecordDate() != null) {
             record.setRecordDate(request.getRecordDate());
-        }
-        if (request.getFileName() != null) {
-            record.setFileName(request.getFileName());
-        }
-        if (request.getAddress() != null) {
-            record.setAddress(request.getAddress());
-        }
-        if (request.getDentalClinicName() != null) {
-            record.setDentalClinicName(request.getDentalClinicName());
         }
 
         record = medicalRecordRepository.save(record);
@@ -249,7 +246,17 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         log.info("Đã xóa hồ sơ bệnh án ID: {}", id);
     }
 
+    private Branch findBranch(String branchId) {
+        if (branchId == null || branchId.isBlank()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Vui lòng chọn chi nhánh");
+        }
+        return branchRepository.findById(branchId.trim())
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND,
+                        "Không tìm thấy chi nhánh: " + branchId));
+    }
+
     private MedicalRecordDTO mapToDTO(MedicalRecord record) {
+        Branch branch = record.getBranch();
         Patient p = record.getPatient();
         Dentist d = record.getDentist();
 
@@ -261,6 +268,11 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         }
 
         return MedicalRecordDTO.builder()
+                .branchId(branch != null ? branch.getBranchId() : null)
+                .branchName(branch != null ? branch.getBranchName() : null)
+                .branchAddress(branch != null ? branch.getAddress() : null)
+                .clinicId(branch != null && branch.getClinic() != null ? branch.getClinic().getClinicId() : null)
+                .dentalClinicName(branch != null && branch.getClinic() != null ? branch.getClinic().getLegalName() : null)
                 .id(record.getId())
                 .medicalRecordCode(record.getMedicalRecordCode() != null
                         ? record.getMedicalRecordCode()
@@ -283,9 +295,6 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
                 .appointmentId(record.getAppointment() != null ? record.getAppointment().getId() : null)
                 .treatmentNotes(record.getTreatmentNotes())
                 .recordDate(record.getRecordDate())
-                .fileName(record.getFileName())
-                .address(record.getAddress())
-                .dentalClinicName(record.getDentalClinicName())
                 .examinationResults(examDTOs)
                 .build();
     }
@@ -333,6 +342,9 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
                 .medicalRecordId(exam.getMedicalRecord() != null ? exam.getMedicalRecord().getId() : null)
                 .dentistId(exam.getDentist() != null ? exam.getDentist().getId() : null)
                 .dentistName(exam.getDentist() != null ? exam.getDentist().getFullName() : null)
+                .branchId(exam.getBranch() != null ? exam.getBranch().getBranchId() : null)
+                .branchName(exam.getBranch() != null ? exam.getBranch().getBranchName() : null)
+                .addressBranch(exam.getBranch() != null ? exam.getBranch().getAddress() : null)
                 .chiefComplaint(exam.getChiefComplaint())
                 .examinationDate(exam.getExaminationDate())
                 .diagnosis(primaryDiagnosisDTO)

@@ -25,6 +25,8 @@ public record DentistListResponse(
         String shift,
         List<CertificateDTO> certificates,
         String branchId,
-        String branchName
+        String branchName,
+        String branchAddress,
+        String dentalClinicName
 ) {
 }

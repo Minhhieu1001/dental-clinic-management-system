@@ -42,6 +42,7 @@ function ClinicalExaminationContent() {
     treatmentSessions,
     selectedSessionId,
     treatingDoctor,
+    currentDoctorId,
     isHistoricalSession,
     handleSelectTreatmentSession,
     handleCreateNewTreatmentSession,
@@ -453,6 +454,7 @@ function ClinicalExaminationContent() {
         onConfirm={handleCreateNewTreatmentSession}
         patient={patient}
         currentDoctor={treatingDoctor}
+        currentDoctorId={currentDoctorId}
         initialReason={examReason || patient?.symptoms}
         existingSessionsCount={treatmentSessions?.length || 0}
       />

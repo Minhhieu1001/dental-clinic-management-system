@@ -3,6 +3,8 @@ package iuh.fit.backend.patient.service.impl;
 import iuh.fit.backend.common.exception.AppException;
 import iuh.fit.backend.common.exception.ErrorCode;
 import iuh.fit.backend.billing.dto.PatientInvoiceDataResponse;
+import iuh.fit.backend.inforclinic.entity.Branch;
+import iuh.fit.backend.inforclinic.repository.BranchRepository;
 import iuh.fit.backend.medicalrecord.entity.MedicalRecord;
 import iuh.fit.backend.medicalrecord.repository.MedicalRecordRepository;
 import iuh.fit.backend.patient.dto.PatientCreateDTO;
@@ -46,6 +48,7 @@ public class PatientServiceImpl implements PatientService {
     private final UserRepository userRepository;
     private final DentistRepository dentistRepository;
     private final MedicalRecordRepository medicalRecordRepository;
+    private final BranchRepository branchRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -110,6 +113,12 @@ public class PatientServiceImpl implements PatientService {
     @Override
     @Transactional
     public PatientDTO createPatient(PatientCreateDTO dto) {
+        if (dto.getBranchId() == null || dto.getBranchId().isBlank()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Vui lòng chọn chi nhánh");
+        }
+        Branch branch = branchRepository.findById(dto.getBranchId().trim())
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND,
+                        "Không tìm thấy chi nhánh: " + dto.getBranchId()));
         String patientCode = "PA-" + (System.currentTimeMillis() % 1000000);
         Patient patient = Patient.builder()
                 .patientCode(patientCode)
@@ -164,37 +173,20 @@ public class PatientServiceImpl implements PatientService {
                 }
             }
 
-            // 3 biến truyền từ FE: tên bệnh viện/phòng khám, địa chỉ bệnh viện, tên hồ sơ
-            String clinicName = (dto.getDentalClinicName() != null && !dto.getDentalClinicName().trim().isEmpty())
-                    ? dto.getDentalClinicName().trim()
-                    : "Nha Khoa Quốc Tế Crown Dental";
-
-            String clinicAddress = (dto.getClinicAddress() != null && !dto.getClinicAddress().trim().isEmpty())
-                    ? dto.getClinicAddress().trim()
-                    : (patient.getAddress() != null && !patient.getAddress().trim().isEmpty()
-                            ? patient.getAddress().trim()
-                            : "12 Nguyễn Văn Bảo, Phường 4, Quận Gò Vấp, TP. Hồ Chí Minh");
-
-            String defaultFileName = "Hồ sơ điện tử răng hàm mặt";
-
-            String fileName = (dto.getFileName() != null && !dto.getFileName().trim().isEmpty())
-                    ? dto.getFileName().trim()
-                    : defaultFileName;
 
             MedicalRecord medicalRecord = MedicalRecord.builder()
                     .patient(patient)
                     .dentist(assignedDentist)
-                    .fileName(fileName)
-                    .dentalClinicName(clinicName)
-                    .address(clinicAddress)
+                    .branch(branch)
+                    .treatmentNotes(dto.getNotes())
                     .recordDate(LocalDateTime.now())
                     .build();
 
             medicalRecordRepository.save(medicalRecord);
-            log.info("Successfully created default medical record for patient: {} (File: {}, Dentist: {})",
-                    patient.getPatientCode(), fileName, (assignedDentist != null ? assignedDentist.getId() : "NONE (Receptionist)"));
+            log.info("Successfully created default medical record for patient");
         } catch (Exception e) {
             log.error("Failed to create default medical record for patient {}: {}", patient.getPatientCode(), e.getMessage(), e);
+            throw e;
         }
 
         return mapToDTO(patient);
