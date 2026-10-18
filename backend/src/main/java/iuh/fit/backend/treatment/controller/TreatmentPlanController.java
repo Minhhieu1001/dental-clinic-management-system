@@ -3,6 +3,9 @@ package iuh.fit.backend.treatment.controller;
 import iuh.fit.backend.common.response.ApiResponse;
 import iuh.fit.backend.treatment.dto.TreatmentPlanRequest;
 import iuh.fit.backend.treatment.dto.TreatmentPlanResponse;
+import iuh.fit.backend.treatment.dto.TreatmentStatusRequest;
+import iuh.fit.backend.treatment.dto.TreatmentStatusResponse;
+import jakarta.validation.Valid;
 import iuh.fit.backend.treatment.service.TreatmentPlanService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -67,7 +70,7 @@ public class TreatmentPlanController {
         );
     }
 
-    @PutMapping("/{id}")
+    @RequestMapping(value = "/{id}", method = {RequestMethod.PUT, RequestMethod.PATCH})
     public ResponseEntity<ApiResponse<TreatmentPlanResponse>> updateTreatmentPlan(
             @PathVariable UUID id,
             @RequestBody TreatmentPlanRequest request) {
@@ -79,6 +82,18 @@ public class TreatmentPlanController {
                         .data(updated)
                         .build()
         );
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<ApiResponse<TreatmentStatusResponse>> updateTreatmentPlanStatus(
+            @PathVariable UUID id,
+            @Valid @RequestBody TreatmentStatusRequest request) {
+        TreatmentStatusResponse updated = treatmentPlanService.updateTreatmentPlanStatus(id, request.getStatus());
+        return ResponseEntity.ok(ApiResponse.<TreatmentStatusResponse>builder()
+                .status(200)
+                .message("Cập nhật trạng thái kế hoạch điều trị thành công")
+                .data(updated)
+                .build());
     }
 
     @DeleteMapping("/{id}")

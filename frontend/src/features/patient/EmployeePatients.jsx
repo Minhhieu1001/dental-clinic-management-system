@@ -21,11 +21,6 @@ import {
   deletePatient,
 } from '../../services/patient.service';
 import PatientModal from '../../components/ui/PatientModal';
-import {
-  DEFAULT_DENTAL_CLINIC_NAME,
-  DEFAULT_DENTAL_CLINIC_ADDRESS,
-  DEFAULT_RECORD_FILE_NAME,
-} from '../medical-record/dentist/medicalRecordHelpers';
 import { toPatientPayload } from './patientFormMapper';
 
 // Fallback initial patient list
@@ -176,13 +171,7 @@ export default function EmployeePatients() {
   // Unified Save Handler for CREATE and EDIT
   const handleSaveModal = async (formData) => {
     try {
-      const payloadData = {
-        ...toPatientPayload(formData),
-        // 3 biến FE: Tên cơ sở/bệnh viện, Địa chỉ bệnh viện, Tên hồ sơ
-        dentalClinicName: DEFAULT_DENTAL_CLINIC_NAME,
-        clinicAddress: DEFAULT_DENTAL_CLINIC_ADDRESS,
-        fileName: DEFAULT_RECORD_FILE_NAME,
-      };
+      const payloadData = toPatientPayload(formData);
 
       if (modalConfig.type === 'EDIT' && formData.id) {
         await updatePatient(formData.id, payloadData);
@@ -195,24 +184,7 @@ export default function EmployeePatients() {
       await fetchPatientData();
     } catch (error) {
       console.error('Error saving patient:', error);
-      // Fallback local state update if API fails
-      if (modalConfig.type === 'EDIT' && formData.id) {
-        setPatients((prev) =>
-          prev.map((p) => (p.id === formData.id ? { ...p, ...formData } : p))
-        );
-      } else {
-        const newCode = `PA-${Math.floor(100000 + Math.random() * 900000)}`;
-        setPatients((prev) => [
-          {
-            id: `p-${Date.now()}`,
-            patientCode: newCode,
-            ...formData,
-            createdAt: new Date().toISOString().split('T')[0],
-          },
-          ...prev,
-        ]);
-      }
-      toast.success('Đã lưu dữ liệu hồ sơ bệnh nhân!');
+      throw error;
     }
   };
 

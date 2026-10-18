@@ -15,12 +15,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+
+@Entity
+@NoArgsConstructor
+@AllArgsConstructor
 @Getter
 @Setter
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
-@Entity
 @Table(name = "treatment_plans")
 public class TreatmentPlan {
     @Id

@@ -200,6 +200,8 @@ public class EmployeeServiceImpl implements EmployeeService {
                 employee.getAddress(),
                 employee.getBranch() != null ? employee.getBranch().getBranchId() : null,
                 employee.getBranch() != null ? employee.getBranch().getBranchName() : null,
-                employee.getBranch() != null ? employee.getBranch().getAddress() : null);
+                employee.getBranch() != null ? employee.getBranch().getAddress() : null,
+                employee.getBranch() != null && employee.getBranch().getClinic() != null
+                        ? employee.getBranch().getClinic().getLegalName() : null);
     }
 }

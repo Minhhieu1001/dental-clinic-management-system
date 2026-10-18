@@ -20,6 +20,9 @@ public class ExaminationResultDTO {
     private String chiefComplaint;
     private LocalDateTime examinationDate;
     private DiagnosisDTO diagnosis;
+    private String branchId;
+    private String branchName;
+    private String addressBranch;
     @Builder.Default
     private List<DiagnosisDTO> diagnoses = new ArrayList<>();
     @Builder.Default

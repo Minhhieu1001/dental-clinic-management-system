@@ -26,6 +26,7 @@ import {
   LOWER_JAW_RIGHT,
   LOWER_JAW_LEFT,
 } from '../clinicalExaminationHelpers';
+import { createTreatmentService } from '../../../services/treatmentService.service';
 
 export function AddServiceModal({
   isOpen,
@@ -34,10 +35,12 @@ export function AddServiceModal({
   servicesCatalog = [],
   diagnosesList = [],
   onAddService,
+  onAddSuccess,
 }) {
   // 1. Bộ lọc tìm kiếm & Loại dịch vụ
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 2. Dịch vụ đang được chọn để gán răng
   const [activeServiceId, setActiveServiceId] = useState('');
@@ -68,6 +71,7 @@ export function AddServiceModal({
       setSelectedCategory('ALL');
       setSearchQuery('');
       setStagedServices([]);
+      setIsSubmitting(false);
 
       // Mặc định chọn dịch vụ đầu tiên
       if (servicesCatalog.length > 0) {
@@ -200,10 +204,15 @@ export function AddServiceModal({
   }, [stagedServices]);
 
   // XÁC NHẬN THÊM TOÀN BỘ VÀO GIAI ĐOẠN ĐIỀU TRỊ
-  const handleConfirmAddAll = (e) => {
+  const handleConfirmAddAll = async (e) => {
     e?.preventDefault();
     if (!targetPhaseId) {
       toast.error('Không tìm thấy giai đoạn điều trị tương ứng!');
+      return;
+    }
+
+    if (String(targetPhaseId).startsWith('ph-')) {
+      toast.error('Giai đoạn điều trị chưa tồn tại trong cơ sở dữ liệu. Vui lòng lưu phác đồ trước khi thêm dịch vụ.');
       return;
     }
 
@@ -233,12 +242,61 @@ export function AddServiceModal({
       return;
     }
 
-    // Gửi danh sách dịch vụ lên TreatmentPlans
-    onAddService(targetPhaseId, finalItems);
-    toast.success(`Đã thêm thành công ${finalItems.length} dịch vụ vào giai đoạn!`, {
-      icon: '✅',
-    });
-    onClose();
+    setIsSubmitting(true);
+    const toastId = toast.loading(`Đang lưu ${finalItems.length} dịch vụ vào giai đoạn...`);
+
+    try {
+      const savedItems = [];
+      for (const item of finalItems) {
+        const serviceUuid = item.service_id && !String(item.service_id).startsWith('srv-')
+          ? item.service_id
+          : null;
+
+        if (!serviceUuid) {
+          throw new Error(`Dịch vụ "${item.service_name}" không có mã định danh UUID hợp lệ trong hệ thống.`);
+        }
+
+        const payload = {
+          serviceId: serviceUuid,
+          toothNumber: item.toothNumber || '',
+          quantity: Number(item.quantity) || 1,
+          price: Number(item.price) || 0,
+        };
+
+        const res = await createTreatmentService(targetPhaseId, payload);
+        savedItems.push({
+          treatmentServicesId: res?.id || item.treatmentServicesId,
+          service_id: res?.serviceId || item.service_id,
+          service_name: res?.serviceName || item.service_name,
+          category: item.category,
+          unit: item.unit || 'Răng',
+          toothNumber: res?.toothNumber || item.toothNumber,
+          quantity: res?.quantity || item.quantity,
+          price: Number(res?.price ?? item.price),
+          subtotal: Number(res?.totalAmount ?? (item.price * item.quantity)),
+        });
+      }
+
+      toast.success(`Đã thêm thành công ${savedItems.length} dịch vụ vào giai đoạn!`, {
+        id: toastId,
+        icon: '✅',
+      });
+
+      // Bắn sự kiện thành công về UI chính
+      const callback = onAddSuccess || onAddService;
+      if (callback) {
+        callback(targetPhaseId, savedItems);
+      }
+
+      // Đóng modal sau khi thêm thành công
+      onClose();
+    } catch (err) {
+      console.error('Lỗi khi thêm dịch vụ vào giai đoạn:', err);
+      toast.error(`Lỗi: ${err?.response?.data?.message || err.message}`, { id: toastId });
+      // Thất bại: không gọi callback, không thêm vào state, không đóng modal
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -817,16 +875,24 @@ export function AddServiceModal({
                 </motion.button>
 
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.96 }}
+                  whileHover={{ scale: isSubmitting ? 1 : 1.02 }}
+                  whileTap={{ scale: isSubmitting ? 1 : 0.96 }}
                   type="button"
+                  disabled={isSubmitting}
                   onClick={handleConfirmAddAll}
-                  className="rounded-lg bg-teal-700 hover:bg-teal-800 px-5 py-2 text-xs sm:text-sm font-bold text-white shadow cursor-pointer flex items-center gap-1.5"
+                  className="rounded-lg bg-teal-700 hover:bg-teal-800 disabled:opacity-60 disabled:cursor-not-allowed px-5 py-2 text-xs sm:text-sm font-bold text-white shadow cursor-pointer flex items-center gap-1.5"
                 >
-                  <Check size={16} />
-                  <span>
-                    Lưu dịch vụ
-                  </span>
+                  {isSubmitting ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Đang lưu...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check size={16} />
+                      <span>Lưu dịch vụ</span>
+                    </>
+                  )}
                 </motion.button>
               </div>
             </div>

@@ -52,6 +52,11 @@ public class DentistController {
         return dentistService.getDentistById(id);
     }
 
+    @GetMapping("/{id}/branch")
+    public DentistListResponse getDentistWithBranchById(@PathVariable UUID id) {
+        return dentistService.getDentistWithBranchById(id);
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public DentistResponse createDentist(@RequestBody DentistRequest request) {

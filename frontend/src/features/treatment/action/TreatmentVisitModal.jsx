@@ -8,6 +8,8 @@ import {
   User,
   X,
   Clock,
+  Building2,
+  MapPin,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
@@ -15,6 +17,11 @@ import {
   CLINICAL_PROCEDURE_TEMPLATES,
   VISIT_STATUS_BUTTON_OPTIONS,
 } from '../clinicalExaminationHelpers';
+import {
+  createTreatmentVisit,
+  updateTreatmentVisit,
+} from '../../../services/treatmentVisits.Service';
+import { getDentistAddressById } from '../../../services/dentist.service';
 
 export function TreatmentVisitModal({
   isOpen,
@@ -32,14 +39,34 @@ export function TreatmentVisitModal({
   const [visitFormName, setVisitFormName] = useState('');
   const [visitFormOrder, setVisitFormOrder] = useState(1);
   const [visitFormDate, setVisitFormDate] = useState(new Date().toISOString().split('T')[0]);
-  const [visitFormStatus, setVisitFormStatus] = useState('PENDING');
+  const [visitFormStatus, setVisitFormStatus] = useState('IN_PROGRESS');
   const [visitFormNotes, setVisitFormNotes] = useState('');
   const [visitFormDoctor, setVisitFormDoctor] = useState('');
+  const [branchName, setBranchName] = useState('');
+  const [branchAddress, setBranchAddress] = useState('');
+  const [isLoadingBranch, setIsLoadingBranch] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Tên và số thứ tự giai đoạn
   const resolvedPhaseId = currentPhase?.phase_id || targetPhaseId || '';
   const resolvedPhaseName = currentPhase?.phase_name || phaseName || 'Giai đoạn điều trị';
   const resolvedPhaseOrder = currentPhase?.phase_order || phaseOrder || 1;
+
+  // Lấy chi nhánh của bác sĩ trực tiếp từ user.id
+  const fetchDoctorBranch = async () => {
+    if (!user?.dentistId) return;
+    setIsLoadingBranch(true);
+    try {
+      console.log("user ", user)
+      const res = await getDentistAddressById(user.dentistId);
+      setBranchName(res.branchName || '');
+      setBranchAddress(res.branchAddress || '');
+    } catch (err) {
+      console.warn('Không thể lấy địa chỉ cơ sở của bác sĩ:', err);
+    } finally {
+      setIsLoadingBranch(false);
+    }
+  };
 
   // Đồng bộ form theo dữ liệu truyền vào khi mở modal
   useEffect(() => {
@@ -48,61 +75,114 @@ export function TreatmentVisitModal({
         setVisitFormName(initialData.visitName || '');
         setVisitFormOrder(Number(initialData.visitOrder) || 1);
         setVisitFormDate(initialData.start_date || new Date().toISOString().split('T')[0]);
-        setVisitFormStatus(initialData.status || 'PENDING');
+        setVisitFormStatus(initialData.status === 'COMPLETED' ? 'COMPLETED' : 'IN_PROGRESS');
         setVisitFormNotes(initialData.clinical_notes || '');
         setVisitFormDoctor(initialData.assigned_dentist || loggedInDoctorName || '');
+
+        setBranchName(initialData.branchName || '');
+        setBranchAddress(initialData.branchAddress || '');
       } else {
         const nextOrder = Number(initialData?.visitOrder) || 1;
         setVisitFormName(initialData?.visitName || `Buổi ${nextOrder}: `);
         setVisitFormOrder(nextOrder);
         setVisitFormDate(new Date().toISOString().split('T')[0]);
-        setVisitFormStatus('PENDING');
+        setVisitFormStatus('IN_PROGRESS');
         setVisitFormNotes('');
 
-        // Tự động lấy tên bác sĩ
         let doctorName = loggedInDoctorName || initialData?.assigned_dentist || '';
-        if (!doctorName || doctorName === 'BS. Nguyễn Văn Tâm') {
-          if (user?.fullName || user?.name) {
-            doctorName = user.fullName || user.name;
-          } else if (user?.username) {
-            doctorName = user.username;
-          }
-          if (doctorName && !/^(BS\.|ThS\.|TS\.|Dr\.)/i.test(doctorName)) {
-            doctorName = 'BS. ' + doctorName;
-          }
+        if (!doctorName && user?.username) {
+          doctorName = 'BS. ' + user.username;
         }
-        setVisitFormDoctor(doctorName || '');
+        setVisitFormDoctor(doctorName);
+
+        fetchDoctorBranch();
       }
+      setIsSubmitting(false);
     }
   }, [isOpen, mode, initialData, loggedInDoctorName, user]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e?.preventDefault();
     if (!visitFormName.trim()) {
       toast.error('Vui lòng nhập tên buổi điều trị!');
       return;
     }
 
-    const visitData = {
-      ...(initialData || {}),
-      visitId: mode === 'EDIT' && initialData?.visitId ? initialData.visitId : `vis-${Date.now()}-${visitFormOrder}`,
+    const visitPayload = {
       visitName: visitFormName.trim(),
       visitOrder: Number(visitFormOrder) || 1,
-      start_date: visitFormDate,
-      status: visitFormStatus,
-      clinical_notes: visitFormNotes.trim(),
-      assigned_dentist: visitFormDoctor.trim(),
+      startDate: visitFormDate || new Date().toISOString().split('T')[0],
+      status: visitFormStatus || 'IN_PROGRESS',
+      clinicalNotes: visitFormNotes.trim(),
+      assignedDentist: visitFormDoctor.trim(),
+      branchName: branchName,
+      branchAddress: branchAddress,
+      facilityName: branchName,
+      facilityAddress: branchAddress,
     };
 
-    if (onSaveVisit) {
-      onSaveVisit(resolvedPhaseId, visitData, mode);
+    setIsSubmitting(true);
+    const actionText = mode === 'ADD' ? 'Tạo buổi điều trị' : 'Cập nhật buổi điều trị';
+    const toastId = toast.loading(`Đang ${actionText.toLowerCase()}...`);
+
+    try {
+      let savedVisit;
+      if (mode === 'ADD') {
+        if (!resolvedPhaseId || String(resolvedPhaseId).startsWith('ph-')) {
+          throw new Error('Giai đoạn điều trị chưa tồn tại trong cơ sở dữ liệu. Vui lòng lưu phác đồ trước khi thêm buổi khám.');
+        }
+        const res = await createTreatmentVisit(resolvedPhaseId, visitPayload);
+        savedVisit = {
+          visitId: res?.id || res?.visitId || `vis-${Date.now()}`,
+          visitName: res?.visitName || visitPayload.visitName,
+          visitOrder: res?.visitOrder || visitPayload.visitOrder,
+          start_date: res?.startDate || visitPayload.startDate,
+          status: res?.status || visitPayload.status,
+          clinical_notes: res?.clinicalNotes ?? visitPayload.clinicalNotes,
+          assigned_dentist: res?.assignedDentist || visitPayload.assignedDentist,
+          branchName: branchName,
+          branchAddress: branchAddress,
+        };
+      } else {
+        const visitId = initialData?.visitId || initialData?.id;
+        if (!visitId || String(visitId).startsWith('vis-')) {
+          throw new Error('Không tìm thấy mã định danh buổi khám trong cơ sở dữ liệu.');
+        }
+        const res = await updateTreatmentVisit(visitId, visitPayload);
+        savedVisit = {
+          visitId: res?.id || res?.visitId || visitId,
+          visitName: res?.visitName || visitPayload.visitName,
+          visitOrder: res?.visitOrder || visitPayload.visitOrder,
+          start_date: res?.startDate || visitPayload.startDate,
+          status: res?.status || visitPayload.status,
+          clinical_notes: res?.clinicalNotes ?? visitPayload.clinicalNotes,
+          assigned_dentist: res?.assignedDentist || visitPayload.assignedDentist,
+          branchName: branchName,
+          branchAddress: branchAddress,
+        };
+      }
+
       toast.success(
         mode === 'ADD'
-          ? `Đã tạo "${visitData.visitName}" thành công!`
-          : `Đã cập nhật kết quả lâm sàng cho "${visitData.visitName}"!`
+          ? `Đã tạo "${savedVisit.visitName}" thành công!`
+          : `Đã cập nhật kết quả lâm sàng cho "${savedVisit.visitName}"!`,
+        { id: toastId }
       );
+
+      // Chỉ khi API thành công mới truyền dữ liệu lên parent để cập nhật state
+      if (onSaveVisit) {
+        onSaveVisit(resolvedPhaseId, savedVisit, mode);
+      }
+
+      // Chỉ đóng modal khi API thành công
+      onClose();
+    } catch (err) {
+      console.error(`Lỗi khi ${actionText.toLowerCase()}:`, err);
+      toast.error(`Lỗi: ${err?.response?.data?.message || err.message}`, { id: toastId });
+      // Giữ nguyên modal mở, không cập nhật state của cha
+    } finally {
+      setIsSubmitting(false);
     }
-    onClose();
   };
 
   return (
@@ -219,13 +299,13 @@ export function TreatmentVisitModal({
                     <Clock size={13} className="text-slate-500" />
                     <span>Trạng thái buổi</span>
                   </label>
-                  <div className="grid grid-cols-3 gap-1 h-9 items-center">
+                  <div className="grid grid-cols-2 gap-1.5 h-9 items-center">
                     {VISIT_STATUS_BUTTON_OPTIONS.map((st) => (
                       <button
                         key={st.value}
                         type="button"
                         onClick={() => setVisitFormStatus(st.value)}
-                        className={`h-full text-[11px] rounded border transition-all cursor-pointer text-center font-medium ${visitFormStatus === st.value
+                        className={`h-full text-xs rounded-lg border transition-all cursor-pointer text-center font-semibold px-1 whitespace-nowrap flex items-center justify-center ${visitFormStatus === st.value
                           ? st.active
                           : 'border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100'
                           }`}
@@ -234,6 +314,41 @@ export function TreatmentVisitModal({
                       </button>
                     ))}
                   </div>
+                </div>
+              </div>
+
+              {/* Hàng: Thông tin cơ sở khám (Tự động từ bác sĩ - Chỉ đọc) */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                <div className="sm:col-span-5 space-y-1.5">
+                  <label className="block font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1">
+                    <Building2 size={13} className="text-teal-600" />
+                    <span>Cơ sở thực hiện</span>
+                    <span className="text-[10px] text-slate-400 font-medium normal-case">(Chỉ đọc)</span>
+                  </label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={branchName}
+                    placeholder={isLoadingBranch ? 'Đang tải thông tin cơ sở...' : 'Chưa có thông tin cơ sở'}
+                    className="w-full h-9 rounded-lg border border-slate-200 bg-slate-100 px-3 text-xs font-semibold text-slate-800 outline-none cursor-not-allowed select-none shadow-inner"
+                    title="Cơ sở làm việc của bác sĩ (Khóa tự động)"
+                  />
+                </div>
+
+                <div className="sm:col-span-7 space-y-1.5">
+                  <label className="block font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1">
+                    <MapPin size={13} className="text-rose-500" />
+                    <span>Địa chỉ cơ sở</span>
+                    <span className="text-[10px] text-slate-400 font-medium normal-case">(Chỉ đọc)</span>
+                  </label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={branchAddress}
+                    placeholder={isLoadingBranch ? 'Đang tải địa chỉ...' : 'Chưa có địa chỉ cơ sở'}
+                    className="w-full h-9 rounded-lg border border-slate-200 bg-slate-100 px-3 text-xs font-medium text-slate-700 outline-none cursor-not-allowed select-none shadow-inner truncate"
+                    title={branchAddress || 'Địa chỉ cơ sở (Khóa tự động)'}
+                  />
                 </div>
               </div>
 
@@ -283,10 +398,20 @@ export function TreatmentVisitModal({
                 </button>
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-1.5 px-5 py-2 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold cursor-pointer transition-colors shadow-xs"
+                  disabled={isSubmitting}
+                  className="inline-flex items-center gap-1.5 px-5 py-2 rounded-lg bg-indigo-700 hover:bg-indigo-800 disabled:opacity-60 disabled:cursor-not-allowed text-white text-xs font-bold cursor-pointer transition-colors shadow-xs"
                 >
-                  <Save size={14} />
-                  <span>{mode === 'ADD' ? 'Lưu buổi điều trị' : 'Lưu kết quả lâm sàng'}</span>
+                  {isSubmitting ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Đang lưu...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save size={14} />
+                      <span>{mode === 'ADD' ? 'Lưu buổi điều trị' : 'Lưu kết quả lâm sàng'}</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>

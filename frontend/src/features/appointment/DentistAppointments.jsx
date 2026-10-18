@@ -26,6 +26,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { getDentistsList } from '../../services/dentist.service';
+import { getAppointments, getMyAppointments } from '../../services/appointment.service';
 import ClinicalExamModal from '../../components/ui/ClinicalExamModal';
 
 const TIME_SLOTS = [

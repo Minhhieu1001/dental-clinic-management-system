@@ -22,6 +22,8 @@ public class TreatmentPlanRequest {
     private StatusPhase status;
     private String startDate;
     private String endDate;
+    // Kept to reject legacy nested writes explicitly instead of silently ignoring them.
+    @Deprecated
     private List<PhaseRequest> phases;
 
     @Data

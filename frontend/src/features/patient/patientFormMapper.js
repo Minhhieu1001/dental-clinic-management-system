@@ -28,4 +28,5 @@ export const toPatientPayload = (formData, doctorId = null) => ({
   surgicalHistory: formData.surgicalHistory,
   notes: formData.notes,
   doctorId,
+  ...(formData.branchId ? { branchId: formData.branchId } : {}),
 });

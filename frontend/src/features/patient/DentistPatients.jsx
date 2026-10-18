@@ -18,11 +18,6 @@ import toast from 'react-hot-toast';
 import { getPatients, createPatient, updatePatient } from '../../services/patient.service';
 import PatientModal from '../../components/ui/PatientModal';
 import { useAuthStore } from '../../store/authStore';
-import {
-  DEFAULT_DENTAL_CLINIC_NAME,
-  DEFAULT_DENTAL_CLINIC_ADDRESS,
-  DEFAULT_RECORD_FILE_NAME,
-} from '../medical-record/dentist/medicalRecordHelpers';
 import { toPatientPayload } from './patientFormMapper';
 
 // Fallback initial patient list
@@ -155,13 +150,7 @@ export default function DentistPatients() {
   const handleSaveModal = async (formData) => {
     try {
       const currentUser = useAuthStore.getState().user;
-      const payloadData = {
-        ...toPatientPayload(formData, currentUser?.id || null),
-        // 3 biến FE: Tên cơ sở/bệnh viện, Địa chỉ bệnh viện, Tên hồ sơ
-        dentalClinicName: DEFAULT_DENTAL_CLINIC_NAME,
-        clinicAddress: DEFAULT_DENTAL_CLINIC_ADDRESS,
-        fileName: DEFAULT_RECORD_FILE_NAME,
-      };
+      const payloadData = toPatientPayload(formData, currentUser?.dentistId || null);
 
       if (modalConfig.type === 'EDIT' && formData.id) {
         await updatePatient(formData.id, payloadData);
@@ -173,8 +162,8 @@ export default function DentistPatients() {
       }
       await fetchPatientData();
     } catch (error) {
-      console.error('Error saving patient profile:', error);
-      toast.error('Có lỗi xảy ra khi lưu dữ liệu bệnh nhân');
+      console.error('Error saving patient:', error);
+      throw error;
     }
   };
 

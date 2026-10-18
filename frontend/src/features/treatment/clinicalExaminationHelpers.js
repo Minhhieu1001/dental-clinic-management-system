@@ -460,6 +460,14 @@ export const STATUS_PHASE_CONFIG = {
     dot: 'bg-emerald-600',
     badge: 'bg-emerald-50 text-emerald-800 border-emerald-300',
   },
+  CANCEL: {
+    label: 'Đã hủy',
+    bg: 'bg-rose-50',
+    text: 'text-rose-800',
+    border: 'border-rose-200',
+    dot: 'bg-rose-600',
+    badge: 'bg-rose-50 text-rose-800 border-rose-300',
+  },
 };
 
 // =========================================================================
@@ -521,6 +529,7 @@ export const PHASE_STATUS_BUTTON_OPTIONS = [
   { value: 'PENDING', label: 'Chờ khám', active: 'border-amber-500 bg-amber-50 text-amber-900 font-bold ring-2 ring-amber-500/20' },
   { value: 'IN_PROGRESS', label: 'Đang làm', active: 'border-blue-500 bg-blue-50 text-blue-900 font-bold ring-2 ring-blue-500/20' },
   { value: 'COMPLETED', label: 'Hoàn tất', active: 'border-emerald-500 bg-emerald-50 text-emerald-900 font-bold ring-2 ring-emerald-500/20' },
+  { value: 'CANCEL', label: 'Đã hủy', active: 'border-rose-500 bg-rose-50 text-rose-900 font-bold ring-2 ring-rose-500/20' },
 ];
 
 // =========================================================================
@@ -545,14 +554,13 @@ export const CLINICAL_PROCEDURE_TEMPLATES = [
 ];
 
 // =========================================================================
-// Dữ liệu: Cấu hình 3 nút chọn trạng thái buổi điều trị (Không dùng Selectbox)
+// Dữ liệu: Cấu hình 2 nút chọn trạng thái buổi điều trị (Không dùng Selectbox)
 // Modal: Modal Tạo / Cập Nhật Buổi Điều Trị (TreatmentVisitModal)
 // File sử dụng:
 //   - src/features/treatment/action/TreatmentVisitModal.jsx
 // =========================================================================
 export const VISIT_STATUS_BUTTON_OPTIONS = [
-  { value: 'PENDING', label: 'Chờ khám', active: 'border-amber-500 bg-amber-50 text-amber-900 font-bold ring-2 ring-amber-500/20' },
-  { value: 'IN_PROGRESS', label: 'Đang làm', active: 'border-blue-500 bg-blue-50 text-blue-900 font-bold ring-2 ring-blue-500/20' },
+  { value: 'IN_PROGRESS', label: 'Đang thực hiện', active: 'border-blue-500 bg-blue-50 text-blue-900 font-bold ring-2 ring-blue-500/20' },
   { value: 'COMPLETED', label: 'Hoàn tất', active: 'border-emerald-500 bg-emerald-50 text-emerald-900 font-bold ring-2 ring-emerald-500/20' },
 ];
 

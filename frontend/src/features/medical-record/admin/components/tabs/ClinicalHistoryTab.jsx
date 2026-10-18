@@ -4,6 +4,8 @@ import {
     Stethoscope,
     ShieldCheck,
     FileText,
+    Building2,
+    MapPin,
 } from 'lucide-react';
 import {
     formatDateDisplay,
@@ -53,8 +55,9 @@ export default function ClinicalHistoryTab({ detailExams = [], selectedRecord })
                             >
                                 {/* 1. Header đợt khám */}
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 bg-slate-50 border-b border-slate-200">
-                                    <div className="flex items-center gap-2.5">
-                                        <span className="flex h-6 w-6 items-center justify-center rounded-sm bg-teal-700 text-white font-bold text-xs shadow-2xs">
+                                    <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
+                                      <div className="flex shrink-0 items-center gap-2.5">
+                                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm bg-teal-700 text-white font-bold text-xs shadow-2xs">
                                             {idx + 1}
                                         </span>
                                         <div>
@@ -65,9 +68,20 @@ export default function ClinicalHistoryTab({ detailExams = [], selectedRecord })
                                                 Bác sĩ khám: <strong className="text-teal-800">{exam.dentistName || selectedRecord?.dentistName || 'BS. Nha khoa'}</strong>
                                             </p>
                                         </div>
+                                      </div>
+                                      <div className="min-w-0 space-y-1 border-t border-teal-200 pt-3 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6">
+                                            <p className="flex items-start gap-1.5 text-sm text-slate-700">
+                                                <Building2 size={15} className="mt-0.5 shrink-0 text-teal-700" aria-hidden="true" />
+                                                <span>Tên cơ sở: <strong className="text-teal-800">{exam.branchName || 'Chưa có thông tin cơ sở'}</strong></span>
+                                            </p>
+                                            <p className="flex items-start gap-1.5 text-sm text-slate-600">
+                                                <MapPin size={15} className="mt-0.5 shrink-0 text-teal-700" aria-hidden="true" />
+                                                <span className="break-words">Địa chỉ: {exam.addressBranch || 'Chưa có thông tin địa chỉ'}</span>
+                                            </p>
+                                        </div>
                                     </div>
 
-                                    <span className="inline-block px-2.5 py-0.5 rounded-sm text-xs font-bold bg-teal-50 text-teal-800 border border-teal-200 self-start sm:self-auto">
+                                    <span className="inline-block shrink-0 px-2.5 py-0.5 rounded-sm text-xs font-bold bg-teal-50 text-teal-800 border border-teal-200 self-start sm:self-auto">
                                         {exam.status || 'Đã hoàn tất khám'}
                                     </span>
                                 </div>

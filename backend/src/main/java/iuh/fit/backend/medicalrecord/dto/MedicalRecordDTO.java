@@ -13,6 +13,10 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class MedicalRecordDTO {
+    private String branchId;
+    private String branchName;
+    private String branchAddress;
+    private String clinicId;
     private UUID id;
     private String medicalRecordCode;
 
@@ -40,8 +44,6 @@ public class MedicalRecordDTO {
 
     private String treatmentNotes;
     private LocalDateTime recordDate;
-    private String fileName;
-    private String address;
     private String dentalClinicName;
 
     @Builder.Default

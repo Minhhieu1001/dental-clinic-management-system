@@ -8,6 +8,7 @@ import iuh.fit.backend.common.security.*;
 import iuh.fit.backend.user.entity.User;
 import iuh.fit.backend.user.enums.StatusUser;
 import iuh.fit.backend.user.repository.EmployeeRepository;
+import iuh.fit.backend.user.repository.DentistRepository;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -32,6 +33,7 @@ public class AuthServiceImpl implements AuthService {
     private final CookieUtils cookieUtils;
     private final CustomUserDetailsService userDetailsService;
     private final EmployeeRepository employeeRepository;
+    private final DentistRepository dentistRepository;
 
     @Override
     public AuthResponse login(LoginRequest request, HttpServletResponse response) {
@@ -145,6 +147,9 @@ public class AuthServiceImpl implements AuthService {
                 user.getAvatarUrl(),
                 employeeRepository.findByUserId(user.getId())
                         .map(employee -> employee.getId())
+                        .orElse(null),
+                dentistRepository.findByUserId(user.getId())
+                        .map(dentist -> dentist.getId())
                         .orElse(null));
     }
 

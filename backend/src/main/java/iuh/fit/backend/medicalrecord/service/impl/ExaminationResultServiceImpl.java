@@ -2,6 +2,8 @@ package iuh.fit.backend.medicalrecord.service.impl;
 
 import iuh.fit.backend.common.exception.AppException;
 import iuh.fit.backend.common.exception.ErrorCode;
+import iuh.fit.backend.inforclinic.entity.Branch;
+import iuh.fit.backend.inforclinic.repository.BranchRepository;
 import iuh.fit.backend.medicalrecord.dto.DiagnosisDTO;
 import iuh.fit.backend.medicalrecord.dto.DiagnosisRequest;
 import iuh.fit.backend.medicalrecord.dto.ExaminationResultDTO;
@@ -46,6 +48,7 @@ public class ExaminationResultServiceImpl implements ExaminationResultService {
     private final ToothRecordRepository toothRecordRepository;
     private final DentistRepository dentistRepository;
     private final UserRepository userRepository;
+    private final BranchRepository branchRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -80,6 +83,11 @@ public class ExaminationResultServiceImpl implements ExaminationResultService {
                 .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy hồ sơ bệnh án ID: " + request.getMedicalRecordId()));
 
         Dentist dentist = null;
+        Branch branch = branchRepository.findById(request.getBranchId())
+                .orElseThrow(() -> new AppException(
+                        ErrorCode.RESOURCE_NOT_FOUND,
+                        "Không tìm thấy chi nhánh"
+                ));
 
         // 1. Ưu tiên lấy từ request nếu FE truyền dentistId (tìm theo Dentist.id hoặc User.id)
         if (request.getDentistId() != null) {
@@ -127,6 +135,7 @@ public class ExaminationResultServiceImpl implements ExaminationResultService {
         ExaminationResult examResult = ExaminationResult.builder()
                 .medicalRecord(medicalRecord)
                 .dentist(dentist)
+                .branch(branch)
                 .chiefComplaint(request.getChiefComplaint())
                 .examinationDate(request.getExaminationDate() != null ? request.getExaminationDate() : LocalDateTime.now())
                 .disabled(disabled)
@@ -386,6 +395,9 @@ public class ExaminationResultServiceImpl implements ExaminationResultService {
                 .medicalRecordId(examResult.getMedicalRecord() != null ? examResult.getMedicalRecord().getId() : null)
                 .dentistId(dentistId)
                 .dentistName(dentistName)
+                .branchId(examResult.getBranch()!= null ?examResult.getBranch().getBranchId().toString():null)
+                .branchName(examResult.getBranch()!= null ?examResult.getBranch().getBranchName():null)
+                .addressBranch(examResult.getBranch()!= null ?examResult.getBranch().getAddress():null)
                 .chiefComplaint(examResult.getChiefComplaint())
                 .examinationDate(examResult.getExaminationDate())
                 .disabled(examResult.getDisabled() != null ? examResult.getDisabled() : true)

@@ -9,12 +9,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+
+@Entity
+@NoArgsConstructor
+@AllArgsConstructor
 @Getter
 @Setter
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
-@Entity
 @Table(name = "treatment_phases")
 public class TreatmentPhase {
     @Id
@@ -50,10 +51,10 @@ public class TreatmentPhase {
     private LocalDateTime expectedEndDate;
 
     @Builder.Default
-    @OneToMany(mappedBy = "treatmentPhase", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @OneToMany(mappedBy = "treatmentPhase", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TreatmentService> treatmentServices = new ArrayList<>();
 
     @Builder.Default
-    @OneToMany(mappedBy = "treatmentPhase", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @OneToMany(mappedBy = "treatmentPhase", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TreatmentVisits> treatmentVisits = new ArrayList<>();
 }

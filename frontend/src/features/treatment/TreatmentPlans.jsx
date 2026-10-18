@@ -35,6 +35,7 @@ import {
   Maximize2,
   Users,
   MapPin,
+  Building2,
   ChevronRight,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -50,8 +51,25 @@ import {
   getTreatmentPlansByPatientId,
   getTreatmentPlanByExaminationResultId,
   updateTreatmentPlan,
+  updateTreatmentPlanStatus,
   autoScheduleFollowUpAppointments,
 } from '../../services/treatmentPlan.service';
+import {
+  createTreatmentPhase,
+  updateTreatmentPhase,
+  deleteTreatmentPhase,
+  updateTreatmentPhaseStatus,
+} from '../../services/treatmentPhase.service';
+import {
+  createTreatmentVisit,
+  updateTreatmentVisit,
+  deleteTreatmentVisit,
+  updateTreatmentVisitStatus,
+} from '../../services/treatmentVisits.Service';
+import {
+  updateTreatmentService,
+  deleteTreatmentService,
+} from '../../services/treatmentService.service';
 import {
   ICD10_DIAGNOSES,
   DEFAULT_SERVICE_CATALOG,
@@ -288,6 +306,16 @@ export default function TreatmentPlans() {
     setShowPhaseDetailModal(true);
   }, []);
 
+  // Đồng bộ selectedDetailPhase khi danh sách phases thay đổi
+  useEffect(() => {
+    if (selectedDetailPhase) {
+      const updated = phases.find((p) => p.phase_id === selectedDetailPhase.phase_id);
+      if (updated && updated !== selectedDetailPhase) {
+        setSelectedDetailPhase(updated);
+      }
+    }
+  }, [phases, selectedDetailPhase]);
+
   // Scroll Spy & Trạng thái tiến trình giai đoạn theo chiều dọc
   const [activePhaseId, setActivePhaseId] = useState(null);
 
@@ -400,14 +428,15 @@ export default function TreatmentPlans() {
         visitName: v.visitName,
         visitOrder: Number(v.visitOrder) || vIdx + 1,
         start_date: v.startDate ? v.startDate.split('T')[0] : new Date().toISOString().split('T')[0],
-        status: v.status || 'PENDING',
+        status: v.status || 'IN_PROGRESS',
         clinical_notes: v.clinicalNotes || '',
         assigned_dentist: v.assignedDentist || '',
+        branchName: v.branchName || v.facilityName || '',
+        branchAddress: v.branchAddress || v.facilityAddress || '',
       })),
     }));
 
     setPhases(mappedPhases);
-    toast.success(`Đã nạp kế hoạch: "${foundPlan.planName}"`);
   }, [patientTreatmentPlans]);
 
   // Tải danh sách kế hoạch điều trị của bệnh nhân từ backend
@@ -448,7 +477,6 @@ export default function TreatmentPlans() {
         handleSelectPlan('NEW', pList);
         setHasPlanForActiveSession(false);
       }
-      toast.success('Đang hiển thị tổng hợp tất cả các đợt khám');
       return;
     }
 
@@ -488,7 +516,6 @@ export default function TreatmentPlans() {
     if (matchedPlan) {
       handleSelectPlan(matchedPlan.id, pList);
       setHasPlanForActiveSession(true);
-      toast.success(`Đã lấy ${sessionDiags.length} chẩn đoán & kế hoạch "${matchedPlan.planName}" của ${session.label}!`);
     } else {
       // Đợt khám này chưa có kế hoạch điều trị -> Giữ trạng thái trống để nha sĩ tự tạo mới
       handleSelectPlan('NEW', pList);
@@ -496,7 +523,42 @@ export default function TreatmentPlans() {
     }
   }, [treatmentSessions, patientTreatmentPlans, handleSelectPlan]);
 
-  // ================= HÀM LƯU TRỰC TIẾP KẾ HOẠCH ĐIỀU TRỊ XUỐNG CSDL =================
+  // Đảm bảo Kế hoạch điều trị đã tồn tại trong CSDL trước khi thêm Giai đoạn / Buổi khám
+  const ensurePlanExists = async () => {
+    if (selectedPlanId && selectedPlanId !== 'NEW' && String(selectedPlanId).length > 10) {
+      return selectedPlanId;
+    }
+    let targetPlanName = planName?.trim() || `Kế hoạch điều trị - ${currentSession?.label || 'Đợt khám'}`;
+    setPlanName(targetPlanName);
+    const payload = {
+      patientId: patient?.id && patient.id !== 'pat-1' ? patient.id : null,
+      examinationResultId:
+        currentSession?.id && currentSession.id !== 'ALL' && !String(currentSession.id).startsWith('rec-')
+          ? currentSession.id
+          : null,
+      dentistName: dentistName,
+      dentistId: loggedInDentistId || null,
+      planName: targetPlanName,
+      description: planDesc || '',
+      estimatedCost: 0,
+      status: planStatus || 'IN_PROGRESS',
+      startDate: startDate || new Date().toISOString().split('T')[0],
+      endDate: endDate || null,
+    };
+    const created = await createTreatmentPlan(payload);
+    if (created?.id) {
+      setSelectedPlanId(created.id);
+      setPlanId(created.id);
+      setHasPlanForActiveSession(true);
+      if (patient?.id) {
+        fetchPlansForPatient(patient.id);
+      }
+      return created.id;
+    }
+    throw new Error('Không thể khởi tạo kế hoạch điều trị trên hệ thống.');
+  };
+
+  // ================= HÀM LƯU / CẬP NHẬT KẾ HOẠCH ĐIỀU TRỊ (CHỈ BẢNG TREATMENT_PLANS) =================
   const persistPlanChanges = async (customPhases = null, customPlanMeta = null) => {
     let targetPlanName = (customPlanMeta?.planName ?? planName)?.trim();
     if (!targetPlanName) {
@@ -533,36 +595,12 @@ export default function TreatmentPlans() {
       status: targetPlanStatus,
       startDate: targetStartDate,
       endDate: targetEndDate,
-      phases: targetPhases.map((phase, pIdx) => ({
-        phaseName: phase.phase_name,
-        phaseOrder: String(phase.phase_order || pIdx + 1),
-        treatmentType: phase.treatmentType || 'Tổng quát',
-        description: phase.description || '',
-        status: phase.status || 'PENDING',
-        estimatedDuration: phase.estimated_duration || '1 tuần',
-        expectedStartDate: phase.expected_start_date || phase.expectedStartDate || null,
-        expectedEndDate: phase.expected_end_date || phase.expectedEndDate || null,
-        treatmentServices: (phase.treatment_services || []).map((s) => ({
-          serviceId: s.service_id && !String(s.service_id).startsWith('srv-') ? s.service_id : null,
-          toothNumber: s.toothNumber || '',
-          quantity: Number(s.quantity) || 1,
-          price: Number(s.price) || 0,
-          totalAmount: (Number(s.price) || 0) * (Number(s.quantity) || 1),
-        })),
-        treatmentVisits: (phase.treatment_visits || []).map((v, vIdx) => ({
-          visitName: v.visitName,
-          visitOrder: Number(v.visitOrder) || vIdx + 1,
-          startDate: v.start_date,
-          status: v.status || 'PENDING',
-          clinicalNotes: v.clinical_notes || '',
-          assignedDentist: v.assigned_dentist || targetDentistName,
-        })),
-      })),
+      // Không gửi mảng phases lên API treatment-plans; các bảng con đã có API riêng
     };
 
     const isUpdating = selectedPlanId && selectedPlanId !== 'NEW' && String(selectedPlanId).length > 10;
     const actionText = isUpdating ? 'Cập nhật' : 'Lưu';
-    const toastId = toast.loading(`Đang ${actionText.toLowerCase()} kế hoạch điều trị vào hệ thống...`);
+    const toastId = toast.loading(`Đang ${actionText.toLowerCase()} kế hoạch điều trị...`);
 
     try {
       let savedPlan;
@@ -573,6 +611,41 @@ export default function TreatmentPlans() {
         if (savedPlan?.id) {
           setSelectedPlanId(savedPlan.id);
           setPlanId(savedPlan.id);
+
+          // Nếu có các phase đang soạn sẵn ở local (như khi áp dụng gói mẫu), gọi API riêng tạo từng phase
+          if (targetPhases && targetPhases.length > 0) {
+            for (let i = 0; i < targetPhases.length; i++) {
+              const ph = targetPhases[i];
+              const phasePayload = {
+                phaseName: ph.phase_name,
+                phaseOrder: String(ph.phase_order || i + 1),
+                treatmentType: ph.treatmentType || 'Tổng quát',
+                description: ph.description || '',
+                status: ph.status || 'PENDING',
+                estimatedDuration: ph.estimated_duration || '1 tuần',
+                expectedStartDate: ph.expected_start_date ? `${ph.expected_start_date}T00:00:00` : null,
+                expectedEndDate: ph.expected_end_date ? `${ph.expected_end_date}T00:00:00` : null,
+              };
+              try {
+                const createdPh = await createTreatmentPhase(savedPlan.id, phasePayload);
+                if (createdPh?.id && ph.treatment_visits?.length > 0) {
+                  for (let j = 0; j < ph.treatment_visits.length; j++) {
+                    const v = ph.treatment_visits[j];
+                    await createTreatmentVisit(createdPh.id, {
+                      visitName: v.visitName,
+                      visitOrder: Number(v.visitOrder) || j + 1,
+                      startDate: v.start_date || new Date().toISOString().split('T')[0],
+                      status: v.status || 'IN_PROGRESS',
+                      clinicalNotes: v.clinical_notes || '',
+                      assignedDentist: v.assigned_dentist || targetDentistName,
+                    });
+                  }
+                }
+              } catch (phaseErr) {
+                console.error('Lỗi tạo phase ban đầu:', phaseErr);
+              }
+            }
+          }
         }
       }
       setHasPlanForActiveSession(true);
@@ -592,6 +665,31 @@ export default function TreatmentPlans() {
         duration: 4000,
       });
       return false;
+    }
+  };
+
+  // Cập nhật trạng thái kế hoạch điều trị (gọi API trực tiếp)
+  const handleUpdatePlanStatus = async (newStatus) => {
+    setPlanStatus(newStatus);
+    const statusLabels = {
+      PENDING: 'Chờ duyệt',
+      IN_PROGRESS: 'Đang thực hiện',
+      COMPLETED: 'Đã hoàn tất',
+      CANCEL: 'Đã hủy',
+    };
+    const label = statusLabels[newStatus] || newStatus;
+
+    if (selectedPlanId && selectedPlanId !== 'NEW' && String(selectedPlanId).length > 10) {
+      try {
+        await updateTreatmentPlanStatus(selectedPlanId, newStatus);
+        toast.success(`Đã cập nhật trạng thái kế hoạch sang "${label}"!`);
+        if (patient?.id) {
+          fetchPlansForPatient(patient.id);
+        }
+      } catch (err) {
+        console.error('Lỗi khi cập nhật trạng thái kế hoạch:', err);
+        toast.error(`Lỗi cập nhật trạng thái kế hoạch: ${err?.response?.data?.message || err.message}`);
+      }
     }
   };
 
@@ -1010,50 +1108,90 @@ export default function TreatmentPlans() {
   };
 
   const handleSavePhaseForm = async (phaseFormData) => {
-    let updatedPhases = [];
-    if (phaseModalMode === 'ADD') {
-      const nextOrder = phases.length + 1;
-      const newPhaseObj = {
-        phase_id: `ph-${Date.now()}`,
-        phase_order: nextOrder,
-        phase_name: phaseFormData.phase_name,
-        treatmentType: phaseFormData.treatmentType,
-        estimated_duration: phaseFormData.estimated_duration,
-        expected_start_date: phaseFormData.expected_start_date || '',
-        expected_end_date: phaseFormData.expected_end_date || '',
-        status: phaseFormData.status,
-        description: phaseFormData.description || 'Giai đoạn điều trị can thiệp theo phác đồ bác sĩ.',
-        treatment_services: [],
-        treatment_visits: [],
-      };
-      const newList = [...phases, newPhaseObj];
-      // Tự động đếm và gán thứ tự chuẩn 1..N liên tục
-      updatedPhases = newList.map((ph, idx) => ({
-        ...ph,
-        phase_order: idx + 1,
-      }));
-    } else {
-      updatedPhases = phases.map((ph) =>
-        ph.phase_id === phaseFormData.phase_id
-          ? {
-            ...ph,
-            phase_name: phaseFormData.phase_name,
-            treatmentType: phaseFormData.treatmentType,
-            estimated_duration: phaseFormData.estimated_duration,
-            expected_start_date: phaseFormData.expected_start_date || '',
-            expected_end_date: phaseFormData.expected_end_date || '',
-            status: phaseFormData.status,
-            description: phaseFormData.description,
-          }
-          : ph
-      );
+    try {
+      if (phaseModalMode === 'ADD') {
+        const targetPlanId = await ensurePlanExists();
+        const nextOrder = phases.length + 1;
+        const phasePayload = {
+          phaseName: phaseFormData.phase_name,
+          phaseOrder: String(nextOrder),
+          treatmentType: phaseFormData.treatmentType || 'Tổng quát',
+          description: phaseFormData.description || 'Giai đoạn điều trị can thiệp theo phác đồ bác sĩ.',
+          status: phaseFormData.status || 'PENDING',
+          estimatedDuration: phaseFormData.estimated_duration || '1-2 tuần',
+          expectedStartDate: phaseFormData.expected_start_date ? `${phaseFormData.expected_start_date}T00:00:00` : null,
+          expectedEndDate: phaseFormData.expected_end_date ? `${phaseFormData.expected_end_date}T00:00:00` : null,
+        };
+
+        const toastId = toast.loading('Đang thêm giai đoạn điều trị...');
+        const createdPhase = await createTreatmentPhase(targetPlanId, phasePayload);
+        toast.dismiss(toastId);
+
+        const newPhaseObj = {
+          phase_id: createdPhase?.id || `ph-${Date.now()}`,
+          phase_order: nextOrder,
+          phase_name: createdPhase?.phaseName || phaseFormData.phase_name,
+          treatmentType: createdPhase?.treatmentType || phaseFormData.treatmentType,
+          estimated_duration: createdPhase?.estimatedDuration || phaseFormData.estimated_duration,
+          expected_start_date: createdPhase?.expectedStartDate
+            ? String(createdPhase.expectedStartDate).split('T')[0]
+            : (phaseFormData.expected_start_date || ''),
+          expected_end_date: createdPhase?.expectedEndDate
+            ? String(createdPhase.expectedEndDate).split('T')[0]
+            : (phaseFormData.expected_end_date || ''),
+          status: createdPhase?.status || phaseFormData.status,
+          description: createdPhase?.description || phaseFormData.description || '',
+          treatment_services: [],
+          treatment_visits: [],
+        };
+        const newList = [...phases, newPhaseObj].map((ph, idx) => ({
+          ...ph,
+          phase_order: idx + 1,
+        }));
+        setPhases(newList);
+        setShowPhaseModal(false);
+        toast.success(`Đã thêm giai đoạn "${phaseFormData.phase_name}" thành công!`);
+      } else {
+        const phaseId = phaseFormData.phase_id;
+        const phasePayload = {
+          phaseName: phaseFormData.phase_name,
+          phaseOrder: String(phaseFormData.phase_order || 1),
+          treatmentType: phaseFormData.treatmentType,
+          description: phaseFormData.description || '',
+          status: phaseFormData.status,
+          estimatedDuration: phaseFormData.estimated_duration,
+          expectedStartDate: phaseFormData.expected_start_date ? `${phaseFormData.expected_start_date}T00:00:00` : null,
+          expectedEndDate: phaseFormData.expected_end_date ? `${phaseFormData.expected_end_date}T00:00:00` : null,
+        };
+
+        if (phaseId && !String(phaseId).startsWith('ph-')) {
+          const toastId = toast.loading('Đang cập nhật giai đoạn...');
+          await updateTreatmentPhase(phaseId, phasePayload);
+          toast.dismiss(toastId);
+        }
+
+        const updatedPhases = phases.map((ph) =>
+          ph.phase_id === phaseId
+            ? {
+              ...ph,
+              phase_name: phaseFormData.phase_name,
+              treatmentType: phaseFormData.treatmentType,
+              estimated_duration: phaseFormData.estimated_duration,
+              expected_start_date: phaseFormData.expected_start_date || '',
+              expected_end_date: phaseFormData.expected_end_date || '',
+              status: phaseFormData.status,
+              description: phaseFormData.description,
+            }
+            : ph
+        );
+        setPhases(updatedPhases);
+        setShowPhaseModal(false);
+        toast.success(`Đã cập nhật giai đoạn "${phaseFormData.phase_name}" thành công!`);
+      }
+    } catch (err) {
+      console.error('Lỗi khi lưu giai đoạn điều trị:', err);
+      toast.error(`Lỗi: ${err?.response?.data?.message || err.message}`);
     }
-
-    setPhases(updatedPhases);
-    setShowPhaseModal(false);
-
-    // Lưu trực tiếp vào CSDL
-    await persistPlanChanges(updatedPhases);
   };
 
   const handleTogglePhaseStatus = async (phaseId, newStatus) => {
@@ -1061,20 +1199,40 @@ export default function TreatmentPlans() {
       ph.phase_id === phaseId ? { ...ph, status: newStatus } : ph
     );
     setPhases(updatedPhases);
-    toast.success(`Đã chuyển trạng thái giai đoạn sang "${STATUS_PHASE_CONFIG[newStatus]?.label}"!`);
-    await persistPlanChanges(updatedPhases);
+
+    const statusLabel = STATUS_PHASE_CONFIG[newStatus]?.label || newStatus;
+
+    // Nếu giai đoạn đã có ID hợp lệ trong DB (UUID) -> Gọi API riêng lẻ cập nhật trực tiếp
+    if (phaseId && !String(phaseId).startsWith('ph-')) {
+      try {
+        await updateTreatmentPhaseStatus(phaseId, newStatus);
+        toast.success(`Đã cập nhật trạng thái giai đoạn sang "${statusLabel}"!`);
+      } catch (err) {
+        console.error('Lỗi khi cập nhật trạng thái giai đoạn:', err);
+        toast.error(`Lỗi cập nhật giai đoạn: ${err?.response?.data?.message || err.message}`);
+      }
+    }
   };
 
   const handleRemovePhase = async (phaseId) => {
-    const remainingPhases = phases.filter((ph) => ph.phase_id !== phaseId);
-    // Tự động đếm lại và giảm thứ tự phase_order 1..N liên tục
-    const reindexedPhases = remainingPhases.map((ph, idx) => ({
-      ...ph,
-      phase_order: idx + 1,
-    }));
-    setPhases(reindexedPhases);
-    toast.success('Đã xóa giai đoạn điều trị!');
-    await persistPlanChanges(reindexedPhases);
+    try {
+      if (phaseId && !String(phaseId).startsWith('ph-')) {
+        const toastId = toast.loading('Đang xóa giai đoạn điều trị...');
+        await deleteTreatmentPhase(phaseId);
+        toast.dismiss(toastId);
+      }
+      const remainingPhases = phases.filter((ph) => ph.phase_id !== phaseId);
+      // Tự động đếm lại và giảm thứ tự phase_order 1..N liên tục
+      const reindexedPhases = remainingPhases.map((ph, idx) => ({
+        ...ph,
+        phase_order: idx + 1,
+      }));
+      setPhases(reindexedPhases);
+      toast.success('Đã xóa giai đoạn điều trị thành công!');
+    } catch (err) {
+      console.error('Lỗi khi xóa giai đoạn điều trị:', err);
+      toast.error(`Lỗi khi xóa giai đoạn: ${err?.response?.data?.message || err.message}`);
+    }
   };
 
   // ================= QUẢN LÝ DỊCH VỤ ĐIỀU TRỊ (treatment_services) =================
@@ -1100,52 +1258,76 @@ export default function TreatmentPlans() {
 
   const handleQuantityChange = async (phaseId, serviceId, newQty) => {
     const qtyNum = Math.max(1, Number(newQty) || 1);
-    const updatedPhases = phases.map((ph) => {
-      if (ph.phase_id === phaseId) {
-        return {
-          ...ph,
-          treatment_services: ph.treatment_services.map((s) =>
-            s.treatmentServicesId === serviceId ? { ...s, quantity: qtyNum } : s
-          ),
-        };
+    try {
+      if (serviceId && !String(serviceId).startsWith('ts-')) {
+        await updateTreatmentService(serviceId, { quantity: qtyNum });
       }
-      return ph;
-    });
-    setPhases(updatedPhases);
-    await persistPlanChanges(updatedPhases);
+      const updatedPhases = phases.map((ph) => {
+        if (ph.phase_id === phaseId) {
+          return {
+            ...ph,
+            treatment_services: ph.treatment_services.map((s) =>
+              (s.treatmentServicesId === serviceId || s.id === serviceId) ? { ...s, quantity: qtyNum } : s
+            ),
+          };
+        }
+        return ph;
+      });
+      setPhases(updatedPhases);
+      await persistPlanChanges(updatedPhases);
+    } catch (err) {
+      console.error('Lỗi khi cập nhật số lượng dịch vụ:', err);
+      toast.error(`Lỗi: ${err?.response?.data?.message || err.message}`);
+    }
   };
 
   const handleToothNumberChange = async (phaseId, serviceId, newTooth) => {
-    const updatedPhases = phases.map((ph) => {
-      if (ph.phase_id === phaseId) {
-        return {
-          ...ph,
-          treatment_services: ph.treatment_services.map((s) =>
-            s.treatmentServicesId === serviceId ? { ...s, toothNumber: newTooth } : s
-          ),
-        };
+    try {
+      if (serviceId && !String(serviceId).startsWith('ts-')) {
+        await updateTreatmentService(serviceId, { toothNumber: newTooth });
       }
-      return ph;
-    });
-    setPhases(updatedPhases);
-    await persistPlanChanges(updatedPhases);
+      const updatedPhases = phases.map((ph) => {
+        if (ph.phase_id === phaseId) {
+          return {
+            ...ph,
+            treatment_services: ph.treatment_services.map((s) =>
+              (s.treatmentServicesId === serviceId || s.id === serviceId) ? { ...s, toothNumber: newTooth } : s
+            ),
+          };
+        }
+        return ph;
+      });
+      setPhases(updatedPhases);
+      await persistPlanChanges(updatedPhases);
+    } catch (err) {
+      console.error('Lỗi khi cập nhật vị trí răng:', err);
+      toast.error(`Lỗi: ${err?.response?.data?.message || err.message}`);
+    }
   };
 
   const handleRemoveService = async (phaseId, serviceId) => {
-    const updatedPhases = phases.map((ph) => {
-      if (ph.phase_id === phaseId) {
-        return {
-          ...ph,
-          treatment_services: ph.treatment_services.filter(
-            (s) => s.treatmentServicesId !== serviceId
-          ),
-        };
+    try {
+      if (serviceId && !String(serviceId).startsWith('ts-')) {
+        await deleteTreatmentService(serviceId);
       }
-      return ph;
-    });
-    setPhases(updatedPhases);
-    toast.success('Đã xóa dịch vụ khỏi giai đoạn!');
-    await persistPlanChanges(updatedPhases);
+      const updatedPhases = phases.map((ph) => {
+        if (ph.phase_id === phaseId) {
+          return {
+            ...ph,
+            treatment_services: ph.treatment_services.filter(
+              (s) => s.treatmentServicesId !== serviceId && s.id !== serviceId
+            ),
+          };
+        }
+        return ph;
+      });
+      setPhases(updatedPhases);
+      toast.success('Đã xóa dịch vụ khỏi giai đoạn!');
+      await persistPlanChanges(updatedPhases);
+    } catch (err) {
+      console.error('Lỗi khi xóa dịch vụ:', err);
+      toast.error(`Lỗi xóa dịch vụ: ${err?.response?.data?.message || err.message}`);
+    }
   };
 
   // ================= QUẢN LÝ BUỔI ĐIỀU TRỊ (TreatmentVisits - Chỉ ghi chép việc làm) =================
@@ -1172,46 +1354,38 @@ export default function TreatmentPlans() {
     setShowVisitModal(true);
   };
 
-  const handleSaveVisit = async (phaseId, visitObj, mode) => {
-    let updatedPhases = [];
+  const handleSaveVisit = (phaseId, savedVisit, mode) => {
+    if (!savedVisit) return;
     if (mode === 'ADD') {
-      updatedPhases = phases.map((ph) => {
+      const updatedPhases = phases.map((ph) => {
         if (ph.phase_id === phaseId) {
-          const currentVisitsList = ph.treatment_visits || [];
-          const nextOrder = currentVisitsList.length + 1;
-          const newVisitWithOrder = {
-            ...visitObj,
-            visitOrder: nextOrder,
-          };
-          const newList = [...currentVisitsList, newVisitWithOrder];
-          // Tự động đếm và gán thứ tự chuẩn 1..N
-          const reindexedList = newList.map((v, idx) => ({
+          const currentVisits = ph.treatment_visits || [];
+          const newList = [...currentVisits, savedVisit].map((v, idx) => ({
             ...v,
             visitOrder: idx + 1,
           }));
           return {
             ...ph,
-            treatment_visits: reindexedList,
+            treatment_visits: newList,
           };
         }
         return ph;
       });
+      setPhases(updatedPhases);
     } else {
-      updatedPhases = phases.map((ph) => {
+      const updatedPhases = phases.map((ph) => {
         if (ph.phase_id === phaseId) {
           return {
             ...ph,
-            treatment_visits: ph.treatment_visits.map((v) =>
-              v.visitId === visitObj.visitId ? visitObj : v
+            treatment_visits: (ph.treatment_visits || []).map((v) =>
+              (v.visitId === savedVisit.visitId || v.id === savedVisit.visitId) ? savedVisit : v
             ),
           };
         }
         return ph;
       });
+      setPhases(updatedPhases);
     }
-    setPhases(updatedPhases);
-    setShowVisitModal(false);
-    await persistPlanChanges(updatedPhases);
   };
 
   const handleToggleVisitStatus = async (phaseId, visitId, newStatus) => {
@@ -1219,7 +1393,7 @@ export default function TreatmentPlans() {
       if (ph.phase_id === phaseId) {
         return {
           ...ph,
-          treatment_visits: ph.treatment_visits.map((v) =>
+          treatment_visits: (ph.treatment_visits || []).map((v) =>
             v.visitId === visitId ? { ...v, status: newStatus } : v
           ),
         };
@@ -1227,29 +1401,49 @@ export default function TreatmentPlans() {
       return ph;
     });
     setPhases(updatedPhases);
-    toast.success(`Đã chuyển trạng thái buổi sang "${STATUS_PHASE_CONFIG[newStatus]?.label}"!`);
-    await persistPlanChanges(updatedPhases);
+
+    const statusLabel = STATUS_PHASE_CONFIG[newStatus]?.label || newStatus;
+
+    // Nếu buổi điều trị đã có ID trong DB (UUID) -> Gọi API riêng lẻ cập nhật trực tiếp
+    if (visitId && !String(visitId).startsWith('vis-')) {
+      try {
+        await updateTreatmentVisitStatus(visitId, newStatus);
+        toast.success(`Đã cập nhật trạng thái buổi khám sang "${statusLabel}"!`);
+      } catch (err) {
+        console.error('Lỗi khi cập nhật trạng thái buổi điều trị:', err);
+        toast.error(`Lỗi cập nhật buổi điều trị: ${err?.response?.data?.message || err.message}`);
+      }
+    }
   };
 
   const handleRemoveVisit = async (phaseId, visitId) => {
-    const updatedPhases = phases.map((ph) => {
-      if (ph.phase_id === phaseId) {
-        const remainingVisits = (ph.treatment_visits || []).filter((v) => v.visitId !== visitId);
-        // Tự động đếm lại và giảm thứ tự visitOrder theo số buổi còn lại
-        const reindexedVisits = remainingVisits.map((v, idx) => ({
-          ...v,
-          visitOrder: idx + 1,
-        }));
-        return {
-          ...ph,
-          treatment_visits: reindexedVisits,
-        };
+    try {
+      if (visitId && !String(visitId).startsWith('vis-')) {
+        const toastId = toast.loading('Đang xóa buổi điều trị...');
+        await deleteTreatmentVisit(visitId);
+        toast.dismiss(toastId);
       }
-      return ph;
-    });
-    setPhases(updatedPhases);
-    toast.success('Đã xóa buổi điều trị!');
-    await persistPlanChanges(updatedPhases);
+      const updatedPhases = phases.map((ph) => {
+        if (ph.phase_id === phaseId) {
+          const remainingVisits = (ph.treatment_visits || []).filter((v) => v.visitId !== visitId);
+          // Tự động đếm lại và giảm thứ tự visitOrder theo số buổi còn lại
+          const reindexedVisits = remainingVisits.map((v, idx) => ({
+            ...v,
+            visitOrder: idx + 1,
+          }));
+          return {
+            ...ph,
+            treatment_visits: reindexedVisits,
+          };
+        }
+        return ph;
+      });
+      setPhases(updatedPhases);
+      toast.success('Đã xóa buổi điều trị thành công!');
+    } catch (err) {
+      console.error('Lỗi khi xóa buổi điều trị:', err);
+      toast.error(`Lỗi: ${err?.response?.data?.message || err.message}`);
+    }
   };
 
   // LƯU KẾ HOẠCH ĐIỀU TRỊ THỦ CÔNG (NÚT LƯU TRÊN THANH HEADER)
@@ -1512,11 +1706,12 @@ export default function TreatmentPlans() {
                         { value: 'PENDING', label: 'Chờ duyệt', active: 'bg-amber-100 text-amber-900 border-amber-300 font-bold' },
                         { value: 'IN_PROGRESS', label: 'Đang thực hiện', active: 'bg-teal-700 text-white border-teal-700 font-bold' },
                         { value: 'COMPLETED', label: 'Đã hoàn tất', active: 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold' },
+                        { value: 'CANCEL', label: 'Đã hủy', active: 'bg-rose-100 text-rose-900 border-rose-300 font-bold' },
                       ].map((st) => (
                         <button
                           key={st.value}
                           type="button"
-                          onClick={() => setPlanStatus(st.value)}
+                          onClick={() => handleUpdatePlanStatus(st.value)}
                           className={`px-2.5 py-1 text-xs rounded-md border transition-all cursor-pointer ${planStatus === st.value
                             ? `${st.active} shadow-2xs`
                             : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-white'
@@ -1935,12 +2130,18 @@ export default function TreatmentPlans() {
                             )}
 
                             {/* Status Phase Badge */}
-                            <span
-                              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-0.5 text-xs font-bold border shadow-2xs ${statusCfg.bg} ${statusCfg.text} ${statusCfg.border}`}
+                            <select
+                              value={phase.status || 'PENDING'}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => handleTogglePhaseStatus(phase.phase_id, e.target.value)}
+                              className={`rounded-full px-2.5 py-0.5 text-xs font-bold border shadow-2xs outline-none cursor-pointer transition-colors ${statusCfg.bg} ${statusCfg.text} ${statusCfg.border}`}
+                              title="Nhấp để đổi trạng thái giai đoạn"
                             >
-                              <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
-                              <span>{statusCfg.label}</span>
-                            </span>
+                              <option value="PENDING" className="bg-white text-slate-800 font-semibold">Chờ thực hiện</option>
+                              <option value="IN_PROGRESS" className="bg-white text-slate-800 font-semibold">Đang thực hiện</option>
+                              <option value="COMPLETED" className="bg-white text-slate-800 font-semibold">Đã hoàn tất</option>
+                              <option value="CANCEL" className="bg-white text-slate-800 font-semibold">Đã hủy</option>
+                            </select>
 
                             {/* Thống kê số lượng */}
                             <span className="text-slate-300 text-xs hidden sm:inline">•</span>
@@ -2129,11 +2330,16 @@ export default function TreatmentPlans() {
                                             <Calendar size={12} className="text-slate-400" />
                                             <span>Ngày: {visit.start_date || 'Chưa đặt'}</span>
                                           </span>
-                                          <span
-                                            className={`rounded-full px-3 py-0.5 text-xs font-bold border shadow-2xs ${vStatusCfg.bg} ${vStatusCfg.text} ${vStatusCfg.border}`}
+                                          <select
+                                            value={visit.status === 'COMPLETED' ? 'COMPLETED' : 'IN_PROGRESS'}
+                                            onClick={(e) => e.stopPropagation()}
+                                            onChange={(e) => handleToggleVisitStatus(phase.phase_id, visit.visitId, e.target.value)}
+                                            className={`rounded-full px-2.5 py-0.5 text-xs font-bold border shadow-2xs outline-none cursor-pointer transition-colors ${vStatusCfg.bg} ${vStatusCfg.text} ${vStatusCfg.border}`}
+                                            title="Nhấp để đổi trạng thái buổi khám"
                                           >
-                                            {vStatusCfg.label}
-                                          </span>
+                                            <option value="IN_PROGRESS" className="bg-white text-slate-800 font-semibold">Đang thực hiện</option>
+                                            <option value="COMPLETED" className="bg-white text-slate-800 font-semibold">Hoàn tất</option>
+                                          </select>
                                         </div>
                                         <div className="flex items-center gap-2.5 self-end sm:self-auto shrink-0 flex-wrap">
                                           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-200 px-2.5 py-1 rounded-md shadow-2xs">
@@ -2168,7 +2374,22 @@ export default function TreatmentPlans() {
                                             transition={{ duration: 0.2 }}
                                             className="overflow-hidden"
                                           >
-                                            <div className="bg-white rounded-lg border border-slate-200 p-2.5 text-xs space-y-1 shadow-2xs mt-1">
+                                            <div className="bg-white rounded-lg border border-slate-200 p-2.5 text-xs space-y-2 shadow-2xs mt-1">
+                                              {/* Thông tin cơ sở thực hiện & Địa chỉ */}
+                                              {(visit.branchName || visit.branchAddress) && (
+                                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pb-2 border-b border-slate-100 text-xs">
+                                                  <div className="flex items-center gap-1.5 font-semibold text-teal-800">
+                                                    <Building2 size={13} className="text-teal-600 shrink-0" />
+                                                    <span>Cơ sở: <strong>{visit.branchName}</strong></span>
+                                                  </div>
+                                                  {visit.branchAddress && (
+                                                    <div className="flex items-center gap-1.5 text-slate-500">
+                                                      <MapPin size={13} className="text-rose-500 shrink-0" />
+                                                      <span>{visit.branchAddress}</span>
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              )}
                                               <div className="flex items-center gap-1.5 text-[11px] font-bold text-teal-800 uppercase tracking-wide">
                                                 <Stethoscope size={13} className="text-teal-600" />
                                                 <span>Nội dung thực hiện trong buổi điều trị:</span>
@@ -2286,6 +2507,7 @@ export default function TreatmentPlans() {
         planInfo={{
           planId,
           planName,
+          dentistId: loggedInDentistId,
           dentistName,
           startDate,
           endDate,
@@ -2295,6 +2517,7 @@ export default function TreatmentPlans() {
           grossTotal,
           discountPercent,
         }}
+        dentistId={loggedInDentistId}
         loggedInDoctorName={loggedInDoctorName || dentistName}
         onUpdatePhaseStatus={handleTogglePhaseStatus}
         onSaveVisit={handleSaveVisit}
@@ -2309,6 +2532,7 @@ export default function TreatmentPlans() {
         targetPhaseId={targetPhaseIdForService}
         servicesCatalog={servicesCatalog}
         diagnosesList={diagnosesList}
+        onAddSuccess={handleAddServiceToPhase}
         onAddService={handleAddServiceToPhase}
       />
 
@@ -2319,6 +2543,7 @@ export default function TreatmentPlans() {
         mode={visitModalMode}
         targetPhaseId={targetPhaseIdForVisit}
         initialData={currentVisitData}
+        loggedInDoctorName={loggedInDoctorName || dentistName}
         onSaveVisit={handleSaveVisit}
       />
 
