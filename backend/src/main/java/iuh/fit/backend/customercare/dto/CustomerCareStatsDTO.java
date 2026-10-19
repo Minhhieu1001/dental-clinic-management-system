@@ -18,6 +18,8 @@ public class CustomerCareStatsDTO {
     private long totalBirthdays;
     private long totalGeneralCare;
     private long totalPaymentCare;
+    private long totalPromotionCare;
+    private long totalActivePromotions;
     private long totalPaidInvoices;
     private long totalDebtInvoices;
     private double satisfactionRate;

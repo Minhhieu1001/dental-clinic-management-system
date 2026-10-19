@@ -4,7 +4,8 @@ public enum CareType {
     APPOINTMENT_REMINDER("Nhắc lịch hẹn"),
     BIRTHDAY("Ngày sinh nhật"),
     GENERAL_CARE("Chăm sóc tổng hợp"),
-    PAYMENT("Thanh toán");
+    PAYMENT("Thanh toán"),
+    PROMOTION("Khuyến mãi");
 
     private final String label;
 

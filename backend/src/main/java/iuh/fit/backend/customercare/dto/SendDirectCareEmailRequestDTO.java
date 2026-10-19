@@ -18,5 +18,7 @@ public class SendDirectCareEmailRequestDTO {
     private String message;
     private String careType;
     private UUID invoiceId;
+    private UUID promotionId;
+    private String couponCode;
     private String createdByName;
 }

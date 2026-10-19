@@ -43,6 +43,13 @@ import {
   CheckCheck,
   QrCode,
   ExternalLink,
+  Tag,
+  Ticket,
+  PartyPopper,
+  BadgePercent,
+  Megaphone,
+  Flame,
+  Share2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
@@ -56,6 +63,7 @@ const TABS = [
   { id: 'APPOINTMENT', label: 'Nhắc lịch hẹn' },
   { id: 'BIRTHDAY', label: 'Ngày sinh nhật' },
   { id: 'PAYMENT', label: 'Thanh toán' },
+  { id: 'PROMOTION', label: 'Khuyến mãi' },
 ];
 
 export default function CustomerCare() {
@@ -114,6 +122,8 @@ export default function CustomerCare() {
   const [birthdayList, setBirthdayList] = useState([]);
   const [generalCareList, setGeneralCareList] = useState([]);
   const [paymentList, setPaymentList] = useState([]);
+  const [promotionCareList, setPromotionCareList] = useState([]);
+  const [promotionCampaigns, setPromotionCampaigns] = useState([]);
 
   // Clinical Quick Filters for Each Tab
   const [patientGroupQuickFilter, setPatientGroupQuickFilter] = useState('ALL');
@@ -125,6 +135,11 @@ export default function CustomerCare() {
   const [paymentQuickFilter, setPaymentQuickFilter] = useState('ALL');
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('ALL');
   const [paymentCareStatusFilter, setPaymentCareStatusFilter] = useState('ALL');
+  const [selectedCampaignFilter, setSelectedCampaignFilter] = useState('ALL');
+  const [promoCategoryQuickFilter, setPromoCategoryQuickFilter] = useState('ALL');
+  const [promoCustomerGroupFilter, setPromoCustomerGroupFilter] = useState('ALL');
+  const [promoCareStatusFilter, setPromoCareStatusFilter] = useState('ALL');
+  const [copiedPromoRowId, setCopiedPromoRowId] = useState(null);
 
   // Unified Table Pagination
   const [pageSize, setPageSize] = useState(10);
@@ -133,6 +148,7 @@ export default function CustomerCare() {
   const [pageAppointment, setPageAppointment] = useState(1);
   const [pageBirthday, setPageBirthday] = useState(1);
   const [pagePayment, setPagePayment] = useState(1);
+  const [pagePromotion, setPagePromotion] = useState(1);
 
   // Expanded notes tracking for table rows
   const [expandedNoteIds, setExpandedNoteIds] = useState(new Set());
@@ -154,6 +170,9 @@ export default function CustomerCare() {
     totalAppointments: 0,
     totalBirthdays: 0,
     totalGeneralCare: 0,
+    totalPaymentCare: 0,
+    totalPromotionCare: 0,
+    totalActivePromotions: 0,
     satisfactionRate: 98.5,
   });
 
@@ -226,6 +245,10 @@ export default function CustomerCare() {
     careTypeFilter,
     paymentStatusFilter,
     paymentCareStatusFilter,
+    promoCategoryQuickFilter,
+    promoCustomerGroupFilter,
+    promoCareStatusFilter,
+    selectedCampaignFilter,
   ]);
 
   const loadFilterOptions = async () => {
@@ -319,6 +342,19 @@ export default function CustomerCare() {
           careStatus: paymentCareStatusFilter !== 'ALL' ? paymentCareStatusFilter : (careStatusFilter !== 'ALL' ? careStatusFilter : undefined),
         });
         setPaymentList(res.data || []);
+      } else if (activeTab === 'PROMOTION') {
+        const [promosRes, campaignsRes] = await Promise.all([
+          customerCareService.getPromotionCareList({
+            search: searchQuery ? searchQuery.trim() : undefined,
+            promotionId: selectedCampaignFilter !== 'ALL' ? selectedCampaignFilter : undefined,
+            category: promoCategoryQuickFilter !== 'ALL' ? promoCategoryQuickFilter : undefined,
+            customerGroup: promoCustomerGroupFilter !== 'ALL' ? promoCustomerGroupFilter : undefined,
+            careStatus: promoCareStatusFilter !== 'ALL' ? promoCareStatusFilter : (careStatusFilter !== 'ALL' ? careStatusFilter : undefined),
+          }),
+          customerCareService.getPromotionCampaigns(),
+        ]);
+        setPromotionCareList(promosRes.data || []);
+        setPromotionCampaigns(campaignsRes.data || []);
       }
     } catch (err) {
       console.error('Failed to load tab data', err);
@@ -404,6 +440,11 @@ export default function CustomerCare() {
     } else if (type === 'PAYMENT') {
       careTypeEnum = 'PAYMENT';
       defaultNotes = item?.suggestedTemplate || `Chăm sóc thanh toán hóa đơn ${item?.invoiceCode || ''} cho khách hàng ${item?.patientName || ''}.`;
+    } else if (type === 'PROMOTION') {
+      careTypeEnum = 'PROMOTION';
+      const promoName = item?.promotionTitle || 'chương trình khuyến mãi';
+      const code = item?.couponCode ? ` (Mã: ${item.couponCode})` : '';
+      defaultNotes = item?.suggestedMessage || item?.suggestedTemplate || `Chăm sóc gửi ưu đãi sự kiện ${promoName}${code} cho khách hàng ${item?.patientName || ''}.`;
     }
 
     setModalCareItem({ ...item, contextType: type });
@@ -415,6 +456,7 @@ export default function CustomerCare() {
       careType: careTypeEnum,
       notes: defaultNotes,
       invoiceId: item?.invoiceId || '',
+      promotionId: item?.promotionId || '',
       patientId: item?.patientId || '',
       patientName: item?.patientName || item?.fullName || '',
       patientCode: item?.patientCode || '',
@@ -454,6 +496,7 @@ export default function CustomerCare() {
         patientId: modalForm.patientId || undefined,
         appointmentId: modalCareItem?.appointmentId || undefined,
         invoiceId: modalCareItem?.invoiceId || modalForm.invoiceId || undefined,
+        promotionId: modalCareItem?.promotionId || modalForm.promotionId || undefined,
         careType: modalForm.careType,
         channel: modalForm.channel,
         status: modalForm.status,
@@ -512,6 +555,11 @@ export default function CustomerCare() {
         defaultSubject = `[Crown Dental] Thông báo công nợ dịch vụ hóa đơn ${code} - Quý khách ${pName}`;
         defaultMsg = `Kính gửi Quý khách ${pName},\n\nNha Khoa Quốc Tế Crown Dental xin gửi thông báo chi tiết tình trạng thanh toán dịch vụ điều trị của Quý khách:\n• Mã hóa đơn: ${code}\n• Tổng chi phí điều trị: ${finalAmt}\n• Số tiền đã thanh toán: ${paidAmt}\n• Số tiền còn nợ cần thanh toán: ${remainAmt}\n\nQuý khách có thể thanh toán trực tiếp tại quầy thu ngân phòng khám hoặc chuyển khoản theo thông tin chính thức sau:\n- Ngân hàng: MB Bank (Ngân Hàng Quân Đội)\n- Số tài khoản: 0343632524\n- Chủ tài khoản: NHA KHOA QUOC TE CROWN DENTAL\n- Nội dung chuyển khoản: ${code} - ${pName}\n\nXin trân trọng cảm ơn Quý khách!\nHotline hỗ trợ: 0343632524`;
       }
+    } else if (item?.careType === 'PROMOTION' || item?.contextType === 'PROMOTION' || item?.promotionId) {
+      const pTitle = item?.promotionTitle || 'Chương trình ưu đãi tri ân';
+      const cCode = item?.couponCode ? ` (Mã: ${item.couponCode})` : '';
+      defaultSubject = `[Crown Dental] ${pTitle}${cCode} dành tặng Quý khách ${pName}`;
+      defaultMsg = item?.suggestedMessage || item?.suggestedTemplate || `Kính gửi Quý khách ${pName},\n\nNha Khoa Quốc Tế Crown Dental trân trọng gửi tới Quý khách thông tin chương trình: ${pTitle}.\n\n• Mã ưu đãi đặc quyền: ${item?.couponCode || ''}\nQuý khách vui lòng xuất trình mã voucher khi đến thăm khám để nhận ưu đãi đặc biệt.\n\nTrân trọng cảm ơn Quý khách!\nHotline hỗ trợ & đặt hẹn: 0343632524 | Website: crowndental.vn`;
     } else if (item?.notes) {
       defaultMsg = item.notes;
     }
@@ -520,7 +568,9 @@ export default function CustomerCare() {
       ? 'BIRTHDAY'
       : (item?.careType === 'PAYMENT' || item?.contextType === 'PAYMENT' || item?.invoiceId)
         ? 'PAYMENT'
-        : (item?.careType || 'GENERAL_CARE');
+        : (item?.careType === 'PROMOTION' || item?.contextType === 'PROMOTION' || item?.promotionId)
+          ? 'PROMOTION'
+          : (item?.careType || 'GENERAL_CARE');
 
     setDirectEmailForm({
       patientId: pId,
@@ -530,6 +580,12 @@ export default function CustomerCare() {
       paidAmount: item?.paidAmount || 0,
       remainingAmount: item?.remainingAmount || 0,
       paymentStatus: item?.paymentStatus || '',
+      promotionId: item?.promotionId || null,
+      promotionTitle: item?.promotionTitle || '',
+      couponCode: item?.couponCode || '',
+      discountType: item?.discountType || '',
+      discountValue: item?.discountValue || null,
+      promotionCategory: item?.category || '',
       patientName: pName,
       patientCode: pCode,
       phone: phone,
@@ -558,6 +614,8 @@ export default function CustomerCare() {
       await customerCareService.sendDirectCareEmail({
         patientId: directEmailForm.patientId,
         invoiceId: directEmailForm.invoiceId || undefined,
+        promotionId: directEmailForm.promotionId || undefined,
+        couponCode: directEmailForm.couponCode || undefined,
         email: directEmailForm.email,
         subject: directEmailForm.subject,
         message: directEmailForm.message,
@@ -784,6 +842,40 @@ export default function CustomerCare() {
         p.careChannel || '',
         `"${(p.careNotes || '').replace(/"/g, '""')}"`,
       ]);
+    } else if (activeTab === 'PROMOTION') {
+      filename = `cham_soc_khuyen_mai_${new Date().toISOString().split('T')[0]}.csv`;
+      headers = [
+        'Mã hồ sơ',
+        'Khách hàng',
+        'Điện thoại',
+        'Email',
+        'Nhóm khách hàng',
+        'Chiến dịch sự kiện / Lễ tết',
+        'Mã Voucher',
+        'Mức giảm',
+        'Thời hạn',
+        'Trạng thái CSKH',
+        'Kênh CSKH',
+        'Thời gian CSKH',
+        'Nhân viên',
+        'Tin nhắn / Nội dung',
+      ];
+      rows = filteredPromotionCareList.map((p) => [
+        p.patientCode || '',
+        `"${p.patientName || ''}"`,
+        p.phone || '',
+        p.email || '',
+        p.customerGroup || '',
+        `"${p.promotionTitle || ''}"`,
+        p.couponCode || '',
+        p.discountType === 'PERCENTAGE' ? `${p.discountValue}%` : `${Number(p.discountValue || 0).toLocaleString('vi-VN')} đ`,
+        p.endDate ? formatDate(p.endDate) : '',
+        p.careStatus || 'Chưa gửi',
+        p.careChannel || '',
+        p.lastCareTime ? formatDateTime(p.lastCareTime) : '',
+        p.lastCareStaff || '',
+        `"${(p.suggestedMessage || '').replace(/"/g, '""')}"`,
+      ]);
     } else {
       headers = [
         'Mã hồ sơ',
@@ -876,24 +968,52 @@ export default function CustomerCare() {
   const renderStatusBadge = (status) => {
     if (!status) return null;
     const s = status.toLowerCase();
-    if (s.includes('hoàn thành')) {
+    if (s.includes('sử dụng') || s.includes('áp dụng') || s.includes('hóa đơn')) {
       return (
-        <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-600 border border-emerald-300">
-          Hoàn thành
+        <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          Đã sử dụng
         </span>
       );
     }
-    if (s.includes('cần chăm sóc')) {
+    if (s.includes('đặt hẹn') || s.includes('đặt lịch')) {
       return (
-        <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-sky-50 text-sky-600 border border-sky-300">
-          Cần chăm sóc lại
+        <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+          Đã đặt lịch
         </span>
       );
     }
-    if (s.includes('thất bại')) {
+    if (s.includes('quan tâm')) {
       return (
-        <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-300">
-          Gửi thất bại
+        <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-200">
+          Khách quan tâm
+        </span>
+      );
+    }
+    if (s.includes('đã gửi') || s.includes('hoàn thành')) {
+      return (
+        <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          Đã gửi ưu đãi
+        </span>
+      );
+    }
+    if (s.includes('cần chăm sóc') || s.includes('gửi lại') || s.includes('recare')) {
+      return (
+        <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+          Cần gửi lại
+        </span>
+      );
+    }
+    if (s.includes('chưa gửi') || s.includes('chưa chăm sóc')) {
+      return (
+        <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200">
+          Chưa gửi ưu đãi
+        </span>
+      );
+    }
+    if (s.includes('không có nhu cầu') || s.includes('thất bại')) {
+      return (
+        <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200">
+          Không có nhu cầu
         </span>
       );
     }
@@ -905,8 +1025,8 @@ export default function CustomerCare() {
       );
     }
     return (
-      <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-rose-50/90 text-rose-500 border border-rose-200">
-        Chưa chăm sóc
+      <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200">
+        {status}
       </span>
     );
   };
@@ -935,6 +1055,14 @@ export default function CustomerCare() {
         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
           <CreditCard size={11} className="text-emerald-500" />
           {label || 'Thanh toán'}
+        </span>
+      );
+    }
+    if (t === 'PROMOTION' || (label || '').toLowerCase().includes('khuyến mãi')) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-rose-50 text-rose-700 border border-rose-200">
+          <Tag size={11} className="text-rose-500" />
+          {label || 'Khuyến mãi'}
         </span>
       );
     }
@@ -1161,6 +1289,8 @@ export default function CustomerCare() {
         return 'Ngày sinh nhật';
       case 'PAYMENT':
         return 'Thanh toán';
+      case 'PROMOTION':
+        return 'Khuyến mãi';
       case 'GENERAL_CARE':
       default:
         return 'Chăm sóc tổng hợp';
@@ -1699,6 +1829,80 @@ export default function CustomerCare() {
     if (paymentCareStatusFilter !== 'ALL') count++;
     return count;
   }, [searchQuery, startDateFilter, endDateFilter, paymentQuickFilter, paymentStatusFilter, paymentCareStatusFilter]);
+
+  // Tab 6 Promotion Computations
+  const filteredPromotionCareList = useMemo(() => {
+    return promotionCareList.filter((item) => {
+      if (selectedCampaignFilter !== 'ALL' && item.promotionId !== selectedCampaignFilter) {
+        return false;
+      }
+      if (promoCategoryQuickFilter !== 'ALL') {
+        if (promoCategoryQuickFilter === 'HOLIDAY' && !['LE304', 'QUOCKHANH29', 'TET2026'].includes(item.couponCode)) return false;
+        if (promoCategoryQuickFilter === 'ANNIVERSARY' && item.couponCode !== 'SINHNHAT') return false;
+        if (promoCategoryQuickFilter === 'WOMEN' && item.couponCode !== 'PHUNU2010') return false;
+        if (promoCategoryQuickFilter === 'STUDENT' && item.couponCode !== 'SUMMERSMILE') return false;
+      }
+      if (promoCustomerGroupFilter !== 'ALL' && item.customerGroup !== promoCustomerGroupFilter) {
+        return false;
+      }
+      if (promoCareStatusFilter !== 'ALL') {
+        if (promoCareStatusFilter === 'NOT_SENT' && !['Chưa gửi', 'Chưa gửi ưu đãi', 'Chưa chăm sóc'].includes(item.careStatus)) return false;
+        if (promoCareStatusFilter === 'SENT' && !['Đã gửi', 'Đã gửi ưu đãi', 'Hoàn thành'].includes(item.careStatus)) return false;
+        if (promoCareStatusFilter === 'INTERESTED' && !['Quan tâm', 'Khách quan tâm'].includes(item.careStatus)) return false;
+        if (promoCareStatusFilter === 'BOOKED' && !['Đã đặt hẹn', 'Đã đặt lịch', 'Đã đặt lịch hẹn'].includes(item.careStatus)) return false;
+        if (promoCareStatusFilter === 'USED' && !['Đã sử dụng', 'Đã sử dụng (Hóa đơn)', 'Đã áp dụng'].includes(item.careStatus)) return false;
+      }
+      if (searchQuery && searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const match =
+          (item.patientName && item.patientName.toLowerCase().includes(q)) ||
+          (item.phone && item.phone.includes(q)) ||
+          (item.patientCode && item.patientCode.toLowerCase().includes(q)) ||
+          (item.promotionTitle && item.promotionTitle.toLowerCase().includes(q)) ||
+          (item.couponCode && item.couponCode.toLowerCase().includes(q)) ||
+          (item.customerGroup && item.customerGroup.toLowerCase().includes(q));
+        if (!match) return false;
+      }
+      return true;
+    });
+  }, [
+    promotionCareList,
+    selectedCampaignFilter,
+    promoCategoryQuickFilter,
+    promoCustomerGroupFilter,
+    promoCareStatusFilter,
+    searchQuery,
+  ]);
+
+  const paginatedPromotionCares = useMemo(() => {
+    const start = (pagePromotion - 1) * pageSize;
+    return filteredPromotionCareList.slice(start, start + pageSize);
+  }, [filteredPromotionCareList, pagePromotion, pageSize]);
+
+  const promoNotSentCount = useMemo(() => promotionCareList.filter((p) => ['Chưa gửi', 'Chưa gửi ưu đãi', 'Chưa chăm sóc'].includes(p.careStatus)).length, [promotionCareList]);
+  const promoSentCount = useMemo(() => promotionCareList.filter((p) => ['Đã gửi', 'Đã gửi ưu đãi', 'Hoàn thành'].includes(p.careStatus)).length, [promotionCareList]);
+  const promoInterestedCount = useMemo(() => promotionCareList.filter((p) => ['Quan tâm', 'Khách quan tâm'].includes(p.careStatus)).length, [promotionCareList]);
+  const promoBookedCount = useMemo(() => promotionCareList.filter((p) => ['Đã đặt hẹn', 'Đã đặt lịch', 'Đã đặt lịch hẹn'].includes(p.careStatus)).length, [promotionCareList]);
+
+  // Copy Suggested Message (SMS/Gmail)
+  const handleCopyPromoMessage = (item) => {
+    const msg = item?.suggestedMessage || item?.suggestedTemplate;
+    if (!msg) return;
+    navigator.clipboard?.writeText(msg);
+    setCopiedPromoRowId(item.patientId + (item.promotionId || ''));
+    toast.success(`Đã sao chép tin nhắn mẫu (SMS/Gmail) ưu đãi cho khách ${item.patientName}!`);
+    setTimeout(() => {
+      setCopiedPromoRowId(null);
+    }, 2200);
+  };
+
+  // Copy Coupon Code
+  const handleCopyCouponCode = (code, e) => {
+    if (e) e.stopPropagation();
+    if (!code) return;
+    navigator.clipboard?.writeText(code);
+    toast.success(`Đã sao chép mã ưu đãi [${code}]!`);
+  };
 
   return (
     <div className="w-full bg-[#f8f9fa] text-gray-800">
@@ -3894,14 +4098,545 @@ export default function CustomerCare() {
             </div>
           </div>
         )}
+
+        {/* ===================== TAB 6: KHUYẾN MÃI & SỰ KIỆN LỄ TẾT (PROMOTION CRM) ===================== */}
+        {activeTab === 'PROMOTION' && (
+          <div className="space-y-4">
+            {/* Top Showcase: Các chiến dịch sự kiện & Ngày lễ 2026 (Thiết kế nhẹ nhàng, tối giản) */}
+            <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-2xs space-y-3.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100">
+                    <Sparkles size={16} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-sm font-bold text-gray-800 tracking-tight">
+                        Chiến Dịch Khuyến Mãi & Sự Kiện Lễ Tết
+                      </h2>
+                      <span className="text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
+                        Đang diễn ra
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 font-normal">
+                      Chăm sóc tri ân khách hàng dịp lễ lớn (30/4 - 1/5, Quốc khánh 2/9, Tết Nguyên Đán, Sinh nhật Nha khoa, 20/10...)
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-600 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-200 flex items-center gap-1.5">
+                    <Flame size={13} className="text-amber-500" />
+                    <strong>{promotionCampaigns.length}</strong> sự kiện ưu đãi
+                  </span>
+                </div>
+              </div>
+
+              {/* Cards Grid: 6 Chiến dịch sự kiện & Lễ tết */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {promotionCampaigns.map((camp) => {
+                  const isSelected = selectedCampaignFilter === camp.id;
+                  const is304 = camp.couponCode === 'LE304';
+                  const is29 = camp.couponCode === 'QUOCKHANH29';
+                  const isTet = camp.couponCode === 'TET2026';
+                  const isSinhNhat = camp.couponCode === 'SINHNHAT';
+                  const is2010 = camp.couponCode === 'PHUNU2010';
+
+                  let badgeColor = 'bg-slate-50 text-slate-700 border-slate-200';
+                  if (is304) {
+                    badgeColor = 'bg-rose-50 text-rose-700 border-rose-200';
+                  } else if (is29) {
+                    badgeColor = 'bg-red-50 text-red-700 border-red-200';
+                  } else if (isTet) {
+                    badgeColor = 'bg-amber-50 text-amber-700 border-amber-200';
+                  } else if (isSinhNhat) {
+                    badgeColor = 'bg-purple-50 text-purple-700 border-purple-200';
+                  } else if (is2010) {
+                    badgeColor = 'bg-pink-50 text-pink-700 border-pink-200';
+                  }
+
+                  return (
+                    <div
+                      key={camp.id}
+                      className={`bg-white rounded-lg p-3 border transition-all flex flex-col justify-between hover:shadow-xs ${
+                        isSelected
+                          ? 'border-purple-400 ring-2 ring-purple-100 bg-purple-50/20'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold border ${badgeColor}`}>
+                            {camp.category || 'Sự kiện'}
+                          </span>
+                          <span className="text-[11px] text-gray-400 font-normal">
+                            {camp.startDate ? formatDate(camp.startDate) : ''} - {camp.endDate ? formatDate(camp.endDate) : ''}
+                          </span>
+                        </div>
+
+                        <h3 className="text-xs font-bold text-gray-800 line-clamp-1" title={camp.title}>
+                          {camp.title}
+                        </h3>
+
+                        <p className="text-[11px] text-gray-500 line-clamp-2 leading-relaxed">
+                          {camp.description}
+                        </p>
+
+                        <div className="flex items-center justify-between pt-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[11px] text-gray-400">Voucher:</span>
+                            <button
+                              type="button"
+                              onClick={(e) => handleCopyCouponCode(camp.couponCode, e)}
+                              title="Nhấn để sao chép mã"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-gray-50 hover:bg-gray-100 text-purple-700 font-mono text-[11px] font-bold border border-gray-200 transition-colors cursor-pointer"
+                            >
+                              <Ticket size={11} className="text-purple-500" />
+                              {camp.couponCode}
+                              <Copy size={9} className="opacity-60" />
+                            </button>
+                          </div>
+
+                          <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            {camp.discountPercent
+                              ? `Giảm ${camp.discountPercent}%`
+                              : camp.discountAmount
+                              ? `Giảm ${Number(camp.discountAmount).toLocaleString('vi-VN')} đ`
+                              : camp.discountType === 'PERCENTAGE'
+                              ? `Giảm ${camp.discountValue}%`
+                              : `Giảm ${Number(camp.discountValue || 0).toLocaleString('vi-VN')} đ`}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* CRM Metric Chips & Action */}
+                      <div className="mt-2.5 pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                          <span>Mục tiêu: <strong className="text-gray-700">{camp.totalTargetPatients ?? camp.targetPatientCount ?? 0}</strong></span>
+                          <span>•</span>
+                          <span>Đã gửi: <strong className="text-emerald-600">{camp.sentCount ?? camp.sentCareCount ?? 0}</strong></span>
+                          <span>•</span>
+                          <span>Hẹn: <strong className="text-amber-600">{camp.bookedCount ?? camp.bookedAppointmentCount ?? 0}</strong></span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (selectedCampaignFilter === camp.id) {
+                              setSelectedCampaignFilter('ALL');
+                            } else {
+                              setSelectedCampaignFilter(camp.id);
+                            }
+                            setPagePromotion(1);
+                          }}
+                          className={`text-[11px] px-2.5 py-0.5 rounded-md font-medium transition-colors cursor-pointer ${
+                            isSelected
+                              ? 'bg-purple-600 text-white font-semibold shadow-2xs'
+                              : 'bg-gray-50 hover:bg-gray-100 text-gray-600 border border-gray-200'
+                          }`}
+                        >
+                          {isSelected ? 'Đang lọc ✓' : 'Lọc khách'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Unified 3-Tier Professional Toolbar for Tab 6 */}
+            <div className="bg-white rounded-lg border border-gray-200 p-3 shadow-2xs space-y-2.5">
+              {/* Tier 1: Quick Pills (Left) + Counter & Action (Right) */}
+              <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2.5 border-b border-gray-100">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 mr-2">
+                    <Tag size={15} className="text-purple-600" />
+                    <span className="text-xs font-bold text-gray-700">Phân loại sự kiện:</span>
+                  </div>
+                  {[
+                    { id: 'ALL', label: 'Tất cả' },
+                    { id: 'HOLIDAY', label: 'Sự kiện & Ngày lễ (30/4, 2/9, Tết)' },
+                    { id: 'ANNIVERSARY', label: 'Sinh nhật Crown Dental' },
+                    { id: 'WOMEN', label: 'Phụ nữ 20/10' },
+                    { id: 'STUDENT', label: 'Mùa hè & Sinh viên' },
+                  ].map((pill) => (
+                    <button
+                      key={pill.id}
+                      type="button"
+                      onClick={() => {
+                        setPromoCategoryQuickFilter(pill.id);
+                        setPagePromotion(1);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
+                        promoCategoryQuickFilter === pill.id
+                          ? 'bg-[#7c3aed] text-white shadow-xs font-semibold'
+                          : 'bg-gray-100/80 text-gray-600 hover:bg-gray-200/80 font-medium'
+                      }`}
+                    >
+                      {pill.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xs text-gray-500 flex items-center gap-1 mr-1">
+                    <Eye size={13} className="text-gray-400" />
+                    Hiển thị <strong>{filteredPromotionCareList.length}</strong>/{promotionCareList.length} khách hàng
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleExportCSV}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <Download size={13} className="text-purple-600" />
+                    Export
+                  </button>
+                </div>
+              </div>
+
+              {/* Tier 2: Search Query & Dropdown Filters */}
+              <div className="grid grid-cols-12 gap-2.5">
+                {/* Search box (5 cols on md) */}
+                <div className="col-span-12 md:col-span-5 relative">
+                  <Search size={14} className="absolute left-3 top-2.5 text-gray-400" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setPagePromotion(1);
+                    }}
+                    placeholder="Tìm theo họ tên, SĐT, mã hồ sơ, mã voucher, sự kiện..."
+                    className="w-full text-xs pl-8 pr-7 py-2 border border-gray-300 rounded-lg focus:outline-hidden focus:border-purple-500 bg-white placeholder:text-gray-400 shadow-2xs"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-600"
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Campaign Select (3 cols) */}
+                <div className="col-span-12 sm:col-span-6 md:col-span-3">
+                  <select
+                    value={selectedCampaignFilter}
+                    onChange={(e) => {
+                      setSelectedCampaignFilter(e.target.value);
+                      setPagePromotion(1);
+                    }}
+                    className="w-full text-xs py-2 px-2.5 border border-gray-300 rounded-lg focus:outline-hidden focus:border-purple-500 bg-white shadow-2xs text-gray-700"
+                  >
+                    <option value="ALL">Tất cả chiến dịch sự kiện</option>
+                    {promotionCampaigns.map((camp) => (
+                      <option key={camp.id} value={camp.id}>
+                        {camp.title} ({camp.couponCode})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Customer Group Filter (2 cols) */}
+                <div className="col-span-12 sm:col-span-3 md:col-span-2">
+                  <select
+                    value={promoCustomerGroupFilter}
+                    onChange={(e) => {
+                      setPromoCustomerGroupFilter(e.target.value);
+                      setPagePromotion(1);
+                    }}
+                    className="w-full text-xs py-2 px-2.5 border border-gray-300 rounded-lg focus:outline-hidden focus:border-purple-500 bg-white shadow-2xs text-gray-700"
+                  >
+                    <option value="ALL">Nhóm khách hàng</option>
+                    <option value="Khách hàng VIP">Khách hàng VIP</option>
+                    <option value="Khách hàng thân thiết">Khách hàng thân thiết</option>
+                    <option value="Khách hàng Tiềm năng">Khách hàng Tiềm năng</option>
+                    <option value="Khách hàng mới">Khách hàng mới</option>
+                  </select>
+                </div>
+
+                {/* Care Status Filter (2 cols) */}
+                <div className="col-span-12 sm:col-span-3 md:col-span-2 flex items-center gap-1.5">
+                  <select
+                    value={promoCareStatusFilter}
+                    onChange={(e) => {
+                      setPromoCareStatusFilter(e.target.value);
+                      setPagePromotion(1);
+                    }}
+                    className="flex-1 text-xs py-2 px-2.5 border border-gray-300 rounded-lg focus:outline-hidden focus:border-purple-500 bg-white shadow-2xs text-gray-700"
+                  >
+                    <option value="ALL">Trạng thái CSKH</option>
+                    <option value="NOT_SENT">Chưa gửi ưu đãi</option>
+                    <option value="SENT">Đã gửi ưu đãi</option>
+                    <option value="INTERESTED">Quan tâm</option>
+                    <option value="BOOKED">Đã đặt hẹn</option>
+                    <option value="USED">Đã sử dụng (Hóa đơn)</option>
+                  </select>
+
+                  {(selectedCampaignFilter !== 'ALL' ||
+                    promoCategoryQuickFilter !== 'ALL' ||
+                    promoCustomerGroupFilter !== 'ALL' ||
+                    promoCareStatusFilter !== 'ALL' ||
+                    searchQuery) && (
+                    <button
+                      type="button"
+                      title="Đặt lại tất cả bộ lọc"
+                      onClick={() => {
+                        setSelectedCampaignFilter('ALL');
+                        setPromoCategoryQuickFilter('ALL');
+                        setPromoCustomerGroupFilter('ALL');
+                        setPromoCareStatusFilter('ALL');
+                        setSearchQuery('');
+                        setPagePromotion(1);
+                        toast.success('Đã đặt lại bộ lọc');
+                      }}
+                      className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 border border-gray-200 rounded-lg transition-colors cursor-pointer shrink-0"
+                    >
+                      <RotateCcw size={13} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Promotion Patient Table */}
+            <div className="bg-white rounded-lg border border-gray-200 shadow-2xs overflow-hidden">
+              <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-340px)] min-h-[350px] relative w-full custom-scrollbar">
+                <table className="w-full text-left border-collapse text-xs h-fit">
+                  <thead className="sticky top-0 z-20 bg-gray-50 border-b border-gray-200 shadow-2xs">
+                    <tr className="bg-gray-50 text-gray-700 border-b border-gray-200 font-semibold uppercase tracking-wider text-[11px]">
+                      <th className="sticky top-0 bg-gray-50 z-20 py-2.5 px-3 text-center w-12 border-b border-gray-200">STT</th>
+                      <th className="sticky top-0 bg-gray-50 z-20 py-2.5 px-3 border-b border-gray-200">Khách hàng</th>
+                      <th className="sticky top-0 bg-gray-50 z-20 py-2.5 px-3 border-b border-gray-200">Nhóm KH & Chi tiêu</th>
+                      <th className="sticky top-0 bg-gray-50 z-20 py-2.5 px-3 border-b border-gray-200">Liên hệ</th>
+                      <th className="sticky top-0 bg-gray-50 z-20 py-2.5 px-3 border-b border-gray-200">Sự kiện & Voucher</th>
+                      <th className="sticky top-0 bg-gray-50 z-20 py-2.5 px-3 text-center border-b border-gray-200">Trạng thái CS</th>
+                      <th className="sticky top-0 bg-gray-50 z-20 py-2.5 px-3 border-b border-gray-200">Lần gửi gần nhất</th>
+                      <th className="sticky top-0 bg-gray-50 z-20 py-2.5 px-3 min-w-[200px] border-b border-gray-200">Tin nhắn mẫu (SMS/Gmail)</th>
+                      <th className="sticky top-0 right-0 bg-gray-50 text-gray-700 z-30 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.08)] py-2.5 px-3 text-center border-b border-gray-200 min-w-[130px]">
+                        Thao tác
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {paginatedPromotionCares.length === 0 ? (
+                      <tr>
+                        <td colSpan="9" className="py-12 text-center text-gray-500 text-xs">
+                          <Inbox size={32} className="mx-auto text-gray-300 mb-2" />
+                          Không tìm thấy khách hàng nào phù hợp với điều kiện lọc khuyến mãi.
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedPromotionCares.map((p, idx) => {
+                        const rowNum = (pagePromotion - 1) * pageSize + idx + 1;
+                        const isCopied = copiedPromoRowId === p.patientId + (p.promotionId || '');
+
+                        let promoBadgeClass = 'bg-rose-50 text-rose-700 border-rose-200';
+                        if (p.couponCode === 'TET2026') promoBadgeClass = 'bg-amber-50 text-amber-700 border-amber-200';
+                        else if (p.couponCode === 'SINHNHAT') promoBadgeClass = 'bg-purple-50 text-purple-700 border-purple-200';
+                        else if (p.couponCode === 'PHUNU2010') promoBadgeClass = 'bg-pink-50 text-pink-700 border-pink-200';
+                        else if (p.couponCode === 'SUMMERSMILE') promoBadgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+
+                        return (
+                          <tr key={`${p.patientId}-${p.promotionId || idx}`} className="hover:bg-slate-50/80 transition-colors group">
+                            {/* STT */}
+                            <td className="py-2.5 px-3 text-center font-medium text-gray-400">
+                              {rowNum}
+                            </td>
+
+                            {/* Bệnh nhân */}
+                            <td className="py-2.5 px-3">
+                              <div className="font-semibold text-gray-900 flex items-center gap-1.5">
+                                {p.patientName}
+                              </div>
+                              <div className="text-[11px] text-gray-400 font-mono">
+                                #{p.patientCode || 'KH'}
+                              </div>
+                            </td>
+
+                            {/* Nhóm KH & Chi tiêu */}
+                            <td className="py-2.5 px-3">
+                              <div className="flex flex-col gap-0.5">
+                                <div>{renderCustomerGroupBadge(p.customerGroup)}</div>
+                                <div className="text-[11px] text-gray-600">
+                                  Chi tiêu: <strong className="text-gray-800">{formatCurrency(p.totalSpent)}</strong>
+                                </div>
+                                {p.preferredDoctor && (
+                                  <div className="text-[10px] text-gray-400 truncate max-w-[150px]">
+                                    {p.preferredDoctor}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Liên hệ */}
+                            <td className="py-2.5 px-3">
+                              <div className="font-mono text-gray-800 font-medium">{p.phone || '—'}</div>
+                              {p.email ? (
+                                <div className="text-[11px] text-gray-500 truncate max-w-[150px]" title={p.email}>
+                                  {p.email}
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-gray-400 italic">Chưa có email</span>
+                              )}
+                            </td>
+
+                            {/* Sự kiện & Mã ưu đãi */}
+                            <td className="py-2.5 px-3">
+                              <div className="space-y-1">
+                                <div className="font-semibold text-gray-800 text-[11px] line-clamp-1" title={p.promotionTitle}>
+                                  {p.promotionTitle}
+                                </div>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleCopyCouponCode(p.couponCode, e)}
+                                    title="Nhấn để sao chép mã"
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-gray-100 hover:bg-gray-200 text-purple-700 font-mono text-[10px] font-bold border border-purple-200 transition-colors cursor-pointer"
+                                  >
+                                    <Ticket size={10} />
+                                    {p.couponCode}
+                                    <Copy size={9} className="opacity-70" />
+                                  </button>
+                                  <span className={`inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold border ${promoBadgeClass}`}>
+                                    {(p.discountPercent != null && Number(p.discountPercent) > 0)
+                                      ? `Giảm ${Number(p.discountPercent)}%`
+                                      : (p.discountAmount != null && Number(p.discountAmount) > 0)
+                                      ? `Giảm ${Number(p.discountAmount).toLocaleString('vi-VN')} đ`
+                                      : p.discountType === 'PERCENTAGE' && Number(p.discountValue || 0) > 0
+                                      ? `Giảm ${p.discountValue}%`
+                                      : `Giảm ${Number(p.discountValue || 0).toLocaleString('vi-VN')} đ`}
+                                  </span>
+                                </div>
+                                <div className="text-[10px] text-gray-400">
+                                  Hạn dùng: {p.endDate ? formatDate(p.endDate) : 'Vô thời hạn'}
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Trạng thái CSKH */}
+                            <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                              {renderStatusBadge(p.careStatus)}
+                            </td>
+
+                            {/* Lần CS gần nhất */}
+                            <td className="py-2.5 px-3 whitespace-nowrap">
+                              {(p.lastCareTime || p.careTime) ? (
+                                <div className="flex flex-col gap-0.5">
+                                  <div className="flex items-center gap-1">
+                                    {renderChannelTag(p.careChannel, p.careChannel, p)}
+                                    <span className="font-medium text-gray-700 text-[11px]">
+                                      {formatDateTime(p.lastCareTime || p.careTime)}
+                                    </span>
+                                  </div>
+                                  {(p.lastCareStaff || p.assignedEmployeeName) && (
+                                    <span className="text-[10px] text-gray-400">NV: {p.lastCareStaff || p.assignedEmployeeName}</span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-gray-400 italic text-[11px]">— Chưa gửi —</span>
+                              )}
+                            </td>
+
+                            {/* Tin nhắn mẫu (SMS / Gmail) */}
+                            <td className="py-2.5 px-3 text-gray-600 min-w-[200px] max-w-xs">
+                              {(p.suggestedMessage || p.suggestedTemplate) ? (
+                                <div className="relative">
+                                  <p
+                                    className={`text-[11px] leading-relaxed italic bg-gray-50/80 p-1.5 rounded border border-gray-100 text-gray-700 break-words ${
+                                      expandedNoteIds.has(`promo-msg-${p.patientId}-${p.promotionId || idx}`) ? 'whitespace-pre-line' : 'line-clamp-2'
+                                    }`}
+                                    title={p.suggestedMessage || p.suggestedTemplate}
+                                  >
+                                    "{p.suggestedMessage || p.suggestedTemplate}"
+                                  </p>
+                                  {(p.suggestedMessage || p.suggestedTemplate).length > 50 && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleExpandNote(`promo-msg-${p.patientId}-${p.promotionId || idx}`);
+                                      }}
+                                      className="text-[10px] font-semibold text-[#7c3aed] hover:text-[#6d28d9] hover:underline mt-1 inline-block cursor-pointer"
+                                    >
+                                      {expandedNoteIds.has(`promo-msg-${p.patientId}-${p.promotionId || idx}`) ? 'Thu gọn' : 'Xem thêm'}
+                                    </button>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-gray-400 italic text-[11px]">— Chưa có mẫu —</span>
+                              )}
+                            </td>
+
+                            {/* Thao tác */}
+                            <td className="py-2.5 px-3 text-center sticky right-0 bg-white group-hover:bg-slate-50 z-10 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] min-w-[130px]">
+                              <div className="flex items-center justify-center gap-1.5">
+                                {/* 1. Info / History */}
+                                <button
+                                  type="button"
+                                  title="Xem chi tiết lịch sử chăm sóc & hồ sơ bệnh nhân (i)"
+                                  onClick={() => handleOpenHistory(p)}
+                                  className="w-6 h-6 rounded-md border border-sky-400 text-sky-500 hover:bg-sky-50 flex items-center justify-center transition-colors cursor-pointer"
+                                >
+                                  <Info size={13} />
+                                </button>
+
+                                {/* 2. Copy SMS/Gmail Message 1-Click */}
+                                <button
+                                  type="button"
+                                  title="Sao chép tin nhắn mẫu (SMS / Gmail) ưu đãi gửi khách hàng"
+                                  onClick={() => handleCopyPromoMessage(p)}
+                                  className={`w-6 h-6 rounded-md border flex items-center justify-center transition-colors cursor-pointer ${
+                                    isCopied
+                                      ? 'border-emerald-500 bg-emerald-50 text-emerald-600'
+                                      : 'border-indigo-400 text-indigo-600 hover:bg-indigo-50'
+                                  }`}
+                                >
+                                  {isCopied ? <Check size={13} /> : <MessageCircle size={13} />}
+                                </button>
+
+                                {/* 3. Direct Email */}
+                                <button
+                                  type="button"
+                                  title="Gửi Gmail trực tiếp kèm thiệp voucher ưu đãi cho khách hàng"
+                                  onClick={() => handleOpenDirectEmail({ ...p, careType: 'PROMOTION' })}
+                                  className="w-6 h-6 rounded-md border border-rose-400 text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer"
+                                >
+                                  <Mail size={13} />
+                                </button>
+
+                                {/* 4. Create Care Record (+) */}
+                                <button
+                                  type="button"
+                                  title="Ghi nhận chăm sóc khuyến mãi mới (+)"
+                                  onClick={() => handleOpenCreateCare(p, 'PROMOTION')}
+                                  className="w-6 h-6 rounded-md border border-purple-400 text-purple-600 hover:bg-purple-50 flex items-center justify-center transition-colors cursor-pointer"
+                                >
+                                  <Plus size={13} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              {renderPagination(filteredPromotionCareList.length, pagePromotion, setPagePromotion)}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ===================== MODAL: TẠO MỚI CHĂM SÓC (IMAGE 5) ===================== */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-2xs p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl overflow-hidden border border-gray-200">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden border border-gray-200">
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between shrink-0">
               <h2 className="text-base font-bold text-gray-800 tracking-tight">TẠO MỚI CHĂM SÓC</h2>
               <button
                 type="button"
@@ -3913,7 +4648,8 @@ export default function CustomerCare() {
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleSaveCare} className="p-6 space-y-4">
+            <form onSubmit={handleSaveCare} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {/* Row 1: Thời gian * */}
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
@@ -4048,6 +4784,7 @@ export default function CustomerCare() {
                       <option value="APPOINTMENT_REMINDER">Nhắc lịch hẹn</option>
                       <option value="BIRTHDAY">Ngày sinh nhật</option>
                       <option value="PAYMENT">Thanh toán / Công nợ</option>
+                      <option value="PROMOTION">Khuyến mãi / Sự kiện / Lễ tết</option>
                     </select>
                   )}
                 </div>
@@ -4068,8 +4805,10 @@ export default function CustomerCare() {
                 />
               </div>
 
+              </div>
+
               {/* Footer */}
-              <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-gray-200">
+              <div className="p-4 bg-gray-50/80 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
                 <span className="text-xs text-gray-500 font-medium">
                   Người tạo: <span className="text-gray-700">{currentStaffName}</span>
                 </span>
@@ -4096,39 +4835,42 @@ export default function CustomerCare() {
 
       {/* ===================== MODAL: GỬI GMAIL TRỰC TIẾP CHO KHÁCH HÀNG ===================== */}
       {isDirectEmailModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-2xl max-w-xl w-full overflow-hidden border border-gray-100 animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-xl shadow-2xl max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-gray-200">
             {/* Header */}
-            <div className="bg-gradient-to-r from-rose-600 via-rose-500 to-red-600 px-6 py-4 text-white flex items-center justify-between">
+            <div className="bg-white border-b border-gray-200 px-5 sm:px-6 py-3.5 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-md bg-white/20 backdrop-blur-sm flex items-center justify-center text-white shadow-inner">
-                  <Mail size={20} className="animate-pulse" />
+                <div className="w-9 h-9 rounded-lg bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shrink-0">
+                  <Mail size={18} />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base tracking-wide flex items-center gap-2">
-                    Gửi Gmail Trực Tiếp
-                    <span className="text-[10px] uppercase font-semibold bg-white/25 px-2 py-0.5 rounded-md tracking-wider">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-sm sm:text-base text-gray-800 tracking-tight">
+                      Gửi Gmail Trực Tiếp
+                    </h3>
+                    <span className="text-[10px] uppercase font-semibold bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-full">
                       SMTP Direct
                     </span>
-                  </h3>
-                  <p className="text-xs text-rose-100">
-                    Gửi thư chăm sóc, tư vấn hoặc nhắc hẹn đến hòm thư bệnh nhân ngay lập tức
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Gửi thư chăm sóc, tư vấn hoặc voucher ưu đãi đến hòm thư bệnh nhân
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsDirectEmailModalOpen(false)}
-                className="w-7 h-7 rounded-md bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer text-white"
+                className="w-8 h-8 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 flex items-center justify-center transition-colors cursor-pointer"
               >
                 <X size={16} />
               </button>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSendDirectEmail} className="p-6 space-y-4">
-              {/* Patient Badge Info */}
-              <div className="bg-gradient-to-r from-rose-50 to-orange-50 border border-rose-200/80 rounded-md p-3 flex items-center justify-between text-xs">
+            <form onSubmit={handleSendDirectEmail} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
+                {/* Patient Badge Info */}
+                <div className="bg-gradient-to-r from-rose-50 to-orange-50 border border-rose-200/80 rounded-md p-3 flex items-center justify-between text-xs">
                 <div>
                   <span className="text-gray-500">Người nhận: </span>
                   <span className="font-bold text-gray-800 text-sm">
@@ -4237,6 +4979,93 @@ export default function CustomerCare() {
                         🔄 Nhắc hẹn & thanh toán đợt sau
                       </button>
                     </>
+                  ) : directEmailForm.careType === 'PROMOTION' ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDirectEmailForm({
+                            ...directEmailForm,
+                            couponCode: 'LE304',
+                            subject: `[Crown Dental] Đại lễ 30/4 - 1/5: Tặng Quý khách ${directEmailForm.patientName} ưu đãi 25% Răng sứ & Tẩy trắng`,
+                            message: `Kính gửi Quý khách ${directEmailForm.patientName},\n\nNhân dịp Kỷ niệm ngày Giải phóng miền Nam 30/4 và Quốc tế Lao động 1/5, Nha Khoa Quốc Tế Crown Dental trân trọng gửi tới Quý khách và gia đình lời chúc mừng an khang, hạnh phúc!\n\nCrown Dental xin gửi tặng Quý khách món quà tri ân đặc quyền:\n• Mã Voucher: LE304\n• Mức giảm: Giảm 25% tối đa 3.000.000đ cho dịch vụ Răng sứ thẩm mỹ & Tẩy trắng răng công nghệ Laser Whitening.\n• Thời hạn áp dụng: Đến hết ngày 05/05/2026.\n\nQuý khách vui lòng xuất trình mã voucher khi đến thăm khám để nhận ưu đãi đặc biệt.\n\nTrân trọng cảm ơn Quý khách,\nNha Khoa Quốc Tế Crown Dental\nHotline đặt hẹn: 0343632524`,
+                          });
+                        }}
+                        className="px-2.5 py-1 text-[11px] rounded-md bg-rose-50 hover:bg-rose-100 hover:text-rose-800 border border-rose-200 text-rose-700 transition-colors cursor-pointer font-medium"
+                      >
+                        Đại lễ 30/4 - 1/5 (LE304)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDirectEmailForm({
+                            ...directEmailForm,
+                            couponCode: 'QUOCKHANH29',
+                            subject: `[Crown Dental] Mừng Quốc khánh 2/9: Ưu đãi 20% Chỉnh nha & Implant dành tặng Quý khách ${directEmailForm.patientName}`,
+                            message: `Kính gửi Quý khách ${directEmailForm.patientName},\n\nNhân dịp Quốc khánh nước CHXHCN Việt Nam 2/9, Nha Khoa Quốc Tế Crown Dental kính chúc Quý khách một kỳ nghỉ lễ thật ấm áp và hạnh phúc bên gia đình!\n\nCrown Dental trân trọng gửi tặng Quý khách phiếu ưu đãi đặc quyền:\n• Mã Voucher: QUOCKHANH29\n• Mức giảm: Giảm 20% tối đa 5.000.000đ khi thực hiện Niềng răng hoặc Cấy ghép Implant Thụy Sĩ / Hàn Quốc.\n• Thời hạn áp dụng: Đến hết ngày 10/09/2026.\n\nKính chúc Quý khách luôn sở hữu nụ cười tự tin và rạng rỡ!\n\nTrân trọng,\nNha Khoa Quốc Tế Crown Dental\nHotline: 0343632524`,
+                          });
+                        }}
+                        className="px-2.5 py-1 text-[11px] rounded-md bg-red-50 hover:bg-red-100 hover:text-red-800 border border-red-200 text-red-700 transition-colors cursor-pointer font-medium"
+                      >
+                        Quốc khánh 2/9 (QUOCKHANH29)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDirectEmailForm({
+                            ...directEmailForm,
+                            couponCode: 'TET2026',
+                            subject: `[Crown Dental] Nụ Cười Đón Xuân - Lì xì Voucher 1.500.000đ gửi Quý khách ${directEmailForm.patientName}`,
+                            message: `Kính gửi Quý khách ${directEmailForm.patientName},\n\nNăm mới Tết đến xuân về, Nha Khoa Quốc Tế Crown Dental kính chúc Quý khách và gia đình một năm mới An Khang Thịnh Vượng - Vạn Sự Như Ý - Nụ Cười Luôn Tươi Rạng!\n\nCrown Dental xin gửi tặng Quý khách phong bao lì xì may mắn đầu năm:\n• Mã Voucher: TET2026\n• Quà tặng: Lì xì 1.500.000đ tiền mặt trừ trực tiếp vào hóa đơn điều trị từ 5.000.000đ trở lên.\n• Thời hạn: Đến hết ngày 28/02/2026.\n\nCrown Dental rất hân hạnh được đồng hành chăm sóc nụ cười rạng ngời du xuân cho Quý khách!\n\nTrân trọng,\nNha Khoa Quốc Tế Crown Dental\nHotline: 0343632524`,
+                          });
+                        }}
+                        className="px-2.5 py-1 text-[11px] rounded-md bg-amber-50 hover:bg-amber-100 hover:text-amber-800 border border-amber-200 text-amber-700 transition-colors cursor-pointer font-medium"
+                      >
+                        Tết Nguyên Đán (TET2026)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDirectEmailForm({
+                            ...directEmailForm,
+                            couponCode: 'SINHNHAT',
+                            subject: `[Crown Dental] Sinh nhật Nha Khoa Crown Dental: Tri ân đặc quyền 30% gửi Quý khách ${directEmailForm.patientName}`,
+                            message: `Kính gửi Quý khách ${directEmailForm.patientName},\n\nNhân dịp Kỷ niệm ngày thành lập Nha Khoa Quốc Tế Crown Dental, chúng tôi xin bày tỏ lòng biết ơn sâu sắc đến Quý khách vì đã luôn tin tưởng và đồng hành cùng phòng khám trong suốt thời gian qua.\n\nCrown Dental trân trọng gửi tặng Quý khách tấm thẻ Voucher Tri Ân Sinh Nhật đặc quyền:\n• Mã Voucher: SINHNHAT\n• Mức giảm: Giảm 30% tối đa 10.000.000đ toàn bộ dịch vụ nha khoa tổng quát, thẩm mỹ và phục hình.\n• Thời hạn: Đến hết ngày 31/10/2026.\n\nKính mời Quý khách ghé thăm phòng khám để tận hưởng dịch vụ chuẩn quốc tế và nhận quà lưu niệm sinh nhật độc quyền!\n\nTrân trọng tri ân,\nNha Khoa Quốc Tế Crown Dental\nHotline: 0343632524`,
+                          });
+                        }}
+                        className="px-2.5 py-1 text-[11px] rounded-md bg-purple-50 hover:bg-purple-100 hover:text-purple-800 border border-purple-200 text-purple-700 transition-colors cursor-pointer font-medium"
+                      >
+                        Sinh nhật Crown Dental (SINHNHAT)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDirectEmailForm({
+                            ...directEmailForm,
+                            couponCode: 'PHUNU2010',
+                            subject: `[Crown Dental] Chúc mừng ngày Phụ nữ Việt Nam 20/10 - Món quà nụ cười gửi Quý khách ${directEmailForm.patientName}`,
+                            message: `Kính gửi Quý khách ${directEmailForm.patientName},\n\nNhân ngày Phụ nữ Việt Nam 20/10, Nha Khoa Quốc Tế Crown Dental kính chúc Quý khách luôn xinh đẹp, rạng rỡ, hạnh phúc và thành công rực rỡ!\n\nPhòng khám xin gửi tặng Quý khách món quà chăm sóc nụ cười đặc biệt:\n• Mã Voucher: PHUNU2010\n• Quà tặng: Voucher 500.000đ + Miễn phí 01 liệu trình Spa răng miệng & lấy cao răng siêu âm chuyên sâu.\n• Thời hạn: Đến hết ngày 31/10/2026.\n\nChúc Quý khách luôn có nụ cười tỏa sáng và hạnh phúc mỗi ngày!\n\nTrân trọng,\nNha Khoa Quốc Tế Crown Dental\nHotline: 0343632524`,
+                          });
+                        }}
+                        className="px-2.5 py-1 text-[11px] rounded-md bg-pink-50 hover:bg-pink-100 hover:text-pink-800 border border-pink-200 text-pink-700 transition-colors cursor-pointer font-medium"
+                      >
+                        Phụ nữ 20/10 (PHUNU2010)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDirectEmailForm({
+                            ...directEmailForm,
+                            couponCode: 'SUMMERSMILE',
+                            subject: `[Crown Dental] Mùa hè nụ cười mới: Ưu đãi 15% Niềng răng Học sinh - Sinh viên gửi Quý khách ${directEmailForm.patientName}`,
+                            message: `Kính gửi Quý khách ${directEmailForm.patientName},\n\nNha Khoa Quốc Tế Crown Dental xin gửi lời chào năng động đến Quý khách! Chương trình "Mùa hè nụ cười mới - Tự tin tới trường" đang diễn ra với nhiều ưu đãi hấp dẫn:\n\n• Mã Voucher: SUMMERSMILE\n• Mức ưu đãi: Giảm 15% gói niềng răng mắc cài hoặc Invisalign + Tặng máy tăm nước cao cấp 1.500.000đ + Trả góp 0% lãi suất.\n• Thời hạn: Đến hết ngày 31/08/2026.\n\nĐặt hẹn ngay hôm nay để nhận tư vấn và chụp phim 3D miễn phí cùng Chuyên gia Chỉnh nha Crown Dental bạn nhé!\n\nThân ái,\nNha Khoa Quốc Tế Crown Dental\nHotline: 0343632524`,
+                          });
+                        }}
+                        className="px-2.5 py-1 text-[11px] rounded-md bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-800 border border-emerald-200 text-emerald-700 transition-colors cursor-pointer font-medium"
+                      >
+                        Mùa hè sinh viên (SUMMERSMILE)
+                      </button>
+                    </>
                   ) : (
                     <>
                       <button
@@ -4282,6 +5111,36 @@ export default function CustomerCare() {
                   )}
                 </div>
               </div>
+
+              {/* Live Voucher Ticket Preview Box for Promotions */}
+              {directEmailForm.careType === 'PROMOTION' && (
+                <div className="bg-gradient-to-r from-rose-50/90 via-pink-50/80 to-amber-50/90 border border-rose-200/90 rounded-lg p-3 flex flex-col sm:flex-row items-center gap-3.5 shadow-2xs">
+                  <div className="shrink-0 bg-white p-2.5 rounded-lg border-2 border-dashed border-rose-300 shadow-xs flex flex-col items-center min-w-[110px] text-center">
+                    <Ticket size={24} className="text-rose-500 mb-0.5" />
+                    <span className="text-[9px] uppercase font-bold text-gray-500 tracking-wider">MÃ ƯU ĐÃI</span>
+                    <span className="text-xs font-mono font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 mt-0.5">
+                      {directEmailForm.couponCode || 'LE304'}
+                    </span>
+                  </div>
+                  <div className="flex-1 text-xs space-y-1 w-full min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold bg-rose-600 text-white">
+                        VOUCHER ĐIỆN TỬ
+                      </span>
+                      <span className="font-semibold text-gray-800 text-[11px]">
+                        Thiệp Voucher quà tặng được đính kèm vào email gửi bệnh nhân
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-gray-600 leading-relaxed">
+                      Khách hàng nhận email sẽ thấy thiệp chúc mừng thiết kế trang trọng kèm mã ưu đãi độc quyền. Khách chỉ cần đưa mã voucher khi đến phòng khám để áp dụng.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] pt-1.5 border-t border-rose-200/60 text-gray-700">
+                      <span>Khách hàng: <strong className="text-purple-700 font-bold">{directEmailForm.patientName}</strong></span>
+                      <span>Mã voucher: <strong className="text-rose-600 font-bold font-mono">{directEmailForm.couponCode || 'LE304'}</strong></span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Live VietQR Preview Box for Payment Reminders */}
               {directEmailForm.careType === 'PAYMENT' && Number(directEmailForm.remainingAmount || 0) > 0 && (
@@ -4347,8 +5206,10 @@ export default function CustomerCare() {
                 </span>
               </div>
 
+              </div>
+
               {/* Footer */}
-              <div className="pt-3 border-t border-gray-200 flex items-center justify-between gap-3">
+              <div className="px-5 sm:px-6 py-3 bg-gray-50/90 border-t border-gray-200 flex items-center justify-between gap-3 shrink-0">
                 <span className="text-[11px] text-gray-500">
                   Người gửi: <strong className="text-gray-700">{currentStaffName}</strong>
                 </span>
@@ -4357,14 +5218,14 @@ export default function CustomerCare() {
                     type="button"
                     onClick={() => setIsDirectEmailModalOpen(false)}
                     disabled={sendingEmail}
-                    className="px-4 py-2 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors cursor-pointer disabled:opacity-50"
+                    className="px-4 py-2 text-xs font-medium text-gray-700 bg-white hover:bg-gray-100 border border-gray-200 rounded-md transition-colors cursor-pointer disabled:opacity-50"
                   >
                     Đóng
                   </button>
                   <button
                     type="submit"
                     disabled={sendingEmail}
-                    className="inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-md transition-colors cursor-pointer shadow-md shadow-rose-200 disabled:opacity-50"
+                    className="inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-md transition-colors cursor-pointer shadow-xs disabled:opacity-50"
                   >
                     {sendingEmail ? (
                       <>

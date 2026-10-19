@@ -22,6 +22,10 @@ import iuh.fit.backend.treatment.repository.ServiceRepository;
 import iuh.fit.backend.user.entity.Dentist;
 import iuh.fit.backend.user.entity.Employee;
 import iuh.fit.backend.user.repository.DentistRepository;
+import iuh.fit.backend.promotion.entity.Promotion;
+import iuh.fit.backend.promotion.enums.PromotionStatus;
+import iuh.fit.backend.promotion.enums.PromotionType;
+import iuh.fit.backend.promotion.repository.PromotionRepository;
 import iuh.fit.backend.user.repository.EmployeeRepository;
 import iuh.fit.backend.notification.service.EmailService;
 import lombok.RequiredArgsConstructor;
@@ -50,6 +54,7 @@ public class CustomerCareServiceImpl implements CustomerCareService {
     private final ServiceRepository serviceRepository;
     private final EmailService emailService;
     private final InvoiceRepository invoiceRepository;
+    private final PromotionRepository promotionRepository;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DATE_TIME_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy, HH:mm");
@@ -959,6 +964,593 @@ public class CustomerCareServiceImpl implements CustomerCareService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<PromotionCareItemDTO> getPromotionCareList(
+            String search,
+            String promotionId,
+            String category,
+            String careStatus,
+            String customerGroup,
+            String employeeId
+    ) {
+        ensureHolidayPromotionsExist();
+        List<Patient> allPatients = patientRepository.findAll();
+        List<Promotion> allPromotions = promotionRepository.findAll().stream()
+                .filter(p -> p.getStatus() == PromotionStatus.ACTIVE && p.getCouponCode() != null && !p.getCouponCode().isBlank())
+                .toList();
+
+        List<CustomerCareRecord> allCareRecords = careRepository.findAll().stream()
+                .filter(c -> c.getCareType() == CareType.PROMOTION || c.getPromotion() != null || (c.getNotes() != null && c.getNotes().contains("voucher")))
+                .toList();
+
+        List<Invoice> allInvoices = invoiceRepository.findAll();
+        List<Appointment> allAppointments = appointmentRepository.findAll();
+
+        List<PromotionCareItemDTO> rawItems = new ArrayList<>();
+
+        for (int i = 0; i < allPatients.size(); i++) {
+            Patient p = allPatients.get(i);
+
+            // Calculate total spent & visit history
+            List<Invoice> patientInvoices = allInvoices.stream()
+                    .filter(inv -> inv.getPatient() != null && inv.getPatient().getId().equals(p.getId()))
+                    .toList();
+            BigDecimal totalSpent = patientInvoices.stream()
+                    .map(inv -> inv.getPaidAmount() != null ? inv.getPaidAmount() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            // Last visit date
+            LocalDateTime lastVisit = patientInvoices.stream()
+                    .map(Invoice::getInvoiceDate)
+                    .filter(Objects::nonNull)
+                    .max(LocalDateTime::compareTo)
+                    .orElse(null);
+
+            // Customer group
+            String grp = "Khách hàng Mới";
+            if (totalSpent.compareTo(new BigDecimal("20000000")) >= 0) {
+                grp = "Khách hàng VIP";
+            } else if (totalSpent.compareTo(new BigDecimal("5000000")) >= 0 || patientInvoices.size() >= 2) {
+                grp = "Khách hàng Thân thiết";
+            } else if (!patientInvoices.isEmpty()) {
+                grp = "Khách hàng Tiềm năng";
+            }
+
+            // Determine preferred / treating doctor from appointments & invoices
+            List<Appointment> pAppointments = allAppointments.stream()
+                    .filter(a -> a.getPatient() != null && a.getPatient().getId().equals(p.getId()))
+                    .toList();
+            String preferredDoctor = null;
+            if (!pAppointments.isEmpty()) {
+                Appointment latestApt = pAppointments.stream()
+                        .filter(a -> a.getDentist() != null)
+                        .max(Comparator.comparing(a -> a.getAppointmentTime() != null ? a.getAppointmentTime() : a.getAppointmentDate(), Comparator.nullsLast(Comparator.naturalOrder())))
+                        .orElse(null);
+                if (latestApt != null && latestApt.getDentist() != null && latestApt.getDentist().getFullName() != null) {
+                    preferredDoctor = latestApt.getDentist().getFullName();
+                }
+            }
+            if (preferredDoctor == null || preferredDoctor.isBlank()) {
+                preferredDoctor = patientInvoices.stream()
+                        .filter(inv -> inv.getTreatmentPlan() != null && inv.getTreatmentPlan().getDentist() != null)
+                        .map(inv -> inv.getTreatmentPlan().getDentist().getFullName())
+                        .findFirst()
+                        .orElse(null);
+            }
+            if (preferredDoctor == null || preferredDoctor.isBlank()) {
+                preferredDoctor = (i % 2 == 0) ? "BS. Nguyễn Thị Phương" : "BS. Trần Quang";
+            }
+            if (!preferredDoctor.startsWith("BS")) {
+                preferredDoctor = "BS. " + preferredDoctor;
+            }
+
+            List<PromotionCareItemDTO> patientItems = new ArrayList<>();
+            Set<UUID> addedPromotionIds = new HashSet<>();
+
+            // 1. NGHIỆP VỤ: VOUCHER ĐÃ ÁP DỤNG TRONG HÓA ĐƠN
+            List<Invoice> promoInvoices = patientInvoices.stream()
+                    .filter(inv -> inv.getPromotion() != null)
+                    .toList();
+            for (Invoice inv : promoInvoices) {
+                Promotion promo = inv.getPromotion();
+                addedPromotionIds.add(promo.getId());
+
+                String promoName = promo.getTitle() != null ? promo.getTitle() : "Chương trình ưu đãi";
+                String code = promo.getCouponCode() != null ? promo.getCouponCode() : "VOUCHER";
+                String discountStr = (promo.getDiscountPercent() != null && promo.getDiscountPercent().compareTo(BigDecimal.ZERO) > 0)
+                        ? promo.getDiscountPercent().stripTrailingZeros().toPlainString() + "%"
+                        : (promo.getDiscountAmount() != null ? formatVnd(promo.getDiscountAmount()) + " đ" : "Ưu đãi");
+
+                String fastTpl = String.format("Kính gửi Quý khách %s,\nNha Khoa Quốc Tế Crown Dental cảm ơn Quý khách đã sử dụng mã voucher [%s] giảm %s cho dịch vụ nha khoa. Kính chúc Quý khách luôn có nụ cười rạng rỡ và tự tin!\nHotline hỗ trợ: 0343632524",
+                        p.getFullName(), code, discountStr);
+
+                String empName = (inv.getEmployee() != null && inv.getEmployee().getFullName() != null)
+                        ? inv.getEmployee().getFullName()
+                        : "Thu ngân";
+
+                PromotionCareItemDTO item = PromotionCareItemDTO.builder()
+                        .patientId(p.getId())
+                        .patientCode(p.getPatientCode() != null ? p.getPatientCode() : "BN-" + p.getId().toString().substring(0, 6))
+                        .patientName(p.getFullName())
+                        .phone(p.getPhoneNumber())
+                        .email(p.getEmail())
+                        .customerGroup(grp)
+                        .lastVisitDate(lastVisit)
+                        .totalSpent(totalSpent)
+                        .preferredDoctor(preferredDoctor)
+                        .promotionId(promo.getId())
+                        .promotionTitle(promoName)
+                        .couponCode(code)
+                        .category(promo.getCategory() != null ? promo.getCategory() : "Khám & Điều trị")
+                        .discountPercent(promo.getDiscountPercent())
+                        .discountAmount(promo.getDiscountAmount())
+                        .discountType(promo.getPromotionType() == PromotionType.DISCOUNT_PERCENT ? "PERCENTAGE" : "FIXED_AMOUNT")
+                        .discountValue(inv.getDiscountAmount() != null && inv.getDiscountAmount().compareTo(BigDecimal.ZERO) > 0 ? inv.getDiscountAmount() : promo.getDiscountAmount())
+                        .startDate(promo.getStartDate())
+                        .endDate(promo.getEndDate())
+                        .promotionStatus(promo.getStatus() != null ? promo.getStatus().name() : "ACTIVE")
+                        .careStatus("Đã sử dụng (Hóa đơn)")
+                        .careChannel("Tại quầy")
+                        .careTime(inv.getInvoiceDate())
+                        .lastCareTime(inv.getInvoiceDate())
+                        .careNotes(String.format("Đã áp dụng voucher %s cho hóa đơn %s (Giảm: %s đ)", code, inv.getInvoiceCode() != null ? inv.getInvoiceCode() : "", formatVnd(inv.getDiscountAmount())))
+                        .assignedEmployeeName(empName)
+                        .lastCareStaff(empName)
+                        .suggestedTemplate(fastTpl)
+                        .suggestedMessage(fastTpl)
+                        .build();
+
+                patientItems.add(item);
+            }
+
+            // 2. NGHIỆP VỤ: VOUCHER ĐÃ ĐƯỢC GỬI / CHĂM SÓC TRONG LỊCH SỬ CSKH
+            List<CustomerCareRecord> patientCareRecords = allCareRecords.stream()
+                    .filter(c -> c.getPatient() != null && c.getPatient().getId().equals(p.getId()))
+                    .sorted(Comparator.comparing(CustomerCareRecord::getCareTime, Comparator.nullsLast(Comparator.reverseOrder())))
+                    .toList();
+
+            for (CustomerCareRecord c : patientCareRecords) {
+                Promotion promo = c.getPromotion();
+                if (promo == null && c.getNotes() != null) {
+                    for (Promotion pr : allPromotions) {
+                        if (pr.getCouponCode() != null && c.getNotes().contains(pr.getCouponCode())) {
+                            promo = pr;
+                            break;
+                        }
+                    }
+                }
+                if (promo == null) continue;
+
+                if (addedPromotionIds.contains(promo.getId())) {
+                    continue; // Skip duplicate if already listed via invoice
+                }
+                addedPromotionIds.add(promo.getId());
+
+                String statusLabel = "Đã gửi ưu đãi";
+                if (c.getStatus() == CareStatus.COMPLETED) {
+                    if (c.getNotes() != null && c.getNotes().toLowerCase().contains("quan tâm")) statusLabel = "Khách quan tâm";
+                    else if (c.getNotes() != null && (c.getNotes().toLowerCase().contains("đặt lịch") || c.getNotes().toLowerCase().contains("đặt hẹn"))) statusLabel = "Đã đặt lịch hẹn";
+                } else if (c.getStatus() == CareStatus.PENDING) {
+                    statusLabel = "Chờ gửi ưu đãi";
+                } else if (c.getStatus() == CareStatus.RECARE) {
+                    statusLabel = "Cần gửi lại";
+                } else if (c.getStatus() == CareStatus.FAILED) {
+                    statusLabel = "Không có nhu cầu";
+                }
+
+                String promoName = promo.getTitle() != null ? promo.getTitle() : "Chương trình ưu đãi";
+                String code = promo.getCouponCode() != null ? promo.getCouponCode() : "VOUCHER";
+                String discountStr = (promo.getDiscountPercent() != null && promo.getDiscountPercent().compareTo(BigDecimal.ZERO) > 0)
+                        ? promo.getDiscountPercent().stripTrailingZeros().toPlainString() + "%"
+                        : (promo.getDiscountAmount() != null ? formatVnd(promo.getDiscountAmount()) + " đ" : "Ưu đãi");
+
+                String fastTpl = String.format("Kính gửi Quý khách %s,\nNha Khoa Quốc Tế Crown Dental trân trọng gửi tặng Quý khách mã ưu đãi đặc biệt [%s] giảm %s nhân dịp %s. Kính chúc Quý khách luôn có nụ cười rạng rỡ và tự tin!\nHotline đặt lịch: 0343632524",
+                        p.getFullName(), code, discountStr, promoName);
+
+                String staff = c.getCreatedByName() != null ? c.getCreatedByName() : "Nguyệt Nguyễn";
+
+                PromotionCareItemDTO item = PromotionCareItemDTO.builder()
+                        .patientId(p.getId())
+                        .patientCode(p.getPatientCode() != null ? p.getPatientCode() : "BN-" + p.getId().toString().substring(0, 6))
+                        .patientName(p.getFullName())
+                        .phone(p.getPhoneNumber())
+                        .email(p.getEmail())
+                        .customerGroup(grp)
+                        .lastVisitDate(lastVisit)
+                        .totalSpent(totalSpent)
+                        .preferredDoctor(preferredDoctor)
+                        .promotionId(promo.getId())
+                        .promotionTitle(promoName)
+                        .couponCode(code)
+                        .category(promo.getCategory() != null ? promo.getCategory() : "Sự kiện ngày lễ")
+                        .discountPercent(promo.getDiscountPercent())
+                        .discountAmount(promo.getDiscountAmount())
+                        .discountType(promo.getPromotionType() == PromotionType.DISCOUNT_PERCENT ? "PERCENTAGE" : "FIXED_AMOUNT")
+                        .discountValue(promo.getDiscountAmount() != null ? promo.getDiscountAmount() : promo.getDiscountPercent())
+                        .startDate(promo.getStartDate())
+                        .endDate(promo.getEndDate())
+                        .promotionStatus(promo.getStatus() != null ? promo.getStatus().name() : "ACTIVE")
+                        .careStatus(statusLabel)
+                        .careChannel(c.getChannel() != null ? c.getChannel().getLabel() : "Gmail")
+                        .careTime(c.getCareTime())
+                        .lastCareTime(c.getCareTime())
+                        .careNotes(c.getNotes())
+                        .assignedEmployeeName(staff)
+                        .lastCareStaff(staff)
+                        .lastCareId(c.getId())
+                        .suggestedTemplate(c.getNotes() != null && c.getNotes().length() > 30 ? c.getNotes() : fastTpl)
+                        .suggestedMessage(c.getNotes() != null && c.getNotes().length() > 30 ? c.getNotes() : fastTpl)
+                        .build();
+
+                patientItems.add(item);
+            }
+
+            // 3. NGHIỆP VỤ: ĐƯỢC CHĂM SÓC THEO CHIẾN DỊCH VOUCHER ĐANG CHẠY
+            if (promotionId != null && !promotionId.isBlank() && !"ALL".equalsIgnoreCase(promotionId)) {
+                try {
+                    UUID pUUID = UUID.fromString(promotionId);
+                    if (!addedPromotionIds.contains(pUUID)) {
+                        Promotion promo = allPromotions.stream().filter(pr -> pr.getId().equals(pUUID)).findFirst().orElse(null);
+                        if (promo != null) {
+                            patientItems.add(buildUnsentPromoItem(p, promo, grp, lastVisit, totalSpent, preferredDoctor));
+                        }
+                    }
+                } catch (Exception ignored) {}
+            } else {
+                // Khi xem "Tất cả": nếu bệnh nhân chưa có bất kỳ voucher nào thì gợi ý voucher phù hợp nhất theo phân khúc
+                if (patientItems.isEmpty()) {
+                    Promotion promo = null;
+                    if ("Khách hàng VIP".equals(grp)) {
+                        promo = findPromoByCode(allPromotions, "SINHNHAT");
+                    } else if ("Nữ".equalsIgnoreCase(p.getGender() != null ? p.getGender().name() : "")) {
+                        promo = findPromoByCode(allPromotions, "PHUNU2010");
+                    } else if ("Khách hàng Thân thiết".equals(grp)) {
+                        promo = findPromoByCode(allPromotions, "TET2026");
+                    } else if (i % 2 == 0) {
+                        promo = findPromoByCode(allPromotions, "LE304");
+                    } else {
+                        promo = findPromoByCode(allPromotions, "QUOCKHANH29");
+                    }
+                    if (promo == null && !allPromotions.isEmpty()) promo = allPromotions.get(0);
+                    if (promo != null) {
+                        patientItems.add(buildUnsentPromoItem(p, promo, grp, lastVisit, totalSpent, preferredDoctor));
+                    }
+                }
+            }
+
+            rawItems.addAll(patientItems);
+        }
+
+        // 4. BỘ LỌC ĐA TIÊU CHÍ (Search, Category, CustomerGroup, CareStatus)
+        List<PromotionCareItemDTO> filtered = new ArrayList<>();
+        for (PromotionCareItemDTO item : rawItems) {
+            if (search != null && !search.isBlank()) {
+                String q = search.toLowerCase().trim();
+                boolean m = (item.getPatientName() != null && item.getPatientName().toLowerCase().contains(q))
+                        || (item.getPatientCode() != null && item.getPatientCode().toLowerCase().contains(q))
+                        || (item.getPhone() != null && item.getPhone().contains(q))
+                        || (item.getCouponCode() != null && item.getCouponCode().toLowerCase().contains(q))
+                        || (item.getPromotionTitle() != null && item.getPromotionTitle().toLowerCase().contains(q))
+                        || (item.getCareNotes() != null && item.getCareNotes().toLowerCase().contains(q));
+                if (!m) continue;
+            }
+
+            if (category != null && !category.isBlank() && !"ALL".equalsIgnoreCase(category)) {
+                boolean matchCat = false;
+                if ("HOLIDAY".equalsIgnoreCase(category)) {
+                    matchCat = List.of("LE304", "QUOCKHANH29", "TET2026").contains(item.getCouponCode())
+                            || "Sự kiện ngày lễ".equalsIgnoreCase(item.getCategory())
+                            || "Tết Nguyên Đán".equalsIgnoreCase(item.getCategory());
+                } else if ("ANNIVERSARY".equalsIgnoreCase(category)) {
+                    matchCat = "SINHNHAT".equalsIgnoreCase(item.getCouponCode()) || "Sinh nhật nha khoa".equalsIgnoreCase(item.getCategory());
+                } else if ("WOMEN".equalsIgnoreCase(category)) {
+                    matchCat = "PHUNU2010".equalsIgnoreCase(item.getCouponCode()) || "Ngày lễ phụ nữ".equalsIgnoreCase(item.getCategory());
+                } else if ("STUDENT".equalsIgnoreCase(category)) {
+                    matchCat = "SUMMERSMILE".equalsIgnoreCase(item.getCouponCode()) || "Mùa hè & Tựu trường".equalsIgnoreCase(item.getCategory());
+                } else {
+                    matchCat = category.equalsIgnoreCase(item.getCategory());
+                }
+                if (!matchCat) continue;
+            }
+
+            if (customerGroup != null && !customerGroup.isBlank() && !"ALL".equalsIgnoreCase(customerGroup)) {
+                if (!customerGroup.equalsIgnoreCase(item.getCustomerGroup())) continue;
+            }
+
+            if (careStatus != null && !careStatus.isBlank() && !"ALL".equalsIgnoreCase(careStatus)) {
+                boolean matchStatus = false;
+                if ("NOT_SENT".equalsIgnoreCase(careStatus)) {
+                    matchStatus = "Chưa gửi ưu đãi".equalsIgnoreCase(item.getCareStatus());
+                } else if ("SENT".equalsIgnoreCase(careStatus)) {
+                    matchStatus = "Đã gửi ưu đãi".equalsIgnoreCase(item.getCareStatus());
+                } else if ("INTERESTED".equalsIgnoreCase(careStatus)) {
+                    matchStatus = "Khách quan tâm".equalsIgnoreCase(item.getCareStatus());
+                } else if ("BOOKED".equalsIgnoreCase(careStatus)) {
+                    matchStatus = "Đã đặt lịch hẹn".equalsIgnoreCase(item.getCareStatus());
+                } else if ("USED".equalsIgnoreCase(careStatus)) {
+                    matchStatus = item.getCareStatus() != null && item.getCareStatus().contains("Đã sử dụng");
+                } else {
+                    matchStatus = careStatus.equalsIgnoreCase(item.getCareStatus());
+                }
+                if (!matchStatus) continue;
+            }
+
+            filtered.add(item);
+        }
+
+        // Sắp xếp: Ưu tiên bản ghi có lịch sử chăm sóc hoặc sử dụng gần nhất lên đầu
+        filtered.sort((a, b) -> {
+            if (a.getLastCareTime() != null && b.getLastCareTime() != null) {
+                return b.getLastCareTime().compareTo(a.getLastCareTime());
+            }
+            if (a.getLastCareTime() != null) return -1;
+            if (b.getLastCareTime() != null) return 1;
+            return a.getPatientName().compareTo(b.getPatientName());
+        });
+
+        return filtered;
+    }
+
+    private PromotionCareItemDTO buildUnsentPromoItem(
+            Patient p, Promotion promo, String grp,
+            LocalDateTime lastVisit, BigDecimal totalSpent, String preferredDoctor
+    ) {
+        String promoName = promo.getTitle() != null ? promo.getTitle() : "Chương trình ưu đãi";
+        String code = promo.getCouponCode() != null ? promo.getCouponCode() : "VOUCHER";
+        String discountStr = (promo.getDiscountPercent() != null && promo.getDiscountPercent().compareTo(BigDecimal.ZERO) > 0)
+                ? promo.getDiscountPercent().stripTrailingZeros().toPlainString() + "%"
+                : (promo.getDiscountAmount() != null ? formatVnd(promo.getDiscountAmount()) + " đ" : "Ưu đãi");
+
+        String fastTpl = String.format("Kính gửi Quý khách %s,\nNha Khoa Quốc Tế Crown Dental trân trọng gửi tặng Quý khách mã ưu đãi đặc biệt [%s] giảm %s nhân dịp %s. Kính chúc Quý khách luôn có nụ cười rạng rỡ và tự tin!\nHotline đặt lịch: 0343632524",
+                p.getFullName(), code, discountStr, promoName);
+
+        return PromotionCareItemDTO.builder()
+                .patientId(p.getId())
+                .patientCode(p.getPatientCode() != null ? p.getPatientCode() : "BN-" + p.getId().toString().substring(0, 6))
+                .patientName(p.getFullName())
+                .phone(p.getPhoneNumber())
+                .email(p.getEmail())
+                .customerGroup(grp)
+                .lastVisitDate(lastVisit)
+                .totalSpent(totalSpent)
+                .preferredDoctor(preferredDoctor)
+                .promotionId(promo.getId())
+                .promotionTitle(promoName)
+                .couponCode(code)
+                .category(promo.getCategory() != null ? promo.getCategory() : "Sự kiện ngày lễ")
+                .discountPercent(promo.getDiscountPercent())
+                .discountAmount(promo.getDiscountAmount())
+                .discountType(promo.getPromotionType() == PromotionType.DISCOUNT_PERCENT ? "PERCENTAGE" : "FIXED_AMOUNT")
+                .discountValue(promo.getDiscountAmount() != null ? promo.getDiscountAmount() : promo.getDiscountPercent())
+                .startDate(promo.getStartDate())
+                .endDate(promo.getEndDate())
+                .promotionStatus(promo.getStatus() != null ? promo.getStatus().name() : "ACTIVE")
+                .careStatus("Chưa gửi ưu đãi")
+                .careChannel(null)
+                .careTime(null)
+                .lastCareTime(null)
+                .careNotes(null)
+                .assignedEmployeeName("Nguyệt Nguyễn")
+                .lastCareStaff(null)
+                .lastCareId(null)
+                .suggestedTemplate(fastTpl)
+                .suggestedMessage(fastTpl)
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public List<PromotionCampaignDTO> getPromotionCampaigns() {
+        ensureHolidayPromotionsExist();
+        List<Promotion> promotions = promotionRepository.findAll();
+        List<CustomerCareRecord> promoRecords = careRepository.findAll().stream()
+                .filter(c -> c.getCareType() == CareType.PROMOTION || c.getPromotion() != null)
+                .toList();
+        List<Invoice> allInvoices = invoiceRepository.findAll();
+        List<Patient> allPatients = patientRepository.findAll();
+
+        return promotions.stream()
+                .filter(p -> p.getCouponCode() != null && !p.getCouponCode().isBlank())
+                .sorted((a, b) -> {
+                    List<String> priorityCodes = List.of("LE304", "QUOCKHANH29", "TET2026", "SINHNHAT", "PHUNU2010", "SUMMERSMILE", "SUMMER200K", "DENTAL10");
+                    int idxA = priorityCodes.indexOf(a.getCouponCode().toUpperCase());
+                    int idxB = priorityCodes.indexOf(b.getCouponCode().toUpperCase());
+                    if (idxA != -1 && idxB != -1) return Integer.compare(idxA, idxB);
+                    if (idxA != -1) return -1;
+                    if (idxB != -1) return 1;
+                    if (a.getStatus() == PromotionStatus.ACTIVE && b.getStatus() != PromotionStatus.ACTIVE) return -1;
+                    if (a.getStatus() != PromotionStatus.ACTIVE && b.getStatus() == PromotionStatus.ACTIVE) return 1;
+                    return b.getCreatedAt() != null && a.getCreatedAt() != null ? b.getCreatedAt().compareTo(a.getCreatedAt()) : 0;
+                })
+                .map(p -> {
+                    long sent = promoRecords.stream()
+                            .filter(c -> c.getPromotion() != null && c.getPromotion().getId().equals(p.getId()))
+                            .count();
+                    long interested = promoRecords.stream()
+                            .filter(c -> c.getPromotion() != null && c.getPromotion().getId().equals(p.getId()) && c.getStatus() == CareStatus.COMPLETED)
+                            .count();
+                    long booked = promoRecords.stream()
+                            .filter(c -> c.getPromotion() != null && c.getPromotion().getId().equals(p.getId()) && c.getNotes() != null && (c.getNotes().contains("đặt lịch") || c.getNotes().contains("đặt hẹn")))
+                            .count();
+                    long usedInInvoices = allInvoices.stream()
+                            .filter(inv -> inv.getPromotion() != null && inv.getPromotion().getId().equals(p.getId()))
+                            .count();
+
+                    String audience = "Tất cả khách hàng";
+                    long targetCount = allPatients.size();
+
+                    if ("SINHNHAT".equalsIgnoreCase(p.getCouponCode())) {
+                        audience = "Khách hàng VIP & Thân thiết";
+                        targetCount = allPatients.stream().filter(pt -> {
+                            String grp = pt.getCustomerGroup() != null ? pt.getCustomerGroup() : "";
+                            return grp.contains("VIP") || grp.contains("thân thiết");
+                        }).count();
+                    } else if ("PHUNU2010".equalsIgnoreCase(p.getCouponCode())) {
+                        audience = "Khách hàng Nữ & Gia đình";
+                        targetCount = allPatients.stream().filter(pt -> pt.getGender() != null && "FEMALE".equalsIgnoreCase(pt.getGender().name())).count();
+                    } else if ("SUMMERSMILE".equalsIgnoreCase(p.getCouponCode())) {
+                        audience = "Học sinh, Sinh viên & Niềng răng";
+                        targetCount = 12;
+                    } else if ("TET2026".equalsIgnoreCase(p.getCouponCode())) {
+                        audience = "Khách hàng thân thiết & Toàn nha khoa";
+                    } else if ("QUOCKHANH29".equalsIgnoreCase(p.getCouponCode())) {
+                        audience = "Khách hàng Chỉnh nha & Implant";
+                    } else if ("LE304".equalsIgnoreCase(p.getCouponCode())) {
+                        audience = "Khách hàng Răng sứ & Tẩy trắng";
+                    } else if ("SUMMER200K".equalsIgnoreCase(p.getCouponCode())) {
+                        audience = "Khách hàng Khám & Điều trị tổng quát";
+                    }
+
+                    if (targetCount <= 0) targetCount = allPatients.size();
+
+                    return PromotionCampaignDTO.builder()
+                            .id(p.getId())
+                            .title(p.getTitle())
+                            .couponCode(p.getCouponCode())
+                            .category(p.getCategory())
+                            .description(p.getDescription())
+                            .imageUrl(p.getImageUrl())
+                            .promotionType(p.getPromotionType() != null ? p.getPromotionType().name() : "DISCOUNT_PERCENT")
+                            .discountPercent(p.getDiscountPercent())
+                            .discountAmount(p.getDiscountAmount())
+                            .maxDiscountAmount(p.getMaxDiscountAmount())
+                            .startDate(p.getStartDate())
+                            .endDate(p.getEndDate())
+                            .usageLimit(p.getUsageLimit())
+                            .usedCount(p.getUsedCount() != null ? p.getUsedCount() : (int) usedInInvoices)
+                            .status(p.getStatus() != null ? p.getStatus().name() : "ACTIVE")
+                            .targetAudience(audience)
+                            .totalTargetPatients(targetCount)
+                            .sentCount(sent + usedInInvoices)
+                            .interestedCount(interested)
+                            .bookedCount(booked + usedInInvoices)
+                            .build();
+                })
+                .toList();
+    }
+
+    private Promotion findPromoByCode(List<Promotion> list, String code) {
+        return list.stream()
+                .filter(p -> p.getCouponCode() != null && p.getCouponCode().equalsIgnoreCase(code))
+                .findFirst()
+                .orElse(null);
+    }
+
+    @Transactional
+    public void ensureHolidayPromotionsExist() {
+        boolean hasHoliday = promotionRepository.findAll().stream()
+                .anyMatch(p -> "LE304".equalsIgnoreCase(p.getCouponCode()) || "TET2026".equalsIgnoreCase(p.getCouponCode()));
+        if (hasHoliday) {
+            return;
+        }
+        log.info("Seeding realistic holiday, anniversary and seasonal promotions for dental clinic CRM...");
+        List<Promotion> list = new ArrayList<>();
+
+        list.add(Promotion.builder()
+                .title("Ưu đãi mừng Đại lễ 30/4 - 1/5: Tự hào nụ cười Việt")
+                .couponCode("LE304")
+                .category("Sự kiện ngày lễ")
+                .description("Mừng ngày Giải phóng miền Nam 30/4 và Quốc tế Lao động 1/5. Nha Khoa Crown Dental tri ân ưu đãi giảm 25% các dịch vụ dán sứ Veneer, bọc răng sứ Cercon, cạo vôi đánh bóng và tẩy trắng răng công nghệ cao Laser White Pro.")
+                .imageUrl("https://images.unsplash.com/photo-1606811841689-23dfddce3e95?auto=format&fit=crop&w=800&q=80")
+                .promotionType(PromotionType.DISCOUNT_PERCENT)
+                .discountPercent(new BigDecimal("25.00"))
+                .maxDiscountAmount(new BigDecimal("3000000.00"))
+                .usageLimit(200)
+                .usedCount(38)
+                .status(PromotionStatus.ACTIVE)
+                .startDate(LocalDateTime.of(2026, 4, 15, 0, 0))
+                .endDate(LocalDateTime.of(2026, 5, 15, 23, 59))
+                .createdAt(LocalDateTime.now())
+                .build());
+
+        list.add(Promotion.builder()
+                .title("Đại lễ Quốc khánh 2/9: Nụ cười rạng rỡ non sông")
+                .couponCode("QUOCKHANH29")
+                .category("Sự kiện ngày lễ")
+                .description("Hòa chung niềm tự hào Tết Độc Lập 2/9. Crown Dental gửi tặng voucher giảm 20% các dịch vụ chỉnh nha niềng răng trong suốt, trồng răng Implant Thụy Sĩ và bọc răng sứ thẩm mỹ. Tặng miễn phí gói chụp phim CT Cone Beam 3D.")
+                .imageUrl("https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&w=800&q=80")
+                .promotionType(PromotionType.DISCOUNT_PERCENT)
+                .discountPercent(new BigDecimal("20.00"))
+                .maxDiscountAmount(new BigDecimal("5000000.00"))
+                .usageLimit(150)
+                .usedCount(24)
+                .status(PromotionStatus.ACTIVE)
+                .startDate(LocalDateTime.of(2026, 8, 15, 0, 0))
+                .endDate(LocalDateTime.of(2026, 9, 15, 23, 59))
+                .createdAt(LocalDateTime.now())
+                .build());
+
+        list.add(Promotion.builder()
+                .title("Xuân Rạng Ngời - Tết Sum Vầy 2026: Lì xì nụ cười tài lộc")
+                .couponCode("TET2026")
+                .category("Tết Nguyên Đán")
+                .description("Đón Tết với hàm răng trắng sáng đón tài lộc! Crown Dental lì xì ngay voucher 1.500.000đ cho khách hàng thân thiết đặt lịch thăm khám, làm sạch mảng bám, trám răng thẩm mỹ và tân trang nụ cười đón Tết. Áp dụng hóa đơn từ 5.000.000đ.")
+                .imageUrl("https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=800&q=80")
+                .promotionType(PromotionType.VOUCHER)
+                .discountAmount(new BigDecimal("1500000.00"))
+                .usageLimit(300)
+                .usedCount(75)
+                .status(PromotionStatus.ACTIVE)
+                .startDate(LocalDateTime.of(2026, 1, 5, 0, 0))
+                .endDate(LocalDateTime.of(2026, 2, 28, 23, 59))
+                .createdAt(LocalDateTime.now())
+                .build());
+
+        list.add(Promotion.builder()
+                .title("Đại tiệc tri ân - Mừng Sinh Nhật Nha Khoa Crown Dental")
+                .couponCode("SINHNHAT")
+                .category("Sinh nhật nha khoa")
+                .description("Mừng sinh nhật Nha Khoa Quốc Tế Crown Dental! Tri ân khách hàng giảm sốc 30% toàn bộ dịch vụ nha khoa tổng quát và thẩm mỹ cao cấp. Miễn phí gói khám chuyên sâu cùng Bác sĩ Chuyên khoa II và nhận quà tặng đặc biệt.")
+                .imageUrl("https://images.unsplash.com/photo-1513415277900-a62401e5084d?auto=format&fit=crop&w=800&q=80")
+                .promotionType(PromotionType.DISCOUNT_PERCENT)
+                .discountPercent(new BigDecimal("30.00"))
+                .maxDiscountAmount(new BigDecimal("10000000.00"))
+                .usageLimit(500)
+                .usedCount(112)
+                .status(PromotionStatus.ACTIVE)
+                .startDate(LocalDateTime.of(2026, 9, 1, 0, 0))
+                .endDate(LocalDateTime.of(2026, 10, 31, 23, 59))
+                .createdAt(LocalDateTime.now())
+                .build());
+
+        list.add(Promotion.builder()
+                .title("Tôn vinh nụ cười phái đẹp - Mừng ngày Phụ nữ Việt Nam 20/10")
+                .couponCode("PHUNU2010")
+                .category("Ngày lễ phụ nữ")
+                .description("Tháng tôn vinh nụ cười phái đẹp. Tặng voucher 500.000đ và gói spa răng miệng cao cấp độc quyền cho tất cả khách hàng nữ khi trải nghiệm dịch vụ tại Crown Dental.")
+                .imageUrl("https://images.unsplash.com/photo-1598256989800-fe5f95da9787?auto=format&fit=crop&w=800&q=80")
+                .promotionType(PromotionType.VOUCHER)
+                .discountAmount(new BigDecimal("500000.00"))
+                .usageLimit(250)
+                .usedCount(68)
+                .status(PromotionStatus.ACTIVE)
+                .startDate(LocalDateTime.of(2026, 10, 1, 0, 0))
+                .endDate(LocalDateTime.of(2026, 10, 31, 23, 59))
+                .createdAt(LocalDateTime.now())
+                .build());
+
+        list.add(Promotion.builder()
+                .title("Mùa hè nụ cười mới - Ưu đãi niềng răng Học sinh & Sinh viên")
+                .couponCode("SUMMERSMILE")
+                .category("Mùa hè & Tựu trường")
+                .description("Hành trình kiến tạo nụ cười tự tin. Giảm 15% gói niềng răng trong suốt hoặc mắc cài kim loại, hỗ trợ trả góp 0% lãi suất, tặng kèm máy tăm nước cao cấp trị giá 1.500.000đ.")
+                .imageUrl("https://images.unsplash.com/photo-1571772996211-2f02c9727629?auto=format&fit=crop&w=800&q=80")
+                .promotionType(PromotionType.DISCOUNT_PERCENT)
+                .discountPercent(new BigDecimal("15.00"))
+                .maxDiscountAmount(new BigDecimal("4000000.00"))
+                .usageLimit(180)
+                .usedCount(45)
+                .status(PromotionStatus.ACTIVE)
+                .startDate(LocalDateTime.of(2026, 5, 15, 0, 0))
+                .endDate(LocalDateTime.of(2026, 8, 31, 23, 59))
+                .createdAt(LocalDateTime.now())
+                .build());
+
+        promotionRepository.saveAll(list);
+        log.info("Saved 6 holiday and anniversary promotions successfully.");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<CustomerCareRecordResponseDTO> getAllCareRecords(
             String search,
             String startDate,
@@ -1075,10 +1667,16 @@ public class CustomerCareServiceImpl implements CustomerCareService {
 
         LocalDateTime careTime = request.getCareTime() != null ? request.getCareTime() : LocalDateTime.now();
 
+        Promotion promotion = null;
+        if (request.getPromotionId() != null) {
+            promotion = promotionRepository.findById(request.getPromotionId()).orElse(null);
+        }
+
         CustomerCareRecord record = CustomerCareRecord.builder()
                 .patient(patient)
                 .appointment(apt)
                 .invoice(invoice)
+                .promotion(promotion)
                 .careType(type)
                 .channel(channel)
                 .status(status)
@@ -1092,7 +1690,7 @@ public class CustomerCareServiceImpl implements CustomerCareService {
 
         // If channel is GMAIL or EMAIL, send real email directly to patient
         if ((channel == CareChannel.GMAIL || channel == CareChannel.EMAIL) && patient != null && patient.getEmail() != null && !patient.getEmail().isBlank()) {
-            sendCareEmailHtml(patient.getEmail(), patient.getFullName(), request.getNotes(), type, invoice);
+            sendCareEmailHtml(patient.getEmail(), patient.getFullName(), request.getNotes(), type, invoice, promotion);
         }
 
         return mapToResponseDTO(record);
@@ -1136,11 +1734,29 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                     .orElse(patientInvoices.isEmpty() ? null : patientInvoices.get(0));
         }
 
-        sendCareEmailHtml(recipientEmail, patient != null ? patient.getFullName() : "Quý khách", notes, type, invoice);
+        Promotion promotion = null;
+        if (request.getPromotionId() != null) {
+            promotion = promotionRepository.findById(request.getPromotionId()).orElse(null);
+        }
+        if (promotion == null && request.getCouponCode() != null && !request.getCouponCode().isBlank()) {
+            promotion = promotionRepository.findAll().stream()
+                    .filter(pr -> pr.getCouponCode() != null && pr.getCouponCode().equalsIgnoreCase(request.getCouponCode().trim()))
+                    .findFirst()
+                    .orElse(null);
+        }
+        if (promotion == null && type == CareType.PROMOTION) {
+            promotion = promotionRepository.findAll().stream()
+                    .filter(pr -> pr.getStatus() == PromotionStatus.ACTIVE)
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        sendCareEmailHtml(recipientEmail, patient != null ? patient.getFullName() : "Quý khách", notes, type, invoice, promotion);
 
         CustomerCareRecord record = CustomerCareRecord.builder()
                 .patient(patient)
                 .invoice(invoice)
+                .promotion(promotion)
                 .careType(type)
                 .channel(CareChannel.GMAIL)
                 .status(CareStatus.COMPLETED)
@@ -1154,6 +1770,10 @@ public class CustomerCareServiceImpl implements CustomerCareService {
     }
 
     private void sendCareEmailHtml(String recipientEmail, String patientName, String notes, CareType careType, Invoice invoice) {
+        sendCareEmailHtml(recipientEmail, patientName, notes, careType, invoice, null);
+    }
+
+    private void sendCareEmailHtml(String recipientEmail, String patientName, String notes, CareType careType, Invoice invoice, Promotion promotion) {
         try {
             String subject = "[Crown Dental] Thông tin chăm sóc khách hàng";
             if (careType == CareType.APPOINTMENT_REMINDER) {
@@ -1162,9 +1782,12 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                 subject = "[Crown Dental] Chúc mừng sinh nhật Quý khách!";
             } else if (careType == CareType.PAYMENT) {
                 subject = "[Crown Dental] Thông báo thanh toán dịch vụ & Cảm ơn Quý khách";
+            } else if (careType == CareType.PROMOTION) {
+                String promoTitle = promotion != null ? promotion.getTitle() : "Món quà ưu đãi đặc biệt";
+                subject = String.format("[Crown Dental] %s - Quý khách %s", promoTitle, patientName != null ? patientName : "");
             }
 
-            String qrSectionHtml = "";
+            String extraSectionHtml = "";
             if (careType == CareType.PAYMENT && invoice != null && invoice.getRemainingAmount() != null && invoice.getRemainingAmount().compareTo(BigDecimal.ZERO) > 0) {
                 String invCode = invoice.getInvoiceCode() != null ? invoice.getInvoiceCode() : "HÓA ĐƠN";
                 String addInfo = java.net.URLEncoder.encode(invCode + " " + (patientName != null ? patientName : ""), java.nio.charset.StandardCharsets.UTF_8).replace("+", "%20");
@@ -1172,7 +1795,7 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                         invoice.getRemainingAmount().toBigInteger().toString(), addInfo);
                 String formattedDebt = java.text.NumberFormat.getInstance(new java.util.Locale("vi", "VN")).format(invoice.getRemainingAmount());
 
-                qrSectionHtml = String.format("""
+                extraSectionHtml = String.format("""
                     <div style="margin: 20px 0; padding: 18px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; text-align: center;">
                         <div style="display: inline-block; padding: 4px 12px; background-color: #132c68; color: #ffffff; font-size: 11px; font-weight: bold; border-radius: 4px; text-transform: uppercase; margin-bottom: 10px;">
                             VIETQR THANH TOÁN TIỆN LỢI - MB BANK
@@ -1191,6 +1814,40 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                         <p style="margin: 10px 0 0 0; font-size: 12px; color: #64748b;">Quý khách mở ứng dụng Ngân hàng quét mã QR trên để thanh toán tự động không cần nhập lại thông tin.</p>
                     </div>
                 """, qrUrl, formattedDebt, invCode, patientName != null ? patientName : "");
+            } else if (careType == CareType.PROMOTION) {
+                String promoTitle = promotion != null ? promotion.getTitle() : "Chương trình tri ân Crown Dental";
+                String couponCode = promotion != null && promotion.getCouponCode() != null ? promotion.getCouponCode() : "TRIAN2026";
+                String discountHighlight = "Ưu đãi đặc biệt";
+                if (promotion != null) {
+                    if (promotion.getDiscountPercent() != null && promotion.getDiscountPercent().compareTo(BigDecimal.ZERO) > 0) {
+                        discountHighlight = "GIẢM NGAY " + promotion.getDiscountPercent().stripTrailingZeros().toPlainString() + "%";
+                    } else if (promotion.getDiscountAmount() != null && promotion.getDiscountAmount().compareTo(BigDecimal.ZERO) > 0) {
+                        discountHighlight = "TẶNG VOUCHER " + java.text.NumberFormat.getInstance(new java.util.Locale("vi", "VN")).format(promotion.getDiscountAmount()) + " đ";
+                    }
+                }
+                String expDate = (promotion != null && promotion.getEndDate() != null)
+                        ? promotion.getEndDate().format(DATE_FMT)
+                        : "Áp dụng trong tháng";
+
+                extraSectionHtml = String.format("""
+                    <div style="margin: 22px 0; padding: 22px; background: linear-gradient(135deg, #fdf4ff 0%%, #fae8ff 50%%, #f3e8ff 100%%); border: 2px dashed #c084fc; border-radius: 14px; text-align: center; box-shadow: 0 4px 12px rgba(192, 132, 252, 0.12);">
+                        <div style="display: inline-block; padding: 5px 14px; background: linear-gradient(135deg, #a855f7, #7c3aed); color: #ffffff; font-size: 11px; font-weight: bold; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px;">
+                            VOUCHER TRI ÂN ĐẶC QUYỀN
+                        </div>
+                        <h3 style="margin: 0 0 8px 0; font-size: 17px; color: #581c87; font-weight: 800;">%s</h3>
+                        <p style="margin: 0 0 16px 0; font-size: 13px; color: #7e22ce;">Crown Dental trân trọng gửi tặng Quý khách mã ưu đãi đặc biệt mừng sự kiện</p>
+
+                        <div style="background: #ffffff; border: 2px solid #a855f7; border-radius: 10px; padding: 14px 24px; display: inline-block; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+                            <span style="font-size: 11px; color: #64748b; display: block; text-transform: uppercase; letter-spacing: 0.5px;">MÃ VOUCHER ÁP DỤNG</span>
+                            <span style="font-family: monospace; font-size: 26px; font-weight: 900; color: #7c3aed; letter-spacing: 3px; display: block; margin: 4px 0;">%s</span>
+                            <span style="display: inline-block; padding: 3px 10px; background-color: #fef08a; color: #854d0e; font-weight: bold; font-size: 13px; border-radius: 4px;">%s</span>
+                        </div>
+
+                        <div style="margin-top: 14px; font-size: 12px; color: #6b21a8; line-height: 1.6;">
+                            <p style="margin: 0;"><strong>Hạn dùng voucher:</strong> %s &bull; Quý khách đọc mã hoặc xuất trình email khi đặt lịch hẹn</p>
+                        </div>
+                    </div>
+                """, promoTitle, couponCode, discountHighlight, expDate);
             }
 
             String body = """
@@ -1221,7 +1878,7 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                 """.formatted(
                     patientName != null ? patientName : "Quý khách",
                     notes != null ? notes.replace("\n", "<br>") : "Thông tin chăm sóc từ phòng khám Crown Dental",
-                    qrSectionHtml
+                    extraSectionHtml
                 );
 
             emailService.send(recipientEmail.trim(), subject, body);
@@ -1245,6 +1902,10 @@ public class CustomerCareServiceImpl implements CustomerCareService {
         long bdayCount = patientRepository.findAll().stream().filter(p -> p.getDateOfBirth() != null).count();
         long generalCareCount = allCares.stream().filter(c -> c.getCareType() == CareType.GENERAL_CARE).count();
         long paymentCareCount = allCares.stream().filter(c -> c.getCareType() == CareType.PAYMENT).count();
+        long promoCareCount = allCares.stream().filter(c -> c.getCareType() == CareType.PROMOTION).count();
+        long activePromos = promotionRepository.findAll().stream()
+                .filter(p -> p.getStatus() == PromotionStatus.ACTIVE)
+                .count();
 
         List<Invoice> allInvoices = invoiceRepository.findAll();
         long paidInvoices = allInvoices.stream().filter(i -> i.getPaymentStatus() == PaymentStatus.PAID).count();
@@ -1264,6 +1925,8 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                 .totalBirthdays(bdayCount)
                 .totalGeneralCare(generalCareCount)
                 .totalPaymentCare(paymentCareCount)
+                .totalPromotionCare(promoCareCount)
+                .totalActivePromotions(activePromos)
                 .totalPaidInvoices(paidInvoices)
                 .totalDebtInvoices(debtInvoices)
                 .satisfactionRate(satRate)
@@ -1351,6 +2014,9 @@ public class CustomerCareServiceImpl implements CustomerCareService {
 
         UUID invId = c.getInvoice() != null ? c.getInvoice().getId() : null;
         String invCode = c.getInvoice() != null ? c.getInvoice().getInvoiceCode() : null;
+        UUID promoId = c.getPromotion() != null ? c.getPromotion().getId() : null;
+        String promoTitle = c.getPromotion() != null ? c.getPromotion().getTitle() : null;
+        String couponCode = c.getPromotion() != null ? c.getPromotion().getCouponCode() : null;
 
         return CustomerCareRecordResponseDTO.builder()
                 .id(c.getId())
@@ -1369,6 +2035,9 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                 .notes(c.getNotes())
                 .invoiceId(invId)
                 .invoiceCode(invCode)
+                .promotionId(promoId)
+                .promotionTitle(promoTitle)
+                .couponCode(couponCode)
                 .createdByName(staff)
                 .createdAt(c.getCreatedAt())
                 .build();

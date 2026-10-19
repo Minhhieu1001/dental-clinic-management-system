@@ -26,6 +26,16 @@ export const customerCareService = {
     return api.get('/customer-care/payments', { params });
   },
 
+  // 6. Khuyến mãi / Sự kiện / Ngày lễ (30/4-1/5, 2/9, Tết, Sinh nhật nha khoa, 20/10...)
+  getPromotionCareList: (params) => {
+    return api.get('/customer-care/promotions', { params });
+  },
+
+  // Danh sách các chiến dịch khuyến mãi / sự kiện & chỉ số CRM
+  getPromotionCampaigns: () => {
+    return api.get('/customer-care/promotions/campaigns');
+  },
+
   // Lịch sử chăm sóc của 1 khách hàng cụ thể
   getPatientCareHistory: (patientId) => {
     return api.get(`/customer-care/patient/${patientId}/history`);

@@ -55,6 +55,17 @@ public interface CustomerCareService {
             String employeeId
     );
 
+    List<PromotionCareItemDTO> getPromotionCareList(
+            String search,
+            String promotionId,
+            String category,
+            String careStatus,
+            String customerGroup,
+            String employeeId
+    );
+
+    List<PromotionCampaignDTO> getPromotionCampaigns();
+
     List<CustomerCareRecordResponseDTO> getAllCareRecords(
             String search,
             String startDate,

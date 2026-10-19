@@ -7,6 +7,7 @@ import iuh.fit.backend.customercare.enums.CareStatus;
 import iuh.fit.backend.customercare.enums.CareType;
 import iuh.fit.backend.patient.entity.Patient;
 import iuh.fit.backend.prescription.entity.Prescription;
+import iuh.fit.backend.promotion.entity.Promotion;
 import iuh.fit.backend.treatment.entity.TreatmentPlan;
 import iuh.fit.backend.user.entity.Dentist;
 import iuh.fit.backend.user.entity.Employee;
@@ -57,6 +58,10 @@ public class CustomerCareRecord {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "invoice_id")
     private Invoice invoice;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "promotion_id")
+    private Promotion promotion;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "care_type", length = 50)

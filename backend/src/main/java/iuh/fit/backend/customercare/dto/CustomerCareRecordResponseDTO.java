@@ -29,6 +29,9 @@ public class CustomerCareRecordResponseDTO {
     private String notes;
     private UUID invoiceId;
     private String invoiceCode;
+    private UUID promotionId;
+    private String promotionTitle;
+    private String couponCode;
     private String createdByName;
     private LocalDateTime createdAt;
 }

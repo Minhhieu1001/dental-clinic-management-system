@@ -95,6 +95,26 @@ public class CustomerCareController {
         return ResponseEntity.ok(result);
     }
 
+    @GetMapping("/promotions")
+    public ResponseEntity<List<PromotionCareItemDTO>> getPromotionCareList(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String promotionId,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String careStatus,
+            @RequestParam(required = false) String customerGroup,
+            @RequestParam(required = false) String employeeId
+    ) {
+        List<PromotionCareItemDTO> result = customerCareService.getPromotionCareList(
+                search, promotionId, category, careStatus, customerGroup, employeeId
+        );
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/promotions/campaigns")
+    public ResponseEntity<List<PromotionCampaignDTO>> getPromotionCampaigns() {
+        return ResponseEntity.ok(customerCareService.getPromotionCampaigns());
+    }
+
     @GetMapping("/records")
     public ResponseEntity<List<CustomerCareRecordResponseDTO>> getAllCareRecords(
             @RequestParam(required = false) String search,
