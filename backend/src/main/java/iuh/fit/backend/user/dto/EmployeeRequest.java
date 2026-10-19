@@ -4,6 +4,7 @@ import iuh.fit.backend.user.enums.Position;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.UUID;
 
 public record EmployeeRequest(
@@ -14,6 +15,7 @@ public record EmployeeRequest(
         Boolean status,
         String gender,
         String address,
-        String branchId
+        String branchId,
+        LocalDate dateOfBirth
 ) {
 }

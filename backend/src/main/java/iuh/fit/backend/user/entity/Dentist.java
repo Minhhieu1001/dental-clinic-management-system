@@ -30,6 +30,8 @@ public class Dentist {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    private String dentistCode;
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;

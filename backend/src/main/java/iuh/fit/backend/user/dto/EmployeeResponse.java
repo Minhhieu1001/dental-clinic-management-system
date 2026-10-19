@@ -4,6 +4,7 @@ import iuh.fit.backend.user.enums.Position;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.UUID;
 
 public record EmployeeResponse(
@@ -16,5 +17,7 @@ public record EmployeeResponse(
                 LocalDateTime hireDate,
                 Boolean status,
                 String branchId,
-                String branchName) {
+                String branchName,
+                String employeeCode,
+                LocalDate dateOfBirth) {
 }

@@ -1,5 +1,10 @@
 import api from "./axios";
 
+export const changeMyPassword = async (data) => {
+    const response = await api.put("/users/me/password", data);
+    return response.data;
+};
+
 export const updateStatusUser = async (id, data) => {
     const response = await api.put(`/users/${id}/status`, data);
     return response.data;

@@ -24,7 +24,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { uploadImage } from '../../services/media.service';
+import { uploadImage } from '../../../services/media.service';
 
 export default function InforClinic({ clinicInfo, onUpdateClinic, branchCount = 0, isSaving = false }) {
   const [isEditing, setIsEditing] = useState(false);

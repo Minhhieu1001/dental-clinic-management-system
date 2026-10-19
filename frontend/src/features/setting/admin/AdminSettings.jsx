@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Layers, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import Loading from '../../components/ui/Loading';
+import Loading from '../../../components/ui/Loading';
 
 import InforClinic from './InforClinic.jsx';
 import InforBranch from './InforBranch.jsx';
@@ -13,7 +13,7 @@ import {
   getClinics,
   updateBranch,
   updateClinic,
-} from '../../services/clinic.service.js';
+} from '../../../services/clinic.service.js';
 
 const EMPTY_CLINIC = {
   clinicId: '',

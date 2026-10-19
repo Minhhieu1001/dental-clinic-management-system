@@ -134,15 +134,26 @@ export default function AppointmentRequestModal({ isOpen, onClose }) {
 
             {/* Form Content */}
             <div className="p-6 sm:p-8">
-              <div className="grid gap-8 md:grid-cols-[0.9fr_1.1fr] md:items-center">
-                <div className="hidden min-h-[360px] max-h-[420px] overflow-hidden rounded-2xl bg-slate-100 md:block">
+              <div className="grid gap-8 md:grid-cols-[0.95fr_1.05fr] md:items-stretch">
+                <div className="hidden overflow-hidden rounded-2xl bg-slate-100 md:flex md:flex-col relative shadow-md">
                   <img
-                    src="https://images.unsplash.com/photo-1609840114035-3c981b782dfe?auto=format&fit=crop&w=900&q=85"
-                    alt="Không gian phòng khám nha khoa"
-                    className="h-full w-full object-cover"
+                    src="https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=1000&q=85"
+                    alt="Đội ngũ bác sĩ nha khoa Crown Dental"
+                    className="h-full w-full object-cover min-h-[480px]"
                   />
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent p-5 text-white">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-500/90 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-md">
+                      Crown Dental
+                    </span>
+                    <p className="text-sm sm:text-base font-bold text-white mt-1.5">
+                      Đội ngũ Bác sĩ Nha khoa Chuyên sâu
+                    </p>
+                    <p className="text-xs text-white/80 mt-1 leading-relaxed">
+                      100% Bác sĩ tốt nghiệp Đại học Y Dược, giàu kinh nghiệm và tận tâm đồng hành cùng bạn.
+                    </p>
+                  </div>
                 </div>
-                <div>
+                <div className="flex flex-col justify-center">
               {isSuccess ? (
                 <div className="py-6 text-center space-y-4">
                   <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">

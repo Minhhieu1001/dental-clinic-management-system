@@ -1,6 +1,7 @@
 package iuh.fit.backend.user.service;
 
 import iuh.fit.backend.user.dto.UserRequest;
+import iuh.fit.backend.user.dto.ChangePasswordRequest;
 import iuh.fit.backend.user.dto.UserResponse;
 import iuh.fit.backend.user.enums.StatusUser;
 
@@ -19,6 +20,8 @@ public interface UserService {
     UserResponse createUser(UserRequest request);
 
     UserResponse updateUser(UUID id, UserRequest request);
+
+    void changePassword(UUID userId, ChangePasswordRequest request);
 
     UserResponse updateUserStatus(UUID id, StatusUser status);
 

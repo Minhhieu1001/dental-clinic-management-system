@@ -61,6 +61,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     public EmployeeResponse createEmployee(EmployeeRequest request) {
         Employee employee = new Employee();
+        employee.setEmployeeCode("NV-" + UUID.randomUUID().toString().replace("-", ""));
         applyEmployeeRequest(employee, request, null);
         return toEmployeeResponse(employeeRepository.save(employee));
     }
@@ -121,6 +122,9 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     private void applyEmployeeRequest(Employee employee, EmployeeRequest request, UUID currentEmployeeId) {
+        if (currentEmployeeId == null || request.dateOfBirth() != null) {
+            employee.setDateOfBirth(request.dateOfBirth());
+        }
         validateEmployeeUserIsAvailable(request.userId(), currentEmployeeId);
         employee.setUser(resolveUser(request.userId()));
         employee.setPosition(request.position());
@@ -179,7 +183,9 @@ public class EmployeeServiceImpl implements EmployeeService {
                 employee.getHireDate(),
                 employee.getStatus(),
                 employee.getBranch() != null ? employee.getBranch().getBranchId() : null,
-                employee.getBranch() != null ? employee.getBranch().getBranchName() : null);
+                employee.getBranch() != null ? employee.getBranch().getBranchName() : null,
+                employee.getEmployeeCode(),
+                employee.getDateOfBirth());
     }
 
     private EmployeeListResponse toEmployeeListResponse(Employee employee) {
@@ -202,6 +208,8 @@ public class EmployeeServiceImpl implements EmployeeService {
                 employee.getBranch() != null ? employee.getBranch().getBranchName() : null,
                 employee.getBranch() != null ? employee.getBranch().getAddress() : null,
                 employee.getBranch() != null && employee.getBranch().getClinic() != null
-                        ? employee.getBranch().getClinic().getLegalName() : null);
+                        ? employee.getBranch().getClinic().getLegalName() : null,
+                employee.getEmployeeCode(),
+                employee.getDateOfBirth());
     }
 }
