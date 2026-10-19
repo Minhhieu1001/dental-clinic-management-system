@@ -37,6 +37,13 @@ public class PatientCareDetailDTO {
     // 4. Lịch hẹn của bệnh nhân
     private List<PatientAppointmentDTO> appointments;
 
+    // 5. Thông tin hóa đơn & công nợ
+    private InvoiceCareInfoDTO invoiceInfo;
+    private List<PatientInvoiceDTO> invoices;
+    private java.math.BigDecimal totalPatientDebt;
+    private java.math.BigDecimal totalPatientPaid;
+    private java.math.BigDecimal totalPatientInvoiced;
+
     @Data
     @Builder
     @NoArgsConstructor
@@ -66,5 +73,54 @@ public class PatientCareDetailDTO {
         private String notes;           // Ghi chú
         private String status;          // PENDING, IN_PROGRESS, WAITING, COMPLETED, CANCELLED
         private String statusLabel;     // "Chưa đến", "Đang điều trị", "Đã hẹn lại", "Đã xong", "Đã hủy"
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class InvoiceCareInfoDTO {
+        private UUID invoiceId;
+        private String invoiceCode;
+        private LocalDateTime invoiceDate;
+        private String dateFormatted;
+        private java.math.BigDecimal totalAmount;
+        private java.math.BigDecimal discountAmount;
+        private java.math.BigDecimal finalAmount;
+        private java.math.BigDecimal paidAmount;
+        private java.math.BigDecimal remainingAmount;
+        private String paymentStatus;
+        private String paymentStatusLabel;
+        private String employeeName;
+        private List<InvoiceItemDTO> items;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class PatientInvoiceDTO {
+        private UUID id;
+        private String invoiceCode;
+        private LocalDateTime invoiceDate;
+        private String timeFormatted;
+        private java.math.BigDecimal finalAmount;
+        private java.math.BigDecimal paidAmount;
+        private java.math.BigDecimal remainingAmount;
+        private String paymentStatus;
+        private String paymentStatusLabel;
+        private String employeeName;
+        private Integer itemsCount;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class InvoiceItemDTO {
+        private String itemName;
+        private Integer quantity;
+        private java.math.BigDecimal unitPrice;
+        private java.math.BigDecimal subtotal;
     }
 }

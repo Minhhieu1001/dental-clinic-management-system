@@ -13,6 +13,10 @@ import {
   Clock,
   User,
   Phone,
+  CreditCard,
+  Receipt,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import customerCareService from '../../services/customerCare.service';
@@ -22,6 +26,7 @@ export default function CustomerCareDetailModal({
   onClose,
   patientId,
   appointmentId,
+  invoiceId,
   initialPatientData,
   currentStaffName = 'Nguyệt Nguyễn',
   dentistOptions = [],
@@ -38,12 +43,16 @@ export default function CustomerCareDetailModal({
   const [aptPage, setAptPage] = useState(1);
   const APT_PAGE_SIZE = 10;
 
+  // Pagination for Invoices
+  const [invoicePage, setInvoicePage] = useState(1);
+  const INVOICE_PAGE_SIZE = 5;
+
   // Sub-modal: Thêm chăm sóc
   const [showAddCareModal, setShowAddCareModal] = useState(false);
   const [addCareForm, setAddCareForm] = useState({
     channel: 'PHONE',
     status: 'COMPLETED',
-    careType: 'APPOINTMENT_REMINDER',
+    careType: invoiceId ? 'PAYMENT' : 'APPOINTMENT_REMINDER',
     notes: '',
     careTime: new Date().toISOString().substring(0, 16),
   });
@@ -67,7 +76,7 @@ export default function CustomerCareDetailModal({
     if (!patientId) return;
     setLoading(true);
     try {
-      const res = await customerCareService.getPatientCareDetail(patientId, appointmentId);
+      const res = await customerCareService.getPatientCareDetail(patientId, appointmentId, invoiceId);
       setDetailData(res.data);
     } catch (err) {
       console.error('Failed to load patient care detail:', err);
@@ -284,6 +293,7 @@ export default function CustomerCareDetailModal({
       await customerCareService.createCareRecord({
         patientId: patientId,
         appointmentId: appointmentId || null,
+        invoiceId: invoiceId || null,
         channel: addCareForm.channel,
         status: addCareForm.status,
         careType: addCareForm.careType,
@@ -296,7 +306,7 @@ export default function CustomerCareDetailModal({
       setAddCareForm({
         channel: 'PHONE',
         status: 'COMPLETED',
-        careType: 'APPOINTMENT_REMINDER',
+        careType: invoiceId ? 'PAYMENT' : 'APPOINTMENT_REMINDER',
         notes: '',
         careTime: new Date().toISOString().substring(0, 16),
       });
@@ -324,6 +334,17 @@ export default function CustomerCareDetailModal({
   const aptStartIndex = (aptPage - 1) * APT_PAGE_SIZE;
   const aptEndIndex = aptStartIndex + APT_PAGE_SIZE;
   const currentAppointments = appointments.slice(aptStartIndex, aptEndIndex);
+
+  const invoicesList = detailData?.invoices || [];
+  const totalInvoicePages = Math.max(1, Math.ceil(invoicesList.length / INVOICE_PAGE_SIZE));
+  const invoiceStartIndex = (invoicePage - 1) * INVOICE_PAGE_SIZE;
+  const invoiceEndIndex = invoiceStartIndex + INVOICE_PAGE_SIZE;
+  const currentInvoices = invoicesList.slice(invoiceStartIndex, invoiceEndIndex);
+
+  const formatCurrency = (val) => {
+    if (val === null || val === undefined || isNaN(val)) return '0 đ';
+    return Number(val).toLocaleString('vi-VN') + ' đ';
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-2xs p-3 md:p-6 animate-in fade-in duration-150">
@@ -391,35 +412,146 @@ export default function CustomerCareDetailModal({
                   </div>
                 </div>
 
-                {/* PHẦN 2: Thông tin nhắc lịch hẹn */}
+                {/* PHẦN 2: THÔNG TIN NHẮC LỊCH HẸN & HÓA ĐƠN CÔNG NỢ */}
                 <div className="space-y-2">
-                  <h3 className="font-bold text-gray-800 text-xs">Thông tin nhắc lịch hẹn</h3>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                    <div>
-                      <span className="text-gray-500">Thời gian:</span>{' '}
-                      <span className="text-gray-800 font-medium">
-                        {detailData?.reminderInfo?.timeFormatted || '—'}
-                      </span>
+                  {detailData?.reminderInfo && detailData?.invoiceInfo ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {/* Card 1: Thông tin nhắc lịch hẹn */}
+                      <div className="bg-purple-50/40 border border-purple-100 rounded-lg p-3 space-y-1.5">
+                        <div className="flex items-center gap-1.5 font-bold text-gray-800 text-xs">
+                          <Calendar size={13} className="text-purple-600" />
+                          <span>Thông tin nhắc lịch hẹn</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
+                          <div>
+                            <span className="text-gray-500 text-[11px]">Thời gian:</span>{' '}
+                            <span className="text-gray-800 font-medium">{detailData.reminderInfo.timeFormatted || '—'}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 text-[11px]">Bác sĩ:</span>{' '}
+                            <span className="text-gray-800 font-medium">{detailData.reminderInfo.dentistName || '—'}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 text-[11px]">Trạng thái:</span>{' '}
+                            <span className="text-gray-800 font-medium">{detailData.reminderInfo.status || 'Chưa đến'}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 text-[11px]">Nội dung:</span>{' '}
+                            <span className="text-gray-800 font-medium truncate block" title={detailData.reminderInfo.content}>
+                              {detailData.reminderInfo.content || '—'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card 2: Thông tin hóa đơn & công nợ */}
+                      <div className="bg-emerald-50/40 border border-emerald-100 rounded-lg p-3 space-y-1.5">
+                        <div className="flex items-center justify-between font-bold text-gray-800 text-xs">
+                          <div className="flex items-center gap-1.5">
+                            <CreditCard size={13} className="text-emerald-600" />
+                            <span>Thông tin hóa đơn & công nợ</span>
+                          </div>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                            detailData.invoiceInfo.paymentStatus === 'PAID'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-rose-100 text-rose-700'
+                          }`}>
+                            {detailData.invoiceInfo.paymentStatusLabel}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-x-2 gap-y-1 text-xs">
+                          <div>
+                            <span className="text-gray-500 text-[11px]">Mã HĐ:</span>{' '}
+                            <span className="font-mono font-bold text-purple-700">{detailData.invoiceInfo.invoiceCode}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 text-[11px]">Tổng tiền:</span>{' '}
+                            <span className="font-bold text-gray-800">{formatCurrency(detailData.invoiceInfo.finalAmount)}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 text-[11px]">Đã trả:</span>{' '}
+                            <span className="font-semibold text-emerald-600">{formatCurrency(detailData.invoiceInfo.paidAmount)}</span>
+                          </div>
+                          <div className="col-span-2">
+                            <span className="text-gray-500 text-[11px]">Ngày lập:</span>{' '}
+                            <span className="text-gray-700 font-medium">{detailData.invoiceInfo.dateFormatted || '—'}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 text-[11px]">Còn nợ:</span>{' '}
+                            <span className={`font-bold ${Number(detailData.invoiceInfo.remainingAmount || 0) > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                              {formatCurrency(detailData.invoiceInfo.remainingAmount)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-gray-500">Bác sĩ:</span>{' '}
-                      <span className="text-gray-800 font-medium">
-                        {detailData?.reminderInfo?.dentistName || '—'}
-                      </span>
+                  ) : detailData?.invoiceInfo ? (
+                    <div className="bg-emerald-50/40 border border-emerald-100 rounded-lg p-3 space-y-1.5">
+                      <div className="flex items-center justify-between font-bold text-gray-800 text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <CreditCard size={13} className="text-emerald-600" />
+                          <span>Thông tin hóa đơn & công nợ hiện tại</span>
+                        </div>
+                        <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold ${
+                          detailData.invoiceInfo.paymentStatus === 'PAID'
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : 'bg-rose-100 text-rose-700'
+                        }`}>
+                          {detailData.invoiceInfo.paymentStatusLabel}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1.5 text-xs">
+                        <div>
+                          <span className="text-gray-500 text-[11px]">Mã HĐ:</span>{' '}
+                          <span className="font-mono font-bold text-purple-700">{detailData.invoiceInfo.invoiceCode}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500 text-[11px]">Ngày lập:</span>{' '}
+                          <span className="text-gray-800 font-medium">{detailData.invoiceInfo.dateFormatted || '—'}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500 text-[11px]">Tổng tiền:</span>{' '}
+                          <span className="font-bold text-gray-800">{formatCurrency(detailData.invoiceInfo.finalAmount)}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500 text-[11px]">Đã trả:</span>{' '}
+                          <span className="font-semibold text-emerald-600">{formatCurrency(detailData.invoiceInfo.paidAmount)}</span>
+                        </div>
+                        <div className="col-span-2">
+                          <span className="text-gray-500 text-[11px]">Thu ngân:</span>{' '}
+                          <span className="text-gray-700 font-medium">{detailData.invoiceInfo.employeeName || '—'}</span>
+                        </div>
+                        <div className="col-span-2">
+                          <span className="text-gray-500 text-[11px]">Số tiền còn nợ:</span>{' '}
+                          <span className={`font-bold text-sm ${Number(detailData.invoiceInfo.remainingAmount || 0) > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                            {formatCurrency(detailData.invoiceInfo.remainingAmount)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
+                  ) : (
                     <div>
-                      <span className="text-gray-500">Trạng thái:</span>{' '}
-                      <span className="text-gray-800 font-medium">
-                        {detailData?.reminderInfo?.status || 'Chưa đến'}
-                      </span>
+                      <h3 className="font-bold text-gray-800 text-xs mb-1.5">Thông tin nhắc lịch hẹn</h3>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                        <div>
+                          <span className="text-gray-500">Thời gian:</span>{' '}
+                          <span className="text-gray-800 font-medium">{detailData?.reminderInfo?.timeFormatted || '—'}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Bác sĩ:</span>{' '}
+                          <span className="text-gray-800 font-medium">{detailData?.reminderInfo?.dentistName || '—'}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Trạng thái:</span>{' '}
+                          <span className="text-gray-800 font-medium">{detailData?.reminderInfo?.status || 'Chưa đến'}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Nội dung:</span>{' '}
+                          <span className="text-gray-800 font-medium">{detailData?.reminderInfo?.content || '—'}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-gray-500">Nội dung:</span>{' '}
-                      <span className="text-gray-800 font-medium">
-                        {detailData?.reminderInfo?.content || '—'}
-                      </span>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
@@ -674,6 +806,124 @@ export default function CustomerCareDetailModal({
                   </button>
                 </div>
               </div>
+
+              {/* ===================== PHẦN 5: HÓA ĐƠN & CÔNG NỢ ===================== */}
+              <div className="space-y-2.5 pt-2 border-t border-gray-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CreditCard size={14} className="text-purple-600" />
+                    <h3 className="text-xs font-bold text-gray-800">
+                      Hóa đơn & Công nợ ({invoicesList.length})
+                    </h3>
+                  </div>
+                  {detailData?.totalPatientDebt !== undefined && (
+                    <div className="flex items-center gap-3 text-xs">
+                      <span className="text-gray-500">
+                        Đã thanh toán: <strong className="text-emerald-600">{formatCurrency(detailData.totalPatientPaid)}</strong>
+                      </span>
+                      <span className="text-gray-500">
+                        Tổng nợ: <strong className="text-rose-600">{formatCurrency(detailData.totalPatientDebt)}</strong>
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Table: Hóa đơn & công nợ */}
+                <div className="border border-gray-200 rounded-lg overflow-y-auto overflow-x-auto max-h-[220px] relative shadow-2xs custom-scrollbar">
+                  <table className="w-full min-w-[760px] text-left text-xs border-separate border-spacing-0">
+                    <thead className="sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs">
+                      <tr className="bg-slate-100 text-slate-700 border-b border-slate-200">
+                        <th className="sticky top-0 bg-slate-100 z-20 py-2.5 px-3 font-bold text-slate-700 w-28 whitespace-nowrap border-b border-slate-200">Mã hóa đơn</th>
+                        <th className="sticky top-0 bg-slate-100 z-20 py-2.5 px-3 font-bold text-slate-700 w-36 whitespace-nowrap border-b border-slate-200">Ngày lập</th>
+                        <th className="sticky top-0 bg-slate-100 z-20 py-2.5 px-3 font-bold text-slate-700 text-right w-28 whitespace-nowrap border-b border-slate-200">Tổng tiền</th>
+                        <th className="sticky top-0 bg-slate-100 z-20 py-2.5 px-3 font-bold text-slate-700 text-right w-28 whitespace-nowrap border-b border-slate-200">Đã trả</th>
+                        <th className="sticky top-0 bg-slate-100 z-20 py-2.5 px-3 font-bold text-slate-700 text-right w-28 whitespace-nowrap border-b border-slate-200">Còn nợ</th>
+                        <th className="sticky top-0 bg-slate-100 z-20 py-2.5 px-3 font-bold text-slate-700 text-center w-36 whitespace-nowrap border-b border-slate-200">Trạng thái HĐ</th>
+                        <th className="sticky top-0 bg-slate-100 z-20 py-2.5 px-3 font-bold text-slate-700 w-36 whitespace-nowrap border-b border-slate-200">Thu ngân</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white">
+                      {currentInvoices.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="py-6 text-center text-gray-400 italic border-b border-gray-100">
+                            Bệnh nhân chưa có hóa đơn thanh toán nào
+                          </td>
+                        </tr>
+                      ) : (
+                        currentInvoices.map((inv) => (
+                          <tr key={inv.id} className="hover:bg-purple-50/40 transition-colors">
+                            <td className="py-2.5 px-3 font-mono font-bold text-purple-700 whitespace-nowrap border-b border-gray-100">
+                              {inv.invoiceCode || '—'}
+                            </td>
+                            <td className="py-2.5 px-3 text-gray-700 whitespace-nowrap border-b border-gray-100">
+                              {inv.timeFormatted || '—'}
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-bold text-gray-800 whitespace-nowrap border-b border-gray-100">
+                              {formatCurrency(inv.finalAmount)}
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-semibold text-emerald-600 whitespace-nowrap border-b border-gray-100">
+                              {formatCurrency(inv.paidAmount)}
+                            </td>
+                            <td className="py-2.5 px-3 text-right whitespace-nowrap border-b border-gray-100">
+                              {Number(inv.remainingAmount || 0) > 0 ? (
+                                <span className="font-bold text-rose-600">{formatCurrency(inv.remainingAmount)}</span>
+                              ) : (
+                                <span className="font-medium text-emerald-600">0 đ</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3 text-center whitespace-nowrap border-b border-gray-100">
+                              {inv.paymentStatus === 'PAID' ? (
+                                <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                                  Đã thanh toán
+                                </span>
+                              ) : inv.paymentStatus === 'PARTIALLY_PAID' ? (
+                                <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">
+                                  Thanh toán 1 phần
+                                </span>
+                              ) : (
+                                <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-100 text-rose-700 border border-rose-200">
+                                  Chưa thanh toán
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3 text-gray-700 whitespace-nowrap border-b border-gray-100">
+                              {inv.employeeName || '—'}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination: Hóa đơn */}
+                {invoicesList.length > INVOICE_PAGE_SIZE && (
+                  <div className="flex items-center justify-end gap-2 text-xs text-gray-500 pt-1">
+                    <span>
+                      {`${invoiceStartIndex + 1}-${Math.min(invoiceEndIndex, invoicesList.length)} trên ${invoicesList.length} hóa đơn`}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={invoicePage <= 1}
+                      onClick={() => setInvoicePage((p) => p - 1)}
+                      className="w-6 h-6 rounded-md border border-gray-300 flex items-center justify-center hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      <ChevronLeft size={13} />
+                    </button>
+                    <span className="w-6 h-6 rounded-md bg-[#7c3aed] text-white flex items-center justify-center text-xs font-semibold">
+                      {invoicePage}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={invoicePage >= totalInvoicePages}
+                      onClick={() => setInvoicePage((p) => p + 1)}
+                      className="w-6 h-6 rounded-md border border-gray-300 flex items-center justify-center hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      <ChevronRight size={13} />
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>
@@ -695,6 +945,20 @@ export default function CustomerCareDetailModal({
             </div>
 
             <form onSubmit={handleSubmitCare} className="mt-4 space-y-3.5 text-xs">
+              <div>
+                <label className="block text-gray-700 font-medium mb-1">Loại chăm sóc</label>
+                <select
+                  value={addCareForm.careType}
+                  onChange={(e) => setAddCareForm({ ...addCareForm, careType: e.target.value })}
+                  className="w-full border border-gray-300 rounded px-2.5 py-1.5 focus:outline-purple-500"
+                >
+                  <option value="APPOINTMENT_REMINDER">Nhắc lịch hẹn</option>
+                  <option value="PAYMENT">Thanh toán / Công nợ</option>
+                  <option value="BIRTHDAY">Ngày sinh nhật</option>
+                  <option value="GENERAL_CARE">Chăm sóc tổng hợp</option>
+                </select>
+              </div>
+
               <div>
                 <label className="block text-gray-700 font-medium mb-1">Kênh chăm sóc</label>
                 <select

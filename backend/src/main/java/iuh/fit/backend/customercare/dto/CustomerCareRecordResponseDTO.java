@@ -27,6 +27,8 @@ public class CustomerCareRecordResponseDTO {
     private String statusLabel;
     private LocalDateTime careTime;
     private String notes;
+    private UUID invoiceId;
+    private String invoiceCode;
     private String createdByName;
     private LocalDateTime createdAt;
 }

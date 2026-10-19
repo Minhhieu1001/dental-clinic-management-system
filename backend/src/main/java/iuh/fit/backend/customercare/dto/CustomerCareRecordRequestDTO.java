@@ -17,6 +17,7 @@ public class CustomerCareRecordRequestDTO {
     private UUID appointmentId;
     private UUID treatmentPlanId;
     private UUID prescriptionId;
+    private UUID invoiceId;
     private UUID employeeId;
     private UUID dentistId;
     private String careType;

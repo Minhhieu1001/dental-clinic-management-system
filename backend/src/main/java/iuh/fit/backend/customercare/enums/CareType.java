@@ -3,7 +3,8 @@ package iuh.fit.backend.customercare.enums;
 public enum CareType {
     APPOINTMENT_REMINDER("Nhắc lịch hẹn"),
     BIRTHDAY("Ngày sinh nhật"),
-    GENERAL_CARE("Chăm sóc tổng hợp");
+    GENERAL_CARE("Chăm sóc tổng hợp"),
+    PAYMENT("Thanh toán");
 
     private final String label;
 

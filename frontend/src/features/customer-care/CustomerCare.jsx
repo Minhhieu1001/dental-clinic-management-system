@@ -37,10 +37,17 @@ import {
   Mail,
   Send,
   Check,
+  Receipt,
+  Copy,
+  FileText,
+  CheckCheck,
+  QrCode,
+  ExternalLink,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 import customerCareService from '../../services/customerCare.service';
+import { getInvoiceById } from '../../services/invoice.service';
 import CustomerCareDetailModal from './CustomerCareDetailModal';
 
 const TABS = [
@@ -48,6 +55,7 @@ const TABS = [
   { id: 'GENERAL', label: 'Chăm sóc tổng hợp' },
   { id: 'APPOINTMENT', label: 'Nhắc lịch hẹn' },
   { id: 'BIRTHDAY', label: 'Ngày sinh nhật' },
+  { id: 'PAYMENT', label: 'Thanh toán' },
 ];
 
 export default function CustomerCare() {
@@ -105,6 +113,7 @@ export default function CustomerCare() {
   const [appointmentList, setAppointmentList] = useState([]);
   const [birthdayList, setBirthdayList] = useState([]);
   const [generalCareList, setGeneralCareList] = useState([]);
+  const [paymentList, setPaymentList] = useState([]);
 
   // Clinical Quick Filters for Each Tab
   const [patientGroupQuickFilter, setPatientGroupQuickFilter] = useState('ALL');
@@ -113,6 +122,9 @@ export default function CustomerCare() {
   const [aptTypeFilter, setAptTypeFilter] = useState('ALL'); // 'ALL' | 'REGULAR' | 'FOLLOW_UP'
   const [bdayQuickFilter, setBdayQuickFilter] = useState('ALL');
   const [bdayCustomerGroupFilter, setBdayCustomerGroupFilter] = useState('ALL');
+  const [paymentQuickFilter, setPaymentQuickFilter] = useState('ALL');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState('ALL');
+  const [paymentCareStatusFilter, setPaymentCareStatusFilter] = useState('ALL');
 
   // Unified Table Pagination
   const [pageSize, setPageSize] = useState(10);
@@ -120,6 +132,7 @@ export default function CustomerCare() {
   const [pageGeneral, setPageGeneral] = useState(1);
   const [pageAppointment, setPageAppointment] = useState(1);
   const [pageBirthday, setPageBirthday] = useState(1);
+  const [pagePayment, setPagePayment] = useState(1);
 
   // Expanded notes tracking for table rows
   const [expandedNoteIds, setExpandedNoteIds] = useState(new Set());
@@ -161,11 +174,21 @@ export default function CustomerCare() {
     patientCode: '',
   });
 
-  // Modal State: "CHI TIẾT CHĂM SÓC KHÁCH HÀNG" (i) - Đầy đủ 4 phần chuẩn ảnh
+  // Modal State: "CHI TIẾT CHĂM SÓC KHÁCH HÀNG" (i) - Đầy đủ 5 phần chuẩn ảnh
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedDetailPatientId, setSelectedDetailPatientId] = useState(null);
   const [selectedDetailAppointmentId, setSelectedDetailAppointmentId] = useState(null);
+  const [selectedDetailInvoiceId, setSelectedDetailInvoiceId] = useState(null);
   const [selectedDetailItem, setSelectedDetailItem] = useState(null);
+
+  // Modal State: "XEM CHI TIẾT HÓA ĐƠN & GIAO DỊCH" (Receipt icon)
+  const [quickInvoiceModal, setQuickInvoiceModal] = useState({
+    isOpen: false,
+    loading: false,
+    invoice: null,
+    contextCareItem: null,
+    copiedBank: false,
+  });
 
   // Modal State: "GỬI GMAIL TRỰC TIẾP CHO BỆNH NHÂN"
   const [isDirectEmailModalOpen, setIsDirectEmailModalOpen] = useState(false);
@@ -201,6 +224,8 @@ export default function CustomerCare() {
     dentistFilter,
     employeeFilter,
     careTypeFilter,
+    paymentStatusFilter,
+    paymentCareStatusFilter,
   ]);
 
   const loadFilterOptions = async () => {
@@ -285,6 +310,15 @@ export default function CustomerCare() {
           careStatus: careStatusFilter !== 'ALL' ? careStatusFilter : undefined,
         });
         setGeneralCareList(res.data || []);
+      } else if (activeTab === 'PAYMENT') {
+        const res = await customerCareService.getPaymentCareList({
+          search: searchQuery ? searchQuery.trim() : undefined,
+          startDate: startDateFilter || undefined,
+          endDate: endDateFilter || undefined,
+          paymentStatus: paymentStatusFilter !== 'ALL' ? paymentStatusFilter : undefined,
+          careStatus: paymentCareStatusFilter !== 'ALL' ? paymentCareStatusFilter : (careStatusFilter !== 'ALL' ? careStatusFilter : undefined),
+        });
+        setPaymentList(res.data || []);
       }
     } catch (err) {
       console.error('Failed to load tab data', err);
@@ -344,8 +378,12 @@ export default function CustomerCare() {
     setAptQuickFilter('ALL');
     setBdayQuickFilter('ALL');
     setBdayCustomerGroupFilter('ALL');
+    setPaymentQuickFilter('ALL');
+    setPaymentStatusFilter('ALL');
+    setPaymentCareStatusFilter('ALL');
     setPageAppointment(1);
     setPageBirthday(1);
+    setPagePayment(1);
     toast.success('Đã làm mới bộ lọc');
   };
 
@@ -363,6 +401,9 @@ export default function CustomerCare() {
     } else if (type === 'BIRTHDAY') {
       careTypeEnum = 'BIRTHDAY';
       defaultNotes = `Chúc mừng sinh nhật khách hàng ${item?.patientName || item?.fullName || ''}. Tặng voucher ưu đãi 20% dịch vụ trong tháng sinh nhật.`;
+    } else if (type === 'PAYMENT') {
+      careTypeEnum = 'PAYMENT';
+      defaultNotes = item?.suggestedTemplate || `Chăm sóc thanh toán hóa đơn ${item?.invoiceCode || ''} cho khách hàng ${item?.patientName || ''}.`;
     }
 
     setModalCareItem({ ...item, contextType: type });
@@ -373,6 +414,7 @@ export default function CustomerCare() {
       status: 'COMPLETED',
       careType: careTypeEnum,
       notes: defaultNotes,
+      invoiceId: item?.invoiceId || '',
       patientId: item?.patientId || '',
       patientName: item?.patientName || item?.fullName || '',
       patientCode: item?.patientCode || '',
@@ -411,6 +453,7 @@ export default function CustomerCare() {
       const payload = {
         patientId: modalForm.patientId || undefined,
         appointmentId: modalCareItem?.appointmentId || undefined,
+        invoiceId: modalCareItem?.invoiceId || modalForm.invoiceId || undefined,
         careType: modalForm.careType,
         channel: modalForm.channel,
         status: modalForm.status,
@@ -455,17 +498,38 @@ export default function CustomerCare() {
       defaultMsg = `Kính gửi Quý khách ${pName},\n\nCrown Dental xin nhắc Quý khách về lịch hẹn khám tại phòng khám. Quý khách vui lòng đến trước 10 phút để được phục vụ tốt nhất. Nếu cần hỗ trợ dời lịch, xin vui lòng phản hồi email này hoặc liên hệ Hotline: 0343632524.`;
     } else if (item?.careType === 'BIRTHDAY' || item?.contextType === 'BIRTHDAY' || item?.birthdayFormatted || item?.dateOfBirth) {
       defaultSubject = `🎂 [Crown Dental] Chúc mừng sinh nhật Quý khách ${pName}! 🎉`;
-      defaultMsg = `Kính gửi Quý khách ${pName},\n\nNhân dịp sinh nhật, Nha Khoa Quốc Tế Crown Dental xin gửi đến Quý khách lời chúc mừng sinh nhật nồng nhiệt và chân thành nhất! Chúc Quý khách một tuổi mới luôn dồi dào sức khỏe, tràn đầy niềm vui, hạnh phúc và thành công rực rỡ!\n\nNhân dịp đặc biệt này, Crown Dental xin gửi tặng Quý khách món quà tri ân đặc biệt:\n🎁 Voucher giảm 20% toàn bộ dịch vụ chăm sóc & thẩm mỹ răng miệng áp dụng trong suốt tháng sinh nhật.\n\nKính chúc Quý khách luôn có một nụ cười rạng ngời và tự tin!\n\nTrân trọng,\nNha Khoa Quốc Tế Crown Dental\nHotline: 0343632524 | Website: crowndental.vn`;
+      defaultMsg = `Kính gửi Quý khách ${pName},\n\nNhân dịp sinh nhật, Nha Khoa Quốc Tế Crown Dental xin gửi đến Quý khách lời chúc mừng sinh nhật nồng nhiệt và chân thành nhất! Chúc Quý khách một tuổi mới luôn dồi dào sức khỏe, tràn đầy niềm vui, hạnh phúc và thành công rực rỡ!\n\nNhân dịp đặc biệt này, Crown Dental xin gửi tặng Quý khách món quà tri ấn đặc biệt:\n🎁 Voucher giảm 20% toàn bộ dịch vụ chăm sóc & thẩm mỹ răng miệng áp dụng trong suốt tháng sinh nhật.\n\nKính chúc Quý khách luôn có một nụ cười rạng ngời và tự tin!\n\nTrân trọng,\nNha Khoa Quốc Tế Crown Dental\nHotline: 0343632524 | Website: crowndental.vn`;
+    } else if (item?.careType === 'PAYMENT' || item?.contextType === 'PAYMENT' || item?.invoiceId) {
+      const code = item?.invoiceCode || 'Hóa đơn';
+      const finalAmt = (item?.finalAmount != null) ? Number(item.finalAmount).toLocaleString('vi-VN') + ' đ' : '0 đ';
+      const paidAmt = (item?.paidAmount != null) ? Number(item.paidAmount).toLocaleString('vi-VN') + ' đ' : '0 đ';
+      const remainAmt = (item?.remainingAmount != null) ? Number(item.remainingAmount).toLocaleString('vi-VN') + ' đ' : '0 đ';
+
+      if (item?.paymentStatus === 'PAID') {
+        defaultSubject = `[Crown Dental] Thư cảm ơn Quý khách ${pName} đã hoàn tất thanh toán (${code})`;
+        defaultMsg = `Kính gửi Quý khách ${pName},\n\nNha Khoa Quốc Tế Crown Dental trân trọng gửi lời cảm ơn chân thành đến Quý khách đã tin tưởng sử dụng dịch vụ và hoàn tất thanh toán hóa đơn ${code} (Tổng chi phí: ${finalAmt}).\n\nToàn bộ dữ liệu hồ sơ điều trị của Quý khách đã được lưu trữ điện tử và kích hoạt chính sách bảo hành chính hãng tại phòng khám. Kính chúc Quý khách luôn có một nụ cười khỏe đẹp và rạng rỡ tự tin!\n\nNếu Quý khách cần hỗ trợ thêm thông tin hoặc tư vấn chăm sóc răng miệng định kỳ, xin vui lòng liên hệ Hotline: 0343632524.\n\nTrân trọng,\nNha Khoa Quốc Tế Crown Dental\nHotline: 0343632524 | Website: crowndental.vn`;
+      } else {
+        defaultSubject = `[Crown Dental] Thông báo công nợ dịch vụ hóa đơn ${code} - Quý khách ${pName}`;
+        defaultMsg = `Kính gửi Quý khách ${pName},\n\nNha Khoa Quốc Tế Crown Dental xin gửi thông báo chi tiết tình trạng thanh toán dịch vụ điều trị của Quý khách:\n• Mã hóa đơn: ${code}\n• Tổng chi phí điều trị: ${finalAmt}\n• Số tiền đã thanh toán: ${paidAmt}\n• Số tiền còn nợ cần thanh toán: ${remainAmt}\n\nQuý khách có thể thanh toán trực tiếp tại quầy thu ngân phòng khám hoặc chuyển khoản theo thông tin chính thức sau:\n- Ngân hàng: MB Bank (Ngân Hàng Quân Đội)\n- Số tài khoản: 0343632524\n- Chủ tài khoản: NHA KHOA QUOC TE CROWN DENTAL\n- Nội dung chuyển khoản: ${code} - ${pName}\n\nXin trân trọng cảm ơn Quý khách!\nHotline hỗ trợ: 0343632524`;
+      }
     } else if (item?.notes) {
       defaultMsg = item.notes;
     }
 
     const resolvedCareType = (item?.careType === 'BIRTHDAY' || item?.contextType === 'BIRTHDAY' || item?.birthdayFormatted || item?.dateOfBirth)
       ? 'BIRTHDAY'
-      : (item?.careType || 'GENERAL_CARE');
+      : (item?.careType === 'PAYMENT' || item?.contextType === 'PAYMENT' || item?.invoiceId)
+        ? 'PAYMENT'
+        : (item?.careType || 'GENERAL_CARE');
 
     setDirectEmailForm({
       patientId: pId,
+      invoiceId: item?.invoiceId || null,
+      invoiceCode: item?.invoiceCode || '',
+      finalAmount: item?.finalAmount || 0,
+      paidAmount: item?.paidAmount || 0,
+      remainingAmount: item?.remainingAmount || 0,
+      paymentStatus: item?.paymentStatus || '',
       patientName: pName,
       patientCode: pCode,
       phone: phone,
@@ -493,6 +557,7 @@ export default function CustomerCare() {
     try {
       await customerCareService.sendDirectCareEmail({
         patientId: directEmailForm.patientId,
+        invoiceId: directEmailForm.invoiceId || undefined,
         email: directEmailForm.email,
         subject: directEmailForm.subject,
         message: directEmailForm.message,
@@ -512,7 +577,7 @@ export default function CustomerCare() {
     }
   };
 
-  // Open "CHI TIẾT CHĂM SÓC KHÁCH HÀNG" Modal (i) -> Đầy đủ 4 phần chuẩn ảnh từ CSDL thật
+  // Open "CHI TIẾT CHĂM SÓC KHÁCH HÀNG" Modal (i) -> Đầy đủ 5 phần chuẩn ảnh từ CSDL thật
   const handleOpenHistory = (item) => {
     const pId = item?.patientId || item?.id;
     if (!pId) {
@@ -520,10 +585,84 @@ export default function CustomerCare() {
       return;
     }
     const aptId = item?.appointmentId || (item?.appointmentTime ? item?.id : null);
+    const invId = item?.invoiceId || null;
     setSelectedDetailPatientId(pId);
     setSelectedDetailAppointmentId(aptId);
+    setSelectedDetailInvoiceId(invId);
     setSelectedDetailItem(item);
     setIsDetailModalOpen(true);
+  };
+
+  // Open "XEM NHANH CHI TIẾT HÓA ĐƠN & GIAO DỊCH" Modal (Receipt Icon)
+  const handleOpenQuickInvoice = async (item) => {
+    if (!item?.invoiceId) {
+      toast.error('Hóa đơn không tồn tại ID hợp lệ');
+      return;
+    }
+    setQuickInvoiceModal({
+      isOpen: true,
+      loading: true,
+      invoice: null,
+      contextCareItem: item,
+      copiedBank: false,
+    });
+    try {
+      const invData = await getInvoiceById(item.invoiceId);
+      setQuickInvoiceModal({
+        isOpen: true,
+        loading: false,
+        invoice: invData,
+        contextCareItem: item,
+        copiedBank: false,
+      });
+    } catch (err) {
+      console.error('Lỗi lấy chi tiết hóa đơn:', err);
+      toast.error('Không thể tải chi tiết hóa đơn. Vui lòng thử lại.');
+      setQuickInvoiceModal((prev) => ({ ...prev, loading: false }));
+    }
+  };
+
+  // Trạng thái phân vùng sao chép (STK, SYNTAX, AMOUNT, ALL)
+  const [copiedBankField, setCopiedBankField] = useState(null);
+
+  // Sao chép từng mục riêng lẻ kèm visual feedback
+  const handleCopyBankField = (text, fieldKey, successLabel) => {
+    if (!text && text !== 0) return;
+    navigator.clipboard?.writeText(String(text).trim());
+    setCopiedBankField(fieldKey);
+    toast.success(successLabel || 'Đã sao chép vào bộ nhớ tạm!');
+    setTimeout(() => {
+      setCopiedBankField((prev) => (prev === fieldKey ? null : prev));
+    }, 2200);
+  };
+
+  // Helper tạo URL ảnh VietQR chuẩn Napas 24/7 (MB Bank)
+  const getVietQrImageUrl = (amount, invCode, pName) => {
+    const rawAmt = Math.round(Number(amount) || 0);
+    const content = `${invCode || 'HD'} ${pName || ''}`.trim();
+    const encodedContent = encodeURIComponent(content);
+    return `https://img.vietqr.io/image/MB-0343632524-compact2.png?amount=${rawAmt}&addInfo=${encodedContent}&accountName=CROWN%20DENTAL`;
+  };
+
+  // Sao chép thông tin STK MB Bank vào clipboard (hỗ trợ cả sao chép tổng hợp)
+  const handleCopyBankInfo = (invCode, pName, amount) => {
+    const amtStr = Number(amount || 0) > 0 ? `${Number(amount).toLocaleString('vi-VN')} đ` : '';
+    const text = [
+      '--- THÔNG TIN CHUYỂN KHOẢN NHA KHOA CROWN DENTAL ---',
+      '• Ngân hàng: MB Bank (Ngân Hàng Quân Đội)',
+      '• Số tài khoản: 0343632524',
+      '• Chủ tài khoản: CROWN DENTAL',
+      amtStr ? `• Số tiền: ${amtStr}` : null,
+      `• Cú pháp nội dung: ${invCode || ''} - ${pName || ''}`,
+      'Quý khách vui lòng chuyển khoản đúng cú pháp để hệ thống tự động xác nhận hóa đơn.',
+      '---------------------------------------------------'
+    ].filter(Boolean).join('\n');
+
+    handleCopyBankField(text, 'ALL', 'Đã sao chép toàn bộ thông tin tài khoản MB Bank!');
+    setQuickInvoiceModal((prev) => ({ ...prev, copiedBank: true }));
+    setTimeout(() => {
+      setQuickInvoiceModal((prev) => ({ ...prev, copiedBank: false }));
+    }, 2500);
   };
 
   // Export Table to CSV
@@ -610,6 +749,40 @@ export default function CustomerCare() {
         formatDateTime(c.careTime),
         c.createdByName || '',
         `"${(c.notes || '').replace(/"/g, '""')}"`,
+      ]);
+    } else if (activeTab === 'PAYMENT') {
+      filename = `cham_soc_thanh_toan_${new Date().toISOString().split('T')[0]}.csv`;
+      headers = [
+        'Mã hồ sơ',
+        'Khách hàng',
+        'Điện thoại',
+        'Nhóm khách hàng',
+        'Mã hóa đơn',
+        'Ngày lập',
+        'Tổng tiền (VNĐ)',
+        'Đã thanh toán (VNĐ)',
+        'Còn nợ (VNĐ)',
+        'Trạng thái hóa đơn',
+        'Trạng thái CSKH',
+        'Thời gian CSKH',
+        'Kênh CSKH',
+        'Nội dung CSKH',
+      ];
+      rows = filteredPaymentList.map((p) => [
+        p.patientCode || '',
+        `"${p.patientName || ''}"`,
+        p.phone || '',
+        p.customerGroup || '',
+        p.invoiceCode || '',
+        p.invoiceDate ? formatDate(p.invoiceDate) : '',
+        p.finalAmount ?? 0,
+        p.paidAmount ?? 0,
+        p.remainingAmount ?? 0,
+        p.paymentStatusLabel || p.paymentStatus || '',
+        p.careStatus || 'Chưa chăm sóc',
+        p.careTime ? formatDateTime(p.careTime) : '',
+        p.careChannel || '',
+        `"${(p.careNotes || '').replace(/"/g, '""')}"`,
       ]);
     } else {
       headers = [
@@ -754,6 +927,14 @@ export default function CustomerCare() {
         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-pink-50 text-pink-700 border border-pink-200">
           <Gift size={11} className="text-pink-500" />
           {label || 'Ngày sinh nhật'}
+        </span>
+      );
+    }
+    if (t === 'PAYMENT' || (label || '').toLowerCase().includes('thanh toán')) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <CreditCard size={11} className="text-emerald-500" />
+          {label || 'Thanh toán'}
         </span>
       );
     }
@@ -978,6 +1159,8 @@ export default function CustomerCare() {
         return 'Nhắc lịch hẹn';
       case 'BIRTHDAY':
         return 'Ngày sinh nhật';
+      case 'PAYMENT':
+        return 'Thanh toán';
       case 'GENERAL_CARE':
       default:
         return 'Chăm sóc tổng hợp';
@@ -1449,6 +1632,73 @@ export default function CustomerCare() {
   const weekBdayCount = useMemo(() => birthdayList.filter((b) => b.daysUntil >= 0 && b.daysUntil <= 7).length, [birthdayList]);
   const monthBdayCount = useMemo(() => birthdayList.filter((b) => b.isThisMonth).length, [birthdayList]);
   const unattendedBdayCount = useMemo(() => birthdayList.filter((b) => b.careStatus === 'Chưa chăm sóc').length, [birthdayList]);
+
+  // Currency Formatter
+  const formatCurrency = (val) => {
+    if (val === null || val === undefined || isNaN(val)) return '0 đ';
+    return Number(val).toLocaleString('vi-VN') + ' đ';
+  };
+
+  // Tab 5 Payment Computations
+  const filteredPaymentList = useMemo(() => {
+    return paymentList.filter((item) => {
+      if (paymentQuickFilter === 'PAID' && item.paymentStatus !== 'PAID') return false;
+      if (paymentQuickFilter === 'PARTIALLY_PAID' && item.paymentStatus !== 'PARTIALLY_PAID') return false;
+      if (paymentQuickFilter === 'UNPAID' && item.paymentStatus !== 'UNPAID') return false;
+      if (paymentQuickFilter === 'UNATTENDED' && item.careStatus !== 'Chưa chăm sóc') return false;
+
+      if (paymentStatusFilter !== 'ALL' && item.paymentStatus !== paymentStatusFilter) return false;
+      if (paymentCareStatusFilter !== 'ALL' && item.careStatus !== paymentCareStatusFilter) return false;
+
+      if (searchQuery && searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const match =
+          (item.patientName && item.patientName.toLowerCase().includes(q)) ||
+          (item.phone && item.phone.includes(q)) ||
+          (item.patientCode && item.patientCode.toLowerCase().includes(q)) ||
+          (item.invoiceCode && item.invoiceCode.toLowerCase().includes(q));
+        if (!match) return false;
+      }
+
+      if (startDateFilter && item.invoiceDate) {
+        const start = new Date(startDateFilter);
+        const invDate = new Date(item.invoiceDate);
+        if (invDate < start) return false;
+      }
+      if (endDateFilter && item.invoiceDate) {
+        const end = new Date(endDateFilter);
+        end.setHours(23, 59, 59, 999);
+        const invDate = new Date(item.invoiceDate);
+        if (invDate > end) return false;
+      }
+
+      return true;
+    });
+  }, [paymentList, paymentQuickFilter, paymentStatusFilter, paymentCareStatusFilter, searchQuery, startDateFilter, endDateFilter]);
+
+  const paginatedPayments = useMemo(() => {
+    const start = (pagePayment - 1) * pageSize;
+    return filteredPaymentList.slice(start, start + pageSize);
+  }, [filteredPaymentList, pagePayment, pageSize]);
+
+  const paidInvoiceCount = useMemo(() => paymentList.filter((p) => p.paymentStatus === 'PAID').length, [paymentList]);
+  const debtInvoiceCount = useMemo(() => paymentList.filter((p) => p.paymentStatus === 'PARTIALLY_PAID').length, [paymentList]);
+  const unpaidInvoiceCount = useMemo(() => paymentList.filter((p) => p.paymentStatus === 'UNPAID').length, [paymentList]);
+  const unattendedPaymentCount = useMemo(() => paymentList.filter((p) => p.careStatus === 'Chưa chăm sóc').length, [paymentList]);
+  const totalPaymentRevenue = useMemo(() => paymentList.reduce((sum, p) => sum + Number(p.finalAmount || 0), 0), [paymentList]);
+  const totalPaidSum = useMemo(() => paymentList.reduce((sum, p) => sum + Number(p.paidAmount || 0), 0), [paymentList]);
+  const totalDebtSum = useMemo(() => paymentList.reduce((sum, p) => sum + Number(p.remainingAmount || 0), 0), [paymentList]);
+
+  // Tab 5 Active Filter Count
+  const activePaymentFilterCount = useMemo(() => {
+    let count = 0;
+    if (searchQuery && searchQuery.trim()) count++;
+    if (startDateFilter || endDateFilter) count++;
+    if (paymentQuickFilter !== 'ALL') count++;
+    if (paymentStatusFilter !== 'ALL') count++;
+    if (paymentCareStatusFilter !== 'ALL') count++;
+    return count;
+  }, [searchQuery, startDateFilter, endDateFilter, paymentQuickFilter, paymentStatusFilter, paymentCareStatusFilter]);
 
   return (
     <div className="w-full bg-[#f8f9fa] text-gray-800">
@@ -2214,6 +2464,7 @@ export default function CustomerCare() {
                   <option value="ALL">Tất cả loại chăm sóc</option>
                   <option value="APPOINTMENT_REMINDER">Nhắc lịch hẹn</option>
                   <option value="BIRTHDAY">Ngày sinh nhật</option>
+                  <option value="PAYMENT">Thanh toán</option>
                   <option value="GENERAL_CARE">Chăm sóc tổng hợp</option>
                 </select>
 
@@ -3166,6 +3417,483 @@ export default function CustomerCare() {
             </div>
           </div>
         )}
+
+        {/* ===================== TAB 5: THANH TOÁN (PAYMENT CRM) ===================== */}
+        {activeTab === 'PAYMENT' && (
+          <div className="space-y-4">
+            {/* Unified 3-Tier Professional Toolbar for Tab 5 */}
+            <div className="bg-white rounded-lg border border-gray-200 p-3 shadow-2xs space-y-2.5">
+              {/* Tier 1: Quick Pills (Left) + Counter & Action (Right) */}
+              <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2.5 border-b border-gray-100">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 mr-2">
+                    <CreditCard size={15} className="text-purple-600" />
+                    <span className="text-xs font-bold text-gray-700">Chăm sóc thanh toán:</span>
+                  </div>
+                  {[
+                    { id: 'ALL', label: 'Tất cả' },
+                    { id: 'PAID', label: 'Đã thanh toán (Cảm ơn)' },
+                    { id: 'PARTIALLY_PAID', label: 'Còn nợ (Nhắc nợ)' },
+                    { id: 'UNPAID', label: 'Chưa thanh toán' },
+                    { id: 'UNATTENDED', label: 'Chưa chăm sóc' },
+                  ].map((pill) => (
+                    <button
+                      key={pill.id}
+                      type="button"
+                      onClick={() => {
+                        setPaymentQuickFilter(pill.id);
+                        setPagePayment(1);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
+                        paymentQuickFilter === pill.id
+                          ? 'bg-[#7c3aed] text-white shadow-xs font-semibold'
+                          : 'bg-gray-100/80 text-gray-600 hover:bg-gray-200/80 font-medium'
+                      }`}
+                    >
+                      {pill.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xs text-gray-500 flex items-center gap-1 mr-1">
+                    <Eye size={13} className="text-gray-400" />
+                    Hiển thị <strong>{filteredPaymentList.length}</strong>/{paymentList.length} hóa đơn
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleExportCSV}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <Download size={13} className="text-purple-600" />
+                    Export
+                  </button>
+                </div>
+              </div>
+
+              {/* Tier 2: Search Query & Date Range Picker */}
+              <div className="grid grid-cols-12 gap-2.5">
+                {/* Search box (7 cols on md) */}
+                <div className="col-span-12 md:col-span-7 relative">
+                  <Search size={14} className="absolute left-3 top-2.5 text-gray-400" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setPagePayment(1);
+                    }}
+                    placeholder="Tìm theo mã HĐ, mã hồ sơ, họ tên khách hàng, số điện thoại..."
+                    className="w-full text-xs pl-8 pr-7 py-2 border border-gray-300 rounded-lg focus:outline-hidden focus:border-purple-500 bg-white placeholder:text-gray-400 shadow-2xs"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-600 cursor-pointer"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Invoice Date Range (5 cols on md) */}
+                <div className="col-span-12 md:col-span-5 flex items-center gap-1.5 border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white text-xs text-gray-500 shadow-2xs">
+                  <Calendar size={13} className="text-purple-600 shrink-0" />
+                  <span className="text-[11px] font-medium text-gray-500 whitespace-nowrap">Hóa đơn từ:</span>
+                  <input
+                    type="date"
+                    value={startDateFilter}
+                    onChange={(e) => {
+                      setStartDateFilter(e.target.value);
+                      setPagePayment(1);
+                    }}
+                    className="w-full outline-hidden text-xs text-gray-700 bg-transparent cursor-pointer min-w-0"
+                  />
+                  <span className="text-gray-400 shrink-0">~</span>
+                  <input
+                    type="date"
+                    value={endDateFilter}
+                    onChange={(e) => {
+                      setEndDateFilter(e.target.value);
+                      setPagePayment(1);
+                    }}
+                    className="w-full outline-hidden text-xs text-gray-700 bg-transparent cursor-pointer min-w-0"
+                  />
+                  {(startDateFilter || endDateFilter) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStartDateFilter('');
+                        setEndDateFilter('');
+                      }}
+                      className="text-gray-400 hover:text-gray-600 shrink-0 cursor-pointer"
+                      title="Xóa khoảng ngày"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Tier 3: Specialized Dropdowns & Reset Button */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-gray-100">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-1 text-xs text-gray-500 mr-1">
+                    <Filter size={13} className="text-purple-600" />
+                    <span className="font-semibold text-gray-700">Bộ lọc:</span>
+                  </div>
+
+                  {/* Filter 1: Trạng thái hóa đơn */}
+                  <select
+                    value={paymentStatusFilter}
+                    onChange={(e) => {
+                      setPaymentStatusFilter(e.target.value);
+                      setPagePayment(1);
+                    }}
+                    className={`text-xs border rounded-lg px-2.5 py-1.5 cursor-pointer transition-all ${
+                      paymentStatusFilter !== 'ALL'
+                        ? 'border-purple-400 bg-purple-50/60 text-purple-900 font-semibold shadow-2xs'
+                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <option value="ALL">Trạng thái HĐ: Tất cả</option>
+                    <option value="PAID">Đã thanh toán đủ</option>
+                    <option value="PARTIALLY_PAID">Thanh toán một phần (còn nợ)</option>
+                    <option value="UNPAID">Chưa thanh toán</option>
+                  </select>
+
+                  {/* Filter 2: Trạng thái chăm sóc */}
+                  <select
+                    value={paymentCareStatusFilter}
+                    onChange={(e) => {
+                      setPaymentCareStatusFilter(e.target.value);
+                      setPagePayment(1);
+                    }}
+                    className={`text-xs border rounded-lg px-2.5 py-1.5 cursor-pointer transition-all ${
+                      paymentCareStatusFilter !== 'ALL'
+                        ? 'border-purple-400 bg-purple-50/60 text-purple-900 font-semibold shadow-2xs'
+                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <option value="ALL">Trạng thái CSKH: Tất cả</option>
+                    <option value="Chưa chăm sóc">Chưa chăm sóc</option>
+                    <option value="Hoàn thành">Hoàn thành</option>
+                    <option value="Cần chăm sóc lại">Cần chăm sóc lại</option>
+                    <option value="Không nghe máy">Không nghe máy / Chưa liên hệ</option>
+                  </select>
+                </div>
+
+                {/* Reset / Clear Active Filters */}
+                <div className="flex items-center gap-2">
+                  {activePaymentFilterCount > 0 ? (
+                    <button
+                      type="button"
+                      onClick={handleResetTabFilters}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer shadow-2xs"
+                      title="Xóa tất cả các bộ lọc đang chọn"
+                    >
+                      <RotateCcw size={12} className="text-rose-500" />
+                      <span>Xóa bộ lọc ({activePaymentFilterCount})</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleResetTabFilters}
+                      title="Đặt lại về mặc định"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition-colors cursor-pointer text-xs"
+                    >
+                      <RotateCcw size={12} />
+                      <span>Đặt lại</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 4 Professional KPI Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="bg-white p-3.5 rounded-lg border border-gray-200 shadow-2xs flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider">Tổng hóa đơn</p>
+                  <p className="text-xl font-bold text-gray-800 mt-0.5">{paymentList.length}</p>
+                  <p className="text-[11px] text-gray-500 mt-0.5">
+                    Tổng tiền: <span className="font-semibold text-gray-700">{formatCurrency(totalPaymentRevenue)}</span>
+                  </p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                  <CreditCard size={20} />
+                </div>
+              </div>
+
+              <div className="bg-white p-3.5 rounded-lg border border-gray-200 shadow-2xs flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider">Đã thanh toán (Cảm ơn)</p>
+                  <p className="text-xl font-bold text-emerald-600 mt-0.5">{paidInvoiceCount}</p>
+                  <p className="text-[11px] text-gray-500 mt-0.5">
+                    Đã thu: <span className="font-semibold text-emerald-600">{formatCurrency(totalPaidSum)}</span>
+                  </p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                  <CheckCircle2 size={20} />
+                </div>
+              </div>
+
+              <div className="bg-white p-3.5 rounded-lg border border-gray-200 shadow-2xs flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider">Còn nợ (Nhắc nợ)</p>
+                  <p className="text-xl font-bold text-rose-600 mt-0.5">{debtInvoiceCount + unpaidInvoiceCount}</p>
+                  <p className="text-[11px] text-gray-500 mt-0.5">
+                    Còn nợ: <span className="font-semibold text-rose-600">{formatCurrency(totalDebtSum)}</span>
+                  </p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                  <AlertCircle size={20} />
+                </div>
+              </div>
+
+              <div className="bg-white p-3.5 rounded-lg border border-gray-200 shadow-2xs flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider">Chưa chăm sóc</p>
+                  <p className="text-xl font-bold text-amber-600 mt-0.5">{unattendedPaymentCount}</p>
+                  <p className="text-[11px] text-gray-500 mt-0.5">Cần gửi cảm ơn hoặc nhắc nợ</p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                  <HeartHandshake size={20} />
+                </div>
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-2xs">
+              <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-340px)] min-h-[300px] relative w-full custom-scrollbar">
+                <table className="w-full min-w-[1520px] text-left border-collapse text-xs h-fit">
+                  <thead className="sticky top-0 z-20 bg-slate-100 border-b border-slate-200 shadow-2xs">
+                    <tr className="bg-slate-100 text-slate-700 border-b border-slate-200">
+                      <th className="sticky top-0 bg-slate-100 z-20 py-3 px-3 font-bold text-slate-700 whitespace-nowrap border-b border-slate-200 w-24 min-w-[96px]">Mã hồ sơ</th>
+                      <th className="sticky top-0 bg-slate-100 z-20 py-3 px-3 font-bold text-slate-700 whitespace-nowrap border-b border-slate-200 w-48 min-w-[190px]">Khách hàng & Nhóm</th>
+                      <th className="sticky top-0 bg-slate-100 z-20 py-3 px-2.5 font-bold text-slate-700 whitespace-nowrap border-b border-slate-200 w-28 min-w-[110px]">Điện thoại</th>
+                      <th className="sticky top-0 bg-slate-100 z-20 py-3 px-3 font-bold text-slate-700 whitespace-nowrap border-b border-slate-200 w-32 min-w-[130px]">Mã HĐ & Ngày</th>
+                      <th className="sticky top-0 bg-slate-100 z-20 py-3 px-3 font-bold text-slate-700 whitespace-nowrap border-b border-slate-200 w-28 min-w-[115px] text-right">Tổng tiền</th>
+                      <th className="sticky top-0 bg-slate-100 z-20 py-3 px-3 font-bold text-slate-700 whitespace-nowrap border-b border-slate-200 w-28 min-w-[115px] text-right">Đã trả</th>
+                      <th className="sticky top-0 bg-slate-100 z-20 py-3 px-3 font-bold text-slate-700 whitespace-nowrap border-b border-slate-200 w-28 min-w-[115px] text-right">Còn nợ</th>
+                      <th className="sticky top-0 bg-slate-100 z-20 py-3 px-3 font-bold text-slate-700 whitespace-nowrap border-b border-slate-200 w-36 min-w-[140px] text-center">Trạng thái HĐ</th>
+                      <th className="sticky top-0 bg-slate-100 z-20 py-3 px-3 font-bold text-slate-700 whitespace-nowrap border-b border-slate-200 w-36 min-w-[145px] text-center">Trạng thái CSKH</th>
+                      <th className="sticky top-0 bg-slate-100 z-20 py-3 px-3 font-bold text-slate-700 whitespace-nowrap border-b border-slate-200 w-40 min-w-[160px]">Kênh & Lần CS gần nhất</th>
+                      <th className="sticky top-0 bg-slate-100 z-20 py-3 px-3.5 font-bold text-slate-700 min-w-[220px] border-b border-slate-200">Nội dung / Gợi ý chăm sóc</th>
+                      <th className="sticky top-0 right-0 bg-slate-100 text-slate-700 z-30 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.08)] py-3 px-3 text-center font-bold w-36 min-w-[140px] whitespace-nowrap border-b border-slate-200">
+                        Thao tác
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 text-gray-700">
+                    {paginatedPayments.length === 0 ? (
+                      <tr>
+                        <td colSpan={12} className="py-16 text-center text-gray-400">
+                          <Inbox size={36} className="mx-auto mb-1 text-gray-300" />
+                          Không có hóa đơn thanh toán phù hợp với điều kiện tìm kiếm
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedPayments.map((p) => {
+                        const hasDebt = Number(p.remainingAmount || 0) > 0;
+                        const isFullyPaid = p.paymentStatus === 'PAID';
+                        return (
+                          <tr
+                            key={p.invoiceId || p.invoiceCode}
+                            className={`group hover:bg-purple-50/40 transition-colors ${
+                              hasDebt ? 'bg-rose-50/20' : ''
+                            }`}
+                          >
+                            <td className="py-2.5 px-3 font-medium whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenHistory(p)}
+                                className="font-semibold text-purple-700 hover:text-purple-900 hover:underline cursor-pointer"
+                                title="Xem chi tiết hồ sơ chăm sóc (i)"
+                              >
+                                {p.patientCode || '—'}
+                              </button>
+                            </td>
+                            <td className="py-2.5 px-3 whitespace-nowrap">
+                              <div className="flex flex-col">
+                                <span className="font-semibold text-purple-900 group-hover:text-purple-700 transition-colors">
+                                  {p.patientName}
+                                </span>
+                                <div className="mt-0.5">{renderCustomerGroupBadge(p.customerGroup)}</div>
+                                {p.email && (
+                                  <span className="text-[10px] text-gray-400 truncate max-w-[170px]" title={p.email}>
+                                    {p.email}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-2.5 px-2.5 whitespace-nowrap">
+                              {p.phone ? (
+                                <a
+                                  href={`tel:${p.phone}`}
+                                  className="font-medium text-gray-800 hover:text-purple-700 hover:underline inline-flex items-center gap-1"
+                                >
+                                  <Phone size={11} className="text-gray-400" />
+                                  {p.phone}
+                                </a>
+                              ) : (
+                                <span className="text-gray-400 italic text-[11px]">—</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3 whitespace-nowrap">
+                              <div className="flex flex-col">
+                                <span className="font-mono font-bold text-purple-800">
+                                  {p.invoiceCode || '—'}
+                                </span>
+                                <span className="text-[11px] text-gray-500">
+                                  {formatDate(p.invoiceDate)}
+                                </span>
+                              </div>
+                            </td>
+                            {/* finalAmount */}
+                            <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                              <span className="font-bold text-gray-900">
+                                {formatCurrency(p.finalAmount)}
+                              </span>
+                            </td>
+                            {/* paidAmount */}
+                            <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                              <span className="font-semibold text-emerald-600">
+                                {formatCurrency(p.paidAmount)}
+                              </span>
+                            </td>
+                            {/* remainingAmount */}
+                            <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                              {hasDebt ? (
+                                <span className="font-bold text-rose-600">
+                                  {formatCurrency(p.remainingAmount)}
+                                </span>
+                              ) : (
+                                <span className="font-medium text-emerald-600">
+                                  0 đ
+                                </span>
+                              )}
+                            </td>
+                            {/* Trạng thái HĐ */}
+                            <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                              {isFullyPaid ? (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                  Đã thanh toán
+                                </span>
+                              ) : p.paymentStatus === 'PARTIALLY_PAID' ? (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                                  Thanh toán 1 phần
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-100 text-rose-800 border border-rose-200">
+                                  Chưa thanh toán
+                                </span>
+                              )}
+                            </td>
+                            {/* Trạng thái CSKH */}
+                            <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                              {renderStatusBadge(p.careStatus)}
+                            </td>
+                            {/* Kênh & Lần CS gần nhất */}
+                            <td className="py-2.5 px-3 whitespace-nowrap">
+                              {p.careTime ? (
+                                <div className="flex flex-col gap-0.5">
+                                  <div className="flex items-center gap-1">
+                                    {renderChannelTag(p.careChannel, p.careChannel, p)}
+                                    <span className="font-medium text-gray-700 text-[11px]">
+                                      {formatDateTime(p.careTime)}
+                                    </span>
+                                  </div>
+                                  {p.assignedEmployeeName && (
+                                    <span className="text-[10px] text-gray-400">NV: {p.assignedEmployeeName}</span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-gray-400 italic text-[11px]">— Chưa CS —</span>
+                              )}
+                            </td>
+                            {/* Nội dung / Gợi ý CS */}
+                            <td className="py-2.5 px-3.5 text-gray-600 max-w-xs" title={p.careNotes || p.suggestedTemplate}>
+                              {p.careNotes ? (
+                                <div className="flex flex-col">
+                                  <span className="truncate block font-normal text-gray-800">{p.careNotes}</span>
+                                  <span className="text-[10px] text-emerald-600 font-medium">Đã ghi nhận chăm sóc</span>
+                                </div>
+                              ) : p.suggestedTemplate ? (
+                                <div className="flex flex-col">
+                                  <span className="truncate block text-gray-400 italic">{p.suggestedTemplate}</span>
+                                  <span className="text-[10px] text-purple-600 font-medium">
+                                    {isFullyPaid ? 'Gợi ý: Cảm ơn thanh toán' : 'Gợi ý: Nhắc nợ công nợ'}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-gray-400 italic text-[11px]">— Chưa có ghi chú —</span>
+                              )}
+                            </td>
+                            {/* Thao tác */}
+                            <td className="py-2.5 px-3 text-center sticky right-0 bg-white group-hover:bg-purple-50/90 z-10 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] min-w-[140px]">
+                              <div className="flex items-center justify-center gap-1.5">
+                                {/* 1. Info / History */}
+                                <button
+                                  type="button"
+                                  title="Xem chi tiết lịch sử chăm sóc & hồ sơ bệnh nhân (i)"
+                                  onClick={() => handleOpenHistory(p)}
+                                  className="w-6 h-6 rounded-md border border-sky-400 text-sky-500 hover:bg-sky-50 flex items-center justify-center transition-colors cursor-pointer"
+                                >
+                                  <Info size={13} />
+                                </button>
+
+                                {/* 2. Xem nhanh dịch vụ & thanh toán (Receipt) */}
+                                <button
+                                  type="button"
+                                  title="Xem nhanh chi tiết dịch vụ hóa đơn & lịch sử thanh toán"
+                                  onClick={() => handleOpenQuickInvoice(p)}
+                                  className="w-6 h-6 rounded-md border border-amber-500 text-amber-600 hover:bg-amber-50 flex items-center justify-center transition-colors cursor-pointer"
+                                >
+                                  <Receipt size={13} />
+                                </button>
+
+                                {/* 3. Direct Email: Cảm ơn đã thanh toán hoặc Nhắc nợ */}
+                                <button
+                                  type="button"
+                                  title={
+                                    isFullyPaid
+                                      ? 'Gửi Email cảm ơn Quý khách đã thanh toán'
+                                      : 'Gửi Email thông báo công nợ & nhắc thanh toán'
+                                  }
+                                  onClick={() => handleOpenDirectEmail({ ...p, careType: 'PAYMENT' })}
+                                  className={`w-6 h-6 rounded-md border flex items-center justify-center transition-colors cursor-pointer ${
+                                    isFullyPaid
+                                      ? 'border-emerald-400 text-emerald-600 hover:bg-emerald-50'
+                                      : 'border-rose-400 text-rose-600 hover:bg-rose-50'
+                                  }`}
+                                >
+                                  <Mail size={13} />
+                                </button>
+
+                                {/* 4. Ghi nhận chăm sóc mới (+) */}
+                                <button
+                                  type="button"
+                                  title="Ghi nhận chăm sóc thanh toán mới (+)"
+                                  onClick={() => handleOpenCreateCare(p, 'PAYMENT')}
+                                  className="w-6 h-6 rounded-md border border-purple-400 text-purple-600 hover:bg-purple-50 flex items-center justify-center transition-colors cursor-pointer"
+                                >
+                                  <Plus size={13} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              {renderPagination(filteredPaymentList.length, pagePayment, setPagePayment)}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ===================== MODAL: TẠO MỚI CHĂM SÓC (IMAGE 5) ===================== */}
@@ -3319,6 +4047,7 @@ export default function CustomerCare() {
                       <option value="GENERAL_CARE">Chăm sóc tổng hợp</option>
                       <option value="APPOINTMENT_REMINDER">Nhắc lịch hẹn</option>
                       <option value="BIRTHDAY">Ngày sinh nhật</option>
+                      <option value="PAYMENT">Thanh toán / Công nợ</option>
                     </select>
                   )}
                 </div>
@@ -3459,47 +4188,139 @@ export default function CustomerCare() {
               <div>
                 <span className="text-[11px] font-semibold text-gray-500 block mb-1.5">Mẫu thư nhanh:</span>
                 <div className="flex flex-wrap gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setDirectEmailForm({
-                        ...directEmailForm,
-                        subject: `[Crown Dental] Thăm hỏi sức khỏe và dặn dò sau khám - ${directEmailForm.patientName}`,
-                        message: `Kính gửi Quý khách ${directEmailForm.patientName},\n\nNha Khoa Quốc Tế Crown Dental xin gửi lời thăm hỏi đến Quý khách sau buổi khám tại phòng khám. Quý khách vui lòng tuân thủ dặn dò của bác sĩ và uống thuốc đúng liều lượng (nếu có).\n\nNếu có bất kỳ dấu hiệu đau nhức bất thường, xin vui lòng liên hệ ngay với chúng tôi qua số Hotline: 0343632524 để được hỗ trợ kịp thời.\n\nTrân trọng,\nĐội ngũ Bác sĩ Crown Dental`,
-                      })
-                    }
-                    className="px-2.5 py-1 text-[11px] rounded-md bg-gray-100 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 border border-gray-200 text-gray-700 transition-colors cursor-pointer"
-                  >
-                    Thăm hỏi sau khám
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setDirectEmailForm({
-                        ...directEmailForm,
-                        subject: `[Crown Dental] Nhắc lịch hẹn tái khám của Quý khách ${directEmailForm.patientName}`,
-                        message: `Kính gửi Quý khách ${directEmailForm.patientName},\n\nCrown Dental xin trân trọng nhắc Quý khách về lịch hẹn tái khám sắp tới. Quý khách vui lòng đến trước giờ hẹn 10 phút để phòng khám đón tiếp chu đáo nhất.\n\nNếu Quý khách có việc bận cần đổi lịch, vui lòng phản hồi email này hoặc gọi hotline 0343632524 trước ít nhất 2 giờ.\n\nTrân trọng cảm ơn Quý khách!`,
-                      })
-                    }
-                    className="px-2.5 py-1 text-[11px] rounded-md bg-gray-100 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 border border-gray-200 text-gray-700 transition-colors cursor-pointer"
-                  >
-                    Nhắc lịch hẹn
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setDirectEmailForm({
-                        ...directEmailForm,
-                        subject: `[Crown Dental] Chúc mừng sinh nhật Quý khách ${directEmailForm.patientName}`,
-                        message: `Kính gửi Quý khách ${directEmailForm.patientName},\n\nNhân dịp sinh nhật, toàn thể ban lãnh đạo và y bác sĩ Nha Khoa Crown Dental kính chúc Quý khách luôn ngập tràn niềm vui, sức khỏe dồi dào và thành công rực rỡ!\n\nCrown Dental trân trọng gửi tặng Quý khách phiếu ưu đãi 20% cho tất cả dịch vụ chăm sóc & làm đẹp răng miệng áp dụng trong tháng này.\n\nChúc Quý khách có một ngày sinh nhật thật ý nghĩa và hạnh phúc!`,
-                      })
-                    }
-                    className="px-2.5 py-1 text-[11px] rounded-md bg-gray-100 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 border border-gray-200 text-gray-700 transition-colors cursor-pointer"
-                  >
-                    Chúc mừng sinh nhật
-                  </button>
+                  {directEmailForm.careType === 'PAYMENT' ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const finalAmt = Number(directEmailForm.finalAmount || 0).toLocaleString('vi-VN') + ' đ';
+                          setDirectEmailForm({
+                            ...directEmailForm,
+                            subject: `[Crown Dental] Thư cảm ơn Quý khách ${directEmailForm.patientName} đã hoàn tất thanh toán (${directEmailForm.invoiceCode || 'Hóa đơn'})`,
+                            message: `Kính gửi Quý khách ${directEmailForm.patientName},\n\nNha Khoa Quốc Tế Crown Dental trân trọng gửi lời cảm ơn chân thành đến Quý khách đã tin tưởng và hoàn tất thanh toán hóa đơn ${directEmailForm.invoiceCode || ''} (${finalAmt}).\n\nToàn bộ dịch vụ điều trị đã được lưu trữ hồ sơ và kích hoạt bảo hành chính hãng. Kính chúc Quý khách luôn sở hữu hàm răng chắc khỏe và nụ cười rạng rỡ!\n\nTrân trọng,\nNha Khoa Quốc Tế Crown Dental\nHotline: 0343632524`,
+                          });
+                        }}
+                        className="px-2.5 py-1 text-[11px] rounded-md bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-800 border border-emerald-200 text-emerald-700 transition-colors cursor-pointer font-medium"
+                      >
+                        ✓ Cảm ơn hoàn tất & Bảo hành
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const code = directEmailForm.invoiceCode || 'Hóa đơn';
+                          const finalAmt = Number(directEmailForm.finalAmount || 0).toLocaleString('vi-VN') + ' đ';
+                          const paidAmt = Number(directEmailForm.paidAmount || 0).toLocaleString('vi-VN') + ' đ';
+                          const remainAmt = Number(directEmailForm.remainingAmount || 0).toLocaleString('vi-VN') + ' đ';
+                          setDirectEmailForm({
+                            ...directEmailForm,
+                            subject: `[Crown Dental] Thông báo công nợ dịch vụ hóa đơn ${code} - Quý khách ${directEmailForm.patientName}`,
+                            message: `Kính gửi Quý khách ${directEmailForm.patientName},\n\nNha Khoa Quốc Tế Crown Dental xin gửi thông báo chi tiết tình trạng thanh toán của Quý khách:\n• Mã hóa đơn: ${code}\n• Tổng chi phí điều trị: ${finalAmt}\n• Đã thanh toán: ${paidAmt}\n• Số tiền còn nợ: ${remainAmt}\n\nQuý khách có thể quét mã VietQR tự động được đính kèm ở chân email này để thanh toán nhanh chóng hoặc chuyển khoản theo thông tin sau:\n- Ngân hàng: MB Bank (Ngân Hàng Quân Đội)\n- Số tài khoản: 0343632524\n- Chủ tài khoản: CROWN DENTAL\n- Số tiền cần thanh toán: ${remainAmt}\n- Nội dung chuyển khoản: ${code} - ${directEmailForm.patientName}\n\nXin trân trọng cảm ơn Quý khách!\nHotline hỗ trợ: 0343632524`,
+                          });
+                        }}
+                        className="px-2.5 py-1 text-[11px] rounded-md bg-rose-50 hover:bg-rose-100 hover:text-rose-800 border border-rose-200 text-rose-700 transition-colors cursor-pointer font-medium"
+                      >
+                        ⚠️ Nhắc nợ & STK MB Bank
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const code = directEmailForm.invoiceCode || 'Hóa đơn';
+                          const remainAmt = Number(directEmailForm.remainingAmount || 0).toLocaleString('vi-VN') + ' đ';
+                          setDirectEmailForm({
+                            ...directEmailForm,
+                            subject: `[Crown Dental] Nhắc lịch hẹn & thanh toán đợt kế tiếp - Quý khách ${directEmailForm.patientName}`,
+                            message: `Kính gửi Quý khách ${directEmailForm.patientName},\n\nNha Khoa Quốc Tế Crown Dental xin gửi lời chào đến Quý khách. Phòng khám xin nhắc Quý khách chuẩn bị lịch hẹn tái khám theo phác đồ điều trị và thực hiện thanh toán phần còn lại (${remainAmt}) của hóa đơn ${code}.\n\nNếu Quý khách cần đặt trước giờ hẹn thuận tiện nhất, xin vui lòng phản hồi email này hoặc liên hệ Hotline: 0343632524.\n\nTrân trọng cảm ơn Quý khách!`,
+                          });
+                        }}
+                        className="px-2.5 py-1 text-[11px] rounded-md bg-amber-50 hover:bg-amber-100 hover:text-amber-800 border border-amber-200 text-amber-700 transition-colors cursor-pointer font-medium"
+                      >
+                        🔄 Nhắc hẹn & thanh toán đợt sau
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDirectEmailForm({
+                            ...directEmailForm,
+                            subject: `[Crown Dental] Thăm hỏi sức khỏe và dặn dò sau khám - ${directEmailForm.patientName}`,
+                            message: `Kính gửi Quý khách ${directEmailForm.patientName},\n\nNha Khoa Quốc Tế Crown Dental xin gửi lời thăm hỏi đến Quý khách sau buổi khám tại phòng khám. Quý khách vui lòng tuân thủ dặn dò của bác sĩ và uống thuốc đúng liều lượng (nếu có).\n\nNếu có bất kỳ dấu hiệu đau nhức bất thường, xin vui lòng liên hệ ngay với chúng tôi qua số Hotline: 0343632524 để được hỗ trợ kịp thời.\n\nTrân trọng,\nĐội ngũ Bác sĩ Crown Dental`,
+                          })
+                        }
+                        className="px-2.5 py-1 text-[11px] rounded-md bg-gray-100 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 border border-gray-200 text-gray-700 transition-colors cursor-pointer"
+                      >
+                        Thăm hỏi sau khám
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDirectEmailForm({
+                            ...directEmailForm,
+                            subject: `[Crown Dental] Nhắc lịch hẹn tái khám của Quý khách ${directEmailForm.patientName}`,
+                            message: `Kính gửi Quý khách ${directEmailForm.patientName},\n\nCrown Dental xin trân trọng nhắc Quý khách về lịch hẹn tái khám sắp tới. Quý khách vui lòng đến trước giờ hẹn 10 phút để phòng khám đón tiếp chu đáo nhất.\n\nNếu Quý khách có việc bận cần đổi lịch, vui lòng phản hồi email này hoặc gọi hotline 0343632524 trước ít nhất 2 giờ.\n\nTrân trọng cảm ơn Quý khách!`,
+                          })
+                        }
+                        className="px-2.5 py-1 text-[11px] rounded-md bg-gray-100 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 border border-gray-200 text-gray-700 transition-colors cursor-pointer"
+                      >
+                        Nhắc lịch hẹn
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDirectEmailForm({
+                            ...directEmailForm,
+                            subject: `[Crown Dental] Chúc mừng sinh nhật Quý khách ${directEmailForm.patientName}`,
+                            message: `Kính gửi Quý khách ${directEmailForm.patientName},\n\nNhân dịp sinh nhật, toàn thể ban lãnh đạo và y bác sĩ Nha Khoa Crown Dental kính chúc Quý khách luôn ngập tràn niềm vui, sức khỏe dồi dào và thành công rực rỡ!\n\nCrown Dental trân trọng gửi tặng Quý khách phiếu ưu đãi 20% cho tất cả dịch vụ chăm sóc & làm đẹp răng miệng áp dụng trong tháng này.\n\nChúc Quý khách có một ngày sinh nhật thật ý nghĩa và hạnh phúc!`,
+                          })
+                        }
+                        className="px-2.5 py-1 text-[11px] rounded-md bg-gray-100 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 border border-gray-200 text-gray-700 transition-colors cursor-pointer"
+                      >
+                        Chúc mừng sinh nhật
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
+
+              {/* Live VietQR Preview Box for Payment Reminders */}
+              {directEmailForm.careType === 'PAYMENT' && Number(directEmailForm.remainingAmount || 0) > 0 && (
+                <div className="bg-gradient-to-r from-blue-50/90 via-indigo-50/70 to-slate-50 border border-blue-200/90 rounded-md p-3 flex flex-col sm:flex-row items-center gap-3.5 shadow-2xs">
+                  <div className="shrink-0 bg-white p-1.5 rounded-md border border-blue-200 shadow-xs flex flex-col items-center">
+                    <img
+                      src={getVietQrImageUrl(
+                        directEmailForm.remainingAmount,
+                        directEmailForm.invoiceCode,
+                        directEmailForm.patientName
+                      )}
+                      alt="VietQR MB Bank"
+                      className="w-20 h-20 object-contain rounded"
+                    />
+                    <span className="text-[9px] font-bold text-[#132c68] tracking-wider mt-1 flex items-center gap-0.5">
+                      <QrCode size={10} />
+                      VIETQR NAPAS
+                    </span>
+                  </div>
+                  <div className="flex-1 text-xs space-y-1 w-full min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold bg-[#132c68] text-white">
+                        MB BANK
+                      </span>
+                      <span className="font-semibold text-gray-800 text-[11px]">
+                        Mã VietQR thu nợ tự động được đính kèm vào email gửi bệnh nhân
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-gray-600 leading-relaxed">
+                      Khách hàng chỉ cần mở app Ngân hàng (MB, VCB, Momo, Techcombank...) quét mã là hoàn tất thanh toán đúng số tiền và cú pháp hóa đơn mà không cần gõ STK.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] pt-1.5 border-t border-blue-200/60 font-mono text-gray-700">
+                      <span>STK: <strong className="text-blue-700 font-bold">0343632524</strong></span>
+                      <span>Số nợ: <strong className="text-rose-600 font-bold">{Number(directEmailForm.remainingAmount).toLocaleString('vi-VN')} đ</strong></span>
+                      <span className="truncate">Cú pháp: <strong className="text-purple-700">{directEmailForm.invoiceCode || 'HĐ'} - {directEmailForm.patientName}</strong></span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Message Body */}
               <div>
@@ -3564,12 +4385,496 @@ export default function CustomerCare() {
         </div>
       )}
 
+      {/* ===================== MODAL: XEM CHI TIẾT HÓA ĐƠN & GIAO DỊCH (RECEIPT QUICK VIEW) ===================== */}
+      {quickInvoiceModal.isOpen && (
+        <div className="fixed inset-0 z-50 bg-black/45 backdrop-blur-2xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-gray-200">
+            {/* Modal Header */}
+            <div className="px-5 py-3.5 border-b border-gray-200 flex items-center justify-between bg-white shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-md bg-purple-50 text-purple-700 border border-purple-200/80 flex items-center justify-center shrink-0">
+                  <Receipt size={17} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-gray-900 tracking-tight">
+                      Chi Tiết Hóa Đơn Dịch Vụ & Thanh Toán
+                    </h3>
+                    <span className="font-mono text-[11px] font-semibold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded">
+                      {quickInvoiceModal.invoice?.invoiceCode || quickInvoiceModal.contextCareItem?.invoiceCode || 'HÓA ĐƠN'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-0.5">
+                    Tra cứu danh mục điều trị, lịch sử đóng tiền và thông tin công nợ bệnh nhân
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setQuickInvoiceModal((prev) => ({ ...prev, isOpen: false }))}
+                className="w-7 h-7 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 overflow-y-auto space-y-4 custom-scrollbar flex-1 text-xs bg-white">
+              {quickInvoiceModal.loading ? (
+                <div className="py-16 text-center text-gray-500">
+                  <RefreshCw size={24} className="animate-spin mx-auto text-purple-600 mb-2" />
+                  <p className="font-medium">Đang tải dữ liệu hóa đơn và giao dịch...</p>
+                </div>
+              ) : (
+                <>
+                  {/* Patient & Invoice Ribbon */}
+                  <div className="bg-slate-50/80 border border-slate-200/90 rounded-md p-3.5 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                    <div>
+                      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block">Khách hàng</span>
+                      <strong className="text-xs font-bold text-gray-900 block mt-0.5">
+                        {quickInvoiceModal.invoice?.patientName || quickInvoiceModal.contextCareItem?.patientName || '—'}
+                      </strong>
+                      <span className="text-[11px] text-gray-500 font-mono">
+                        Mã: {quickInvoiceModal.invoice?.patientCode || quickInvoiceModal.contextCareItem?.patientCode || '—'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block">Số điện thoại</span>
+                      <strong className="text-xs font-semibold text-gray-800 block mt-0.5 font-mono">
+                        {quickInvoiceModal.invoice?.patientPhone || quickInvoiceModal.contextCareItem?.phone || '—'}
+                      </strong>
+                      <span className="text-[11px] text-gray-500">
+                        Ngày tạo: {formatDate(quickInvoiceModal.invoice?.invoiceDate || quickInvoiceModal.contextCareItem?.invoiceDate)}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block">Nhân viên thu ngân</span>
+                      <strong className="text-xs font-semibold text-gray-800 block mt-0.5">
+                        {quickInvoiceModal.invoice?.employeeName || 'Nguyệt Nguyễn'}
+                      </strong>
+                      <span className="text-[11px] text-gray-500">Crown Dental</span>
+                    </div>
+
+                    <div className="flex flex-col justify-center items-start md:items-end">
+                      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block mb-1">Trạng thái thanh toán</span>
+                      {quickInvoiceModal.invoice?.paymentStatus === 'PAID' || quickInvoiceModal.contextCareItem?.paymentStatus === 'PAID' ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <CheckCircle2 size={12} />
+                          Đã thanh toán đủ
+                        </span>
+                      ) : (quickInvoiceModal.invoice?.paymentStatus === 'PARTIALLY_PAID' || quickInvoiceModal.contextCareItem?.paymentStatus === 'PARTIALLY_PAID') ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                          <Clock size={12} />
+                          Thanh toán 1 phần
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                          <AlertCircle size={12} />
+                          Chưa thanh toán
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Section 1: Dental Line Items */}
+                  <div className="space-y-1.5">
+                    <h4 className="font-semibold text-gray-700 text-xs flex items-center gap-1.5 uppercase tracking-wider">
+                      <Activity size={13} className="text-purple-600" />
+                      Danh sách thủ thuật & Dịch vụ điều trị ({quickInvoiceModal.invoice?.invoiceDetails?.length || 0})
+                    </h4>
+                    <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-2xs">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead className="bg-gray-50/90 border-b border-gray-200 text-gray-600 font-semibold text-[11px]">
+                          <tr>
+                            <th className="py-2 px-3 w-12 text-center">STT</th>
+                            <th className="py-2 px-3">Tên dịch vụ điều trị</th>
+                            <th className="py-2 px-3 w-20 text-center">Số lượng</th>
+                            <th className="py-2 px-3 w-32 text-right">Đơn giá</th>
+                            <th className="py-2 px-3 w-36 text-right">Thành tiền</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 text-gray-700">
+                          {(!quickInvoiceModal.invoice?.invoiceDetails || quickInvoiceModal.invoice.invoiceDetails.length === 0) ? (
+                            <tr>
+                              <td colSpan={5} className="py-6 text-center text-gray-400 italic">
+                                Không có chi tiết dịch vụ điều trị
+                              </td>
+                            </tr>
+                          ) : (
+                            quickInvoiceModal.invoice.invoiceDetails.map((item, idx) => (
+                              <tr key={item.id || idx} className="hover:bg-gray-50/60 transition-colors">
+                                <td className="py-2.5 px-3 text-center text-gray-400 font-medium">{idx + 1}</td>
+                                <td className="py-2.5 px-3 font-medium text-gray-900">{item.itemName || 'Dịch vụ nha khoa'}</td>
+                                <td className="py-2.5 px-3 text-center font-medium">{item.quantity || 1}</td>
+                                <td className="py-2.5 px-3 text-right text-gray-600 font-mono">{formatCurrency(item.unitPrice)}</td>
+                                <td className="py-2.5 px-3 text-right font-bold text-gray-900 font-mono">{formatCurrency(item.subtotal)}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Section 2: Payment Transactions History */}
+                  <div className="space-y-1.5">
+                    <h4 className="font-semibold text-gray-700 text-xs flex items-center gap-1.5 uppercase tracking-wider">
+                      <CreditCard size={13} className="text-emerald-600" />
+                      Lịch sử các lần giao dịch đóng tiền ({quickInvoiceModal.invoice?.paymentTransactions?.length || 0})
+                    </h4>
+                    <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-2xs">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead className="bg-gray-50/90 border-b border-gray-200 text-gray-600 font-semibold text-[11px]">
+                          <tr>
+                            <th className="py-2 px-3 w-32">Mã GD</th>
+                            <th className="py-2 px-3 w-36">Thời gian</th>
+                            <th className="py-2 px-3 w-32">Phương thức</th>
+                            <th className="py-2 px-3">Ghi chú / Người thu</th>
+                            <th className="py-2 px-3 w-32 text-right">Số tiền đã thu</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 text-gray-700">
+                          {(!quickInvoiceModal.invoice?.paymentTransactions || quickInvoiceModal.invoice.paymentTransactions.length === 0) ? (
+                            <tr>
+                              <td colSpan={5} className="py-5 text-center text-rose-600 bg-rose-50/20 italic font-medium">
+                                Chưa phát sinh giao dịch đóng tiền nào cho hóa đơn này
+                              </td>
+                            </tr>
+                          ) : (
+                            quickInvoiceModal.invoice.paymentTransactions.map((tx, idx) => (
+                              <tr key={tx.id || idx} className="hover:bg-emerald-50/20 transition-colors">
+                                <td className="py-2.5 px-3 font-mono font-semibold text-emerald-800">{tx.transactionCode || '—'}</td>
+                                <td className="py-2.5 px-3 text-gray-600">{formatDateTime(tx.paymentTime)}</td>
+                                <td className="py-2.5 px-3">
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-gray-100 text-gray-700 border border-gray-200">
+                                    {tx.paymentMethod === 'BANK_TRANSFER' ? '🏦 Chuyển khoản' : tx.paymentMethod === 'CASH' ? '💵 Tiền mặt' : tx.paymentMethod === 'POS' ? '💳 Quẹt thẻ POS' : (tx.paymentMethod || 'Tiền mặt')}
+                                  </span>
+                                </td>
+                                <td className="py-2.5 px-3 text-gray-600">
+                                  <span>{tx.note || '—'}</span>
+                                  {tx.employeeName && <span className="block text-[10px] text-gray-400">Thu bởi: {tx.employeeName}</span>}
+                                </td>
+                                <td className="py-2.5 px-3 text-right font-bold text-emerald-600 font-mono">
+                                  +{formatCurrency(tx.totalAmount || tx.amountReceived)}
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Section 3: Financial Summary 3-Card Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="p-3 rounded-md border border-gray-200 bg-white shadow-2xs">
+                      <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block">Tổng hóa đơn</span>
+                      <span className="text-base font-bold text-gray-900 font-mono block mt-0.5">
+                        {formatCurrency(quickInvoiceModal.invoice?.finalAmount || quickInvoiceModal.contextCareItem?.finalAmount)}
+                      </span>
+                      {Number(quickInvoiceModal.invoice?.discountAmount || 0) > 0 ? (
+                        <span className="text-[10px] text-emerald-600 block mt-0.5">
+                          (Đã giảm: {formatCurrency(quickInvoiceModal.invoice.discountAmount)})
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-gray-400 block mt-0.5">Chi phí điều trị</span>
+                      )}
+                    </div>
+
+                    <div className="p-3 rounded-md border border-gray-200 bg-white shadow-2xs">
+                      <span className="text-[11px] font-medium text-emerald-700 uppercase tracking-wider block flex items-center gap-1">
+                        <CheckCircle2 size={12} className="text-emerald-600" />
+                        Đã thanh toán
+                      </span>
+                      <span className="text-base font-bold text-emerald-600 font-mono block mt-0.5">
+                        {formatCurrency(quickInvoiceModal.invoice?.paidAmount || quickInvoiceModal.contextCareItem?.paidAmount)}
+                      </span>
+                      <span className="text-[10px] text-gray-400 block mt-0.5">Đã đối soát ghi nhận</span>
+                    </div>
+
+                    <div className={`p-3 rounded-md border shadow-2xs ${
+                      Number(quickInvoiceModal.invoice?.remainingAmount || quickInvoiceModal.contextCareItem?.remainingAmount || 0) > 0
+                        ? 'border-rose-200 bg-rose-50/30'
+                        : 'border-emerald-200 bg-emerald-50/20'
+                    }`}>
+                      <span className={`text-[11px] font-medium uppercase tracking-wider block flex items-center gap-1 ${
+                        Number(quickInvoiceModal.invoice?.remainingAmount || quickInvoiceModal.contextCareItem?.remainingAmount || 0) > 0
+                          ? 'text-rose-700'
+                          : 'text-emerald-700'
+                      }`}>
+                        {Number(quickInvoiceModal.invoice?.remainingAmount || quickInvoiceModal.contextCareItem?.remainingAmount || 0) > 0 ? (
+                          <AlertCircle size={12} className="text-rose-600" />
+                        ) : (
+                          <CheckCircle2 size={12} className="text-emerald-600" />
+                        )}
+                        Còn nợ
+                      </span>
+                      <span className={`text-base font-bold font-mono block mt-0.5 ${
+                        Number(quickInvoiceModal.invoice?.remainingAmount || quickInvoiceModal.contextCareItem?.remainingAmount || 0) > 0
+                          ? 'text-rose-600'
+                          : 'text-emerald-600'
+                      }`}>
+                        {formatCurrency(quickInvoiceModal.invoice?.remainingAmount || quickInvoiceModal.contextCareItem?.remainingAmount)}
+                      </span>
+                      <span className={`text-[10px] block mt-0.5 ${
+                        Number(quickInvoiceModal.invoice?.remainingAmount || quickInvoiceModal.contextCareItem?.remainingAmount || 0) > 0
+                          ? 'text-rose-600 font-medium'
+                          : 'text-emerald-600 font-medium'
+                      }`}>
+                        {Number(quickInvoiceModal.invoice?.remainingAmount || quickInvoiceModal.contextCareItem?.remainingAmount || 0) > 0
+                          ? 'Cần theo dõi & đôn đốc thu'
+                          : 'Đã hoàn thành 100%'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Section 4: Segmented Bank Transfer Info & Dynamic VietQR for Remaining Debt */}
+                  {Number(quickInvoiceModal.invoice?.remainingAmount || quickInvoiceModal.contextCareItem?.remainingAmount || 0) > 0 && (() => {
+                    const invCode = quickInvoiceModal.invoice?.invoiceCode || quickInvoiceModal.contextCareItem?.invoiceCode || '';
+                    const pName = quickInvoiceModal.invoice?.patientName || quickInvoiceModal.contextCareItem?.patientName || '';
+                    const remAmt = Number(quickInvoiceModal.invoice?.remainingAmount || quickInvoiceModal.contextCareItem?.remainingAmount || 0);
+                    const remAmtFormatted = formatCurrency(remAmt);
+                    const syntax = `${invCode} - ${pName}`;
+                    const qrUrl = getVietQrImageUrl(remAmt, invCode, pName);
+
+                    return (
+                      <div className="bg-slate-50/95 border border-slate-200 rounded-md p-3.5 space-y-3 shadow-2xs">
+                        {/* Header: Title and Copy All button */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/80 pb-2.5">
+                          <div className="flex items-center gap-2">
+                            <div className="w-5 h-5 rounded bg-[#132c68] text-white flex items-center justify-center font-bold text-[9px] tracking-wider shrink-0 shadow-xs">
+                              MB
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-gray-800 text-xs">
+                                Phân vùng tài khoản MB Bank & Mã VietQR thu công nợ
+                              </h4>
+                              <p className="text-[10px] text-gray-500">
+                                Bấm sao chép nhanh từng trường dữ liệu hoặc quét mã VietQR tự động
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyBankInfo(invCode, pName, remAmt)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 border border-gray-300 rounded text-[11px] font-medium shadow-2xs transition-colors cursor-pointer self-start sm:self-auto shrink-0"
+                            title="Sao chép toàn bộ thông tin tài khoản, số tiền và cú pháp để gửi qua tin nhắn Zalo/SMS"
+                          >
+                            {copiedBankField === 'ALL' || quickInvoiceModal.copiedBank ? (
+                              <>
+                                <CheckCheck size={12} className="text-emerald-600" />
+                                <span className="text-emerald-700 font-semibold">Đã chép toàn bộ!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy size={12} className="text-gray-500" />
+                                <span>Sao chép toàn bộ</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Grid: Left = Segmented Copy Fields (8 cols), Right = VietQR Code Card (4 cols) */}
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch">
+                          {/* Left Column: Phân vùng từng trường có nút copy riêng */}
+                          <div className="lg:col-span-8 space-y-2">
+                            {/* Row 1: STK */}
+                            <div className="bg-white border border-gray-200 rounded p-2.5 flex items-center justify-between gap-2 hover:border-blue-300 transition-colors">
+                              <div className="min-w-0">
+                                <span className="text-[10px] text-gray-400 block font-sans">
+                                  Số tài khoản thụ hưởng (MB Bank - Ngân hàng Quân Đội):
+                                </span>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span className="text-blue-700 font-mono text-sm font-bold tracking-wider">
+                                    0343632524
+                                  </span>
+                                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 border border-blue-200 font-medium">
+                                    CROWN DENTAL
+                                  </span>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyBankField('0343632524', 'STK', 'Đã sao chép Số tài khoản MB Bank: 0343632524')}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded text-[11px] font-medium transition-colors cursor-pointer shrink-0"
+                              >
+                                {copiedBankField === 'STK' ? (
+                                  <>
+                                    <CheckCheck size={12} className="text-emerald-600" />
+                                    <span className="text-emerald-700 font-semibold">Đã chép</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy size={12} />
+                                    <span>Chép STK</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+
+                            {/* Row 2: Cú pháp nội dung CK */}
+                            <div className="bg-white border border-gray-200 rounded p-2.5 flex items-center justify-between gap-2 hover:border-purple-300 transition-colors">
+                              <div className="min-w-0">
+                                <span className="text-[10px] text-gray-400 block font-sans">
+                                  Cú pháp nội dung chuyển khoản (bắt buộc để đối soát khớp HĐ):
+                                </span>
+                                <div className="text-purple-700 font-mono text-xs font-bold tracking-tight truncate mt-0.5">
+                                  {syntax}
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyBankField(syntax, 'SYNTAX', `Đã sao chép cú pháp: ${syntax}`)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded text-[11px] font-medium transition-colors cursor-pointer shrink-0"
+                              >
+                                {copiedBankField === 'SYNTAX' ? (
+                                  <>
+                                    <CheckCheck size={12} className="text-emerald-600" />
+                                    <span className="text-emerald-700 font-semibold">Đã chép</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy size={12} />
+                                    <span>Chép cú pháp</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+
+                            {/* Row 3: Số tiền nợ cần thanh toán */}
+                            <div className="bg-white border border-gray-200 rounded p-2.5 flex items-center justify-between gap-2 hover:border-rose-300 transition-colors">
+                              <div className="min-w-0">
+                                <span className="text-[10px] text-gray-400 block font-sans">
+                                  Số tiền công nợ cần thanh toán:
+                                </span>
+                                <div className="text-rose-600 font-mono text-sm font-bold mt-0.5">
+                                  {remAmtFormatted}
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyBankField(remAmt, 'AMOUNT', `Đã sao chép số tiền: ${remAmtFormatted}`)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded text-[11px] font-medium transition-colors cursor-pointer shrink-0"
+                              >
+                                {copiedBankField === 'AMOUNT' ? (
+                                  <>
+                                    <CheckCheck size={12} className="text-emerald-600" />
+                                    <span className="text-emerald-700 font-semibold">Đã chép</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy size={12} />
+                                    <span>Chép số tiền</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Right Column: Mã VietQR thu tiền tiện lợi */}
+                          <div className="lg:col-span-4 bg-white border border-gray-200 rounded p-3 flex flex-col items-center justify-between text-center shadow-2xs">
+                            <div className="w-full flex items-center justify-between border-b border-gray-100 pb-1.5 mb-1.5">
+                              <span className="text-[10px] font-bold text-[#132c68] uppercase tracking-wider flex items-center gap-1">
+                                <QrCode size={11} />
+                                Mã VietQR Napas
+                              </span>
+                              <a
+                                href={qrUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[10px] text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-0.5 font-medium"
+                                title="Mở mã QR trong tab mới để xem kích thước lớn"
+                              >
+                                Phóng to
+                                <ExternalLink size={10} />
+                              </a>
+                            </div>
+
+                            <div
+                              className="p-1 bg-white rounded border border-gray-100 shadow-2xs my-auto group relative cursor-pointer"
+                              onClick={() => window.open(qrUrl, '_blank')}
+                              title="Nhấp để mở mã QR kích thước lớn"
+                            >
+                              <img
+                                src={qrUrl}
+                                alt="Mã VietQR MB Bank"
+                                className="w-28 h-28 object-contain rounded transition-transform group-hover:scale-105"
+                              />
+                            </div>
+
+                            <div className="mt-1.5 space-y-0.5">
+                              <span className="text-[10px] text-gray-500 block leading-tight">
+                                Quét mã chuyển khoản tự động
+                              </span>
+                              <span className="text-[9px] text-gray-400 block font-mono">
+                                MB Bank • 0343632524
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-gray-50 px-5 py-3 border-t border-gray-200 flex items-center justify-between gap-3 shrink-0">
+              <span className="text-[11px] text-gray-500">
+                Thao tác liên kết chăm sóc khách hàng trực tiếp
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const ctx = quickInvoiceModal.contextCareItem;
+                    const inv = quickInvoiceModal.invoice;
+                    setQuickInvoiceModal((prev) => ({ ...prev, isOpen: false }));
+                    handleOpenDirectEmail({ ...ctx, ...inv, careType: 'PAYMENT' });
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 rounded shadow-2xs transition-colors cursor-pointer"
+                >
+                  <Mail size={13} className="text-gray-500" />
+                  Gửi Email thông báo
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const ctx = quickInvoiceModal.contextCareItem;
+                    const inv = quickInvoiceModal.invoice;
+                    setQuickInvoiceModal((prev) => ({ ...prev, isOpen: false }));
+                    handleOpenCreateCare({ ...ctx, ...inv }, 'PAYMENT');
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-purple-600 hover:bg-purple-700 rounded shadow-2xs transition-colors cursor-pointer"
+                >
+                  <Plus size={13} />
+                  Ghi nhận chăm sóc (+)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setQuickInvoiceModal((prev) => ({ ...prev, isOpen: false }))}
+                  className="px-3.5 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 bg-white hover:bg-gray-50 border border-gray-300 rounded shadow-2xs transition-colors cursor-pointer"
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ===================== MODAL: CHI TIẾT CHĂM SÓC KHÁCH HÀNG (i) ===================== */}
       <CustomerCareDetailModal
         isOpen={isDetailModalOpen}
         onClose={() => setIsDetailModalOpen(false)}
         patientId={selectedDetailPatientId}
         appointmentId={selectedDetailAppointmentId}
+        invoiceId={selectedDetailInvoiceId}
         initialPatientData={selectedDetailItem}
         currentStaffName={currentStaffName}
         dentistOptions={filterOptions.dentists || []}

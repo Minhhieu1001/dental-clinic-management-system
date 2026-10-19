@@ -21,6 +21,11 @@ export const customerCareService = {
     return api.get('/customer-care/birthdays', { params });
   },
 
+  // 5. Thanh toán / Công nợ (Chăm sóc thanh toán, cảm ơn thanh toán, nhắc nợ)
+  getPaymentCareList: (params) => {
+    return api.get('/customer-care/payments', { params });
+  },
+
   // Lịch sử chăm sóc của 1 khách hàng cụ thể
   getPatientCareHistory: (patientId) => {
     return api.get(`/customer-care/patient/${patientId}/history`);
@@ -46,10 +51,13 @@ export const customerCareService = {
     return api.get('/customer-care/filter-options');
   },
 
-  // Chi tiết chăm sóc khách hàng đầy đủ 4 phần (Modal nút i)
-  getPatientCareDetail: (patientId, appointmentId) => {
+  // Chi tiết chăm sóc khách hàng đầy đủ (Modal nút i)
+  getPatientCareDetail: (patientId, appointmentId, invoiceId) => {
     return api.get(`/customer-care/patient/${patientId}/detail`, {
-      params: appointmentId ? { appointmentId } : {},
+      params: {
+        ...(appointmentId ? { appointmentId } : {}),
+        ...(invoiceId ? { invoiceId } : {}),
+      },
     });
   },
 

@@ -46,6 +46,15 @@ public interface CustomerCareService {
             String employeeId
     );
 
+    List<PaymentCareItemDTO> getPaymentCareList(
+            String search,
+            String startDate,
+            String endDate,
+            String paymentStatus,
+            String careStatus,
+            String employeeId
+    );
+
     List<CustomerCareRecordResponseDTO> getAllCareRecords(
             String search,
             String startDate,
@@ -64,7 +73,11 @@ public interface CustomerCareService {
 
     FilterOptionsDTO getFilterOptions();
 
-    PatientCareDetailDTO getPatientCareDetail(UUID patientId, UUID contextAppointmentId);
+    PatientCareDetailDTO getPatientCareDetail(UUID patientId, UUID contextAppointmentId, UUID contextInvoiceId);
+
+    default PatientCareDetailDTO getPatientCareDetail(UUID patientId, UUID contextAppointmentId) {
+        return getPatientCareDetail(patientId, contextAppointmentId, null);
+    }
 
     PatientCareDetailDTO.PatientAppointmentDTO updateAppointmentStatus(UUID appointmentId, String newStatus);
 

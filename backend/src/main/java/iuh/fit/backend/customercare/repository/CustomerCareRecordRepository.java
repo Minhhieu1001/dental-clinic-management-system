@@ -36,4 +36,9 @@ public interface CustomerCareRecordRepository extends JpaRepository<CustomerCare
 
     @Query("SELECT c FROM CustomerCareRecord c WHERE c.patient.id = :patientId AND c.careType = iuh.fit.backend.customercare.enums.CareType.BIRTHDAY ORDER BY c.careTime DESC")
     List<CustomerCareRecord> findLatestBirthdayCareByPatientId(@Param("patientId") UUID patientId);
+
+    List<CustomerCareRecord> findByInvoiceIdOrderByCareTimeDesc(UUID invoiceId);
+
+    @Query("SELECT c FROM CustomerCareRecord c WHERE c.invoice.id = :invoiceId ORDER BY c.careTime DESC")
+    List<CustomerCareRecord> findLatestByInvoiceId(@Param("invoiceId") UUID invoiceId);
 }

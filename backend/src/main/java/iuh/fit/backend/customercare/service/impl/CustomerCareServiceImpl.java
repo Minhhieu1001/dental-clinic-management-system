@@ -5,6 +5,10 @@ import iuh.fit.backend.appointment.entity.FollowUpAppointment;
 import iuh.fit.backend.appointment.enums.StatusAppointment;
 import iuh.fit.backend.appointment.repository.AppointmentRepository;
 import iuh.fit.backend.appointment.repository.FollowUpAppointmentRepository;
+import iuh.fit.backend.billing.entity.Invoice;
+import iuh.fit.backend.billing.entity.InvoiceDetail;
+import iuh.fit.backend.billing.enums.PaymentStatus;
+import iuh.fit.backend.billing.repository.InvoiceRepository;
 import iuh.fit.backend.customercare.dto.*;
 import iuh.fit.backend.customercare.entity.CustomerCareRecord;
 import iuh.fit.backend.customercare.enums.CareChannel;
@@ -25,6 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -44,6 +49,7 @@ public class CustomerCareServiceImpl implements CustomerCareService {
     private final EmployeeRepository employeeRepository;
     private final ServiceRepository serviceRepository;
     private final EmailService emailService;
+    private final InvoiceRepository invoiceRepository;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DATE_TIME_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy, HH:mm");
@@ -762,6 +768,197 @@ public class CustomerCareServiceImpl implements CustomerCareService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<PaymentCareItemDTO> getPaymentCareList(
+            String search,
+            String startDate,
+            String endDate,
+            String paymentStatus,
+            String careStatus,
+            String employeeId
+    ) {
+        List<Invoice> invoices = invoiceRepository.findAll();
+        List<PaymentCareItemDTO> result = new ArrayList<>();
+
+        for (Invoice inv : invoices) {
+            Patient p = inv.getPatient();
+            String patientName = p != null ? p.getFullName() : "";
+            String patientCode = p != null ? p.getPatientCode() : "";
+            String phone = p != null ? p.getPhoneNumber() : "";
+            String email = p != null ? p.getEmail() : "";
+            String custGroup = (p != null && p.getCustomerGroup() != null) ? p.getCustomerGroup() : "Khách mới";
+            String invCode = (inv.getInvoiceCode() != null && !inv.getInvoiceCode().isBlank()) 
+                    ? inv.getInvoiceCode() 
+                    : ("HD-" + inv.getId().toString().substring(0, 8).toUpperCase());
+
+            // Search filter
+            if (search != null && !search.isBlank()) {
+                String q = search.toLowerCase().trim();
+                boolean match = (patientName != null && patientName.toLowerCase().contains(q)) ||
+                                (phone != null && phone.contains(q)) ||
+                                (patientCode != null && patientCode.toLowerCase().contains(q)) ||
+                                (invCode != null && invCode.toLowerCase().contains(q));
+                if (!match) continue;
+            }
+
+            // PaymentStatus filter
+            if (paymentStatus != null && !paymentStatus.isBlank() && !"ALL".equalsIgnoreCase(paymentStatus) && !"Tất cả".equalsIgnoreCase(paymentStatus)) {
+                if (inv.getPaymentStatus() == null || !inv.getPaymentStatus().name().equalsIgnoreCase(paymentStatus.trim())) {
+                    continue;
+                }
+            }
+
+            // Date filter on invoiceDate
+            LocalDateTime invDate = inv.getInvoiceDate() != null ? inv.getInvoiceDate() : inv.getUpdateAt();
+            if (startDate != null && !startDate.isBlank() && invDate != null) {
+                try {
+                    LocalDate start = LocalDate.parse(startDate.trim());
+                    if (invDate.toLocalDate().isBefore(start)) continue;
+                } catch (Exception ignored) {}
+            }
+            if (endDate != null && !endDate.isBlank() && invDate != null) {
+                try {
+                    LocalDate end = LocalDate.parse(endDate.trim());
+                    if (invDate.toLocalDate().isAfter(end)) continue;
+                } catch (Exception ignored) {}
+            }
+
+            // Employee filter if invoice has assigned staff
+            if (employeeId != null && !employeeId.isBlank() && !"ALL".equalsIgnoreCase(employeeId) && !"Tất cả".equalsIgnoreCase(employeeId)) {
+                boolean matchEmp = (inv.getEmployee() != null && inv.getEmployee().getId().toString().equalsIgnoreCase(employeeId.trim()));
+                if (!matchEmp) continue;
+            }
+
+            // Financials
+            BigDecimal totalAmount = inv.getTotalAmount() != null ? inv.getTotalAmount() : BigDecimal.ZERO;
+            BigDecimal discountAmount = inv.getDiscountAmount() != null ? inv.getDiscountAmount() : BigDecimal.ZERO;
+            BigDecimal finalAmount = inv.getFinalAmount() != null ? inv.getFinalAmount() : totalAmount.subtract(discountAmount);
+            BigDecimal paidAmount = inv.getPaidAmount() != null ? inv.getPaidAmount() : BigDecimal.ZERO;
+            BigDecimal remainingAmount = inv.getRemainingAmount() != null ? inv.getRemainingAmount() : finalAmount.subtract(paidAmount);
+            if (remainingAmount.compareTo(BigDecimal.ZERO) < 0) remainingAmount = BigDecimal.ZERO;
+
+            // Payment Status Label
+            String pStatus = inv.getPaymentStatus() != null ? inv.getPaymentStatus().name() : "UNPAID";
+            String pStatusLabel = "Chưa thanh toán";
+            if ("PAID".equalsIgnoreCase(pStatus)) {
+                pStatusLabel = "Đã thanh toán";
+            } else if ("PARTIALLY_PAID".equalsIgnoreCase(pStatus)) {
+                pStatusLabel = "Còn nợ";
+            } else if ("CANCELLED".equalsIgnoreCase(pStatus)) {
+                pStatusLabel = "Đã hủy";
+            }
+
+            // Care record for this invoice
+            List<CustomerCareRecord> cares = careRepository.findLatestByInvoiceId(inv.getId());
+            CustomerCareRecord latestCare = null;
+            if (cares != null && !cares.isEmpty()) {
+                latestCare = cares.get(0);
+            } else if (p != null) {
+                List<CustomerCareRecord> patientCares = careRepository.findByPatientIdOrderByCareTimeDesc(p.getId());
+                for (CustomerCareRecord c : patientCares) {
+                    if (c.getCareType() == CareType.PAYMENT) {
+                        latestCare = c;
+                        break;
+                    }
+                }
+            }
+
+            String cStatus = "Chưa chăm sóc";
+            String cChannel = "Chưa liên hệ";
+            LocalDateTime cTime = null;
+            String cNotes = null;
+            String staff = null;
+            UUID lastCareId = null;
+
+            if (latestCare != null) {
+                lastCareId = latestCare.getId();
+                cStatus = latestCare.getStatus() != null ? latestCare.getStatus().getLabel() : "Hoàn thành";
+                cChannel = latestCare.getChannel() != null ? latestCare.getChannel().getLabel() : "Gọi điện";
+                cTime = latestCare.getCareTime();
+                cNotes = latestCare.getNotes();
+                staff = latestCare.getCreatedByName();
+            }
+
+            // Filter careStatus
+            if (careStatus != null && !careStatus.isBlank() && !"ALL".equalsIgnoreCase(careStatus) && !"Tất cả".equalsIgnoreCase(careStatus)) {
+                if (!cStatus.equalsIgnoreCase(careStatus.trim())) {
+                    continue;
+                }
+            }
+
+            String formattedFinal = formatVnd(finalAmount);
+            String formattedPaid = formatVnd(paidAmount);
+            String formattedDebt = formatVnd(remainingAmount);
+
+            String suggestedTemplate;
+            if ("PAID".equalsIgnoreCase(pStatus)) {
+                suggestedTemplate = String.format(
+                    "Nha khoa Crown Dental xin chân thành cảm ơn Quý khách %s đã tin tưởng và sử dụng dịch vụ tại phòng khám. Hóa đơn %s với tổng chi phí %s đ đã được thanh toán hoàn tất. Kính chúc Quý khách nhiều sức khỏe và một nụ cười rạng rỡ!",
+                    patientName != null && !patientName.isBlank() ? patientName : "Quý khách",
+                    invCode,
+                    formattedFinal
+                );
+            } else if ("PARTIALLY_PAID".equalsIgnoreCase(pStatus)) {
+                suggestedTemplate = String.format(
+                    "Nha khoa Crown Dental xin thông báo tới Quý khách %s: Hóa đơn dịch vụ %s có tổng chi phí %s đ, Quý khách đã thanh toán %s đ và số tiền còn lại cần thanh toán là %s đ. Quý khách vui lòng sắp xếp hoàn tất thanh toán trong đợt tái khám tiếp theo hoặc liên hệ hotline phòng khám để được hỗ trợ. Trân trọng cảm ơn!",
+                    patientName != null && !patientName.isBlank() ? patientName : "Quý khách",
+                    invCode,
+                    formattedFinal,
+                    formattedPaid,
+                    formattedDebt
+                );
+            } else {
+                suggestedTemplate = String.format(
+                    "Nha khoa Crown Dental xin thông báo tới Quý khách %s: Hóa đơn dịch vụ %s với tổng chi phí %s đ hiện chưa được thanh toán. Quý khách vui lòng liên hệ phòng khám hoặc thực hiện thanh toán để hoàn tất thủ tục hồ sơ điều trị. Trân trọng cảm ơn!",
+                    patientName != null && !patientName.isBlank() ? patientName : "Quý khách",
+                    invCode,
+                    formattedFinal
+                );
+            }
+
+            result.add(PaymentCareItemDTO.builder()
+                    .invoiceId(inv.getId())
+                    .invoiceCode(invCode)
+                    .invoiceDate(invDate)
+                    .patientId(p != null ? p.getId() : null)
+                    .patientCode(patientCode)
+                    .patientName(patientName)
+                    .phone(phone)
+                    .email(email)
+                    .customerGroup(custGroup)
+                    .totalAmount(totalAmount)
+                    .discountAmount(discountAmount)
+                    .finalAmount(finalAmount)
+                    .paidAmount(paidAmount)
+                    .remainingAmount(remainingAmount)
+                    .paymentStatus(pStatus)
+                    .paymentStatusLabel(pStatusLabel)
+                    .careStatus(cStatus)
+                    .careChannel(cChannel)
+                    .careTime(cTime)
+                    .careNotes(cNotes)
+                    .assignedEmployeeName(staff != null && !staff.isBlank() ? staff : (inv.getEmployee() != null && inv.getEmployee().getFullName() != null ? inv.getEmployee().getFullName() : "Nguyệt Nguyễn"))
+                    .lastCareId(lastCareId)
+                    .suggestedTemplate(suggestedTemplate)
+                    .build());
+        }
+
+        // Sort by invoiceDate descending
+        result.sort((a, b) -> {
+            if (a.getInvoiceDate() == null) return 1;
+            if (b.getInvoiceDate() == null) return -1;
+            return b.getInvoiceDate().compareTo(a.getInvoiceDate());
+        });
+
+        return result;
+    }
+
+    private String formatVnd(BigDecimal amount) {
+        if (amount == null) return "0";
+        return String.format("%,d", amount.longValue()).replace(',', '.');
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<CustomerCareRecordResponseDTO> getAllCareRecords(
             String search,
             String startDate,
@@ -857,6 +1054,21 @@ public class CustomerCareServiceImpl implements CustomerCareService {
             }
         }
 
+        Invoice invoice = null;
+        if (request.getInvoiceId() != null) {
+            invoice = invoiceRepository.findById(request.getInvoiceId()).orElse(null);
+            if (patient == null && invoice != null && invoice.getPatient() != null) {
+                patient = invoice.getPatient();
+            }
+        }
+        if (invoice == null && patient != null && CareType.fromString(request.getCareType()) == CareType.PAYMENT) {
+            List<Invoice> patientInvoices = invoiceRepository.findByPatientIdOrderByInvoiceDateDesc(patient.getId());
+            invoice = patientInvoices.stream()
+                    .filter(inv -> inv.getRemainingAmount() != null && inv.getRemainingAmount().compareTo(BigDecimal.ZERO) > 0)
+                    .findFirst()
+                    .orElse(patientInvoices.isEmpty() ? null : patientInvoices.get(0));
+        }
+
         CareType type = CareType.fromString(request.getCareType());
         CareChannel channel = CareChannel.fromString(request.getChannel());
         CareStatus status = CareStatus.fromString(request.getStatus());
@@ -866,6 +1078,7 @@ public class CustomerCareServiceImpl implements CustomerCareService {
         CustomerCareRecord record = CustomerCareRecord.builder()
                 .patient(patient)
                 .appointment(apt)
+                .invoice(invoice)
                 .careType(type)
                 .channel(channel)
                 .status(status)
@@ -879,7 +1092,7 @@ public class CustomerCareServiceImpl implements CustomerCareService {
 
         // If channel is GMAIL or EMAIL, send real email directly to patient
         if ((channel == CareChannel.GMAIL || channel == CareChannel.EMAIL) && patient != null && patient.getEmail() != null && !patient.getEmail().isBlank()) {
-            sendCareEmailHtml(patient.getEmail(), patient.getFullName(), request.getNotes(), type);
+            sendCareEmailHtml(patient.getEmail(), patient.getFullName(), request.getNotes(), type, invoice);
         }
 
         return mapToResponseDTO(record);
@@ -908,10 +1121,26 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                 ? request.getMessage()
                 : "Gửi thông tin chăm sóc khách hàng qua Gmail";
 
-        sendCareEmailHtml(recipientEmail, patient != null ? patient.getFullName() : "Quý khách", notes, type);
+        Invoice invoice = null;
+        if (request.getInvoiceId() != null) {
+            invoice = invoiceRepository.findById(request.getInvoiceId()).orElse(null);
+            if (patient == null && invoice != null && invoice.getPatient() != null) {
+                patient = invoice.getPatient();
+            }
+        }
+        if (invoice == null && patient != null && type == CareType.PAYMENT) {
+            List<Invoice> patientInvoices = invoiceRepository.findByPatientIdOrderByInvoiceDateDesc(patient.getId());
+            invoice = patientInvoices.stream()
+                    .filter(inv -> inv.getRemainingAmount() != null && inv.getRemainingAmount().compareTo(BigDecimal.ZERO) > 0)
+                    .findFirst()
+                    .orElse(patientInvoices.isEmpty() ? null : patientInvoices.get(0));
+        }
+
+        sendCareEmailHtml(recipientEmail, patient != null ? patient.getFullName() : "Quý khách", notes, type, invoice);
 
         CustomerCareRecord record = CustomerCareRecord.builder()
                 .patient(patient)
+                .invoice(invoice)
                 .careType(type)
                 .channel(CareChannel.GMAIL)
                 .status(CareStatus.COMPLETED)
@@ -924,13 +1153,44 @@ public class CustomerCareServiceImpl implements CustomerCareService {
         return mapToResponseDTO(record);
     }
 
-    private void sendCareEmailHtml(String recipientEmail, String patientName, String notes, CareType careType) {
+    private void sendCareEmailHtml(String recipientEmail, String patientName, String notes, CareType careType, Invoice invoice) {
         try {
             String subject = "[Crown Dental] Thông tin chăm sóc khách hàng";
             if (careType == CareType.APPOINTMENT_REMINDER) {
                 subject = "[Crown Dental] Nhắc lịch hẹn khám tại phòng khám";
             } else if (careType == CareType.BIRTHDAY) {
                 subject = "[Crown Dental] Chúc mừng sinh nhật Quý khách!";
+            } else if (careType == CareType.PAYMENT) {
+                subject = "[Crown Dental] Thông báo thanh toán dịch vụ & Cảm ơn Quý khách";
+            }
+
+            String qrSectionHtml = "";
+            if (careType == CareType.PAYMENT && invoice != null && invoice.getRemainingAmount() != null && invoice.getRemainingAmount().compareTo(BigDecimal.ZERO) > 0) {
+                String invCode = invoice.getInvoiceCode() != null ? invoice.getInvoiceCode() : "HÓA ĐƠN";
+                String addInfo = java.net.URLEncoder.encode(invCode + " " + (patientName != null ? patientName : ""), java.nio.charset.StandardCharsets.UTF_8).replace("+", "%20");
+                String qrUrl = String.format("https://img.vietqr.io/image/MB-0343632524-compact2.png?amount=%s&addInfo=%s&accountName=CROWN%%20DENTAL",
+                        invoice.getRemainingAmount().toBigInteger().toString(), addInfo);
+                String formattedDebt = java.text.NumberFormat.getInstance(new java.util.Locale("vi", "VN")).format(invoice.getRemainingAmount());
+
+                qrSectionHtml = String.format("""
+                    <div style="margin: 20px 0; padding: 18px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; text-align: center;">
+                        <div style="display: inline-block; padding: 4px 12px; background-color: #132c68; color: #ffffff; font-size: 11px; font-weight: bold; border-radius: 4px; text-transform: uppercase; margin-bottom: 10px;">
+                            VIETQR THANH TOÁN TIỆN LỢI - MB BANK
+                        </div>
+                        <h4 style="margin: 0 0 10px 0; font-size: 15px; color: #0f172a; font-weight: 700;">Quét mã VietQR để thanh toán nhanh</h4>
+                        <div style="background: #ffffff; padding: 10px; border-radius: 8px; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">
+                            <img src="%s" style="max-width: 240px; width: 100%%; height: auto; display: block; margin: 0 auto; border-radius: 6px;" alt="Mã VietQR thanh toán MB Bank" />
+                        </div>
+                        <table style="width: 100%%; max-width: 440px; margin: 14px auto 0 auto; border-collapse: collapse; font-size: 13px; text-align: left; background: #ffffff; border-radius: 6px; border: 1px dashed #94a3b8;">
+                            <tr><td style="padding: 6px 10px; color: #64748b; font-size: 12px;">Ngân hàng thụ hưởng:</td><td style="padding: 6px 10px; font-weight: bold; color: #1e293b;">MB Bank (Ngân Hàng Quân Đội)</td></tr>
+                            <tr style="background-color: #f8fafc;"><td style="padding: 6px 10px; color: #64748b; font-size: 12px;">Số tài khoản:</td><td style="padding: 6px 10px; font-family: monospace; font-size: 14px; font-weight: bold; color: #1d4ed8;">0343632524</td></tr>
+                            <tr><td style="padding: 6px 10px; color: #64748b; font-size: 12px;">Chủ tài khoản:</td><td style="padding: 6px 10px; font-weight: bold; color: #1e293b;">CROWN DENTAL</td></tr>
+                            <tr style="background-color: #f8fafc;"><td style="padding: 6px 10px; color: #64748b; font-size: 12px;">Số tiền cần thanh toán:</td><td style="padding: 6px 10px; font-weight: bold; color: #e11d48; font-size: 14px;">%s đ</td></tr>
+                            <tr><td style="padding: 6px 10px; color: #64748b; font-size: 12px;">Cú pháp nội dung:</td><td style="padding: 6px 10px; font-family: monospace; font-weight: bold; color: #7e22ce;">%s - %s</td></tr>
+                        </table>
+                        <p style="margin: 10px 0 0 0; font-size: 12px; color: #64748b;">Quý khách mở ứng dụng Ngân hàng quét mã QR trên để thanh toán tự động không cần nhập lại thông tin.</p>
+                    </div>
+                """, qrUrl, formattedDebt, invCode, patientName != null ? patientName : "");
             }
 
             String body = """
@@ -949,6 +1209,7 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                             <div style="background-color: #f8fafc; border-left: 4px solid #7c3aed; padding: 14px 16px; border-radius: 4px; margin: 18px 0;">
                                 <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #1e293b;">%s</p>
                             </div>
+                            %s
                             <p style="font-size: 13px; color: #64748b; margin-bottom: 0;">Nếu Quý khách có bất kỳ thắc mắc hoặc cần hỗ trợ thêm, xin vui lòng phản hồi email này hoặc liên hệ Hotline: <strong>0343632524</strong>.</p>
                         </div>
                         <div style="background-color: #f8fafc; padding: 14px 24px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 12px; color: #94a3b8;">
@@ -959,7 +1220,8 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                 </html>
                 """.formatted(
                     patientName != null ? patientName : "Quý khách",
-                    notes != null ? notes.replace("\n", "<br>") : "Thông tin chăm sóc từ phòng khám Crown Dental"
+                    notes != null ? notes.replace("\n", "<br>") : "Thông tin chăm sóc từ phòng khám Crown Dental",
+                    qrSectionHtml
                 );
 
             emailService.send(recipientEmail.trim(), subject, body);
@@ -982,6 +1244,11 @@ public class CustomerCareServiceImpl implements CustomerCareService {
         long aptCount = appointmentRepository.count() + followUpAppointmentRepository.count();
         long bdayCount = patientRepository.findAll().stream().filter(p -> p.getDateOfBirth() != null).count();
         long generalCareCount = allCares.stream().filter(c -> c.getCareType() == CareType.GENERAL_CARE).count();
+        long paymentCareCount = allCares.stream().filter(c -> c.getCareType() == CareType.PAYMENT).count();
+
+        List<Invoice> allInvoices = invoiceRepository.findAll();
+        long paidInvoices = allInvoices.stream().filter(i -> i.getPaymentStatus() == PaymentStatus.PAID).count();
+        long debtInvoices = allInvoices.stream().filter(i -> i.getPaymentStatus() == PaymentStatus.PARTIALLY_PAID || i.getPaymentStatus() == PaymentStatus.UNPAID).count();
 
         double satRate = 98.5;
         if (!allCares.isEmpty()) {
@@ -996,6 +1263,9 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                 .totalAppointments(aptCount)
                 .totalBirthdays(bdayCount)
                 .totalGeneralCare(generalCareCount)
+                .totalPaymentCare(paymentCareCount)
+                .totalPaidInvoices(paidInvoices)
+                .totalDebtInvoices(debtInvoices)
                 .satisfactionRate(satRate)
                 .build();
     }
@@ -1079,6 +1349,9 @@ public class CustomerCareServiceImpl implements CustomerCareService {
             }
         }
 
+        UUID invId = c.getInvoice() != null ? c.getInvoice().getId() : null;
+        String invCode = c.getInvoice() != null ? c.getInvoice().getInvoiceCode() : null;
+
         return CustomerCareRecordResponseDTO.builder()
                 .id(c.getId())
                 .patientId(pId)
@@ -1094,6 +1367,8 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                 .statusLabel(c.getStatus() != null ? c.getStatus().getLabel() : "")
                 .careTime(c.getCareTime())
                 .notes(c.getNotes())
+                .invoiceId(invId)
+                .invoiceCode(invCode)
                 .createdByName(staff)
                 .createdAt(c.getCreatedAt())
                 .build();
@@ -1101,7 +1376,7 @@ public class CustomerCareServiceImpl implements CustomerCareService {
 
     @Override
     @Transactional(readOnly = true)
-    public PatientCareDetailDTO getPatientCareDetail(UUID patientId, UUID contextAppointmentId) {
+    public PatientCareDetailDTO getPatientCareDetail(UUID patientId, UUID contextAppointmentId, UUID contextInvoiceId) {
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new NoSuchElementException("Không tìm thấy bệnh nhân với ID: " + patientId));
 
@@ -1236,6 +1511,126 @@ public class CustomerCareServiceImpl implements CustomerCareService {
         // 5. Care history
         List<CustomerCareRecordResponseDTO> careHistory = getPatientCareHistory(patientId);
 
+        // 6. Invoices & Billing info of this patient
+        List<Invoice> patientInvoices = invoiceRepository.findByPatientIdOrderByInvoiceDateDesc(patientId);
+        List<PatientCareDetailDTO.PatientInvoiceDTO> invoiceDTOs = new ArrayList<>();
+        BigDecimal totalPatientDebt = BigDecimal.ZERO;
+        BigDecimal totalPatientPaid = BigDecimal.ZERO;
+        BigDecimal totalPatientInvoiced = BigDecimal.ZERO;
+
+        for (Invoice inv : patientInvoices) {
+            BigDecimal fAmt = inv.getFinalAmount() != null ? inv.getFinalAmount() : BigDecimal.ZERO;
+            BigDecimal pAmt = inv.getPaidAmount() != null ? inv.getPaidAmount() : BigDecimal.ZERO;
+            BigDecimal rAmt = inv.getRemainingAmount() != null ? inv.getRemainingAmount() : fAmt.subtract(pAmt).max(BigDecimal.ZERO);
+            totalPatientInvoiced = totalPatientInvoiced.add(fAmt);
+            totalPatientPaid = totalPatientPaid.add(pAmt);
+            totalPatientDebt = totalPatientDebt.add(rAmt);
+
+            String statusLabel = "Chưa thanh toán";
+            if (inv.getPaymentStatus() != null) {
+                switch (inv.getPaymentStatus()) {
+                    case PAID:
+                        statusLabel = "Đã thanh toán";
+                        break;
+                    case PARTIALLY_PAID:
+                        statusLabel = "Thanh toán 1 phần";
+                        break;
+                    case UNPAID:
+                        statusLabel = "Chưa thanh toán";
+                        break;
+                    case CANCELLED:
+                        statusLabel = "Đã hủy";
+                        break;
+                }
+            }
+
+            String invDateFmt = inv.getInvoiceDate() != null ? inv.getInvoiceDate().format(DATE_TIME_FMT) : "";
+            String empName = inv.getEmployee() != null ? inv.getEmployee().getFullName() : "Nhân viên thu ngân";
+            int itemsCount = inv.getInvoiceDetails() != null ? inv.getInvoiceDetails().size() : 0;
+
+            invoiceDTOs.add(PatientCareDetailDTO.PatientInvoiceDTO.builder()
+                    .id(inv.getId())
+                    .invoiceCode(inv.getInvoiceCode() != null ? inv.getInvoiceCode() : "")
+                    .invoiceDate(inv.getInvoiceDate())
+                    .timeFormatted(invDateFmt)
+                    .finalAmount(fAmt)
+                    .paidAmount(pAmt)
+                    .remainingAmount(rAmt)
+                    .paymentStatus(inv.getPaymentStatus() != null ? inv.getPaymentStatus().name() : "UNPAID")
+                    .paymentStatusLabel(statusLabel)
+                    .employeeName(empName)
+                    .itemsCount(itemsCount)
+                    .build());
+        }
+
+        // 7. Context Invoice info
+        PatientCareDetailDTO.InvoiceCareInfoDTO invoiceInfo = null;
+        Invoice targetInvoice = null;
+        if (contextInvoiceId != null) {
+            targetInvoice = patientInvoices.stream().filter(i -> i.getId().equals(contextInvoiceId)).findFirst()
+                    .orElseGet(() -> invoiceRepository.findById(contextInvoiceId).orElse(null));
+        }
+        if (targetInvoice == null && !patientInvoices.isEmpty()) {
+            targetInvoice = patientInvoices.stream()
+                    .filter(i -> i.getRemainingAmount() != null && i.getRemainingAmount().compareTo(BigDecimal.ZERO) > 0)
+                    .findFirst()
+                    .orElse(patientInvoices.get(0));
+        }
+
+        if (targetInvoice != null) {
+            BigDecimal fAmt = targetInvoice.getFinalAmount() != null ? targetInvoice.getFinalAmount() : BigDecimal.ZERO;
+            BigDecimal pAmt = targetInvoice.getPaidAmount() != null ? targetInvoice.getPaidAmount() : BigDecimal.ZERO;
+            BigDecimal rAmt = targetInvoice.getRemainingAmount() != null ? targetInvoice.getRemainingAmount() : fAmt.subtract(pAmt).max(BigDecimal.ZERO);
+            String statusLabel = "Chưa thanh toán";
+            if (targetInvoice.getPaymentStatus() != null) {
+                switch (targetInvoice.getPaymentStatus()) {
+                    case PAID:
+                        statusLabel = "Đã thanh toán";
+                        break;
+                    case PARTIALLY_PAID:
+                        statusLabel = "Thanh toán 1 phần";
+                        break;
+                    case UNPAID:
+                        statusLabel = "Chưa thanh toán";
+                        break;
+                    case CANCELLED:
+                        statusLabel = "Đã hủy";
+                        break;
+                }
+            }
+
+            List<PatientCareDetailDTO.InvoiceItemDTO> itemDTOs = new ArrayList<>();
+            if (targetInvoice.getInvoiceDetails() != null) {
+                for (InvoiceDetail d : targetInvoice.getInvoiceDetails()) {
+                    itemDTOs.add(PatientCareDetailDTO.InvoiceItemDTO.builder()
+                            .itemName(d.getItemName() != null ? d.getItemName() : "Dịch vụ nha khoa")
+                            .quantity(d.getQuantity() != null ? d.getQuantity() : 1)
+                            .unitPrice(d.getUnitPrice() != null ? d.getUnitPrice() : BigDecimal.ZERO)
+                            .subtotal(d.getSubtotal() != null ? d.getSubtotal() : BigDecimal.ZERO)
+                            .build());
+                }
+            }
+
+            String invDateFmt = targetInvoice.getInvoiceDate() != null ? targetInvoice.getInvoiceDate().format(DATE_FMT) : "";
+            String empName = targetInvoice.getEmployee() != null ? targetInvoice.getEmployee().getFullName() : "Nhân viên thu ngân";
+
+            invoiceInfo = PatientCareDetailDTO.InvoiceCareInfoDTO.builder()
+                    .invoiceId(targetInvoice.getId())
+                    .invoiceCode(targetInvoice.getInvoiceCode() != null ? targetInvoice.getInvoiceCode() : "")
+                    .invoiceDate(targetInvoice.getInvoiceDate())
+                    .dateFormatted(invDateFmt)
+                    .totalAmount(targetInvoice.getTotalAmount() != null ? targetInvoice.getTotalAmount() : fAmt)
+                    .discountAmount(targetInvoice.getDiscountAmount() != null ? targetInvoice.getDiscountAmount() : BigDecimal.ZERO)
+                    .finalAmount(fAmt)
+                    .paidAmount(pAmt)
+                    .remainingAmount(rAmt)
+                    .paymentStatus(targetInvoice.getPaymentStatus() != null ? targetInvoice.getPaymentStatus().name() : "UNPAID")
+                    .paymentStatusLabel(statusLabel)
+                    .employeeName(empName)
+                    .items(itemDTOs)
+                    .build();
+        }
+
         return PatientCareDetailDTO.builder()
                 .patientId(patient.getId())
                 .patientCode(patient.getPatientCode() != null ? patient.getPatientCode() : "")
@@ -1249,6 +1644,11 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                 .customerCard(patient.getCustomerCard())
                 .notes(patient.getNotes())
                 .reminderInfo(reminderInfo)
+                .invoiceInfo(invoiceInfo)
+                .invoices(invoiceDTOs)
+                .totalPatientDebt(totalPatientDebt)
+                .totalPatientPaid(totalPatientPaid)
+                .totalPatientInvoiced(totalPatientInvoiced)
                 .careHistory(careHistory)
                 .appointments(appointmentDTOs)
                 .build();

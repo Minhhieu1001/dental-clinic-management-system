@@ -80,6 +80,21 @@ public class CustomerCareController {
         return ResponseEntity.ok(result);
     }
 
+    @GetMapping("/payments")
+    public ResponseEntity<List<PaymentCareItemDTO>> getPaymentCareList(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String paymentStatus,
+            @RequestParam(required = false) String careStatus,
+            @RequestParam(required = false) String employeeId
+    ) {
+        List<PaymentCareItemDTO> result = customerCareService.getPaymentCareList(
+                search, startDate, endDate, paymentStatus, careStatus, employeeId
+        );
+        return ResponseEntity.ok(result);
+    }
+
     @GetMapping("/records")
     public ResponseEntity<List<CustomerCareRecordResponseDTO>> getAllCareRecords(
             @RequestParam(required = false) String search,
@@ -133,9 +148,10 @@ public class CustomerCareController {
     @GetMapping("/patient/{patientId}/detail")
     public ResponseEntity<PatientCareDetailDTO> getPatientCareDetail(
             @PathVariable UUID patientId,
-            @RequestParam(required = false) UUID appointmentId
+            @RequestParam(required = false) UUID appointmentId,
+            @RequestParam(required = false) UUID invoiceId
     ) {
-        PatientCareDetailDTO result = customerCareService.getPatientCareDetail(patientId, appointmentId);
+        PatientCareDetailDTO result = customerCareService.getPatientCareDetail(patientId, appointmentId, invoiceId);
         return ResponseEntity.ok(result);
     }
 
