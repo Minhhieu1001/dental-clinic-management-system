@@ -91,6 +91,7 @@ public class SecurityConfig {
                                 "/api/invoices/**",
                                 "/api/v1/payments/**",
                                 "/api/v1/sms/**",
+                                "/api/v1/customer-care/**",
                                 "/api/v1/data-fix/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",

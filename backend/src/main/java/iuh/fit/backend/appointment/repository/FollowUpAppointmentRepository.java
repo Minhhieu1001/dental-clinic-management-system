@@ -18,6 +18,13 @@ public interface FollowUpAppointmentRepository extends JpaRepository<FollowUpApp
     @Query("SELECT f FROM FollowUpAppointment f " +
            "LEFT JOIN f.examinationResult e " +
            "LEFT JOIN e.medicalRecord m " +
+           "WHERE m.patient.id = :patientId " +
+           "ORDER BY f.followUpDate DESC")
+    List<FollowUpAppointment> findByPatientId(@Param("patientId") UUID patientId);
+
+    @Query("SELECT f FROM FollowUpAppointment f " +
+           "LEFT JOIN f.examinationResult e " +
+           "LEFT JOIN e.medicalRecord m " +
            "LEFT JOIN m.patient p " +
            "WHERE (:patientId IS NULL OR p.id = :patientId) " +
            "AND (:patientCode IS NULL OR LOWER(p.patientCode) = LOWER(:patientCode)) " +

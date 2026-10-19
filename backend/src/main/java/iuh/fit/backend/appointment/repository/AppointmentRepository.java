@@ -48,4 +48,6 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
   @Query("SELECT a FROM Appointment a WHERE (a.status = 'CONFIRMED' OR a.status = 'PENDING' OR a.status = 'WAITING') AND (a.reminded1Hour IS NULL OR a.reminded1Hour = false) AND a.appointmentTime >= :startTime AND a.appointmentTime <= :endTime")
   List<Appointment> findAppointmentsNeeding1HourReminder(@Param("startTime") LocalDateTime startTime,
       @Param("endTime") LocalDateTime endTime);
+
+  List<Appointment> findByPatientId(UUID patientId);
 }
