@@ -45,6 +45,8 @@ api.interceptors.response.use(
       error.response?.status === 401 &&
       !originalRequest._retry &&
       !originalRequest.url?.includes('/auth/login') &&
+      !originalRequest.url?.includes('/auth/forgot-password') &&
+      !originalRequest.url?.includes('/auth/reset-password') &&
       !originalRequest.url?.includes('/auth/refresh')
     ) {
       if (isRefreshing) {
@@ -70,7 +72,7 @@ api.interceptors.response.use(
         processQueue(refreshError);
 
         // Refresh failed — redirect to login
-        window.location.href = '/login';
+        window.location.href = window.location.pathname.startsWith('/patient') ? '/patient/login' : '/staff/login';
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

@@ -9,6 +9,7 @@ export const useAuth = () => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isLoading = useAuthStore((state) => state.isLoading);
   const login = useAuthStore((state) => state.login);
+  const patientLogin = useAuthStore((state) => state.patientLogin);
   const logout = useAuthStore((state) => state.logout);
   const fetchUser = useAuthStore((state) => state.fetchUser);
 
@@ -17,6 +18,7 @@ export const useAuth = () => {
     isAuthenticated,
     isLoading,
     login,
+    patientLogin,
     logout,
     fetchUser,
 

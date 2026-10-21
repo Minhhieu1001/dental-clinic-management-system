@@ -85,20 +85,12 @@ export default function HeroSection() {
         {/* Title */}
         <motion.div variants={itemVariants} className="mb-6">
           <h1 className="text-5xl xl:text-[3.5rem] font-bold text-slate-900 leading-[1.1] tracking-tight">
-            Dental Smart <br />
+            Crown Dental <br />
             Clinic Management <br />
             <span className="text-teal-700">System</span>
           </h1>
         </motion.div>
 
-        {/* Subtitle */}
-        <motion.p
-          variants={itemVariants}
-          className="text-lg text-slate-700 leading-relaxed mb-10 max-w-sm font-medium"
-        >
-          Chuyển đổi số toàn diện <br />
-          cho phòng khám nha khoa
-        </motion.p>
 
         {/* Feature List */}
         <motion.div variants={itemVariants} className="flex flex-col gap-4">

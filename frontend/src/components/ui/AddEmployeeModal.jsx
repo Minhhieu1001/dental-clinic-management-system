@@ -35,6 +35,7 @@ export default function AddEmployeeModal({ isOpen, onClose, onSuccess }) {
     email: '',
     phone: '',
     password: '',
+    dateOfBirth: '',
     gender: 'MALE',
     address: '',
     position: 'RECEPTIONIST',
@@ -122,7 +123,8 @@ export default function AddEmployeeModal({ isOpen, onClose, onSuccess }) {
         status: true,
         gender: formData.gender,
         address: formData.address,
-        branchId: formData.branchId
+        branchId: formData.branchId,
+        dateOfBirth: formData.dateOfBirth || null
       };
 
       await createEmployee(employeeRequest);
@@ -221,6 +223,20 @@ export default function AddEmployeeModal({ isOpen, onClose, onSuccess }) {
                       onChange={handleChange}
                       className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-4 text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 transition-all bg-white"
                       placeholder="Nguyễn Văn A"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-700">Ngày sinh</label>
+                  <div className="relative">
+                    <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <input
+                      type="date"
+                      name="dateOfBirth"
+                      value={formData.dateOfBirth}
+                      onChange={handleChange}
+                      className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-4 text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 transition-all bg-white"
                     />
                   </div>
                 </div>

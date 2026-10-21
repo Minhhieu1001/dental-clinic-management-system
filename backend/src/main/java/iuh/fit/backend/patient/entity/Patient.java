@@ -77,6 +77,10 @@ public class Patient {
     @CreationTimestamp
     private LocalDateTime createdAt;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
+
     @Builder.Default
     @OneToMany(mappedBy = "patient", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<MedicalRecord> medicalRecords = new ArrayList<>();

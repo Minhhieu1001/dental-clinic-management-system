@@ -293,6 +293,7 @@ export default function DentistManagement() {
                                 <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-2xs">
                                     <tr>
                                         <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 w-12 bg-slate-50">#</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 bg-slate-50">Mã bác sĩ</th>
                                         <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 bg-slate-50">Thông tin bác sĩ</th>
                                         <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 bg-slate-50">Ngày sinh</th>
                                         <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 bg-slate-50">Chuyên khoa</th>
@@ -310,6 +311,11 @@ export default function DentistManagement() {
                                         >
                                             <td className="px-4 py-3 text-sm text-slate-500">
                                                 {startIndex + index + 1}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <span className="font-mono text-xs font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200 inline-block">
+                                                    {dentist.dentistCode || '—'}
+                                                </span>
                                             </td>
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center gap-3">
@@ -350,7 +356,7 @@ export default function DentistManagement() {
 
                                     {paginatedDentists.length === 0 && (
                                         <tr>
-                                            <td colSpan={7} className="px-6 py-16 text-center text-slate-400">
+                                            <td colSpan={9} className="px-6 py-16 text-center text-slate-400">
                                                 Không tìm thấy bác sĩ phù hợp.
                                             </td>
                                         </tr>

@@ -36,6 +36,7 @@ export default function EditEmployeeModal({ isOpen, onClose, onSuccess, employee
     username: '',
     email: '',
     phone: '',
+    dateOfBirth: '',
     gender: 'MALE',
     address: '',
     position: 'RECEPTIONIST',
@@ -51,6 +52,9 @@ export default function EditEmployeeModal({ isOpen, onClose, onSuccess, employee
         username: employee.name || '',
         email: employee.email || '',
         phone: employee.phone || '',
+        dateOfBirth: employee.dateOfBirth
+          ? (typeof employee.dateOfBirth === 'string' ? employee.dateOfBirth.split('T')[0] : employee.dateOfBirth)
+          : '',
         gender: employee.gender || 'MALE',
         address: employee.address || '',
         position: employee.originalRole || 'RECEPTIONIST',
@@ -165,7 +169,8 @@ export default function EditEmployeeModal({ isOpen, onClose, onSuccess, employee
         status: employee.status !== undefined ? employee.status : true,
         gender: formData.gender,
         address: formData.address,
-        branchId: formData.branchId
+        branchId: formData.branchId,
+        dateOfBirth: formData.dateOfBirth || null
       };
 
       await updateEmployee(employee.id, employeeRequest);
@@ -270,6 +275,20 @@ export default function EditEmployeeModal({ isOpen, onClose, onSuccess, employee
                         onChange={handleChange}
                         className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-4 text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 transition-all bg-white"
                         placeholder="Nguyễn Văn A"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-slate-700">Ngày sinh</label>
+                    <div className="relative">
+                      <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <input
+                        type="date"
+                        name="dateOfBirth"
+                        value={formData.dateOfBirth}
+                        onChange={handleChange}
+                        className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-4 text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 transition-all bg-white"
                       />
                     </div>
                   </div>

@@ -4,6 +4,7 @@ import iuh.fit.backend.common.exception.AppException;
 import iuh.fit.backend.common.exception.ErrorCode;
 import iuh.fit.backend.notification.service.NotificationService;
 import iuh.fit.backend.user.dto.UserRequest;
+import iuh.fit.backend.user.dto.ChangePasswordRequest;
 import iuh.fit.backend.user.dto.UserResponse;
 import iuh.fit.backend.user.entity.User;
 import iuh.fit.backend.user.enums.Role;
@@ -20,8 +21,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 @RequiredArgsConstructor
@@ -63,6 +66,7 @@ public class UserServiceImpl implements UserService {
         String rawPassword = request.password();
         User user = new User();
         applyUserRequest(user, request);
+        user.setCodeName(generateCodeName(user.getRole()));
         User savedUser = userRepository.save(user);
         CompletableFuture.runAsync(() -> {
             try {
@@ -106,6 +110,26 @@ public class UserServiceImpl implements UserService {
         }
     }
 
+    @Override
+    public void changePassword(UUID userId, ChangePasswordRequest request) {
+        User user = findUser(userId);
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Mật khẩu hiện tại không chính xác");
+        }
+        if (!request.newPassword().equals(request.confirmPassword())) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Xác nhận mật khẩu mới không khớp");
+        }
+        // BCrypt limits input by UTF-8 bytes, not Java character count.
+        if (request.newPassword().getBytes(StandardCharsets.UTF_8).length > 72) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Mật khẩu mới không được vượt quá 72 byte UTF-8");
+        }
+        if (passwordEncoder.matches(request.newPassword(), user.getPassword())) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Mật khẩu mới phải khác mật khẩu hiện tại");
+        }
+        user.setPassword(passwordEncoder.encode(request.newPassword()));
+        userRepository.save(user);
+    }
+
     private void applyUserUpdate(User user, UserRequest request) {
         // Update forms send only the fields they edit; retain omitted account data.
         if (request.username() != null) user.setUsername(request.username());
@@ -117,6 +141,25 @@ public class UserServiceImpl implements UserService {
         if (request.avatarUrl() != null) user.setAvatarUrl(request.avatarUrl());
         if (request.role() != null) user.setRole(request.role());
         if (request.status() != null) user.setStatus(request.status());
+    }
+
+    private String generateCodeName(Role role) {
+        if (role == null || role == Role.ADMIN) {
+            return null;
+        }
+        String prefix = switch (role) {
+            case DENTIST -> "BS-";
+            case EMPLOYEE -> "EM-";
+            case PATIENT -> "PA-";
+            default -> throw new IllegalArgumentException("Unsupported role: " + role);
+        };
+        for (int attempt = 0; attempt < 100; attempt++) {
+            String codeName = prefix + ThreadLocalRandom.current().nextInt(100000, 1000000);
+            if (!userRepository.existsByCodeName(codeName)) {
+                return codeName;
+            }
+        }
+        throw new ResponseStatusException(HttpStatus.CONFLICT, "Unable to generate a unique user code. Please retry.");
     }
 
     private void applyUserRequest(User user, UserRequest request) {

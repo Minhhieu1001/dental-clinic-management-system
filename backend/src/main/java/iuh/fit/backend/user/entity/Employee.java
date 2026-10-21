@@ -13,6 +13,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -28,6 +29,8 @@ public class Employee {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    private LocalDate dateOfBirth;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")

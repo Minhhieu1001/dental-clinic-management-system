@@ -27,7 +27,7 @@ import toast from 'react-hot-toast';
 import { updateDentist, updateUser } from '../../services/dentist.service';
 import { getBranches } from '../../services/clinic.service';
 import { uploadImage } from '../../services/media.service';
-import { DEFAULT_DENTIST_SPECIALIZATION, SPECIALIZATION_OPTIONS } from '../../features/dentist/dentistHelpers';
+import { CERTIFICATE_TYPE_OPTIONS, getCertificateTypeLabel } from '../../features/dentist/dentistHelpers';
 
 const EMPTY_CERTIFICATE = {
     certificate_name: '',
@@ -37,7 +37,7 @@ const EMPTY_CERTIFICATE = {
     expiry_date: '',
     certificate_file: null,
     certificate_file_preview: null,
-    specialization: DEFAULT_DENTIST_SPECIALIZATION,
+    certificate_type: 'GENERAL_DENTISTRY',
 };
 
 const STEPS = [
@@ -118,15 +118,17 @@ function CertificateCard({ cert, index, onChange, onRemove, onFileChange, canRem
                 )}
             </div>
 
-            {cert.specialization !== undefined && (
+            {cert.certificate_type !== undefined && (
                 <div className="space-y-1.5">
                     <label className="text-xs font-medium text-slate-600">Chuyên khoa <span className="text-red-400">*</span></label>
                     <select
-                        value={cert.specialization}
-                        onChange={(e) => onChange(index, 'specialization', e.target.value)}
+                        required
+                        value={cert.certificate_type}
+                        onChange={(e) => onChange(index, 'certificate_type', e.target.value)}
                         className="w-full px-3 h-9 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm bg-white"
                     >
-                        {SPECIALIZATION_OPTIONS.map((item) => (
+                        <option value="" disabled>Chọn loại chứng chỉ</option>
+                        {CERTIFICATE_TYPE_OPTIONS.filter((item) => item.value !== 'PRACTICE_LICENSE').map((item) => (
                             <option key={item.value} value={item.value}>{item.label}</option>
                         ))}
                     </select>
@@ -334,7 +336,7 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                         issued_by: c.issued_by || '',
                         issue_date: c.issue_date || '',
                         expiry_date: c.expiry_date || '',
-                        specialization: c.specialization || DEFAULT_DENTIST_SPECIALIZATION,
+                        certificate_type: c.certificate_type || c.certificateType || '',
                         certificate_file: null,
                         certificate_file_preview: c.certificate_file_url || null,
                     }))
@@ -454,6 +456,7 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
         if (!isPracticeLicenseValid()) return false;
         for (const cert of specCertificates) {
             if (
+                !cert.certificate_type ||
                 !cert.certificate_name.trim() ||
                 !cert.certificate_number.trim() ||
                 !cert.issued_by.trim() ||
@@ -491,6 +494,11 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
         setLoading(true);
 
         try {
+            if (specCertificates.some((cert) => !cert.certificate_type)) {
+                setError('Vui lòng chọn loại cho từng chứng chỉ chuyên môn.');
+                setCurrentStep(1);
+                return;
+            }
             let avatarUrl = dentist.avatar;
             if (avatarFile) {
                 const uploadResult = await uploadImage(avatarFile);
@@ -510,12 +518,8 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                 });
             }
 
-            const specializations = specCertificates.length > 0
-                ? specCertificates.map((c) => c.specialization)
-                : [DEFAULT_DENTIST_SPECIALIZATION];
-
             // Helper to upload certificate file and map to DTO
-            const uploadAndMapCertificate = async (cert) => {
+            const uploadAndMapCertificate = async (cert, certType) => {
                 let fileUrl = cert.certificate_file_preview || '';
                 // Only upload if it's a new file (not a string URL)
                 if (cert.certificate_file) {
@@ -529,14 +533,15 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                     issueDate: cert.issue_date ? new Date(cert.issue_date).toISOString() : null,
                     expiryDate: cert.expiry_date ? new Date(cert.expiry_date).toISOString() : null,
                     certificateFileUrl: fileUrl,
+                    certificateType: certType,
                 };
             };
 
             const isCertValid = (c) => c && c.certificate_name?.trim() && c.certificate_number?.trim();
 
-            const practiceCertData = isCertValid(practiceLicense) ? await uploadAndMapCertificate(practiceLicense) : null;
+            const practiceCertData = isCertValid(practiceLicense) ? await uploadAndMapCertificate(practiceLicense, 'PRACTICE_LICENSE') : null;
             const specCertsData = await Promise.all(
-                specCertificates.filter(isCertValid).map(uploadAndMapCertificate)
+                specCertificates.filter(isCertValid).map((cert) => uploadAndMapCertificate(cert, cert.certificate_type))
             );
             const allCertificates = [practiceCertData, ...specCertsData].filter(Boolean);
 
@@ -544,8 +549,6 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                 fullName: formData.username,
                 dateOfBirth: formData.dateOfBirth || null,
                 address: formData.address || null,
-                specialization: specializations[0],
-                specializations: specializations,
                 certificates: allCertificates,
                 experienceYears: formData.experienceYears,
                 gender: formData.gender,
@@ -611,6 +614,19 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                 </h3>
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
+                        <label className="text-sm font-medium text-slate-700">Email (Không thể sửa)</label>
+                        <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <input
+                                type="email"
+                                value={dentist?.email || ''}
+                                disabled
+                                className="w-full pl-10 pr-4 h-10 rounded-lg border border-slate-200 bg-slate-50 text-slate-500 text-sm cursor-not-allowed"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-1.5">
                         <label className="text-sm font-medium text-slate-700">Họ và tên <span className="text-red-400">*</span></label>
                         <div className="relative">
                             <UserRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -622,19 +638,6 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                                 onChange={handleChange}
                                 placeholder="Nhập họ và tên"
                                 className="w-full pl-10 pr-4 h-10 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-slate-700">Email (Không thể sửa)</label>
-                        <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <input
-                                type="email"
-                                value={dentist?.email || ''}
-                                disabled
-                                className="w-full pl-10 pr-4 h-10 rounded-lg border border-slate-200 bg-slate-50 text-slate-500 text-sm cursor-not-allowed"
                             />
                         </div>
                     </div>
@@ -921,7 +924,7 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                                     <div className="text-sm space-y-0.5 flex-1 min-w-0">
                                         <p className="font-medium text-slate-700 truncate">{cert.certificate_name}</p>
                                         <p className="text-xs text-slate-400">
-                                            {cert.specialization} • Số: {cert.certificate_number}
+                                            {getCertificateTypeLabel(cert.certificate_type)} • Số: {cert.certificate_number}
                                         </p>
                                     </div>
                                 </div>

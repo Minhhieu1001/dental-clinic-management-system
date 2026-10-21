@@ -9,5 +9,17 @@ public record AuthResponse(
         String role,
         String avatarUrl,
         UUID employeeId,
-        UUID dentistId) {
+        UUID dentistId,
+        UUID patientId) {
+
+    public AuthResponse(
+            UUID id,
+            String email,
+            String username,
+            String role,
+            String avatarUrl,
+            UUID employeeId,
+            UUID dentistId) {
+        this(id, email, username, role, avatarUrl, employeeId, dentistId, null);
+    }
 }

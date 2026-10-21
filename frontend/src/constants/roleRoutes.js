@@ -60,6 +60,13 @@ export const roleRoutes = {
       { label: 'X-quang', to: 'xray-analysis' },
       { label: 'Bệnh nhân', to: 'patients' },
       { label: 'Thông báo', to: 'notifications' },
+      {
+        label: 'Cài đặt',
+        to: 'settings',
+        children: [
+          { label: 'Thông tin chung', to: 'general-settings' },
+        ],
+      },
     ],
     pages: [
       { path: 'dashboard', title: 'Trang tổng quan Dentist' },
@@ -71,6 +78,8 @@ export const roleRoutes = {
       { path: 'xray-analysis', title: 'Phân tích X-quang' },
       { path: 'patients', title: 'Danh sách bệnh nhân' },
       { path: 'notifications', title: 'Thông báo nha sĩ' },
+      { path: 'settings', title: 'Cài đặt nha sĩ' },
+      { path: 'general-settings', title: 'Thông tin chung' },
     ],
   },
   employee: {
@@ -101,6 +110,13 @@ export const roleRoutes = {
       { label: 'Kho', to: 'inventory' },
       { label: 'Nhập/Xuất', to: 'import-export' },
       { label: 'Báo cáo', to: 'report' },
+      {
+        label: 'Cài đặt',
+        to: 'settings',
+        children: [
+          { label: 'Thông tin chung', to: 'general-settings' },
+        ],
+      },
     ],
     pages: [
       { path: 'dashboard', title: 'Trang tổng quan Employee' },
@@ -114,6 +130,8 @@ export const roleRoutes = {
       { path: 'report', title: 'Báo cáo' },
       { path: 'notifications', title: 'Thông báo nhân viên' },
       { path: 'patients-waiting', title: 'Bệnh nhân đang chờ' },
+      { path: 'settings', title: 'Cài đặt nhân viên' },
+      { path: 'general-settings', title: 'Thông tin chung' },
     ],
   },
   patient: {

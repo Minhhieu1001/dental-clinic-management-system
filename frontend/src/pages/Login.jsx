@@ -74,12 +74,12 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-slate-50 relative overflow-x-hidden flex flex-col selection:bg-blue-200 selection:text-blue-900">
-      
+
       {/* Background Image & Overlay */}
       <div className="fixed inset-0 z-0">
-        <img 
-          src={bgImage} 
-          alt="Dental Clinic Background" 
+        <img
+          src={bgImage}
+          alt="Dental Clinic Background"
           className="w-full h-full object-cover opacity-80"
         />
         {/* Overlay gradient to match mockup: light/white on the right, light blue tint on the left */}
@@ -88,7 +88,7 @@ export default function Login() {
 
       {/* Main Content Container */}
       <div className="relative z-10 flex flex-col min-h-screen">
-        
+
         {/* Top Half: Hero and Form */}
         <div className="w-full max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-2 flex-grow">
           {/* Left: Hero Section (hidden on mobile) */}
