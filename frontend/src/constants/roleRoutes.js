@@ -144,7 +144,6 @@ export const roleRoutes = {
       { label: 'Lịch hẹn', to: 'appointments' },
       { label: 'Hồ sơ', to: 'medical-records' },
       { label: 'Hóa đơn', to: 'invoices' },
-      { label: 'Tài khoản & Đổi mật khẩu', to: 'profile' },
     ],
     pages: [
       { path: 'dashboard', title: 'Trang tổng quan Patient' },

@@ -61,7 +61,6 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     public EmployeeResponse createEmployee(EmployeeRequest request) {
         Employee employee = new Employee();
-        employee.setEmployeeCode("NV-" + UUID.randomUUID().toString().replace("-", ""));
         applyEmployeeRequest(employee, request, null);
         return toEmployeeResponse(employeeRepository.save(employee));
     }
@@ -184,7 +183,7 @@ public class EmployeeServiceImpl implements EmployeeService {
                 employee.getStatus(),
                 employee.getBranch() != null ? employee.getBranch().getBranchId() : null,
                 employee.getBranch() != null ? employee.getBranch().getBranchName() : null,
-                employee.getEmployeeCode(),
+                user != null ? user.getCodeName() : null,
                 employee.getDateOfBirth());
     }
 
@@ -209,7 +208,7 @@ public class EmployeeServiceImpl implements EmployeeService {
                 employee.getBranch() != null ? employee.getBranch().getAddress() : null,
                 employee.getBranch() != null && employee.getBranch().getClinic() != null
                         ? employee.getBranch().getClinic().getLegalName() : null,
-                employee.getEmployeeCode(),
+                user != null ? user.getCodeName() : null,
                 employee.getDateOfBirth());
     }
 }

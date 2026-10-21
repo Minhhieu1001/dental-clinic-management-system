@@ -614,20 +614,6 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                 </h3>
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-slate-700">Mã bác sĩ (Không thể sửa)</label>
-                        <div className="relative">
-                            <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <input
-                                type="text"
-                                value={dentist?.dentistCode || '—'}
-                                disabled
-                                readOnly
-                                className="w-full pl-10 pr-4 h-10 rounded-lg border border-slate-200 bg-slate-50 font-mono text-slate-700 font-bold text-sm cursor-not-allowed"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="space-y-1.5">
                         <label className="text-sm font-medium text-slate-700">Email (Không thể sửa)</label>
                         <div className="relative">
                             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />

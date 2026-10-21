@@ -21,7 +21,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@ToString(exclude = {"employee", "dentist"})
+@ToString(exclude = {"employee", "dentist", "patient"})
 @Table(name = "users")
 public class User {
     @Id
@@ -30,6 +30,9 @@ public class User {
 
     @Column(length = 255)
     private String username;
+
+    @Column(name = "code_name", length = 100, unique = true)
+    private String codeName;
 
     @Column(length = 255)
     private String password;
@@ -62,6 +65,10 @@ public class User {
     @JsonIgnore
     @OneToOne(mappedBy = "user", fetch = FetchType.LAZY)
     private Dentist dentist;
+
+    @JsonIgnore
+    @OneToOne(mappedBy = "user", fetch = FetchType.LAZY)
+    private Patient patient;
 
     @JsonIgnore
     @Builder.Default

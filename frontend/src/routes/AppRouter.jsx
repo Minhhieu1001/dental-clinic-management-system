@@ -18,7 +18,11 @@ import Celebrities from '../pages/Celebrities.jsx'
 import Knowledge from '../pages/Knowledge.jsx'
 import KnowledgeDetail from '../pages/KnowledgeDetail.jsx'
 import Login from '../pages/Login.jsx'
+import PatientLogin from '../pages/PatientLogin.jsx'
+import PatientRegister from '../pages/PatientRegister.jsx'
+import PatientActivate from '../pages/PatientActivate.jsx'
 import ForgotPassword from '../pages/ForgotPassword.jsx'
+import NotFound from '../pages/NotFound.jsx'
 
 // Feature Components - Admin
 import AdminDashboard from '../features/dashboard/AdminDashboard.jsx'
@@ -92,7 +96,11 @@ export default function AppRouter() {
         </Route>
 
         {/* Auth pages */}
-        <Route path="/login" element={<Login />} />
+        <Route path="/staff/login" element={<Login />} />
+        <Route path="/login" element={<Navigate to="/staff/login" replace />} />
+        <Route path="/patient/login" element={<PatientLogin />} />
+        <Route path="/patient/register" element={<PatientRegister />} />
+        <Route path="/patient/activate" element={<PatientActivate />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
 
         {/* Protected routes - Admin */}
@@ -172,7 +180,7 @@ export default function AppRouter() {
         </Route>
 
         {/* Catch-all */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   )

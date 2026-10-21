@@ -400,7 +400,7 @@ export default function StaffGeneralSettingsView({ role = 'EMPLOYEE' }) {
                     <User size={15} className="text-teal-800" />
                     I. Thông tin định danh & Liên hệ
                   </h3>
-                  <span className="text-[11px] text-slate-500 font-mono">Dữ liệu thực tế máy chủ</span>
+
                 </div>
 
                 <div className="border border-slate-200 divide-y divide-slate-200 text-xs">

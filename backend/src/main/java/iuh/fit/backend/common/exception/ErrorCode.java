@@ -12,6 +12,9 @@ public enum ErrorCode {
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "Bạn không có quyền truy cập tài nguyên này"),
     ACCOUNT_LOCKED(HttpStatus.FORBIDDEN, "Tài khoản đã bị khóa"),
     ACCOUNT_INACTIVE(HttpStatus.FORBIDDEN, "Tài khoản chưa được kích hoạt"),
+    PATIENT_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy hồ sơ bệnh nhân"),
+    PATIENT_ACCOUNT_NOT_ACTIVATED(HttpStatus.BAD_REQUEST, "Hồ sơ bệnh nhân chưa được kích hoạt tài khoản trực tuyến"),
+    PATIENT_INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "Mã bệnh nhân, số điện thoại hoặc mật khẩu không chính xác"),
 
     // Token
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "Token không hợp lệ"),
@@ -21,6 +24,12 @@ public enum ErrorCode {
     // User
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng"),
     EMAIL_NOT_FOUND(HttpStatus.NOT_FOUND, "Email không tồn tại trong hệ thống"),
+    RESET_CODE_INVALID(HttpStatus.BAD_REQUEST, "Mã xác nhận không đúng hoặc đã được sử dụng"),
+    RESET_CODE_EXPIRED(HttpStatus.BAD_REQUEST, "Mã xác nhận đã hết hạn. Vui lòng xin mã mới"),
+    RESET_TOO_MANY_ATTEMPTS(HttpStatus.TOO_MANY_REQUESTS, "Đã nhập sai 5 lần. Vui lòng xin mã mới"),
+    RESET_RESEND_TOO_SOON(HttpStatus.TOO_MANY_REQUESTS, "Vui lòng đợi 60 giây trước khi xin mã mới"),
+    RESET_TOKEN_INVALID(HttpStatus.BAD_REQUEST, "Phiên đổi mật khẩu không hợp lệ hoặc đã hết hạn"),
+    RESET_MAIL_FAILED(HttpStatus.SERVICE_UNAVAILABLE, "Không gửi được email xác nhận. Vui lòng thử lại sau"),
     EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "Email đã được sử dụng"),
 
     // AppointmentRequest

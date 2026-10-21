@@ -30,8 +30,6 @@ public class Employee {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    private String employeeCode;
-
     private LocalDate dateOfBirth;
 
     @OneToOne(fetch = FetchType.LAZY)

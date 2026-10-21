@@ -13,13 +13,12 @@ import {
   Sparkles,
   RefreshCw,
   Clock,
-  Shield,
   Check,
   AlertCircle,
-  HelpCircle,
   ChevronRight,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { requestPasswordReset, resendPasswordResetCode, verifyPasswordResetCode, resetPassword } from '../services/auth.service';
 import bgImage from '../assets/images/dental-light-bg.png';
 import dentalShieldImg from '../assets/images/dental-security-shield.jpg';
 
@@ -56,11 +55,6 @@ const stepTransition = {
   exit: { opacity: 0, y: -16, scale: 0.98, transition: { duration: 0.25, ease: 'easeIn' } },
 };
 
-const childVariant = {
-  hidden: { opacity: 0, y: 18 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
-};
-
 export default function ForgotPassword() {
   const navigate = useNavigate();
 
@@ -77,28 +71,57 @@ export default function ForgotPassword() {
 
   // UI state
   const [isLoading, setIsLoading] = useState(false);
-  const [countdown, setCountdown] = useState(60);
-  const [isResendActive, setIsResendActive] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [codeExpiresAt, setCodeExpiresAt] = useState(0);
+  const [resetSession, setResetSession] = useState(null);
+  const [error, setError] = useState('');
+  const [otpBlocked, setOtpBlocked] = useState(false);
+  const isResendActive = countdown === 0;
+  const pendingRequest = useRef(false);
 
   // OTP inputs refs
   const otpInputRefs = useRef([]);
 
   // Countdown timer for Step 2
   useEffect(() => {
-    let timer;
-    if (currentStep === 2 && countdown > 0) {
-      timer = setInterval(() => {
-        setCountdown((prev) => prev - 1);
-      }, 1000);
-    } else if (countdown === 0) {
-      setIsResendActive(true);
-    }
-    return () => clearInterval(timer);
-  }, [currentStep, countdown]);
+    if (currentStep !== 2) return;
+    const updateCountdown = () => setCountdown(Math.max(0, Math.ceil((codeExpiresAt - Date.now()) / 1000)));
+    const timer = setInterval(updateCountdown, 250);
+    window.addEventListener('focus', updateCountdown);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', updateCountdown);
+    };
+  }, [currentStep, codeExpiresAt]);
+
+  const showError = (err, fallback) => {
+    const message = err?.response?.data?.message || fallback;
+    setError(message);
+    toast.error(message);
+  };
+
+  const startCodeCountdown = (response) => {
+    const expiresAt = Date.parse(response.data.expiresAt);
+    setCodeExpiresAt(expiresAt);
+    setCountdown(Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000)));
+    setOtp(['', '', '', '', '', '']);
+    setOtpBlocked(false);
+    setResetSession(null);
+  };
+
+  const restartFlow = () => {
+    setCurrentStep(1);
+    setResetSession(null);
+    setOtp(['', '', '', '', '', '']);
+    setNewPassword('');
+    setConfirmPassword('');
+    setError('');
+  };
 
   // Step 1: Submit Email
-  const handleSendEmail = (e) => {
+  const handleSendEmail = async (e) => {
     e.preventDefault();
+    if (pendingRequest.current) return;
     if (!email.trim()) {
       toast.error('Vui lòng nhập email');
       return;
@@ -108,15 +131,22 @@ export default function ForgotPassword() {
       return;
     }
 
+    pendingRequest.current = true;
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    setError('');
+    try {
+      const normalizedEmail = email.trim();
+      const response = await requestPasswordReset(normalizedEmail);
+      setEmail(normalizedEmail);
+      startCodeCountdown(response);
       setCurrentStep(2);
-      setCountdown(60);
-      setIsResendActive(false);
-      toast.success('Mã xác thực đã được gửi đến email của bạn!');
-    }, 800);
+      toast.success(response.message);
+    } catch (err) {
+      showError(err, 'Không gửi được mã. Vui lòng kiểm tra kết nối và thử lại.');
+    } finally {
+      pendingRequest.current = false;
+      setIsLoading(false);
+    }
   };
 
   // OTP Input handlers
@@ -149,40 +179,67 @@ export default function ForgotPassword() {
   };
 
   // Step 2: Submit OTP
-  const handleVerifyOtp = (e) => {
+  const handleVerifyOtp = async (e) => {
     e.preventDefault();
+    if (pendingRequest.current || otpBlocked) return;
+    if (Date.now() >= codeExpiresAt) {
+      showError(null, 'Mã đã hết hạn. Vui lòng gửi lại mã mới.');
+      return;
+    }
     const otpValue = otp.join('');
     if (otpValue.length < 6) {
       toast.error('Vui lòng nhập đầy đủ mã OTP 6 chữ số');
       return;
     }
 
+    pendingRequest.current = true;
     setIsLoading(true);
-    // Simulate OTP verification
-    setTimeout(() => {
-      setIsLoading(false);
+    setError('');
+    try {
+      const response = await verifyPasswordResetCode(email, otpValue);
+      setResetSession(response.data);
       setCurrentStep(3);
-      toast.success('Xác thực mã OTP thành công!');
-    }, 700);
+      toast.success(response.message);
+    } catch (err) {
+      if (err?.response?.status === 429) setOtpBlocked(true);
+      showError(err, 'Không xác nhận được mã. Vui lòng thử lại.');
+    } finally {
+      pendingRequest.current = false;
+      setIsLoading(false);
+    }
   };
 
   // Resend OTP handler
-  const handleResendOtp = () => {
-    if (!isResendActive) return;
+  const handleResendOtp = async () => {
+    if (!isResendActive || pendingRequest.current) return;
+    pendingRequest.current = true;
     setIsLoading(true);
-    setTimeout(() => {
+    setError('');
+    try {
+      const response = await resendPasswordResetCode(email);
+      startCodeCountdown(response);
+      toast.success(response.message);
+    } catch (err) {
+      showError(err, 'Không gửi lại được mã. Vui lòng thử lại.');
+    } finally {
+      pendingRequest.current = false;
       setIsLoading(false);
-      setCountdown(60);
-      setIsResendActive(false);
-      setOtp(['', '', '', '', '', '']);
-      otpInputRefs.current[0]?.focus();
-      toast.success('Đã gửi lại mã OTP mới!');
-    }, 600);
+    }
   };
 
   // Step 3: Submit New Password
-  const handleResetPassword = (e) => {
+  const handleResetPassword = async (e) => {
     e.preventDefault();
+    if (pendingRequest.current) return;
+    if (!resetSession || Date.now() >= Date.parse(resetSession.expiresAt)) {
+      restartFlow();
+      showError(null, 'Phiên đổi mật khẩu đã hết hạn. Vui lòng xin mã xác nhận mới.');
+      return;
+    }
+    if (new TextEncoder().encode(newPassword).length > 72) {
+      showError(null, 'Mật khẩu quá dài. Vui lòng dùng mật khẩu ngắn hơn.');
+      return;
+    }
     if (newPassword.length < 8) {
       toast.error('Mật khẩu mới phải có tối thiểu 8 ký tự');
       return;
@@ -196,13 +253,22 @@ export default function ForgotPassword() {
       return;
     }
 
+    pendingRequest.current = true;
     setIsLoading(true);
-    // Simulate password update
-    setTimeout(() => {
-      setIsLoading(false);
+    setError('');
+    try {
+      const response = await resetPassword({ email, resetToken: resetSession.resetToken, newPassword, confirmPassword });
+      setResetSession(null);
+      setNewPassword('');
+      setConfirmPassword('');
       setCurrentStep(4);
-      toast.success('Đổi mật khẩu thành công!');
-    }, 800);
+      toast.success(response.message);
+    } catch (err) {
+      showError(err, 'Không đổi được mật khẩu. Vui lòng thử lại.');
+    } finally {
+      pendingRequest.current = false;
+      setIsLoading(false);
+    }
   };
 
   // Password validation checklist
@@ -429,6 +495,12 @@ export default function ForgotPassword() {
 
           <div className="flex-1 flex flex-col justify-center">
             {/* Form Content Steps with AnimatePresence */}
+            {error && (
+              <div role="alert" className="mb-4 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+                <AlertCircle size={18} className="shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+            )}
             <AnimatePresence mode="wait">
                 {/* ================= BƯỚC 1: NHẬP EMAIL ================= */}
                 {currentStep === 1 && (
@@ -459,6 +531,9 @@ export default function ForgotPassword() {
                           <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                           <input
                             type="email"
+                            disabled={isLoading}
+                            autoComplete="email"
+                            maxLength={255}
                             required
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
@@ -535,6 +610,9 @@ export default function ForgotPassword() {
                               ref={(el) => (otpInputRefs.current[idx] = el)}
                               type="text"
                               inputMode="numeric"
+                              aria-label={`Chữ số OTP thứ ${idx + 1}`}
+                              autoComplete={idx === 0 ? 'one-time-code' : 'off'}
+                              disabled={isLoading || otpBlocked || countdown === 0}
                               maxLength={1}
                               value={digit}
                               onChange={(e) => handleOtpChange(idx, e.target.value)}
@@ -546,6 +624,9 @@ export default function ForgotPassword() {
                       </div>
 
                       {/* Resend OTP & Countdown */}
+                      <p role="status" className="text-center text-xs text-slate-600">
+                        {countdown > 0 ? `Mã có hiệu lực trong ${countdown} giây.` : 'Mã đã hết hạn. Vui lòng gửi lại mã mới.'}
+                      </p>
                       <div className="flex items-center justify-between text-xs px-1">
                         <span className="text-slate-500">Không nhận được mã?</span>
                         {isResendActive ? (
@@ -567,7 +648,7 @@ export default function ForgotPassword() {
 
                       <button
                         type="submit"
-                        disabled={isLoading || otp.join('').length < 6}
+                        disabled={isLoading || otpBlocked || countdown === 0 || otp.join('').length < 6}
                         className="w-full py-3.5 px-4 bg-teal-800 hover:bg-teal-900 active:bg-teal-950 text-white rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-teal-900/20 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5"
                       >
                         {isLoading ? (
@@ -587,7 +668,8 @@ export default function ForgotPassword() {
                     <div className="pt-2 text-center">
                       <button
                         type="button"
-                        onClick={() => setCurrentStep(1)}
+                        onClick={restartFlow}
+                        disabled={isLoading}
                         className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-teal-800 transition-colors cursor-pointer"
                       >
                         <ArrowLeft size={14} />
@@ -613,7 +695,7 @@ export default function ForgotPassword() {
                         <span>Thiết lập mật khẩu mới</span>
                       </h2>
                       <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-                        Tạo mật khẩu bảo mật mới cho tài khoản của bạn để tiếp tục làm việc trên hệ thống.
+                        Tạo mật khẩu mới cho tài khoản của bạn. Phiên đổi mật khẩu có hiệu lực 5 phút sau khi xác nhận mã.
                       </p>
                     </div>
 
@@ -627,6 +709,9 @@ export default function ForgotPassword() {
                           <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                           <input
                             type={showNewPassword ? 'text' : 'password'}
+                            disabled={isLoading}
+                            autoComplete="new-password"
+                            maxLength={72}
                             required
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
@@ -652,6 +737,9 @@ export default function ForgotPassword() {
                           <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                           <input
                             type={showConfirmPassword ? 'text' : 'password'}
+                            disabled={isLoading}
+                            autoComplete="new-password"
+                            maxLength={72}
                             required
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
@@ -711,6 +799,10 @@ export default function ForgotPassword() {
                         )}
                       </button>
                     </form>
+                    <button type="button" onClick={restartFlow} disabled={isLoading}
+                      className="text-xs font-bold text-teal-800 disabled:opacity-50">
+                      Xin mã xác nhận mới
+                    </button>
                   </motion.div>
                 )}
 

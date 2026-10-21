@@ -24,6 +24,7 @@ import java.util.List;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 @RequiredArgsConstructor
@@ -65,6 +66,7 @@ public class UserServiceImpl implements UserService {
         String rawPassword = request.password();
         User user = new User();
         applyUserRequest(user, request);
+        user.setCodeName(generateCodeName(user.getRole()));
         User savedUser = userRepository.save(user);
         CompletableFuture.runAsync(() -> {
             try {
@@ -139,6 +141,25 @@ public class UserServiceImpl implements UserService {
         if (request.avatarUrl() != null) user.setAvatarUrl(request.avatarUrl());
         if (request.role() != null) user.setRole(request.role());
         if (request.status() != null) user.setStatus(request.status());
+    }
+
+    private String generateCodeName(Role role) {
+        if (role == null || role == Role.ADMIN) {
+            return null;
+        }
+        String prefix = switch (role) {
+            case DENTIST -> "BS-";
+            case EMPLOYEE -> "EM-";
+            case PATIENT -> "PA-";
+            default -> throw new IllegalArgumentException("Unsupported role: " + role);
+        };
+        for (int attempt = 0; attempt < 100; attempt++) {
+            String codeName = prefix + ThreadLocalRandom.current().nextInt(100000, 1000000);
+            if (!userRepository.existsByCodeName(codeName)) {
+                return codeName;
+            }
+        }
+        throw new ResponseStatusException(HttpStatus.CONFLICT, "Unable to generate a unique user code. Please retry.");
     }
 
     private void applyUserRequest(User user, UserRequest request) {

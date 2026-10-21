@@ -265,19 +265,6 @@ export default function EditEmployeeModal({ isOpen, onClose, onSuccess, employee
                   <h3 className="text-xs font-bold text-slate-800 border-b border-slate-200 pb-2">Thông tin tài khoản</h3>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-slate-700">Mã nhân viên (Không thể thay đổi)</label>
-                    <div className="relative">
-                      <UserRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                      <input
-                        disabled
-                        readOnly
-                        value={employee.employeeCode || '—'}
-                        className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-4 text-xs font-mono font-bold text-slate-700 outline-none transition-all bg-slate-50 cursor-not-allowed"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
                     <label className="text-xs font-medium text-slate-700">Họ và tên <span className="text-red-500">*</span></label>
                     <div className="relative">
                       <UserRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />

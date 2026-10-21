@@ -2,13 +2,18 @@ package iuh.fit.backend.auth.service;
 
 import iuh.fit.backend.auth.dto.AuthResponse;
 import iuh.fit.backend.auth.dto.LoginRequest;
+import iuh.fit.backend.auth.dto.PatientLoginRequest;
 import iuh.fit.backend.common.exception.AppException;
 import iuh.fit.backend.common.exception.ErrorCode;
 import iuh.fit.backend.common.security.*;
+import iuh.fit.backend.patient.entity.Patient;
+import iuh.fit.backend.patient.repository.PatientRepository;
 import iuh.fit.backend.user.entity.User;
+import iuh.fit.backend.user.enums.Role;
 import iuh.fit.backend.user.enums.StatusUser;
 import iuh.fit.backend.user.repository.EmployeeRepository;
 import iuh.fit.backend.user.repository.DentistRepository;
+import iuh.fit.backend.user.repository.UserRepository;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -21,7 +26,10 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -34,6 +42,9 @@ public class AuthServiceImpl implements AuthService {
     private final CustomUserDetailsService userDetailsService;
     private final EmployeeRepository employeeRepository;
     private final DentistRepository dentistRepository;
+    private final PatientRepository patientRepository;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public AuthResponse login(LoginRequest request, HttpServletResponse response) {
@@ -66,6 +77,88 @@ public class AuthServiceImpl implements AuthService {
         } catch (BadCredentialsException ex) {
             throw new AppException(ErrorCode.INVALID_CREDENTIALS);
         }
+    }
+
+    @Override
+    public AuthResponse patientLogin(PatientLoginRequest request, HttpServletResponse response) {
+        String code = request.patientCode().trim().toUpperCase();
+        String rawPhone = request.phone().trim().replaceAll("[^0-9]", "");
+
+        // 1. Tìm tài khoản User theo codeName trên bảng users (ưu tiên Role PATIENT)
+        User user = userRepository.findByCodeNameAndRole(code, Role.PATIENT)
+                .or(() -> userRepository.findByCodeName(code))
+                .or(() -> userRepository.findByUsername(code))
+                .orElseThrow(() -> new AppException(ErrorCode.PATIENT_INVALID_CREDENTIALS,
+                        "Không tìm thấy tài khoản bệnh nhân với mã " + code));
+
+        // Đảm bảo đúng role bệnh nhân
+        if (user.getRole() != Role.PATIENT) {
+            throw new AppException(ErrorCode.PATIENT_INVALID_CREDENTIALS,
+                    "Tài khoản không thuộc quyền truy cập bệnh nhân");
+        }
+
+        // 2. Đối chiếu số điện thoại trực tiếp trong bảng users
+        String userPhone = user.getPhone() != null ? user.getPhone().trim().replaceAll("[^0-9]", "") : "";
+        if (!normalizePhone(userPhone).equals(normalizePhone(rawPhone))) {
+            throw new AppException(ErrorCode.PATIENT_INVALID_CREDENTIALS,
+                    "Số điện thoại không khớp với tài khoản bệnh nhân " + code);
+        }
+
+        // 3. Kiểm tra trạng thái tài khoản
+        validateAccountStatus(user);
+
+        // 4. Kiểm tra mật khẩu
+        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
+            throw new AppException(ErrorCode.PATIENT_INVALID_CREDENTIALS, "Mật khẩu không chính xác");
+        }
+
+        // 5. Lấy thông tin hồ sơ bệnh nhân đi kèm (nếu có)
+        Patient patient = user.getPatient();
+        if (patient == null) {
+            patient = patientRepository.findByUserId(user.getId())
+                    .or(() -> patientRepository.findByPatientCode(code))
+                    .orElse(null);
+        }
+
+        UUID patientId = patient != null ? patient.getId() : null;
+        String fullName = patient != null && patient.getFullName() != null
+                ? patient.getFullName()
+                : (user.getUsername() != null ? user.getUsername() : user.getCodeName());
+
+        // 6. Tạo CustomUserDetails và sinh Tokens
+        CustomUserDetails userDetails = new CustomUserDetails(user);
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                userDetails, null, userDetails.getAuthorities());
+
+        String accessToken = jwtTokenProvider.generateAccessToken(userDetails);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(userDetails);
+
+        ResponseCookie accessCookie = cookieUtils.createAccessTokenCookie(accessToken);
+        ResponseCookie refreshCookie = cookieUtils.createRefreshTokenCookie(refreshToken);
+
+        response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        log.info("Patient logged in successfully: {} (code: {})", user.getEmail(), code);
+
+        return new AuthResponse(
+                user.getId(),
+                user.getEmail(),
+                fullName,
+                user.getRole().name(),
+                user.getAvatarUrl(),
+                null,
+                null,
+                patientId);
+    }
+
+    private String normalizePhone(String p) {
+        if (p == null) return "";
+        p = p.replaceAll("[^0-9]", "");
+        if (p.startsWith("84")) p = "0" + p.substring(2);
+        return p;
     }
 
     @Override
@@ -139,6 +232,17 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private AuthResponse toAuthResponse(User user) {
+        UUID patientId = null;
+        if (user.getRole() == Role.PATIENT) {
+            patientId = java.util.Optional.ofNullable(user.getPatient())
+                    .map(Patient::getId)
+                    .or(() -> patientRepository.findByUserId(user.getId()).map(Patient::getId))
+                    .or(() -> (user.getCodeName() != null && !user.getCodeName().isEmpty())
+                            ? patientRepository.findByPatientCode(user.getCodeName()).map(Patient::getId)
+                            : java.util.Optional.empty())
+                    .orElse(null);
+        }
+
         return new AuthResponse(
                 user.getId(),
                 user.getEmail(),
@@ -150,7 +254,8 @@ public class AuthServiceImpl implements AuthService {
                         .orElse(null),
                 dentistRepository.findByUserId(user.getId())
                         .map(dentist -> dentist.getId())
-                        .orElse(null));
+                        .orElse(null),
+                patientId);
     }
 
     private void validateAccountStatus(User user) {
