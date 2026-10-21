@@ -134,13 +134,27 @@ export default function ReportPrintModal({
             { label: 'Sắp tới (Xác nhận & Chờ)', value: `${formatNumber((data.confirmedAppointments || 0) + (data.waitingAppointments || 0))} lịch` },
           ],
         };
-      default:
+      case 'overview':
+      default: {
+        const rev = data.revenue || {};
+        const staff = data.staff || {};
+        const meds = data.medicines || {};
+        const srv = data.services || {};
+        const appts = data.appointments || {};
+        const promos = data.promotions || {};
+        const compRate = appts.completionRate || (appts.totalAppointments ? Math.round(((appts.completedAppointments || 0) / appts.totalAppointments) * 100) : 0);
         return {
           code: 'BC-NK-TONG',
-          title: 'BÁO CÁO THỐNG KÊ QUẢN TRỊ NHA KHOA',
-          subtitle: 'Báo cáo tổng hợp số liệu vận hành và tài chính phòng khám',
-          kpis: [],
+          title: 'BÁO CÁO TỔNG QUAN QUẢN TRỊ NHA KHOA',
+          subtitle: 'Báo cáo hợp nhất hoạt động tài chính, chuyên môn lâm sàng, kho dược và vận hành phòng khám',
+          kpis: [
+            { label: 'Doanh thu hóa đơn', value: formatCurrency(rev.invoiceRevenue || 0) },
+            { label: 'Thực thu thực tế', value: formatCurrency(rev.actualCollected || 0) },
+            { label: 'Công nợ chưa thu', value: formatCurrency(rev.remainingDebt || 0) },
+            { label: 'Ca khám hoàn thành', value: `${formatNumber(appts.completedAppointments || 0)} ca (${compRate}%)` },
+          ],
         };
+      }
     }
   };
 
@@ -305,6 +319,80 @@ export default function ReportPrintModal({
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2 border-l-2 border-teal-600 pl-2">
                 II. SỐ LIỆU KIỂM TOÁN CHI TIẾT
               </h3>
+
+              {/* Table for OVERVIEW (Hợp nhất 6 trụ cột vận hành nha khoa) */}
+              {(moduleKey === 'overview' || !['revenue', 'staff', 'medicines', 'services', 'promotions', 'appointments'].includes(moduleKey)) && (
+                <table className="w-full text-left text-[11px] border-collapse border border-slate-200">
+                  <thead className="bg-slate-50 text-slate-700 font-semibold text-[11px] border-b border-slate-200">
+                    <tr className="border-b border-slate-200">
+                      <th className="p-2 border-r border-slate-200 text-center w-8">STT</th>
+                      <th className="p-2 border-r border-slate-200">Trụ cột quản trị</th>
+                      <th className="p-2 border-r border-slate-200">Chỉ số trọng yếu</th>
+                      <th className="p-2 border-r border-slate-200 text-center">Khối lượng / Quy mô</th>
+                      <th className="p-2 border-r border-slate-200 text-right">Doanh thu / Giá trị</th>
+                      <th className="p-2 text-center">Tỷ lệ / Tình trạng</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* Trụ cột 1: Tài chính */}
+                    <tr className="border-b border-slate-200 print-break-inside-avoid">
+                      <td className="p-2 border-r border-slate-200 text-center font-bold">1</td>
+                      <td className="p-2 border-r border-slate-200 font-bold text-slate-900">Doanh thu & Dòng tiền</td>
+                      <td className="p-2 border-r border-slate-200">Tổng thu hóa đơn, thực thu & công nợ</td>
+                      <td className="p-2 border-r border-slate-200 text-center">{formatNumber(data.revenue?.totalInvoices || 0)} hóa đơn</td>
+                      <td className="p-2 border-r border-slate-200 text-right font-bold text-slate-900">{formatCurrency(data.revenue?.invoiceRevenue || 0)}</td>
+                      <td className="p-2 text-center text-teal-800 font-semibold">
+                        Thu hồi: {data.revenue?.invoiceRevenue ? Math.round(((data.revenue?.actualCollected || 0) / data.revenue.invoiceRevenue) * 100) : 100}%
+                      </td>
+                    </tr>
+                    {/* Trụ cột 2: Khám & Tiếp nhận */}
+                    <tr className="border-b border-slate-200 print-break-inside-avoid">
+                      <td className="p-2 border-r border-slate-200 text-center font-bold">2</td>
+                      <td className="p-2 border-r border-slate-200 font-bold text-slate-900">Lịch hẹn & Tiếp nhận</td>
+                      <td className="p-2 border-r border-slate-200">Ca khám hoàn thành, tỷ lệ chuyển đổi</td>
+                      <td className="p-2 border-r border-slate-200 text-center">{formatNumber(data.appointments?.totalAppointments || 0)} lịch hẹn</td>
+                      <td className="p-2 border-r border-slate-200 text-right font-medium">{formatNumber(data.appointments?.completedAppointments || 0)} ca khám xong</td>
+                      <td className="p-2 text-center font-semibold text-slate-800">Hoàn thành: {data.appointments?.completionRate || 0}%</td>
+                    </tr>
+                    {/* Trụ cột 3: Dịch vụ */}
+                    <tr className="border-b border-slate-200 print-break-inside-avoid">
+                      <td className="p-2 border-r border-slate-200 text-center font-bold">3</td>
+                      <td className="p-2 border-r border-slate-200 font-bold text-slate-900">Dịch vụ nha khoa chuyên sâu</td>
+                      <td className="p-2 border-r border-slate-200">Chỉ định kỹ thuật & cơ cấu chuyên khoa</td>
+                      <td className="p-2 border-r border-slate-200 text-center">{formatNumber(data.services?.totalUsageCount || 0)} lượt làm DV</td>
+                      <td className="p-2 border-r border-slate-200 text-right font-bold text-slate-900">{formatCurrency(data.services?.totalRevenue || 0)}</td>
+                      <td className="p-2 text-center font-medium text-slate-700">Tăng trưởng: {data.services?.growthRate || 0}%</td>
+                    </tr>
+                    {/* Trụ cột 4: Dược phẩm */}
+                    <tr className="border-b border-slate-200 print-break-inside-avoid">
+                      <td className="p-2 border-r border-slate-200 text-center font-bold">4</td>
+                      <td className="p-2 border-r border-slate-200 font-bold text-slate-900">Dược phẩm & Vật tư kho</td>
+                      <td className="p-2 border-r border-slate-200">Cơ số thuốc cấp phát theo đơn & tồn kho</td>
+                      <td className="p-2 border-r border-slate-200 text-center">{formatNumber(data.medicines?.totalUnitsDispensed || 0)} đơn vị thuốc cấp</td>
+                      <td className="p-2 border-r border-slate-200 text-right font-bold text-slate-900">{formatCurrency(data.medicines?.totalRevenue || 0)}</td>
+                      <td className="p-2 text-center text-amber-700 font-semibold">{formatNumber(data.medicines?.lowStockCount || 0)} loại sắp hết</td>
+                    </tr>
+                    {/* Trụ cột 5: Bác sĩ & Nhân sự */}
+                    <tr className="border-b border-slate-200 print-break-inside-avoid">
+                      <td className="p-2 border-r border-slate-200 text-center font-bold">5</td>
+                      <td className="p-2 border-r border-slate-200 font-bold text-slate-900">Bác sĩ & Nhân sự cơ sở</td>
+                      <td className="p-2 border-r border-slate-200">Đội ngũ y tế, điều trị & tiếp đón</td>
+                      <td className="p-2 border-r border-slate-200 text-center">{formatNumber(data.staff?.totalStaff || 0)} nhân sự</td>
+                      <td className="p-2 border-r border-slate-200 text-right font-medium">{formatNumber(data.staff?.totalDoctors || 0)} Bác sĩ RHM</td>
+                      <td className="p-2 text-center text-slate-700">{formatNumber(data.staff?.totalReceptionists || data.staff?.totalEmployees || 0)} Lễ tân/TN</td>
+                    </tr>
+                    {/* Trụ cột 6: Ưu đãi */}
+                    <tr className="border-b border-slate-200 print-break-inside-avoid">
+                      <td className="p-2 border-r border-slate-200 text-center font-bold">6</td>
+                      <td className="p-2 border-r border-slate-200 font-bold text-slate-900">Ưu đãi & Tri ân khách hàng</td>
+                      <td className="p-2 border-r border-slate-200">Mã kích hoạt & ngân sách hỗ trợ</td>
+                      <td className="p-2 border-r border-slate-200 text-center">{formatNumber(data.promotions?.totalInvoicesApplied || 0)} hóa đơn áp dụng</td>
+                      <td className="p-2 border-r border-slate-200 text-right font-bold text-slate-900">Giảm: {formatCurrency(data.promotions?.totalDiscountAmount || 0)}</td>
+                      <td className="p-2 text-center font-medium text-slate-700">{formatNumber(data.promotions?.activePromotions || 0)} CT đang chạy</td>
+                    </tr>
+                  </tbody>
+                </table>
+              )}
 
               {/* Table for REVENUE */}
               {moduleKey === 'revenue' && (

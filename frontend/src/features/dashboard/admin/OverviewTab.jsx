@@ -97,7 +97,7 @@ export default function OverviewTab({ data, onSelectTab, onOpenDetail }) {
             </div>
           </div>
           <p className="text-[11px] text-slate-500">
-            Giám sát thời gian thực: Dòng tiền điều trị, ca thủ thuật nha khoa & kho vật tư
+            Dòng tiền điều trị, ca thủ thuật nha khoa & kho vật tư
           </p>
         </div>
 
@@ -420,11 +420,10 @@ export default function OverviewTab({ data, onSelectTab, onOpenDetail }) {
                 <div
                   className="h-full bg-teal-600"
                   style={{
-                    width: `${
-                      medicines?.totalMedicinesCount
+                    width: `${medicines?.totalMedicinesCount
                         ? Math.min(100, Math.round(((medicines?.totalUsedCount || 0) / medicines.totalMedicinesCount) * 100))
                         : 0
-                    }%`,
+                      }%`,
                   }}
                 />
               </div>
@@ -561,11 +560,10 @@ export default function OverviewTab({ data, onSelectTab, onOpenDetail }) {
                 <div
                   className="h-full bg-rose-500"
                   style={{
-                    width: `${
-                      promotions?.totalPromotions
+                    width: `${promotions?.totalPromotions
                         ? Math.round(((promotions?.activePromotions || 0) / promotions.totalPromotions) * 100)
                         : 0
-                    }%`,
+                      }%`,
                   }}
                 />
               </div>

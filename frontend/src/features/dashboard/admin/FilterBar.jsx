@@ -183,7 +183,7 @@ export default function FilterBar({
               </span>
             </div>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Đồng bộ dữ liệu tức thì theo thời gian thực &middot; Chuẩn y khoa Crown Dental
+              &middot; Chuẩn y khoa Crown Dental
             </p>
           </div>
         </div>
@@ -228,18 +228,16 @@ export default function FilterBar({
           <button
             type="button"
             onClick={() => setShowAdvanced(!showAdvanced)}
-            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer shadow-2xs ${
-              showAdvanced
-                ? 'bg-cyan-700 text-white shadow-cyan-700/20'
-                : 'border border-slate-200 bg-white text-slate-700 hover:bg-cyan-50 hover:text-cyan-800 hover:border-cyan-200'
-            }`}
+            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer shadow-2xs ${showAdvanced
+              ? 'bg-cyan-700 text-white shadow-cyan-700/20'
+              : 'border border-slate-200 bg-white text-slate-700 hover:bg-cyan-50 hover:text-cyan-800 hover:border-cyan-200'
+              }`}
           >
             <SlidersHorizontal className="h-3.5 w-3.5" />
             <span>Tùy chỉnh</span>
             <ChevronDown
-              className={`h-3.5 w-3.5 transition-transform duration-200 ${
-                showAdvanced ? 'rotate-180' : ''
-              }`}
+              className={`h-3.5 w-3.5 transition-transform duration-200 ${showAdvanced ? 'rotate-180' : ''
+                }`}
             />
           </button>
 
@@ -274,11 +272,10 @@ export default function FilterBar({
                     quarter: filter.quarter || 4,
                   });
                 }}
-                className={`w-full text-center py-2 px-2 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                  active
-                    ? 'bg-white text-cyan-800 shadow-xs ring-1 ring-cyan-200/90 font-bold'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-                }`}
+                className={`w-full text-center py-2 px-2 text-xs font-semibold rounded-md transition-all cursor-pointer ${active
+                  ? 'bg-white text-cyan-800 shadow-xs ring-1 ring-cyan-200/90 font-bold'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                  }`}
               >
                 {m.label}
               </button>
@@ -313,11 +310,10 @@ export default function FilterBar({
                   key={m}
                   type="button"
                   onClick={() => onChange({ ...filter, month: m })}
-                  className={`w-full py-1.5 text-center text-xs font-semibold rounded transition-all cursor-pointer ${
-                    isSelected
-                      ? 'bg-cyan-600 text-white font-bold shadow-2xs ring-1 ring-cyan-600'
-                      : 'bg-white text-slate-700 border border-slate-200/80 hover:bg-cyan-50 hover:text-cyan-800'
-                  }`}
+                  className={`w-full py-1.5 text-center text-xs font-semibold rounded transition-all cursor-pointer ${isSelected
+                    ? 'bg-cyan-600 text-white font-bold shadow-2xs ring-1 ring-cyan-600'
+                    : 'bg-white text-slate-700 border border-slate-200/80 hover:bg-cyan-50 hover:text-cyan-800'
+                    }`}
                 >
                   T{m}
                 </button>
@@ -354,11 +350,10 @@ export default function FilterBar({
                 key={item.q}
                 type="button"
                 onClick={() => onChange({ ...filter, quarter: item.q })}
-                className={`w-full py-1.5 px-2 text-center rounded transition-all cursor-pointer ${
-                  currentQuarter === item.q
-                    ? 'bg-cyan-600 text-white font-bold shadow-2xs'
-                    : 'bg-white text-slate-700 border border-slate-200/80 hover:bg-cyan-50 hover:text-cyan-800'
-                }`}
+                className={`w-full py-1.5 px-2 text-center rounded transition-all cursor-pointer ${currentQuarter === item.q
+                  ? 'bg-cyan-600 text-white font-bold shadow-2xs'
+                  : 'bg-white text-slate-700 border border-slate-200/80 hover:bg-cyan-50 hover:text-cyan-800'
+                  }`}
               >
                 <span className="text-xs font-bold">{item.label}</span>
                 <span className={`text-[10px] ml-1.5 ${currentQuarter === item.q ? 'text-cyan-100' : 'text-slate-400'}`}>
@@ -396,11 +391,10 @@ export default function FilterBar({
                   type="button"
                   data-selected={isSelected}
                   onClick={() => onChange({ ...filter, year: y })}
-                  className={`whitespace-nowrap px-4 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer shrink-0 ${
-                    isSelected
-                      ? 'bg-cyan-600 text-white font-bold shadow-2xs ring-1 ring-cyan-600'
-                      : 'bg-white text-slate-700 border border-slate-200/80 hover:bg-cyan-50 hover:text-cyan-800'
-                  }`}
+                  className={`whitespace-nowrap px-4 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer shrink-0 ${isSelected
+                    ? 'bg-cyan-600 text-white font-bold shadow-2xs ring-1 ring-cyan-600'
+                    : 'bg-white text-slate-700 border border-slate-200/80 hover:bg-cyan-50 hover:text-cyan-800'
+                    }`}
                 >
                   Năm {y} {y === 2026 && '(Hiện hành)'}
                 </button>
@@ -557,11 +551,10 @@ export default function FilterBar({
                         quarter: p.quarter || currentQuarter,
                       });
                     }}
-                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-all cursor-pointer ${
-                      isActive
-                        ? 'bg-cyan-600 text-white shadow-2xs font-bold ring-1 ring-cyan-600'
-                        : 'bg-white text-slate-700 border border-slate-200/80 hover:bg-cyan-50 hover:border-cyan-200 hover:text-cyan-800'
-                    }`}
+                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-all cursor-pointer ${isActive
+                      ? 'bg-cyan-600 text-white shadow-2xs font-bold ring-1 ring-cyan-600'
+                      : 'bg-white text-slate-700 border border-slate-200/80 hover:bg-cyan-50 hover:border-cyan-200 hover:text-cyan-800'
+                      }`}
                   >
                     {p.label}
                   </button>
@@ -652,7 +645,7 @@ export default function FilterBar({
         </div>
 
         <div className="text-[11px] text-slate-400">
-          Tự động chuẩn hóa dữ liệu tài chính & điều trị
+          Dữ liệu tài chính & điều trị
         </div>
       </div>
     </div>
