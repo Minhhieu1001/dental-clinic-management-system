@@ -12,6 +12,7 @@ import {
   CalendarDays,
   Check,
   X,
+  ChevronUp,
   TrendingUp,
   CreditCard,
   Users,
@@ -331,7 +332,7 @@ export default function FilterBar({
               disabled={isStepperDisabled}
               onClick={() => handleStepPeriod('prev')}
               title="Chuyển về kỳ trước"
-              className="inline-flex h-7 w-7 items-center justify-center rounded text-slate-600 hover:bg-white hover:text-cyan-700 hover:shadow-2xs transition-all disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+              className="inline-flex h-7 w-7 items-center justify-center rounded text-slate-600 hover:bg-white hover:text-teal-700 hover:shadow-2xs transition-all disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
@@ -345,7 +346,7 @@ export default function FilterBar({
               disabled={isNextDisabled}
               onClick={() => handleStepPeriod('next')}
               title={isNextDisabled ? 'Đã ở chu kỳ mới nhất' : 'Chuyển sang kỳ kế tiếp'}
-              className="inline-flex h-7 w-7 items-center justify-center rounded text-slate-600 hover:bg-white hover:text-cyan-700 hover:shadow-2xs transition-all disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+              className="inline-flex h-7 w-7 items-center justify-center rounded text-slate-600 hover:bg-white hover:text-teal-700 hover:shadow-2xs transition-all disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
@@ -356,8 +357,8 @@ export default function FilterBar({
             type="button"
             onClick={() => setShowAdvanced(!showAdvanced)}
             className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer shadow-2xs ${showAdvanced
-              ? 'bg-cyan-700 text-white shadow-cyan-700/20'
-              : 'border border-slate-200 bg-white text-slate-700 hover:bg-cyan-50 hover:text-cyan-800 hover:border-cyan-200'
+              ? 'bg-teal-700 text-white shadow-teal-700/20 hover:bg-teal-800'
+              : 'border border-slate-200 bg-white text-slate-700 hover:bg-teal-50 hover:text-teal-800 hover:border-teal-200'
               }`}
           >
             <SlidersHorizontal className="h-3.5 w-3.5" />
@@ -373,7 +374,7 @@ export default function FilterBar({
             type="button"
             onClick={handleRefresh}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs transition-all hover:bg-cyan-700 active:scale-95 disabled:opacity-60 cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-md bg-teal-700 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs transition-all hover:bg-teal-800 active:scale-95 disabled:opacity-60 cursor-pointer"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             <span>Cập nhật</span>
@@ -400,7 +401,7 @@ export default function FilterBar({
                   });
                 }}
                 className={`w-full text-center py-2 px-2 text-xs font-semibold rounded-md transition-all cursor-pointer ${active
-                  ? 'bg-white text-cyan-800 shadow-xs ring-1 ring-cyan-200/90 font-bold'
+                  ? 'bg-white text-teal-800 shadow-xs ring-1 ring-teal-200/90 font-bold'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                   }`}
               >
@@ -414,13 +415,13 @@ export default function FilterBar({
       {/* 3. Sub-Selector Row: Xổ Xuống Trực Quan Theo Chế Độ Đang Chọn (Đầy đặn & cân đối 100%) */}
       {/* 3.1 Nếu chọn Theo Tháng: 12 Tháng dàn đều 12 cột */}
       {currentType === 'MONTH' && (
-        <div className="mt-2.5 w-full rounded-lg bg-slate-50/90 border border-cyan-100/80 p-2.5 flex flex-col md:flex-row items-center gap-2.5 animate-in fade-in duration-150">
+        <div className="mt-2.5 w-full rounded-lg bg-slate-50/90 border border-teal-100/80 p-2.5 flex flex-col md:flex-row items-center gap-2.5 animate-in fade-in duration-150">
           <div className="flex items-center gap-2 self-start md:self-center whitespace-nowrap">
             <span className="text-xs font-semibold text-slate-600">Năm:</span>
             <select
               value={currentYear}
               onChange={(e) => onChange({ ...filter, year: parseInt(e.target.value) })}
-              className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-800 shadow-2xs focus:border-cyan-600 focus:outline-none cursor-pointer"
+              className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-800 shadow-2xs focus:border-teal-600 focus:outline-none cursor-pointer"
             >
               {[2026, 2025, 2024, 2023, 2022, 2021, 2020].map((y) => (
                 <option key={y} value={y}>Năm {y} {y === 2026 ? '(Hiện hành)' : ''}</option>
@@ -438,8 +439,8 @@ export default function FilterBar({
                   type="button"
                   onClick={() => onChange({ ...filter, month: m })}
                   className={`w-full py-1.5 text-center text-xs font-semibold rounded transition-all cursor-pointer ${isSelected
-                    ? 'bg-cyan-600 text-white font-bold shadow-2xs ring-1 ring-cyan-600'
-                    : 'bg-white text-slate-700 border border-slate-200/80 hover:bg-cyan-50 hover:text-cyan-800'
+                    ? 'bg-teal-700 text-white font-bold shadow-2xs ring-1 ring-teal-700'
+                    : 'bg-white text-slate-700 border border-slate-200/80 hover:bg-teal-50 hover:text-teal-800'
                     }`}
                 >
                   T{m}
@@ -452,13 +453,13 @@ export default function FilterBar({
 
       {/* 3.2 Nếu chọn Theo Quý: 4 Quý dàn đều 4 cột */}
       {currentType === 'QUARTER' && (
-        <div className="mt-2.5 w-full rounded-lg bg-slate-50/90 border border-cyan-100/80 p-2.5 flex flex-col md:flex-row items-center gap-2.5 animate-in fade-in duration-150">
+        <div className="mt-2.5 w-full rounded-lg bg-slate-50/90 border border-teal-100/80 p-2.5 flex flex-col md:flex-row items-center gap-2.5 animate-in fade-in duration-150">
           <div className="flex items-center gap-2 self-start md:self-center whitespace-nowrap">
             <span className="text-xs font-semibold text-slate-600">Năm:</span>
             <select
               value={currentYear}
               onChange={(e) => onChange({ ...filter, year: parseInt(e.target.value) })}
-              className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-800 shadow-2xs focus:border-cyan-600 focus:outline-none cursor-pointer"
+              className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-800 shadow-2xs focus:border-teal-600 focus:outline-none cursor-pointer"
             >
               {[2026, 2025, 2024, 2023, 2022, 2021, 2020].map((y) => (
                 <option key={y} value={y}>Năm {y} {y === 2026 ? '(Hiện hành)' : ''}</option>
@@ -478,12 +479,12 @@ export default function FilterBar({
                 type="button"
                 onClick={() => onChange({ ...filter, quarter: item.q })}
                 className={`w-full py-1.5 px-2 text-center rounded transition-all cursor-pointer ${currentQuarter === item.q
-                  ? 'bg-cyan-600 text-white font-bold shadow-2xs'
-                  : 'bg-white text-slate-700 border border-slate-200/80 hover:bg-cyan-50 hover:text-cyan-800'
+                  ? 'bg-teal-700 text-white font-bold shadow-2xs'
+                  : 'bg-white text-slate-700 border border-slate-200/80 hover:bg-teal-50 hover:text-teal-800'
                   }`}
               >
                 <span className="text-xs font-bold">{item.label}</span>
-                <span className={`text-[10px] ml-1.5 ${currentQuarter === item.q ? 'text-cyan-100' : 'text-slate-400'}`}>
+                <span className={`text-[10px] ml-1.5 ${currentQuarter === item.q ? 'text-teal-100' : 'text-slate-400'}`}>
                   ({item.sub})
                 </span>
               </button>
@@ -494,12 +495,12 @@ export default function FilterBar({
 
       {/* 3.3 Nếu chọn Theo Năm: Dải lướt ngang các năm phong phú & linh hoạt (Horizontal Scroll Carousel) */}
       {currentType === 'YEAR' && (
-        <div className="mt-2.5 w-full rounded-lg bg-slate-50/90 border border-cyan-100/80 p-2 flex items-center gap-1.5 animate-in fade-in duration-150">
+        <div className="mt-2.5 w-full rounded-lg bg-slate-50/90 border border-teal-100/80 p-2 flex items-center gap-1.5 animate-in fade-in duration-150">
           {/* Nút lướt sang trái */}
           <button
             type="button"
             onClick={() => scrollYears('left')}
-            className="h-8 w-8 shrink-0 flex items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-cyan-50 hover:text-cyan-800 shadow-2xs transition-colors cursor-pointer"
+            className="h-8 w-8 shrink-0 flex items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-teal-50 hover:text-teal-800 shadow-2xs transition-colors cursor-pointer"
             title="Lướt về các năm trước"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -519,8 +520,8 @@ export default function FilterBar({
                   data-selected={isSelected}
                   onClick={() => onChange({ ...filter, year: y })}
                   className={`whitespace-nowrap px-4 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer shrink-0 ${isSelected
-                    ? 'bg-cyan-600 text-white font-bold shadow-2xs ring-1 ring-cyan-600'
-                    : 'bg-white text-slate-700 border border-slate-200/80 hover:bg-cyan-50 hover:text-cyan-800'
+                    ? 'bg-teal-700 text-white font-bold shadow-2xs ring-1 ring-teal-700'
+                    : 'bg-white text-slate-700 border border-slate-200/80 hover:bg-teal-50 hover:text-teal-800'
                     }`}
                 >
                   Năm {y} {y === 2026 && '(Hiện hành)'}
@@ -533,7 +534,7 @@ export default function FilterBar({
           <button
             type="button"
             onClick={() => scrollYears('right')}
-            className="h-8 w-8 shrink-0 flex items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-cyan-50 hover:text-cyan-800 shadow-2xs transition-colors cursor-pointer"
+            className="h-8 w-8 shrink-0 flex items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-teal-50 hover:text-teal-800 shadow-2xs transition-colors cursor-pointer"
             title="Lướt về các năm sau"
           >
             <ChevronRight className="h-4 w-4" />
@@ -545,7 +546,7 @@ export default function FilterBar({
             <select
               value={currentYear}
               onChange={(e) => onChange({ ...filter, year: parseInt(e.target.value) })}
-              className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-800 shadow-2xs focus:border-cyan-600 focus:outline-none cursor-pointer"
+              className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-800 shadow-2xs focus:border-teal-600 focus:outline-none cursor-pointer"
               title="Chọn năm cụ thể"
             >
               {[2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015].map((y) => (
@@ -560,7 +561,7 @@ export default function FilterBar({
 
       {/* 3.4 Nếu chọn Khoảng Ngày Tùy Chọn */}
       {currentType === 'CUSTOM' && (
-        <div className="mt-2.5 w-full rounded-lg bg-slate-50/90 border border-cyan-100/80 p-2.5 animate-in fade-in duration-150">
+        <div className="mt-2.5 w-full rounded-lg bg-slate-50/90 border border-teal-100/80 p-2.5 animate-in fade-in duration-150">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
             <div>
               <label className="block text-[11px] font-semibold text-slate-600 mb-1">
@@ -570,7 +571,7 @@ export default function FilterBar({
                 type="date"
                 value={filter.startDate || '2026-10-01'}
                 onChange={(e) => onChange({ ...filter, startDate: e.target.value })}
-                className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs focus:border-cyan-600 focus:outline-none"
+                className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs focus:border-teal-600 focus:outline-none"
               />
             </div>
             <div>
@@ -581,12 +582,12 @@ export default function FilterBar({
                 type="date"
                 value={filter.endDate || '2026-10-31'}
                 onChange={(e) => onChange({ ...filter, endDate: e.target.value })}
-                className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs focus:border-cyan-600 focus:outline-none"
+                className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs focus:border-teal-600 focus:outline-none"
               />
             </div>
             <div className="flex flex-col justify-end">
               <span className="text-xs text-slate-500 mb-1">
-                Số ngày chu kỳ: <strong className="text-cyan-800">{customDaysCount || 0} ngày</strong>
+                Số ngày chu kỳ: <strong className="text-teal-800">{customDaysCount || 0} ngày</strong>
               </span>
               <div className="flex gap-2">
                 <button
@@ -598,7 +599,7 @@ export default function FilterBar({
                       endDate: '2026-10-31',
                     })
                   }
-                  className="rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-cyan-800 hover:bg-cyan-50 shadow-2xs"
+                  className="rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-teal-800 hover:bg-teal-50 shadow-2xs"
                 >
                   Trọn Tháng 10
                 </button>
@@ -611,7 +612,7 @@ export default function FilterBar({
                       endDate: '2026-12-31',
                     })
                   }
-                  className="rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-cyan-800 hover:bg-cyan-50 shadow-2xs"
+                  className="rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-teal-800 hover:bg-teal-50 shadow-2xs"
                 >
                   Cả Năm 2026
                 </button>
@@ -623,11 +624,11 @@ export default function FilterBar({
 
       {/* 3.5 Nếu chọn Hôm Nay / 7 Ngày / 30 Ngày */}
       {(currentType === 'TODAY' || currentType === 'LAST_7_DAYS' || currentType === 'LAST_30_DAYS') && (
-        <div className="mt-2.5 w-full rounded-lg bg-slate-50/90 border border-cyan-100/80 px-3 py-2 text-xs text-slate-600 flex items-center justify-between animate-in fade-in duration-150">
+        <div className="mt-2.5 w-full rounded-lg bg-slate-50/90 border border-teal-100/80 px-3 py-2 text-xs text-slate-600 flex items-center justify-between animate-in fade-in duration-150">
           <span>
             Hệ thống đang thống kê tự động: <strong className="text-slate-800">{getStepperLabel()}</strong>
           </span>
-          <span className="text-[11px] text-cyan-700 font-medium">
+          <span className="text-[11px] text-teal-700 font-medium">
             Tự động làm mới theo chu kỳ dữ liệu
           </span>
         </div>
@@ -636,40 +637,50 @@ export default function FilterBar({
       {/* 4. Collapsible Advanced Clinical Filter Drawer (Bảng Điều Khiển Nâng Cao Đa Chiều Chuẩn ERP) */}
       {showAdvanced && (
         <div className="mt-3.5 rounded-xl border border-teal-200/90 bg-slate-50/70 p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200 shadow-sm">
-          {/* Header of Advanced Drawer */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 pb-3 border-b border-slate-200/80">
-            <div className="flex items-center gap-2">
-              <span className="flex h-2.5 w-2.5 rounded-full bg-teal-600 animate-pulse" />
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
-                Thiết Lập Bộ Lọc Nâng Cao Đa Chiều (ERP Clinical Filter)
+          {/* Header of Advanced Drawer - Clean, Balanced & Responsive */}
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 pb-3 border-b border-slate-200/80">
+            {/* Left: Tiêu đề + Badge Chuyên gia không bị gãy dòng */}
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="flex h-2 w-2 rounded-full bg-teal-600 animate-pulse" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 whitespace-nowrap">
+                Thiết Lập Bộ Lọc Nâng Cao
               </h3>
-              <span className="rounded-full bg-teal-50 border border-teal-200 px-2 py-0.5 text-[10px] font-semibold text-teal-800">
+              <span className="inline-flex items-center whitespace-nowrap rounded-full bg-teal-50 border border-teal-200 px-2.5 py-0.5 text-[10px] font-bold text-teal-800 tracking-wide shadow-2xs">
                 Chuyên gia
               </span>
             </div>
 
-            {/* Quick System Presets */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[11px] text-slate-400 font-medium mr-1 hidden md:inline">Mẫu cấu hình sẵn:</span>
-              {erpPresets.map((preset) => (
-                <button
-                  key={preset.id}
-                  type="button"
-                  onClick={() => {
-                    onChange({ ...filter, ...preset.config });
-                  }}
-                  title={preset.desc}
-                  className="rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-900 transition-all shadow-2xs cursor-pointer"
-                >
-                  {preset.name}
-                </button>
-              ))}
+            {/* Right: Mẫu cấu hình sẵn + Nút Thu gọn chuẩn chỉnh */}
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[11px] text-slate-500 font-medium whitespace-nowrap hidden sm:inline">
+                  Mẫu nhanh:
+                </span>
+                {erpPresets.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => {
+                      onChange({ ...filter, ...preset.config });
+                    }}
+                    title={preset.desc}
+                    className="whitespace-nowrap rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-900 transition-all shadow-2xs cursor-pointer"
+                  >
+                    {preset.name}
+                  </button>
+                ))}
+              </div>
+
+              <div className="h-4 w-px bg-slate-200 hidden sm:block shrink-0" />
+
               <button
                 type="button"
                 onClick={() => setShowAdvanced(false)}
-                className="text-xs text-slate-400 hover:text-slate-700 transition-colors cursor-pointer ml-1"
+                className="inline-flex items-center gap-1 whitespace-nowrap rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all shadow-2xs cursor-pointer shrink-0"
+                title="Đóng bảng thiết lập"
               >
-                Thu gọn
+                <ChevronUp className="h-3 w-3 text-slate-400" />
+                <span>Thu gọn</span>
               </button>
             </div>
           </div>
@@ -708,11 +719,10 @@ export default function FilterBar({
                             quarter: p.quarter || currentQuarter,
                           });
                         }}
-                        className={`rounded px-2 py-0.5 text-[11px] font-medium transition-all cursor-pointer ${
-                          isActive
+                        className={`rounded px-2 py-0.5 text-[11px] font-medium transition-all cursor-pointer ${isActive
                             ? 'bg-teal-700 text-white font-bold shadow-2xs'
                             : 'bg-slate-50 text-slate-700 border border-slate-200/80 hover:bg-teal-50 hover:text-teal-800'
-                        }`}
+                          }`}
                       >
                         {p.label}
                       </button>
@@ -739,11 +749,10 @@ export default function FilterBar({
                         key={item.val}
                         type="button"
                         onClick={() => onChange({ ...filter, comparisonMode: item.val })}
-                        className={`flex flex-col items-start rounded-md border p-1.5 text-left transition-all cursor-pointer ${
-                          isSelected
+                        className={`flex flex-col items-start rounded-md border p-1.5 text-left transition-all cursor-pointer ${isSelected
                             ? 'border-teal-500 bg-teal-50/70 text-teal-900 shadow-2xs font-semibold'
                             : 'border-slate-200/80 bg-white text-slate-700 hover:bg-slate-50'
-                        }`}
+                          }`}
                       >
                         <span className="text-[11px] leading-tight font-medium">{item.label}</span>
                         <span className="text-[9px] text-slate-400">{item.sub}</span>
@@ -854,11 +863,10 @@ export default function FilterBar({
                         key={item.sec}
                         type="button"
                         onClick={() => onChange({ ...filter, autoRefreshInterval: item.sec })}
-                        className={`rounded py-1 text-center text-xs font-medium transition-all cursor-pointer ${
-                          isSelected
+                        className={`rounded py-1 text-center text-xs font-medium transition-all cursor-pointer ${isSelected
                             ? 'bg-teal-700 text-white font-bold shadow-2xs'
                             : 'bg-slate-50 text-slate-700 border border-slate-200/80 hover:bg-slate-100'
-                        }`}
+                          }`}
                       >
                         {item.label}
                       </button>
@@ -883,11 +891,10 @@ export default function FilterBar({
                         key={item.val}
                         type="button"
                         onClick={() => onChange({ ...filter, displayUnit: item.val })}
-                        className={`flex flex-col items-start rounded-md border p-1.5 text-left transition-all cursor-pointer ${
-                          isSelected
+                        className={`flex flex-col items-start rounded-md border p-1.5 text-left transition-all cursor-pointer ${isSelected
                             ? 'border-teal-500 bg-teal-50/70 text-teal-900 shadow-2xs font-semibold'
                             : 'border-slate-200/80 bg-white text-slate-700 hover:bg-slate-50'
-                        }`}
+                          }`}
                       >
                         <span className="text-[11px] font-medium leading-tight">{item.label}</span>
                         <span className="text-[9px] text-slate-400">{item.sub}</span>
@@ -906,9 +913,7 @@ export default function FilterBar({
                 <Check className="h-3 w-3 text-teal-600" />
                 {advancedFiltersCount > 0 ? `${advancedFiltersCount} tiêu chí nâng cao đang bật` : 'Mặc định chuẩn quản trị'}
               </span>
-              <span className="text-[11px] text-slate-400 hidden sm:inline">
-                Dữ liệu sẽ được lọc chéo thời gian thực theo cấu hình ERP
-              </span>
+
             </div>
 
             <div className="flex items-center gap-2 self-end sm:self-center">
