@@ -12,8 +12,13 @@ import {
   CalendarDays,
   Check,
   X,
+  TrendingUp,
+  CreditCard,
+  Users,
+  Clock,
+  Sparkles,
+  Zap,
 } from 'lucide-react';
-import { ToothIcon } from './OverviewTab';
 
 export default function FilterBar({
   filter,
@@ -92,6 +97,122 @@ export default function FilterBar({
     { label: '30 ngày qua', filterType: 'LAST_30_DAYS', year: 2026 },
   ];
 
+  // Mẫu cấu hình nhanh cấp độ ERP (Clinical & Financial Presets)
+  const erpPresets = [
+    {
+      id: 'director',
+      name: 'Ban Giám Đốc',
+      desc: 'Năm 2026 · Toàn hệ thống · So sánh cùng kỳ YoY',
+      config: {
+        filterType: 'YEAR',
+        year: 2026,
+        branchId: null,
+        comparisonMode: 'YOY',
+        paymentStatus: 'ALL',
+        paymentMethod: 'ALL',
+        patientSegment: 'ALL',
+      },
+    },
+    {
+      id: 'cashflow',
+      name: 'Đối soát Thu nợ',
+      desc: 'Quý 4/2026 · Hóa đơn còn công nợ chưa thu',
+      config: {
+        filterType: 'QUARTER',
+        year: 2026,
+        quarter: 4,
+        comparisonMode: 'MOM',
+        paymentStatus: 'DEBT',
+        paymentMethod: 'ALL',
+        patientSegment: 'ALL',
+      },
+    },
+    {
+      id: 'vietqr',
+      name: 'Dòng tiền VietQR',
+      desc: 'Tháng 10/2026 · Thanh toán chuyển khoản ngân hàng',
+      config: {
+        filterType: 'MONTH',
+        year: 2026,
+        month: 10,
+        comparisonMode: 'MOM',
+        paymentStatus: 'PAID',
+        paymentMethod: 'BANK_TRANSFER',
+        patientSegment: 'ALL',
+      },
+    },
+    {
+      id: 'new_patients',
+      name: 'Bệnh nhân mới',
+      desc: 'Tháng 10/2026 · Khách mới · Tự động làm mới 30s',
+      config: {
+        filterType: 'MONTH',
+        year: 2026,
+        month: 10,
+        comparisonMode: 'KPI',
+        paymentStatus: 'ALL',
+        paymentMethod: 'ALL',
+        patientSegment: 'NEW',
+        autoRefreshInterval: 30,
+      },
+    },
+  ];
+
+  // Cơ chế Tự động làm mới dữ liệu (Live Auto-refresh Countdown)
+  const autoRefreshInterval = filter.autoRefreshInterval || 0;
+  const [secondsLeft, setSecondsLeft] = useState(autoRefreshInterval);
+
+  useEffect(() => {
+    if (!autoRefreshInterval || autoRefreshInterval <= 0) {
+      setSecondsLeft(0);
+      return;
+    }
+    setSecondsLeft(autoRefreshInterval);
+    const timer = setInterval(() => {
+      setSecondsLeft((prev) => {
+        if (prev <= 1) {
+          if (onRefresh) onRefresh();
+          return autoRefreshInterval;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [autoRefreshInterval, onRefresh]);
+
+  // Đếm số tiêu chí lọc nâng cao đang kích hoạt
+  const advancedFiltersCount = useMemo(() => {
+    let count = 0;
+    if (filter.branchId) count++;
+    if (filter.comparisonMode && filter.comparisonMode !== 'NONE') count++;
+    if (filter.paymentStatus && filter.paymentStatus !== 'ALL') count++;
+    if (filter.paymentMethod && filter.paymentMethod !== 'ALL') count++;
+    if (filter.patientSegment && filter.patientSegment !== 'ALL') count++;
+    if (filter.autoRefreshInterval && filter.autoRefreshInterval > 0) count++;
+    if (filter.displayUnit && filter.displayUnit !== 'FULL') count++;
+    return count;
+  }, [filter]);
+
+  // Reset toàn bộ bộ lọc về mặc định
+  const handleResetAll = () => {
+    onChange({
+      filterType: 'YEAR',
+      year: 2026,
+      month: 10,
+      quarter: 4,
+      date: '2026-10-20',
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
+      branchId: null,
+      comparisonMode: 'NONE',
+      paymentStatus: 'ALL',
+      paymentMethod: 'ALL',
+      patientSegment: 'ALL',
+      autoRefreshInterval: 0,
+      displayUnit: 'FULL',
+    });
+  };
+
   // Điều hướng chu kỳ 1-chạm (Stepper: Previous / Next) - Chặn năm tương lai
   const handleStepPeriod = (direction) => {
     const delta = direction === 'next' ? 1 : -1;
@@ -142,7 +263,7 @@ export default function FilterBar({
   }, [currentType, filter.startDate, filter.endDate]);
 
   // Kiểm tra xem bộ lọc có khác mặc định (Năm 2026) không
-  const isFiltered = currentType !== 'YEAR' || currentYear !== 2026 || Boolean(filter.branchId);
+  const isFiltered = currentType !== 'YEAR' || currentYear !== 2026 || advancedFiltersCount > 0;
 
   // Nhãn mô tả điều hướng
   const getStepperLabel = () => {
@@ -164,23 +285,29 @@ export default function FilterBar({
     (currentType === 'MONTH' && currentYear >= CURRENT_MAX_YEAR && currentMonth >= 12);
 
   return (
-    <div className="rounded-lg border border-cyan-100/90 bg-white p-4 shadow-2xs transition-all">
+    <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs transition-all">
       {/* 1. Header Row: Tiêu đề, Live Clock, Stepper điều hướng & Nút thao tác */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between pb-3 border-b border-slate-100">
         {/* Left: Tên bộ điều hành & Chu kỳ hiện hành */}
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-cyan-50 text-cyan-700 border border-cyan-200/80 shadow-2xs">
-            <ToothIcon className="h-4.5 w-4.5" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-50 text-teal-700 border border-teal-200/80 shadow-2xs">
+            <SlidersHorizontal className="h-4.5 w-4.5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
                 Trung Tâm Điều Hành Dữ Liệu
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-md bg-cyan-50 px-2 py-0.5 text-xs font-semibold text-cyan-800 border border-cyan-200 shadow-2xs">
-                <span className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse" />
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-teal-50 px-2 py-0.5 text-xs font-semibold text-teal-800 border border-teal-200 shadow-2xs">
+                <span className="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse" />
                 {periodLabel || 'Năm 2026'}
               </span>
+              {autoRefreshInterval > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 border border-emerald-200 shadow-2xs">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live: {secondsLeft}s
+                </span>
+              )}
             </div>
             <p className="text-[11px] text-slate-500 mt-0.5">
               &middot; Chuẩn y khoa Crown Dental
@@ -506,93 +633,289 @@ export default function FilterBar({
         </div>
       )}
 
-      {/* 4. Collapsible Advanced Clinical Filter Drawer (Bảng Điều Khiển Nâng Cao Đa Chiều) */}
+      {/* 4. Collapsible Advanced Clinical Filter Drawer (Bảng Điều Khiển Nâng Cao Đa Chiều Chuẩn ERP) */}
       {showAdvanced && (
-        <div className="mt-3.5 rounded-lg border border-cyan-100 bg-slate-50/60 p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="mt-3.5 rounded-xl border border-teal-200/90 bg-slate-50/70 p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200 shadow-sm">
           {/* Header of Advanced Drawer */}
-          <div className="flex items-center justify-between pb-2.5 border-b border-slate-200/70">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 pb-3 border-b border-slate-200/80">
             <div className="flex items-center gap-2">
-              <span className="flex h-2 w-2 rounded-full bg-cyan-600" />
+              <span className="flex h-2.5 w-2.5 rounded-full bg-teal-600 animate-pulse" />
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
-                Thiết Lập Bộ Lọc Nâng Cao
+                Thiết Lập Bộ Lọc Nâng Cao Đa Chiều (ERP Clinical Filter)
               </h3>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowAdvanced(false)}
-              className="text-xs text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
-            >
-              Thu gọn
-            </button>
-          </div>
-
-          {/* Section A: Khoảng thời gian nhanh (Clinical Smart Presets) */}
-          <div>
-            <span className="text-[11px] font-semibold text-slate-600 block mb-2">
-              Chọn nhanh chu kỳ phổ biến:
-            </span>
-            <div className="flex flex-wrap gap-1.5">
-              {quickPresets.map((p, idx) => {
-                const isActive =
-                  p.filterType === currentType &&
-                  (!p.year || p.year === currentYear) &&
-                  (!p.month || p.month === currentMonth) &&
-                  (!p.quarter || p.quarter === currentQuarter);
-                return (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => {
-                      onChange({
-                        ...filter,
-                        filterType: p.filterType,
-                        year: p.year || currentYear,
-                        month: p.month || currentMonth,
-                        quarter: p.quarter || currentQuarter,
-                      });
-                    }}
-                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-all cursor-pointer ${isActive
-                      ? 'bg-cyan-600 text-white shadow-2xs font-bold ring-1 ring-cyan-600'
-                      : 'bg-white text-slate-700 border border-slate-200/80 hover:bg-cyan-50 hover:border-cyan-200 hover:text-cyan-800'
-                      }`}
-                  >
-                    {p.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Section B: Phạm vi Cơ sở & Chi nhánh phòng khám */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-slate-200/70">
-            <div className="flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-cyan-700" />
-              <span className="text-xs font-semibold text-slate-700">Phạm vi cơ sở:</span>
-              <select
-                value={filter.branchId || ''}
-                onChange={(e) => onChange({ ...filter, branchId: e.target.value || null })}
-                className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-2xs focus:border-cyan-600 focus:outline-none cursor-pointer"
-              >
-                <option value="">Toàn hệ thống (Crown Dental Central)</option>
-                <option value="BRANCH_Q1">Cơ sở 1 - Trung tâm Nha khoa Quốc Tế</option>
-                <option value="BRANCH_BT">Cơ sở 2 - Nha khoa Thẩm mỹ Công nghệ cao</option>
-              </select>
+              <span className="rounded-full bg-teal-50 border border-teal-200 px-2 py-0.5 text-[10px] font-semibold text-teal-800">
+                Chuyên gia
+              </span>
             </div>
 
-            {/* Action Buttons inside Drawer */}
-            <div className="flex items-center gap-2 self-end">
+            {/* Quick System Presets */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[11px] text-slate-400 font-medium mr-1 hidden md:inline">Mẫu cấu hình sẵn:</span>
+              {erpPresets.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => {
+                    onChange({ ...filter, ...preset.config });
+                  }}
+                  title={preset.desc}
+                  className="rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-900 transition-all shadow-2xs cursor-pointer"
+                >
+                  {preset.name}
+                </button>
+              ))}
               <button
                 type="button"
-                onClick={() =>
-                  onChange({
-                    filterType: 'YEAR',
-                    year: 2026,
-                    month: 10,
-                    quarter: 4,
-                    branchId: null,
-                  })
-                }
-                className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors shadow-2xs cursor-pointer"
+                onClick={() => setShowAdvanced(false)}
+                className="text-xs text-slate-400 hover:text-slate-700 transition-colors cursor-pointer ml-1"
+              >
+                Thu gọn
+              </button>
+            </div>
+          </div>
+
+          {/* 3 Main Functional Columns / Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+            {/* CỘT 1: Chu kỳ & Chế độ Đối chuẩn Phân tích */}
+            <div className="rounded-lg border border-slate-200/90 bg-white p-3 shadow-2xs space-y-3">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 border-b border-slate-100 pb-2">
+                <CalendarDays className="h-4 w-4 text-teal-700" />
+                <span>1. Chu kỳ & Phân tích Đối chuẩn</span>
+              </div>
+
+              {/* Quick Presets */}
+              <div>
+                <label className="text-[11px] font-semibold text-slate-600 block mb-1.5">
+                  Mốc thời gian điều hành:
+                </label>
+                <div className="flex flex-wrap gap-1">
+                  {quickPresets.map((p, idx) => {
+                    const isActive =
+                      p.filterType === currentType &&
+                      (!p.year || p.year === currentYear) &&
+                      (!p.month || p.month === currentMonth) &&
+                      (!p.quarter || p.quarter === currentQuarter);
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          onChange({
+                            ...filter,
+                            filterType: p.filterType,
+                            year: p.year || currentYear,
+                            month: p.month || currentMonth,
+                            quarter: p.quarter || currentQuarter,
+                          });
+                        }}
+                        className={`rounded px-2 py-0.5 text-[11px] font-medium transition-all cursor-pointer ${
+                          isActive
+                            ? 'bg-teal-700 text-white font-bold shadow-2xs'
+                            : 'bg-slate-50 text-slate-700 border border-slate-200/80 hover:bg-teal-50 hover:text-teal-800'
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Chế độ so sánh đối chuẩn */}
+              <div className="pt-2 border-t border-slate-100">
+                <label className="text-[11px] font-semibold text-slate-600 block mb-1.5">
+                  Chế độ so sánh chỉ số (Benchmark):
+                </label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {[
+                    { val: 'NONE', label: 'Không so sánh', sub: 'Độc lập' },
+                    { val: 'YOY', label: 'Cùng kỳ năm trước', sub: 'YoY Benchmark' },
+                    { val: 'MOM', label: 'Kỳ liền kề trước', sub: 'MoM / QoQ' },
+                    { val: 'KPI', label: 'Chỉ tiêu định mức', sub: 'Mục tiêu KPI' },
+                  ].map((item) => {
+                    const isSelected = (filter.comparisonMode || 'NONE') === item.val;
+                    return (
+                      <button
+                        key={item.val}
+                        type="button"
+                        onClick={() => onChange({ ...filter, comparisonMode: item.val })}
+                        className={`flex flex-col items-start rounded-md border p-1.5 text-left transition-all cursor-pointer ${
+                          isSelected
+                            ? 'border-teal-500 bg-teal-50/70 text-teal-900 shadow-2xs font-semibold'
+                            : 'border-slate-200/80 bg-white text-slate-700 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className="text-[11px] leading-tight font-medium">{item.label}</span>
+                        <span className="text-[9px] text-slate-400">{item.sub}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* CỘT 2: Phân loại Nghiệp vụ, Dòng tiền & Bệnh nhân */}
+            <div className="rounded-lg border border-slate-200/90 bg-white p-3 shadow-2xs space-y-3">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 border-b border-slate-100 pb-2">
+                <CreditCard className="h-4 w-4 text-teal-700" />
+                <span>2. Phân loại Tài chính & Bệnh nhân</span>
+              </div>
+
+              {/* Trạng thái thu tiền & công nợ */}
+              <div>
+                <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+                  Tình trạng thanh toán hóa đơn:
+                </label>
+                <select
+                  value={filter.paymentStatus || 'ALL'}
+                  onChange={(e) => onChange({ ...filter, paymentStatus: e.target.value })}
+                  className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-2xs focus:border-teal-600 focus:outline-none cursor-pointer"
+                >
+                  <option value="ALL">Tất cả trạng thái hóa đơn</option>
+                  <option value="PAID">Đã thu đủ 100% (Hoàn tất thu tiền)</option>
+                  <option value="DEBT">Còn công nợ tồn đọng (Cần thu hồi)</option>
+                  <option value="PROMO">Hóa đơn có áp dụng ưu đãi / Voucher</option>
+                </select>
+              </div>
+
+              {/* Phương thức thanh toán ưu tiên */}
+              <div>
+                <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+                  Phương thức thanh toán dòng tiền:
+                </label>
+                <select
+                  value={filter.paymentMethod || 'ALL'}
+                  onChange={(e) => onChange({ ...filter, paymentMethod: e.target.value })}
+                  className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-2xs focus:border-teal-600 focus:outline-none cursor-pointer"
+                >
+                  <option value="ALL">Tất cả phương thức thanh toán</option>
+                  <option value="BANK_TRANSFER">Chuyển khoản VietQR / Ngân hàng 24/7</option>
+                  <option value="CASH">Tiền mặt tại quầy thu ngân</option>
+                  <option value="CARD">Thẻ thanh toán POS / Thẻ tín dụng</option>
+                </select>
+              </div>
+
+              {/* Phân nhóm khách hàng & bệnh nhân */}
+              <div>
+                <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+                  Phân nhóm đối tượng bệnh nhân:
+                </label>
+                <select
+                  value={filter.patientSegment || 'ALL'}
+                  onChange={(e) => onChange({ ...filter, patientSegment: e.target.value })}
+                  className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-2xs focus:border-teal-600 focus:outline-none cursor-pointer"
+                >
+                  <option value="ALL">Tất cả đối tượng bệnh nhân</option>
+                  <option value="NEW">Bệnh nhân mới lần đầu đến khám</option>
+                  <option value="RETURNING">Bệnh nhân tái khám định kỳ / Điều trị</option>
+                  <option value="VIP">Bệnh nhân thẻ VIP & Hội viên cao cấp</option>
+                </select>
+              </div>
+            </div>
+
+            {/* CỘT 3: Cơ sở hoạt động & Vận hành Tự động (Live Controls) */}
+            <div className="rounded-lg border border-slate-200/90 bg-white p-3 shadow-2xs space-y-3">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 border-b border-slate-100 pb-2">
+                <Building2 className="h-4 w-4 text-teal-700" />
+                <span>3. Phạm vi Cơ sở & Vận hành Tự động</span>
+              </div>
+
+              {/* Phạm vi chi nhánh */}
+              <div>
+                <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+                  Phạm vi cơ sở phòng khám:
+                </label>
+                <select
+                  value={filter.branchId || ''}
+                  onChange={(e) => onChange({ ...filter, branchId: e.target.value || null })}
+                  className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-2xs focus:border-teal-600 focus:outline-none cursor-pointer"
+                >
+                  <option value="">Toàn hệ thống (Crown Dental Central)</option>
+                  <option value="BRANCH_Q1">Cơ sở 1 - Trung tâm Nha khoa Quốc Tế (Q1)</option>
+                  <option value="BRANCH_BT">Cơ sở 2 - Nha khoa Thẩm mỹ Công nghệ cao (BT)</option>
+                </select>
+              </div>
+
+              {/* Tự động làm mới dữ liệu */}
+              <div>
+                <label className="text-[11px] font-semibold text-slate-600 block mb-1.5">
+                  Tần suất tự động làm mới (Live Auto-refresh):
+                </label>
+                <div className="grid grid-cols-4 gap-1">
+                  {[
+                    { sec: 0, label: 'Tắt' },
+                    { sec: 30, label: '30s' },
+                    { sec: 60, label: '1 phút' },
+                    { sec: 300, label: '5 phút' },
+                  ].map((item) => {
+                    const isSelected = (filter.autoRefreshInterval || 0) === item.sec;
+                    return (
+                      <button
+                        key={item.sec}
+                        type="button"
+                        onClick={() => onChange({ ...filter, autoRefreshInterval: item.sec })}
+                        className={`rounded py-1 text-center text-xs font-medium transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-teal-700 text-white font-bold shadow-2xs'
+                            : 'bg-slate-50 text-slate-700 border border-slate-200/80 hover:bg-slate-100'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Đơn vị tiền tệ hiển thị */}
+              <div>
+                <label className="text-[11px] font-semibold text-slate-600 block mb-1.5">
+                  Định dạng số liệu hiển thị:
+                </label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {[
+                    { val: 'FULL', label: 'VNĐ Đầy đủ', sub: 'Chính xác từng đồng' },
+                    { val: 'COMPACT_M', label: 'Triệu VNĐ', sub: 'Rút gọn dễ nhìn' },
+                  ].map((item) => {
+                    const isSelected = (filter.displayUnit || 'FULL') === item.val;
+                    return (
+                      <button
+                        key={item.val}
+                        type="button"
+                        onClick={() => onChange({ ...filter, displayUnit: item.val })}
+                        className={`flex flex-col items-start rounded-md border p-1.5 text-left transition-all cursor-pointer ${
+                          isSelected
+                            ? 'border-teal-500 bg-teal-50/70 text-teal-900 shadow-2xs font-semibold'
+                            : 'border-slate-200/80 bg-white text-slate-700 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className="text-[11px] font-medium leading-tight">{item.label}</span>
+                        <span className="text-[9px] text-slate-400">{item.sub}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Drawer Bottom Actions & Applied Count */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-3 border-t border-slate-200/80">
+            <div className="flex items-center gap-2 text-xs text-slate-600">
+              <span className="inline-flex items-center gap-1 rounded-md bg-teal-50 border border-teal-200 px-2 py-0.5 text-xs font-semibold text-teal-800">
+                <Check className="h-3 w-3 text-teal-600" />
+                {advancedFiltersCount > 0 ? `${advancedFiltersCount} tiêu chí nâng cao đang bật` : 'Mặc định chuẩn quản trị'}
+              </span>
+              <span className="text-[11px] text-slate-400 hidden sm:inline">
+                Dữ liệu sẽ được lọc chéo thời gian thực theo cấu hình ERP
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 self-end sm:self-center">
+              <button
+                type="button"
+                onClick={handleResetAll}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors shadow-2xs cursor-pointer"
               >
                 <RotateCcw className="h-3 w-3 text-slate-400" />
                 <span>Đặt lại mặc định</span>
@@ -604,48 +927,129 @@ export default function FilterBar({
                   setShowAdvanced(false);
                   handleRefresh();
                 }}
-                className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-cyan-700 transition-all cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-teal-700 px-4 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-teal-800 active:scale-95 transition-all cursor-pointer"
               >
                 <Check className="h-3.5 w-3.5" />
-                <span>Áp dụng</span>
+                <span>Áp dụng bộ lọc</span>
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* 5. Active Filters Status Summary Strip (Thanh hiển thị nhanh bộ lọc đang kích hoạt - không icon/emoji) */}
+      {/* 5. Active Filters Status Summary Strip */}
       <div className="mt-2.5 pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-[11px] font-medium text-slate-400">Đang áp dụng:</span>
-          <span className="inline-flex items-center rounded bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 border border-slate-200/80">
+          {/* Badge Chu kỳ */}
+          <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 border border-slate-200/80">
             {getStepperLabel()}
           </span>
-          <span className="inline-flex items-center rounded bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 border border-slate-200/80">
-            {filter.branchId ? 'Chi nhánh đã chọn' : 'Toàn hệ thống'}
+
+          {/* Badge Cơ sở */}
+          <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 border border-slate-200/80">
+            {filter.branchId ? (filter.branchId === 'BRANCH_Q1' ? 'Cơ sở 1 (Q1)' : 'Cơ sở 2 (BT)') : 'Toàn hệ thống'}
           </span>
+
+          {/* Badge So sánh */}
+          {filter.comparisonMode && filter.comparisonMode !== 'NONE' && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-teal-50 px-2 py-0.5 text-[11px] font-semibold text-teal-800 border border-teal-200">
+              <TrendingUp className="h-3 w-3 text-teal-600" />
+              {filter.comparisonMode === 'YOY' && 'So sánh: YoY (Cùng kỳ)'}
+              {filter.comparisonMode === 'MOM' && 'So sánh: MoM (Kỳ trước)'}
+              {filter.comparisonMode === 'KPI' && 'So sánh: Mục tiêu KPI'}
+              <button
+                type="button"
+                onClick={() => onChange({ ...filter, comparisonMode: 'NONE' })}
+                className="hover:text-red-500 cursor-pointer ml-0.5"
+                title="Hủy so sánh"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </span>
+          )}
+
+          {/* Badge Trạng thái thanh toán */}
+          {filter.paymentStatus && filter.paymentStatus !== 'ALL' && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-800 border border-blue-200">
+              {filter.paymentStatus === 'PAID' && 'Hóa đơn: Đã thu đủ'}
+              {filter.paymentStatus === 'DEBT' && 'Hóa đơn: Còn công nợ'}
+              {filter.paymentStatus === 'PROMO' && 'Hóa đơn: Áp dụng ưu đãi'}
+              <button
+                type="button"
+                onClick={() => onChange({ ...filter, paymentStatus: 'ALL' })}
+                className="hover:text-red-500 cursor-pointer ml-0.5"
+                title="Hủy lọc trạng thái"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </span>
+          )}
+
+          {/* Badge Phương thức thanh toán */}
+          {filter.paymentMethod && filter.paymentMethod !== 'ALL' && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 border border-emerald-200">
+              {filter.paymentMethod === 'BANK_TRANSFER' && 'PTTT: Chuyển khoản VietQR'}
+              {filter.paymentMethod === 'CASH' && 'PTTT: Tiền mặt'}
+              {filter.paymentMethod === 'CARD' && 'PTTT: Thẻ tín dụng/POS'}
+              <button
+                type="button"
+                onClick={() => onChange({ ...filter, paymentMethod: 'ALL' })}
+                className="hover:text-red-500 cursor-pointer ml-0.5"
+                title="Hủy lọc phương thức"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </span>
+          )}
+
+          {/* Badge Nhóm bệnh nhân */}
+          {filter.patientSegment && filter.patientSegment !== 'ALL' && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-purple-50 px-2 py-0.5 text-[11px] font-semibold text-purple-800 border border-purple-200">
+              {filter.patientSegment === 'NEW' && 'Bệnh nhân: Khách mới'}
+              {filter.patientSegment === 'RETURNING' && 'Bệnh nhân: Tái khám'}
+              {filter.patientSegment === 'VIP' && 'Bệnh nhân: Thẻ VIP'}
+              <button
+                type="button"
+                onClick={() => onChange({ ...filter, patientSegment: 'ALL' })}
+                className="hover:text-red-500 cursor-pointer ml-0.5"
+                title="Hủy lọc đối tượng"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </span>
+          )}
+
+          {/* Badge Auto Refresh with live countdown */}
+          {autoRefreshInterval > 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-teal-50 px-2 py-0.5 text-[11px] font-semibold text-teal-800 border border-teal-200">
+              <span className="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse" />
+              <span>Live: {secondsLeft}s</span>
+              <button
+                type="button"
+                onClick={() => onChange({ ...filter, autoRefreshInterval: 0 })}
+                className="hover:text-red-500 cursor-pointer ml-0.5"
+                title="Tắt tự động làm mới"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </span>
+          )}
+
           {isFiltered && (
             <button
               type="button"
-              onClick={() =>
-                onChange({
-                  filterType: 'YEAR',
-                  year: 2026,
-                  month: 10,
-                  quarter: 4,
-                  branchId: null,
-                })
-              }
-              className="inline-flex items-center gap-1 text-[11px] font-medium text-cyan-700 hover:text-cyan-900 hover:underline cursor-pointer ml-1"
+              onClick={handleResetAll}
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-teal-700 hover:text-teal-900 hover:underline cursor-pointer ml-1"
             >
               <RotateCcw className="h-2.5 w-2.5" />
-              Đặt lại Năm 2026
+              Đặt lại mặc định
             </button>
           )}
         </div>
 
-        <div className="text-[11px] text-slate-400">
-          Dữ liệu tài chính & điều trị
+        <div className="flex items-center gap-2 text-[11px] text-slate-400">
+          <span>Chuẩn kế toán & y khoa Crown Dental</span>
         </div>
       </div>
     </div>
