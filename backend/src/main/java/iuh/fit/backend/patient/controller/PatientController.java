@@ -4,6 +4,7 @@ import iuh.fit.backend.common.response.ApiResponse;
 import iuh.fit.backend.billing.dto.PatientInvoiceDataResponse;
 import iuh.fit.backend.patient.dto.PatientCreateDTO;
 import iuh.fit.backend.patient.dto.PatientDTO;
+import iuh.fit.backend.patient.dto.PatientStatisticsResponse;
 import iuh.fit.backend.patient.service.PatientService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -19,6 +20,18 @@ import java.util.UUID;
 public class PatientController {
 
     private final PatientService patientService;
+
+    @GetMapping("/{id}/statistics")
+    public ResponseEntity<ApiResponse<PatientStatisticsResponse>> getPatientStatistics(@PathVariable UUID id) {
+        PatientStatisticsResponse statistics = patientService.getPatientStatistics(id);
+        return ResponseEntity.ok(
+                ApiResponse.<PatientStatisticsResponse>builder()
+                        .status(200)
+                        .message("Lấy thống kê bệnh nhân thành công")
+                        .data(statistics)
+                        .build()
+        );
+    }
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<PatientDTO>>> getAllPatients() {

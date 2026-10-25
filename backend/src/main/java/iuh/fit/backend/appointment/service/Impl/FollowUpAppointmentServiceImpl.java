@@ -20,6 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.format.DateTimeFormatter;
+import java.time.YearMonth;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -37,6 +39,19 @@ public class FollowUpAppointmentServiceImpl implements FollowUpAppointmentServic
     private final NotificationService notificationService;
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm - dd/MM/yyyy");
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<FollowUpAppointmentDTO> getCurrentMonthFollowUpAppointmentsByPatientId(UUID patientId) {
+        YearMonth month = YearMonth.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+        return followUpAppointmentRepository.findByPatientAndDateRange(
+                        patientId,
+                        month.atDay(1).atStartOfDay(),
+                        month.plusMonths(1).atDay(1).atStartOfDay())
+                .stream()
+                .map(this::mapToDTO)
+                .toList();
+    }
 
     @Override
     @Transactional(readOnly = true)

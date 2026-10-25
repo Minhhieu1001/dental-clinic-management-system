@@ -3,7 +3,7 @@ import ProtectedRoute from '../components/common/ProtectedRoute.jsx'
 import AdminLayout from '../layouts/AdminLayouts.jsx'
 import DentistLayout from '../layouts/DentistLayout.jsx'
 import EmployeeLayout from '../layouts/EmployeeLayout.jsx'
-import PatientLayout from '../layouts/PatientLayout.jsx'
+import PatientLayout from '../layouts/PatientLayout/PatientLayout.jsx'
 import PublicLayout from '../layouts/PublicLayout.jsx'
 import Home from '../pages/Home.jsx'
 import About from '../pages/About.jsx'
@@ -65,7 +65,7 @@ import EmployeeNotifications from '../features/notification/EmployeeNotification
 import EmployeeGeneralSettings from '../features/setting/employee/EmployeeGeneralSettings.jsx'
 
 // Feature Components - Patient
-import PatientDashboard from '../features/dashboard/PatientDashboard.jsx'
+import PatientDashboard from '../features/dashboard/patient/PatientDashboard.jsx'
 import PatientAppointments from '../features/appointment/PatientAppointments.jsx'
 import PatientMedicalRecords from '../features/medical-record/PatientMedicalRecords.jsx'
 import PatientPrescriptions from '../features/prescriptions/dentist/PatientPrescriptions.jsx'

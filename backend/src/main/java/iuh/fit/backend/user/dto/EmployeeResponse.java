@@ -18,6 +18,10 @@ public record EmployeeResponse(
                 Boolean status,
                 String branchId,
                 String branchName,
+                String branchAddress,
+                String branchImage,
+                String clinicLogoUrl,
+                String clinicAddress,
                 String employeeCode,
                 LocalDate dateOfBirth) {
 }

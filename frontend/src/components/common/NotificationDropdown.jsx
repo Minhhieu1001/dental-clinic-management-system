@@ -109,7 +109,7 @@ const formatTimeAgo = (dateStr) => {
   }
 };
 
-export default function NotificationDropdown({ role = 'DENTIST' }) {
+export default function NotificationDropdown({ role = 'DENTIST', buttonClassName }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -225,7 +225,7 @@ export default function NotificationDropdown({ role = 'DENTIST' }) {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="relative rounded-full p-2 text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-700 active:scale-95 cursor-pointer"
+        className={buttonClassName || "relative rounded-full p-2 text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-700 active:scale-95 cursor-pointer"}
         title="Thông báo"
       >
         <Bell className="h-5 w-5" />

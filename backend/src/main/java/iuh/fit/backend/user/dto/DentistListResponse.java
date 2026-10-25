@@ -27,6 +27,9 @@ public record DentistListResponse(
         String branchId,
         String branchName,
         String branchAddress,
+        String branchImage,
+        String clinicLogoUrl,
+        String clinicAddress,
         String dentalClinicName,
         String dentistCode
 ) {

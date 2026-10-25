@@ -1,6 +1,7 @@
 package iuh.fit.backend.treatment.repository;
 
 import iuh.fit.backend.treatment.entity.TreatmentPlan;
+import iuh.fit.backend.treatment.enums.StatusPhase;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,6 +13,13 @@ import java.util.UUID;
 
 @Repository
 public interface TreatmentPlanRepository extends JpaRepository<TreatmentPlan, UUID> {
+
+    List<TreatmentPlan> findByExaminationResultMedicalRecordPatientIdAndStatusOrderByStartDateDesc(
+            UUID patientId, StatusPhase status);
+
+    long countByExaminationResultMedicalRecordPatientId(UUID patientId);
+
+    long countByExaminationResultMedicalRecordPatientIdAndStatus(UUID patientId, StatusPhase status);
 
     @Query("SELECT tp FROM TreatmentPlan tp WHERE tp.examinationResult.id = :examinationResultId")
     Optional<TreatmentPlan> findByExaminationResultId(@Param("examinationResultId") UUID examinationResultId);

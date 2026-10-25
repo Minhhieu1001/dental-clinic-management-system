@@ -32,6 +32,7 @@ export default function CreatePrescriptionModal({
   onClose,
   onSavePrescription,
   currentDoctorName = '',
+  currentDoctorId = null,
   patient = null,
   type = 'create',
   prescriptionData = null,
@@ -113,8 +114,9 @@ export default function CreatePrescriptionModal({
 
   // Save full prescription
   const handleSave = () => {
-    if (!prescriber.trim()) {
-      toast.error('Vui lòng nhập/chọn bác sĩ kê đơn');
+    const dentistId = type === 'edit' ? prescriptionData?.dentistId : currentDoctorId;
+    if (!dentistId) {
+      toast.error('Chưa xác định được bác sĩ kê đơn. Vui lòng kiểm tra hồ sơ bác sĩ.');
       return;
     }
     if (!prescriptionName.trim()) {
@@ -131,7 +133,7 @@ export default function CreatePrescriptionModal({
     const payload = {
       prescriptionCode: prescriptionCode.trim() || undefined,
       prescriptionName: prescriptionName.trim(),
-      prescriber: prescriber.trim(),
+      dentistId,
       doctorAdvice: cleanAdvice,
       prescriptionDate: (type === 'edit' && prescriptionData?.prescriptionDate)
         ? prescriptionData.prescriptionDate
@@ -245,8 +247,8 @@ export default function CreatePrescriptionModal({
                   <input
                     type="text"
                     value={prescriber}
-                    onChange={(e) => setPrescriber(e.target.value)}
-                    placeholder="Nhập hoặc chọn bác sĩ..."
+                    readOnly
+                    placeholder="Chưa xác định bác sĩ kê đơn"
                     className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-sm focus:border-teal-600 focus:outline-hidden font-semibold text-slate-800"
                   />
                 </div>

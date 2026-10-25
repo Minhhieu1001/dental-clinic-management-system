@@ -1,5 +1,11 @@
 import api from './axios';
 
+// Lấy danh sách kế hoạch đang điều trị (IN_PROGRESS) của bệnh nhân
+export const getInProgressTreatmentPlansByPatientId = async (patientId) => {
+  const response = await api.get(`/treatment-plans/patient/${patientId}/in-progress`);
+  return response.data?.data ?? response.data?.result ?? response.data ?? [];
+};
+
 // Lấy danh sách kế hoạch điều trị của bệnh nhân
 export const getTreatmentPlansByPatientId = async (patientId) => {
   const response = await api.get(`/treatment-plans/patient/${patientId}`);

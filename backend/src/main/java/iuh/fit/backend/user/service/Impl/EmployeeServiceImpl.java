@@ -183,6 +183,12 @@ public class EmployeeServiceImpl implements EmployeeService {
                 employee.getStatus(),
                 employee.getBranch() != null ? employee.getBranch().getBranchId() : null,
                 employee.getBranch() != null ? employee.getBranch().getBranchName() : null,
+                employee.getBranch() != null ? employee.getBranch().getAddress() : null,
+                employee.getBranch() != null ? employee.getBranch().getImageBranch() : null,
+                employee.getBranch() != null && employee.getBranch().getClinic() != null
+                        ? employee.getBranch().getClinic().getLogoUrl() : null,
+                employee.getBranch() != null && employee.getBranch().getClinic() != null
+                        ? employee.getBranch().getClinic().getRegisteredAddress() : null,
                 user != null ? user.getCodeName() : null,
                 employee.getDateOfBirth());
     }
@@ -206,6 +212,11 @@ public class EmployeeServiceImpl implements EmployeeService {
                 employee.getBranch() != null ? employee.getBranch().getBranchId() : null,
                 employee.getBranch() != null ? employee.getBranch().getBranchName() : null,
                 employee.getBranch() != null ? employee.getBranch().getAddress() : null,
+                employee.getBranch() != null ? employee.getBranch().getImageBranch() : null,
+                employee.getBranch() != null && employee.getBranch().getClinic() != null
+                        ? employee.getBranch().getClinic().getLogoUrl() : null,
+                employee.getBranch() != null && employee.getBranch().getClinic() != null
+                        ? employee.getBranch().getClinic().getRegisteredAddress() : null,
                 employee.getBranch() != null && employee.getBranch().getClinic() != null
                         ? employee.getBranch().getClinic().getLegalName() : null,
                 user != null ? user.getCodeName() : null,

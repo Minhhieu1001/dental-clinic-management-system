@@ -502,349 +502,349 @@ export default function ForgotPassword() {
               </div>
             )}
             <AnimatePresence mode="wait">
-                {/* ================= BƯỚC 1: NHẬP EMAIL ================= */}
-                {currentStep === 1 && (
-                  <motion.div
-                    key="step1"
-                    variants={stepTransition}
-                    initial="initial"
-                    animate="animate"
-                    exit="exit"
-                    className="space-y-6"
-                  >
+              {/* ================= BƯỚC 1: NHẬP EMAIL ================= */}
+              {currentStep === 1 && (
+                <motion.div
+                  key="step1"
+                  variants={stepTransition}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  className="space-y-6"
+                >
+                  <div>
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                      <KeyRound size={22} className="text-teal-700" />
+                      <span>Quên mật khẩu?</span>
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                      Đừng lo lắng! Hãy nhập địa chỉ email đã đăng ký với phòng khám, hệ thống sẽ gửi một mã xác minh OTP 6 chữ số đến hòm thư của bạn.
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleSendEmail} className="space-y-4">
                     <div>
-                      <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                        <KeyRound size={22} className="text-teal-700" />
-                        <span>Quên mật khẩu?</span>
-                      </h2>
-                      <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-                        Đừng lo lắng! Hãy nhập địa chỉ email đã đăng ký với phòng khám, hệ thống sẽ gửi một mã xác minh OTP 6 chữ số đến hòm thư của bạn.
-                      </p>
-                    </div>
-
-                    <form onSubmit={handleSendEmail} className="space-y-4">
-                      <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                          Địa chỉ Email tài khoản <span className="text-rose-500">*</span>
-                        </label>
-                        <div className="relative">
-                          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                          <input
-                            type="email"
-                            disabled={isLoading}
-                            autoComplete="email"
-                            maxLength={255}
-                            required
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="nhakhoa@crowndental.vn"
-                            className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-teal-700 focus:bg-white focus:ring-3 focus:ring-teal-700/10 transition-all font-medium"
-                          />
-                        </div>
-                      </div>
-
-                      <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="w-full py-3.5 px-4 bg-teal-800 hover:bg-teal-900 active:bg-teal-950 text-white rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-teal-900/20 disabled:opacity-70 disabled:cursor-not-allowed hover:-translate-y-0.5"
-                      >
-                        {isLoading ? (
-                          <>
-                            <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                            <span>Đang kiểm tra & gửi mã...</span>
-                          </>
-                        ) : (
-                          <>
-                            <span>Gửi mã xác minh</span>
-                            <ChevronRight size={16} />
-                          </>
-                        )}
-                      </button>
-                    </form>
-
-                    <div className="pt-2 text-center">
-                      <Link
-                        to="/login"
-                        className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-teal-800 transition-colors"
-                      >
-                        <ArrowLeft size={14} />
-                        <span>Quay lại trang Đăng nhập</span>
-                      </Link>
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* ================= BƯỚC 2: NHẬP MÃ OTP ================= */}
-                {currentStep === 2 && (
-                  <motion.div
-                    key="step2"
-                    variants={stepTransition}
-                    initial="initial"
-                    animate="animate"
-                    exit="exit"
-                    className="space-y-6"
-                  >
-                    <div>
-                      <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                        <ShieldCheck size={22} className="text-teal-700" />
-                        <span>Xác thực mã bảo mật (OTP)</span>
-                      </h2>
-                      <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-                        Chúng tôi đã gửi mã xác thực 6 chữ số đến địa chỉ email:
-                      </p>
-                      <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-teal-50 border border-teal-200/80 text-xs font-bold text-teal-900">
-                        <Mail size={13} className="text-teal-700" />
-                        <span>{email}</span>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                        Địa chỉ Email tài khoản <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input
+                          type="email"
+                          disabled={isLoading}
+                          autoComplete="email"
+                          maxLength={255}
+                          required
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="nhakhoa@crowndental.vn"
+                          className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-teal-700 focus:bg-white focus:ring-3 focus:ring-teal-700/10 transition-all font-medium"
+                        />
                       </div>
                     </div>
 
-                    <form onSubmit={handleVerifyOtp} className="space-y-5">
-                      <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2.5 text-center">
-                          Nhập mã gồm 6 chữ số
-                        </label>
-                        <div className="flex justify-center gap-2.5 sm:gap-3" onPaste={handleOtpPaste}>
-                          {otp.map((digit, idx) => (
-                            <input
-                              key={idx}
-                              ref={(el) => (otpInputRefs.current[idx] = el)}
-                              type="text"
-                              inputMode="numeric"
-                              aria-label={`Chữ số OTP thứ ${idx + 1}`}
-                              autoComplete={idx === 0 ? 'one-time-code' : 'off'}
-                              disabled={isLoading || otpBlocked || countdown === 0}
-                              maxLength={1}
-                              value={digit}
-                              onChange={(e) => handleOtpChange(idx, e.target.value)}
-                              onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                              className="h-12 w-11 sm:h-14 sm:w-12 rounded-xl border-2 border-slate-200 text-center font-mono text-xl font-black text-slate-900 outline-none focus:border-teal-700 focus:bg-teal-50/20 focus:ring-3 focus:ring-teal-700/10 transition-all bg-white"
-                            />
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Resend OTP & Countdown */}
-                      <p role="status" className="text-center text-xs text-slate-600">
-                        {countdown > 0 ? `Mã có hiệu lực trong ${countdown} giây.` : 'Mã đã hết hạn. Vui lòng gửi lại mã mới.'}
-                      </p>
-                      <div className="flex items-center justify-between text-xs px-1">
-                        <span className="text-slate-500">Không nhận được mã?</span>
-                        {isResendActive ? (
-                          <button
-                            type="button"
-                            onClick={handleResendOtp}
-                            disabled={isLoading}
-                            className="font-bold text-teal-800 hover:text-teal-900 cursor-pointer flex items-center gap-1"
-                          >
-                            <RefreshCw size={12} className={isLoading ? 'animate-spin' : ''} />
-                            <span>Gửi lại mã ngay</span>
-                          </button>
-                        ) : (
-                          <span className="text-slate-400 font-medium">
-                            Gửi lại sau <span className="font-bold text-teal-700">{countdown}s</span>
-                          </span>
-                        )}
-                      </div>
-
-                      <button
-                        type="submit"
-                        disabled={isLoading || otpBlocked || countdown === 0 || otp.join('').length < 6}
-                        className="w-full py-3.5 px-4 bg-teal-800 hover:bg-teal-900 active:bg-teal-950 text-white rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-teal-900/20 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5"
-                      >
-                        {isLoading ? (
-                          <>
-                            <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                            <span>Đang xác thực mã...</span>
-                          </>
-                        ) : (
-                          <>
-                            <span>Xác thực & Tiếp tục</span>
-                            <ChevronRight size={16} />
-                          </>
-                        )}
-                      </button>
-                    </form>
-
-                    <div className="pt-2 text-center">
-                      <button
-                        type="button"
-                        onClick={restartFlow}
-                        disabled={isLoading}
-                        className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-teal-800 transition-colors cursor-pointer"
-                      >
-                        <ArrowLeft size={14} />
-                        <span>Đổi lại địa chỉ email khác</span>
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* ================= BƯỚC 3: ĐẶT MẬT KHẨU MỚI ================= */}
-                {currentStep === 3 && (
-                  <motion.div
-                    key="step3"
-                    variants={stepTransition}
-                    initial="initial"
-                    animate="animate"
-                    exit="exit"
-                    className="space-y-6"
-                  >
-                    <div>
-                      <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                        <KeyRound size={22} className="text-teal-700" />
-                        <span>Thiết lập mật khẩu mới</span>
-                      </h2>
-                      <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-                        Tạo mật khẩu mới cho tài khoản của bạn. Phiên đổi mật khẩu có hiệu lực 5 phút sau khi xác nhận mã.
-                      </p>
-                    </div>
-
-                    <form onSubmit={handleResetPassword} className="space-y-4">
-                      {/* Mật khẩu mới */}
-                      <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                          Mật khẩu mới <span className="text-rose-500">*</span>
-                        </label>
-                        <div className="relative">
-                          <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                          <input
-                            type={showNewPassword ? 'text' : 'password'}
-                            disabled={isLoading}
-                            autoComplete="new-password"
-                            maxLength={72}
-                            required
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                            placeholder="Nhập tối thiểu 8 ký tự (chữ & số)"
-                            className="w-full pl-10 pr-11 py-3 rounded-xl border border-slate-200 bg-slate-50/50 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-teal-700 focus:bg-white focus:ring-3 focus:ring-teal-700/10 transition-all font-medium"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowNewPassword(!showNewPassword)}
-                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                          >
-                            {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Xác nhận mật khẩu mới */}
-                      <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                          Xác nhận lại mật khẩu mới <span className="text-rose-500">*</span>
-                        </label>
-                        <div className="relative">
-                          <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                          <input
-                            type={showConfirmPassword ? 'text' : 'password'}
-                            disabled={isLoading}
-                            autoComplete="new-password"
-                            maxLength={72}
-                            required
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            placeholder="Nhập lại chính xác mật khẩu mới"
-                            className="w-full pl-10 pr-11 py-3 rounded-xl border border-slate-200 bg-slate-50/50 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-teal-700 focus:bg-white focus:ring-3 focus:ring-teal-700/10 transition-all font-medium"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                          >
-                            {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Tiêu chí an toàn mật khẩu */}
-                      <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-1.5 text-xs text-slate-600">
-                        <span className="font-bold text-slate-800 block text-[11px] uppercase tracking-wider">
-                          Tiêu chuẩn mật khẩu an toàn:
-                        </span>
-                        <div className="grid grid-cols-2 gap-2 text-[11px]">
-                          <div className={`flex items-center gap-1.5 ${hasMinLength ? 'text-emerald-700 font-bold' : 'text-slate-400'}`}>
-                            <Check size={12} className={hasMinLength ? 'text-emerald-600' : 'text-slate-300'} />
-                            <span>Tối thiểu 8 ký tự</span>
-                          </div>
-                          <div className={`flex items-center gap-1.5 ${hasLetter ? 'text-emerald-700 font-bold' : 'text-slate-400'}`}>
-                            <Check size={12} className={hasLetter ? 'text-emerald-600' : 'text-slate-300'} />
-                            <span>Có chứa chữ cái</span>
-                          </div>
-                          <div className={`flex items-center gap-1.5 ${hasNumber ? 'text-emerald-700 font-bold' : 'text-slate-400'}`}>
-                            <Check size={12} className={hasNumber ? 'text-emerald-600' : 'text-slate-300'} />
-                            <span>Có chứa chữ số</span>
-                          </div>
-                          <div className={`flex items-center gap-1.5 ${isMatch ? 'text-emerald-700 font-bold' : 'text-slate-400'}`}>
-                            <Check size={12} className={isMatch ? 'text-emerald-600' : 'text-slate-300'} />
-                            <span>Mật khẩu trùng khớp</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <button
-                        type="submit"
-                        disabled={isLoading || !hasMinLength || !hasLetter || !hasNumber || !isMatch}
-                        className="w-full py-3.5 px-4 bg-teal-800 hover:bg-teal-900 active:bg-teal-950 text-white rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-teal-900/20 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5"
-                      >
-                        {isLoading ? (
-                          <>
-                            <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                            <span>Đang cập nhật mật khẩu...</span>
-                          </>
-                        ) : (
-                          <>
-                            <span>Cập nhật mật khẩu mới</span>
-                            <CheckCircle2 size={16} />
-                          </>
-                        )}
-                      </button>
-                    </form>
-                    <button type="button" onClick={restartFlow} disabled={isLoading}
-                      className="text-xs font-bold text-teal-800 disabled:opacity-50">
-                      Xin mã xác nhận mới
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className="w-full py-3.5 px-4 bg-teal-800 hover:bg-teal-900 active:bg-teal-950 text-white rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-teal-900/20 disabled:opacity-70 disabled:cursor-not-allowed hover:-translate-y-0.5"
+                    >
+                      {isLoading ? (
+                        <>
+                          <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                          <span>Đang kiểm tra & gửi mã...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Gửi mã xác minh</span>
+                          <ChevronRight size={16} />
+                        </>
+                      )}
                     </button>
-                  </motion.div>
-                )}
+                  </form>
 
-                {/* ================= BƯỚC 4: THÀNH CÔNG ================= */}
-                {currentStep === 4 && (
-                  <motion.div
-                    key="step4"
-                    variants={stepTransition}
-                    initial="initial"
-                    animate="animate"
-                    exit="exit"
-                    className="space-y-6 text-center py-4"
-                  >
-                    <div className="mx-auto h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 ring-8 ring-emerald-50 shadow-inner">
-                      <CheckCircle2 size={36} />
+                  <div className="pt-2 text-center">
+                    <Link
+                      to="/login"
+                      className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-teal-800 transition-colors"
+                    >
+                      <ArrowLeft size={14} />
+                      <span>Quay lại trang Đăng nhập</span>
+                    </Link>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* ================= BƯỚC 2: NHẬP MÃ OTP ================= */}
+              {currentStep === 2 && (
+                <motion.div
+                  key="step2"
+                  variants={stepTransition}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  className="space-y-6"
+                >
+                  <div>
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                      <ShieldCheck size={22} className="text-teal-700" />
+                      <span>Xác thực mã bảo mật (OTP)</span>
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                      Chúng tôi đã gửi mã xác thực 6 chữ số đến địa chỉ email:
+                    </p>
+                    <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-teal-50 border border-teal-200/80 text-xs font-bold text-teal-900">
+                      <Mail size={13} className="text-teal-700" />
+                      <span>{email}</span>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleVerifyOtp} className="space-y-5">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2.5 text-center">
+                        Nhập mã gồm 6 chữ số
+                      </label>
+                      <div className="flex justify-center gap-2.5 sm:gap-3" onPaste={handleOtpPaste}>
+                        {otp.map((digit, idx) => (
+                          <input
+                            key={idx}
+                            ref={(el) => (otpInputRefs.current[idx] = el)}
+                            type="text"
+                            inputMode="numeric"
+                            aria-label={`Chữ số OTP thứ ${idx + 1}`}
+                            autoComplete={idx === 0 ? 'one-time-code' : 'off'}
+                            disabled={isLoading || otpBlocked || countdown === 0}
+                            maxLength={1}
+                            value={digit}
+                            onChange={(e) => handleOtpChange(idx, e.target.value)}
+                            onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                            className="h-12 w-11 sm:h-14 sm:w-12 rounded-xl border-2 border-slate-200 text-center font-mono text-xl font-black text-slate-900 outline-none focus:border-teal-700 focus:bg-teal-50/20 focus:ring-3 focus:ring-teal-700/10 transition-all bg-white"
+                          />
+                        ))}
+                      </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <span className="inline-block rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-bold text-emerald-800 uppercase tracking-wider">
-                        Khôi phục thành công
+                    {/* Resend OTP & Countdown */}
+                    <p role="status" className="text-center text-xs text-slate-600">
+                      {countdown > 0 ? `Mã có hiệu lực trong ${countdown} giây.` : 'Mã đã hết hạn. Vui lòng gửi lại mã mới.'}
+                    </p>
+                    <div className="flex items-center justify-between text-xs px-1">
+                      <span className="text-slate-500">Không nhận được mã?</span>
+                      {isResendActive ? (
+                        <button
+                          type="button"
+                          onClick={handleResendOtp}
+                          disabled={isLoading}
+                          className="font-bold text-teal-800 hover:text-teal-900 cursor-pointer flex items-center gap-1"
+                        >
+                          <RefreshCw size={12} className={isLoading ? 'animate-spin' : ''} />
+                          <span>Gửi lại mã ngay</span>
+                        </button>
+                      ) : (
+                        <span className="text-slate-400 font-medium">
+                          Gửi lại sau <span className="font-bold text-teal-700">{countdown}s</span>
+                        </span>
+                      )}
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isLoading || otpBlocked || countdown === 0 || otp.join('').length < 6}
+                      className="w-full py-3.5 px-4 bg-teal-800 hover:bg-teal-900 active:bg-teal-950 text-white rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-teal-900/20 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5"
+                    >
+                      {isLoading ? (
+                        <>
+                          <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                          <span>Đang xác thực mã...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Xác thực & Tiếp tục</span>
+                          <ChevronRight size={16} />
+                        </>
+                      )}
+                    </button>
+                  </form>
+
+                  <div className="pt-2 text-center">
+                    <button
+                      type="button"
+                      onClick={restartFlow}
+                      disabled={isLoading}
+                      className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-teal-800 transition-colors cursor-pointer"
+                    >
+                      <ArrowLeft size={14} />
+                      <span>Đổi lại địa chỉ email khác</span>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* ================= BƯỚC 3: ĐẶT MẬT KHẨU MỚI ================= */}
+              {currentStep === 3 && (
+                <motion.div
+                  key="step3"
+                  variants={stepTransition}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  className="space-y-6"
+                >
+                  <div>
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                      <KeyRound size={22} className="text-teal-700" />
+                      <span>Thiết lập mật khẩu mới</span>
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                      Tạo mật khẩu mới cho tài khoản của bạn. Phiên đổi mật khẩu có hiệu lực 5 phút sau khi xác nhận mã.
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleResetPassword} className="space-y-4">
+                    {/* Mật khẩu mới */}
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                        Mật khẩu mới <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input
+                          type={showNewPassword ? 'text' : 'password'}
+                          disabled={isLoading}
+                          autoComplete="new-password"
+                          maxLength={72}
+                          required
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="Nhập tối thiểu 8 ký tự (chữ & số)"
+                          className="w-full pl-10 pr-11 py-3 rounded-xl border border-slate-200 bg-slate-50/50 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-teal-700 focus:bg-white focus:ring-3 focus:ring-teal-700/10 transition-all font-medium"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                        >
+                          {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Xác nhận mật khẩu mới */}
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                        Xác nhận lại mật khẩu mới <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          disabled={isLoading}
+                          autoComplete="new-password"
+                          maxLength={72}
+                          required
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          placeholder="Nhập lại chính xác mật khẩu mới"
+                          className="w-full pl-10 pr-11 py-3 rounded-xl border border-slate-200 bg-slate-50/50 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-teal-700 focus:bg-white focus:ring-3 focus:ring-teal-700/10 transition-all font-medium"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                        >
+                          {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Tiêu chí an toàn mật khẩu */}
+                    <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-1.5 text-xs text-slate-600">
+                      <span className="font-bold text-slate-800 block text-[11px] uppercase tracking-wider">
+                        Tiêu chuẩn mật khẩu an toàn:
                       </span>
-                      <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                        Đổi mật khẩu thành công!
-                      </h2>
-                      <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
-                        Mật khẩu tài khoản của bạn đã được cập nhật thành công. Bạn có thể sử dụng mật khẩu mới này để đăng nhập ngay bây giờ.
-                      </p>
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div className={`flex items-center gap-1.5 ${hasMinLength ? 'text-emerald-700 font-bold' : 'text-slate-400'}`}>
+                          <Check size={12} className={hasMinLength ? 'text-emerald-600' : 'text-slate-300'} />
+                          <span>Tối thiểu 8 ký tự</span>
+                        </div>
+                        <div className={`flex items-center gap-1.5 ${hasLetter ? 'text-emerald-700 font-bold' : 'text-slate-400'}`}>
+                          <Check size={12} className={hasLetter ? 'text-emerald-600' : 'text-slate-300'} />
+                          <span>Có chứa chữ cái</span>
+                        </div>
+                        <div className={`flex items-center gap-1.5 ${hasNumber ? 'text-emerald-700 font-bold' : 'text-slate-400'}`}>
+                          <Check size={12} className={hasNumber ? 'text-emerald-600' : 'text-slate-300'} />
+                          <span>Có chứa chữ số</span>
+                        </div>
+                        <div className={`flex items-center gap-1.5 ${isMatch ? 'text-emerald-700 font-bold' : 'text-slate-400'}`}>
+                          <Check size={12} className={isMatch ? 'text-emerald-600' : 'text-slate-300'} />
+                          <span>Mật khẩu trùng khớp</span>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="pt-2">
-                      <button
-                        type="button"
-                        onClick={() => navigate('/login')}
-                        className="w-full py-3.5 px-4 bg-teal-800 hover:bg-teal-900 text-white rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-teal-900/20 hover:-translate-y-0.5"
-                      >
-                        <span>Đăng nhập ngay</span>
-                        <ChevronRight size={16} />
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                    <button
+                      type="submit"
+                      disabled={isLoading || !hasMinLength || !hasLetter || !hasNumber || !isMatch}
+                      className="w-full py-3.5 px-4 bg-teal-800 hover:bg-teal-900 active:bg-teal-950 text-white rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-teal-900/20 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5"
+                    >
+                      {isLoading ? (
+                        <>
+                          <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                          <span>Đang cập nhật mật khẩu...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Cập nhật mật khẩu mới</span>
+                          <CheckCircle2 size={16} />
+                        </>
+                      )}
+                    </button>
+                  </form>
+                  <button type="button" onClick={restartFlow} disabled={isLoading}
+                    className="text-xs font-bold text-teal-800 disabled:opacity-50">
+                    Xin mã xác nhận mới
+                  </button>
+                </motion.div>
+              )}
+
+              {/* ================= BƯỚC 4: THÀNH CÔNG ================= */}
+              {currentStep === 4 && (
+                <motion.div
+                  key="step4"
+                  variants={stepTransition}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  className="space-y-6 text-center py-4"
+                >
+                  <div className="mx-auto h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 ring-8 ring-emerald-50 shadow-inner">
+                    <CheckCircle2 size={36} />
+                  </div>
+
+                  <div className="space-y-2">
+                    <span className="inline-block rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-bold text-emerald-800 uppercase tracking-wider">
+                      Khôi phục thành công
+                    </span>
+                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+                      Đổi mật khẩu thành công!
+                    </h2>
+                    <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
+                      Mật khẩu tài khoản của bạn đã được cập nhật thành công. Bạn có thể sử dụng mật khẩu mới này để đăng nhập ngay bây giờ.
+                    </p>
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => navigate('/login')}
+                      className="w-full py-3.5 px-4 bg-teal-800 hover:bg-teal-900 text-white rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-teal-900/20 hover:-translate-y-0.5"
+                    >
+                      <span>Đăng nhập ngay</span>
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </motion.div>
       </div>

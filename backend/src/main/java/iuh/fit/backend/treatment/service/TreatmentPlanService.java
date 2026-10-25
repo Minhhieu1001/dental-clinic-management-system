@@ -13,6 +13,7 @@ public interface TreatmentPlanService {
     TreatmentPlanResponse createTreatmentPlan(TreatmentPlanRequest request);
     TreatmentPlanResponse getTreatmentPlanById(UUID id);
     List<TreatmentPlanResponse> getTreatmentPlansByPatientId(UUID patientId);
+    List<TreatmentPlanResponse> getInProgressTreatmentPlansByPatientId(UUID patientId);
     TreatmentPlanResponse getTreatmentPlanByExaminationResultId(UUID examinationResultId);
     TreatmentPlanResponse updateTreatmentPlan(UUID id, TreatmentPlanRequest request);
     void deleteTreatmentPlan(UUID id);

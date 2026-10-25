@@ -111,6 +111,17 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<TreatmentPlanResponse> getInProgressTreatmentPlansByPatientId(UUID patientId) {
+        return treatmentPlanRepository
+                .findByExaminationResultMedicalRecordPatientIdAndStatusOrderByStartDateDesc(
+                        patientId, StatusPhase.IN_PROGRESS)
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public TreatmentPlanResponse getTreatmentPlanByExaminationResultId(UUID examinationResultId) {
         TreatmentPlan plan = treatmentPlanRepository.findByExaminationResultId(examinationResultId)
                 .orElse(null);

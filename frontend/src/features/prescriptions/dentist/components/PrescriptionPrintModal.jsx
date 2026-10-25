@@ -39,7 +39,9 @@ export default function PrescriptionPrintModal({
 
   if (typeof document === 'undefined') return null;
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
+    const images = document.querySelectorAll('.prescription-print-paper img');
+    await Promise.all(Array.from(images, (image) => image.decode().catch(() => {})));
     window.print();
   };
 
@@ -126,20 +128,24 @@ export default function PrescriptionPrintModal({
               {/* Clinic Header */}
               <div className="flex items-start justify-between border-b-2 border-black pb-3 mb-4">
                 <div className="flex items-center gap-3.5">
-                  <img
-                    src="/logo.png"
-                    alt="Logo Nha Khoa Crown Dental"
-                    className="h-14 w-14 object-contain shrink-0"
-                  />
+                  {prescription.clinicLogoUrl && (
+                    <img
+                      src={prescription.clinicLogoUrl}
+                      alt={`Logo ${prescription.dentalClinicName || 'nha khoa'}`}
+                      className="h-14 w-14 object-contain shrink-0"
+                    />
+                  )}
                   <div>
                     <h2 className="text-base font-black text-black uppercase tracking-wider">
-                      NHA KHOA CROWN DENTAL CLINIC
+                      {prescription.dentalClinicName || 'NHA KHOA'}
                     </h2>
+                    {prescription.branchName && (
+                      <p className="text-[11px] text-slate-800 font-semibold">
+                        Chi nhánh: {prescription.branchName}
+                      </p>
+                    )}
                     <p className="text-[11px] text-slate-800 font-normal">
-                      Địa chỉ: 12 Nguyễn Văn Bảo, Phường 4, Gò Vấp, TP. Hồ Chí Minh
-                    </p>
-                    <p className="text-[11px] text-slate-800 font-normal">
-                      Hotline cấp cứu nha khoa: 1900 6868 • Giấy phép HĐ số: 04521/BYT-CCHN
+                      Địa chỉ: {prescription.branchAddress || 'Chưa cập nhật'}
                     </p>
                   </div>
                 </div>

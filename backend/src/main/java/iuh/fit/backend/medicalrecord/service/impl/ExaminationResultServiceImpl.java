@@ -77,6 +77,15 @@ public class ExaminationResultServiceImpl implements ExaminationResultService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<ExaminationResultDTO> getExaminationResultsByPatientId(UUID patientId) {
+        return examinationResultRepository.findByMedicalRecordPatientIdOrderByExaminationDateDesc(patientId)
+                .stream()
+                .map(this::mapToDTO)
+                .toList();
+    }
+
+    @Override
     @Transactional
     public ExaminationResultDTO createExaminationResult(ExaminationResultRequest request) {
         MedicalRecord medicalRecord = medicalRecordRepository.findById(request.getMedicalRecordId())

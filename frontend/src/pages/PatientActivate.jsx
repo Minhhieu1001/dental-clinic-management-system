@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import bgImage from '../assets/images/dental-light-bg.png';
+import { requestPatientActivation, resendPatientActivationOtp, verifyPatientActivationOtp, completePatientActivation } from '../services/auth.service';
 
 // Motion Variants
 const cardVariants = {
@@ -81,22 +82,39 @@ export default function PatientActivate() {
 
   // OTP State (6 ô)
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [countdown, setCountdown] = useState(60);
-  const [canResend, setCanResend] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [otpExpiresAt, setOtpExpiresAt] = useState(0);
+  const [activationId, setActivationId] = useState('');
+  const [activationToken, setActivationToken] = useState('');
+  const [tokenExpiresAt, setTokenExpiresAt] = useState(0);
+  const canResend = countdown === 0;
+  const requestInFlight = useRef(false);
   const otpInputsRef = useRef([]);
 
   // Đếm ngược gửi lại OTP
   useEffect(() => {
-    let timer;
-    if (currentStep === 'OTP' && countdown > 0) {
-      timer = setInterval(() => {
-        setCountdown((prev) => prev - 1);
-      }, 1000);
-    } else if (countdown === 0) {
-      setCanResend(true);
-    }
+    if (!otpExpiresAt) return;
+    const timer = setInterval(() => {
+      setCountdown(Math.max(0, Math.ceil((otpExpiresAt - Date.now()) / 1000)));
+    }, 250);
     return () => clearInterval(timer);
-  }, [currentStep, countdown]);
+  }, [otpExpiresAt]);
+
+  const startOtp = (data) => {
+    const expiresAt = Date.parse(data.expiresAt);
+    setActivationId(data.activationId);
+    setOtpExpiresAt(expiresAt);
+    setCountdown(Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000)));
+    setOtp(['', '', '', '', '', '']);
+    setActivationToken('');
+    setMatchedPatientName('');
+  };
+
+  const showRequestError = (err) => {
+    const message = err.response?.data?.message || 'Không thể kết nối máy chủ. Vui lòng thử lại.';
+    setError(message);
+    toast.error(message);
+  };
 
   const handleLookupChange = (e) => {
     const { name, value } = e.target;
@@ -107,8 +125,9 @@ export default function PatientActivate() {
   };
 
   // BƯỚC 1: Submit Form Tra cứu hồ sơ có sẵn -> Gửi OTP
-  const handleLookupSubmit = (e) => {
+  const handleLookupSubmit = async (e) => {
     e.preventDefault();
+    if (requestInFlight.current) return;
     setError('');
 
     if (!lookupData.patientCode.trim()) {
@@ -117,6 +136,10 @@ export default function PatientActivate() {
     }
     if (!lookupData.phone.trim()) {
       setError('Vui lòng nhập Số điện thoại trong hồ sơ khám');
+      return;
+    }
+    if (!/^(?:0|\+?84)[0-9]{9}$/.test(lookupData.phone.trim())) {
+      setError('Số điện thoại không hợp lệ. Nhập 10 chữ số bắt đầu bằng 0 hoặc đầu số +84.');
       return;
     }
     if (!lookupData.email.trim()) {
@@ -128,19 +151,25 @@ export default function PatientActivate() {
       return;
     }
 
+    requestInFlight.current = true;
     setIsLoading(true);
-
-    // Giả lập tra cứu hồ sơ và gửi OTP
-    setTimeout(() => {
-      setIsLoading(false);
-      // Giả lập tên bệnh nhân khớp trong hệ thống
-      setMatchedPatientName('Nguyễn Văn An');
-      setCountdown(60);
-      setCanResend(false);
-      setOtp(['', '', '', '', '', '']);
+    try {
+      const data = {
+        patientCode: lookupData.patientCode.trim().toUpperCase(),
+        phone: lookupData.phone.trim(),
+        email: lookupData.email.trim().toLowerCase(),
+      };
+      const response = await requestPatientActivation(data);
+      setLookupData(data);
+      startOtp(response.data);
       setCurrentStep('OTP');
       toast.success(`Hồ sơ hợp lệ! Đã gửi mã xác thực tới ${lookupData.email}`);
-    }, 800);
+    } catch (err) {
+      showRequestError(err);
+    } finally {
+      requestInFlight.current = false;
+      setIsLoading(false);
+    }
   };
 
   // BƯỚC 2: Xử lý OTP
@@ -173,37 +202,67 @@ export default function PatientActivate() {
     }
   };
 
-  const handleResendOtp = () => {
-    if (!canResend) return;
-    setCanResend(false);
-    setCountdown(60);
-    setOtp(['', '', '', '', '', '']);
-    toast.success(`Mã OTP mới đã gửi đến ${lookupData.email}`);
-    otpInputsRef.current[0]?.focus();
+  const handleResendOtp = async () => {
+    if (!canResend || requestInFlight.current) return;
+    requestInFlight.current = true;
+    setIsLoading(true);
+    setError('');
+    try {
+      const response = await resendPatientActivationOtp(activationId);
+      startOtp(response.data);
+      toast.success(`Mã OTP mới đã gửi đến ${lookupData.email}`);
+    } catch (err) {
+      showRequestError(err);
+    } finally {
+      requestInFlight.current = false;
+      setIsLoading(false);
+    }
   };
 
   // Xác thực OTP -> Chuyển sang bước 3 (Hiển thị tên & Đặt mật khẩu)
-  const handleVerifyOtp = (e) => {
+  const handleVerifyOtp = async (e) => {
     e.preventDefault();
+    if (requestInFlight.current) return;
+    setError('');
+    if (Date.now() >= otpExpiresAt) {
+      setError('OTP đã hết hạn. Vui lòng gửi lại mã mới.');
+      return;
+    }
     const enteredOtp = otp.join('');
     if (enteredOtp.length < 6) {
       toast.error('Vui lòng nhập đủ 6 chữ số mã OTP');
       return;
     }
 
+    requestInFlight.current = true;
     setIsLoading(true);
-
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const response = await verifyPatientActivationOtp(activationId, enteredOtp);
+      setMatchedPatientName(response.data.fullName || 'Bệnh nhân');
+      setActivationToken(response.data.activationToken);
+      setTokenExpiresAt(Date.parse(response.data.tokenExpiresAt));
       setCurrentStep('SET_PASSWORD');
       toast.success('Xác thực OTP thành công! Vui lòng thiết lập mật khẩu.');
-    }, 800);
+    } catch (err) {
+      showRequestError(err);
+    } finally {
+      requestInFlight.current = false;
+      setIsLoading(false);
+    }
   };
 
   // BƯỚC 3: Thiết lập mật khẩu và hoàn tất tạo tài khoản
-  const handleSetPasswordSubmit = (e) => {
+  const handleSetPasswordSubmit = async (e) => {
     e.preventDefault();
+    if (requestInFlight.current) return;
     setError('');
+    if (!activationToken || Date.now() >= tokenExpiresAt) {
+      setError('Phiên đặt mật khẩu đã hết hạn. Vui lòng tra cứu và xác thực OTP lại.');
+      setActivationToken('');
+      setPasswordData({ password: '', confirmPassword: '' });
+      setCurrentStep('LOOKUP');
+      return;
+    }
 
     if (!passwordData.password) {
       setError('Vui lòng nhập Mật khẩu mới');
@@ -213,18 +272,36 @@ export default function PatientActivate() {
       setError('Mật khẩu phải có tối thiểu 6 ký tự');
       return;
     }
+    if (new TextEncoder().encode(passwordData.password).length > 72) {
+      setError('Mật khẩu không được vượt quá 72 byte UTF-8');
+      return;
+    }
     if (passwordData.password !== passwordData.confirmPassword) {
       setError('Xác nhận mật khẩu không trùng khớp');
       return;
     }
 
+    requestInFlight.current = true;
     setIsLoading(true);
-
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const response = await completePatientActivation({
+        activationId,
+        activationToken,
+        password: passwordData.password,
+        confirmPassword: passwordData.confirmPassword,
+      });
+      setLookupData((prev) => ({ ...prev, patientCode: response.data.patientCode }));
+      setActivationToken('');
+      setPasswordData({ password: '', confirmPassword: '' });
+      setOtpExpiresAt(0);
       setCurrentStep('SUCCESS');
       toast.success('Kích hoạt tài khoản thành công!');
-    }, 900);
+    } catch (err) {
+      showRequestError(err);
+    } finally {
+      requestInFlight.current = false;
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -322,7 +399,7 @@ export default function PatientActivate() {
                   },
                   {
                     title: 'Tự chọn mật khẩu đăng nhập dễ nhớ',
-                    desc: 'Sau khi kích hoạt, bạn có thể đăng nhập bất kỳ lúc nào bằng SĐT & Mật khẩu',
+                    desc: 'Đăng nhập bằng mã bệnh nhân, số điện thoại và mật khẩu vừa tạo',
                     icon: (
                       <path d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                     ),
@@ -509,7 +586,7 @@ export default function PatientActivate() {
                     {/* 3. Email */}
                     <div>
                       <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                        Email nhận mã xác thực OTP <span className="text-red-500">*</span>
+                        Email nhận mã OTP <span className="text-red-500">*</span>
                       </label>
                       <div className="relative flex items-center">
                         <div className="absolute left-3.5 text-slate-400 pointer-events-none">
@@ -609,6 +686,7 @@ export default function PatientActivate() {
 
                   {/* 6 Ô OTP */}
                   <form onSubmit={handleVerifyOtp} className="mt-5">
+                    {error && <p role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-600">{error}</p>}
                     <div className="flex items-center justify-center gap-2 sm:gap-3 mb-4">
                       {otp.map((digit, index) => (
                         <input
@@ -616,6 +694,16 @@ export default function PatientActivate() {
                           ref={(el) => (otpInputsRef.current[index] = el)}
                           type="text"
                           inputMode="numeric"
+                          aria-label={`Chữ số OTP ${index + 1}`}
+                          autoComplete={index === 0 ? 'one-time-code' : 'off'}
+                          disabled={isLoading}
+                          onPaste={(event) => {
+                            event.preventDefault();
+                            const digits = event.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 6);
+                            if (!digits) return;
+                            setOtp(Array.from({ length: 6 }, (_, i) => digits[i] || ''));
+                            otpInputsRef.current[Math.min(digits.length, 5)]?.focus();
+                          }}
                           maxLength={1}
                           value={digit}
                           onChange={(e) => handleOtpChange(index, e.target.value)}
@@ -631,13 +719,14 @@ export default function PatientActivate() {
                         <button
                           type="button"
                           onClick={handleResendOtp}
+                          disabled={isLoading}
                           className="font-bold text-teal-600 hover:text-teal-700 hover:underline cursor-pointer"
                         >
-                          Chưa nhận được mã? Gửi lại mã OTP
+                          {isLoading ? 'Đang xử lý...' : 'OTP đã hết hạn. Gửi lại mã OTP'}
                         </button>
                       ) : (
                         <span className="text-slate-400 font-medium">
-                          Gửi lại mã sau <span className="font-bold text-teal-600">{countdown}s</span>
+                          OTP có hiệu lực 120 giây, còn <span className="font-bold text-teal-600">{countdown}s</span>. Hết hạn có thể gửi lại.
                         </span>
                       )}
                     </div>
@@ -646,7 +735,7 @@ export default function PatientActivate() {
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.985 }}
                       type="submit"
-                      disabled={isLoading || otp.join('').length < 6}
+                      disabled={isLoading || canResend || otp.join('').length < 6}
                       className="w-full py-3 px-5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold rounded-xl text-sm shadow-[0_6px_18px_rgba(13,148,136,0.3)] transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isLoading ? (
@@ -666,7 +755,8 @@ export default function PatientActivate() {
 
                     <button
                       type="button"
-                      onClick={() => setCurrentStep('LOOKUP')}
+                      disabled={isLoading}
+                      onClick={() => { setError(''); setCurrentStep('LOOKUP'); }}
                       className="mt-3.5 text-xs font-semibold text-slate-400 hover:text-slate-700 transition-colors inline-flex items-center gap-1 cursor-pointer"
                     >
                       ← Nhập lại Mã bệnh nhân / Số điện thoại
@@ -747,6 +837,13 @@ export default function PatientActivate() {
 
                   {/* Form Thiết lập Mật khẩu */}
                   <form onSubmit={handleSetPasswordSubmit} className="space-y-3.5">
+                    <p className="text-xs text-slate-500">Vui lòng đặt mật khẩu trong 5 phút sau khi xác thực OTP.</p>
+                    <button type="button" disabled={isLoading} className="text-xs text-teal-700 underline" onClick={() => {
+                      setActivationToken('');
+                      setPasswordData({ password: '', confirmPassword: '' });
+                      setError('');
+                      setCurrentStep('LOOKUP');
+                    }}>Tra cứu và xác thực lại hồ sơ</button>
 
                     {/* Mật khẩu mới */}
                     <div>

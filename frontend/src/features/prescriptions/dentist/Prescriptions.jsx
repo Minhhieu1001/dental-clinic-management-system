@@ -251,7 +251,9 @@ export default function Prescriptions() {
 
   // Doctor in charge
   const doctorName = useMemo(() => {
-    return selectedSession?.dentistName || user?.fullName || user?.username || '';
+    return user?.dentistId
+      ? (user.fullName || user.username || '')
+      : (selectedSession?.dentistName || '');
   }, [selectedSession, user]);
 
   // Handlers for Patient Search
@@ -747,6 +749,7 @@ export default function Prescriptions() {
         }}
         onSavePrescription={handleSavePrescription}
         currentDoctorName={doctorName}
+        currentDoctorId={user?.dentistId || selectedSession?.dentistId || null}
         patient={selectedPatient}
         type={modalType}
         prescriptionData={editingPrescription}
