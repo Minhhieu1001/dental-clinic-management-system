@@ -144,7 +144,7 @@ export default function PatientLogin() {
         <div className="flex items-center gap-3">
           <Link
             to="/staff/login"
-            className="text-xs font-semibold text-slate-500 hover:text-blue-600 px-3.5 py-1.5 rounded-xl hover:bg-white/90 transition-all border border-transparent hover:border-slate-200"
+            className="text-xs font-bold text-teal-700 hover:text-teal-800 px-3.5 py-1.5 rounded-xl bg-white/90 hover:bg-white shadow-sm transition-all border border-slate-200/80 hover:shadow"
           >
             Đăng nhập Nội bộ →
           </Link>

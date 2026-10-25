@@ -45,6 +45,9 @@ api.interceptors.response.use(
       error.response?.status === 401 &&
       !originalRequest._retry &&
       !originalRequest.url?.includes('/auth/login') &&
+      !originalRequest.url?.includes('/auth/patient/login') &&
+      !originalRequest.url?.includes('/auth/patient/activate') &&
+      !originalRequest.url?.includes('/auth/patient/register') &&
       !originalRequest.url?.includes('/auth/forgot-password') &&
       !originalRequest.url?.includes('/auth/reset-password') &&
       !originalRequest.url?.includes('/auth/refresh')

@@ -1,5 +1,11 @@
 import api from './axios';
 
+// Lấy danh sách đợt khám trên tất cả hồ sơ bệnh án của bệnh nhân
+export const getExaminationResultsByPatientId = async (patientId) => {
+  const response = await api.get(`/examination-results/patient/${patientId}`);
+  return response.data?.data ?? response.data?.result ?? response.data ?? [];
+};
+
 // Lấy toàn bộ danh sách kết quả khám
 export const getAllExaminationResults = async () => {
   const response = await api.get('/examination-results');

@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import bgImage from '../assets/images/dental-light-bg.png';
+import { registerPatient, resendPatientRegistrationOtp, verifyPatientRegistrationOtp } from '../services/auth.service';
+import { getBranches } from '../services/clinic.service';
 
 // Motion Variants
 const cardVariants = {
@@ -66,6 +68,7 @@ export default function PatientRegister() {
     phone: '',
     email: '',
     address: '',
+    branchId: '',
     password: '',
     confirmPassword: '',
   });
@@ -74,28 +77,57 @@ export default function PatientRegister() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [branches, setBranches] = useState([]);
+  const [branchesLoading, setBranchesLoading] = useState(true);
+  const [branchesError, setBranchesError] = useState('');
+  const [branchLoadAttempt, setBranchLoadAttempt] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    getBranches().then((data) => {
+      if (!cancelled) setBranches(data.filter((branch) => branch.status === 'ACTIVE'));
+    }).catch(() => {
+      if (!cancelled) setBranchesError('Không tải được danh sách cơ sở. Vui lòng thử lại.');
+    }).finally(() => {
+      if (!cancelled) setBranchesLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [branchLoadAttempt]);
 
   // OTP State (6 ô)
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [countdown, setCountdown] = useState(60);
-  const [canResend, setCanResend] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [otpExpiresAt, setOtpExpiresAt] = useState(0);
+  const [registrationEmail, setRegistrationEmail] = useState('');
+  const canResend = countdown === 0;
   const otpInputsRef = useRef([]);
+  const requestInFlight = useRef(false);
+  const today = new Date().toLocaleDateString('en-CA');
 
-  // Mã bệnh nhân giả lập
+  // Mã bệnh nhân do backend cấp sau khi xác thực OTP.
   const [generatedPatientCode, setGeneratedPatientCode] = useState('');
 
   // Đếm ngược gửi lại OTP
   useEffect(() => {
-    let timer;
-    if (currentStep === 'OTP' && countdown > 0) {
-      timer = setInterval(() => {
-        setCountdown((prev) => prev - 1);
-      }, 1000);
-    } else if (countdown === 0) {
-      setCanResend(true);
-    }
+    if (!otpExpiresAt) return;
+    const timer = setInterval(() => {
+      setCountdown(Math.max(0, Math.ceil((otpExpiresAt - Date.now()) / 1000)));
+    }, 250);
     return () => clearInterval(timer);
-  }, [currentStep, countdown]);
+  }, [otpExpiresAt]);
+
+  const startOtpCountdown = (data) => {
+    const expiresAt = Date.parse(data.expiresAt);
+    setOtpExpiresAt(expiresAt);
+    setCountdown(Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000)));
+    setOtp(['', '', '', '', '', '']);
+  };
+
+  const showRequestError = (err) => {
+    const message = err.response?.data?.message || 'Không thể kết nối máy chủ. Vui lòng thử lại.';
+    setError(message);
+    toast.error(message);
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -103,9 +135,15 @@ export default function PatientRegister() {
   };
 
   // Submit Form Đăng ký
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
+    if (requestInFlight.current) return;
     setError('');
+
+    if (!formData.branchId || !branches.some((branch) => branch.branchId === formData.branchId)) {
+      setError('Vui lòng chọn cơ sở đăng ký');
+      return;
+    }
 
     if (!formData.fullName.trim()) {
       setError('Vui lòng nhập Họ và tên');
@@ -115,12 +153,16 @@ export default function PatientRegister() {
       setError('Vui lòng chọn Ngày sinh');
       return;
     }
+    if (formData.birthDate > today) {
+      setError('Ngày sinh không được ở tương lai');
+      return;
+    }
     if (!formData.phone.trim()) {
       setError('Vui lòng nhập Số điện thoại');
       return;
     }
-    if (!/^[0-9]{10,11}$/.test(formData.phone.trim())) {
-      setError('Số điện thoại không hợp lệ (10 - 11 chữ số)');
+    if (!/^(?:0|\+?84)[0-9]{9}$/.test(formData.phone.trim())) {
+      setError('Số điện thoại phải gồm 10 chữ số bắt đầu bằng 0, hoặc dùng đầu số +84');
       return;
     }
     if (!formData.email.trim()) {
@@ -143,22 +185,40 @@ export default function PatientRegister() {
       setError('Mật khẩu phải có tối thiểu 6 ký tự');
       return;
     }
+    if (new TextEncoder().encode(formData.password).length > 72) {
+      setError('Mật khẩu không được vượt quá 72 byte UTF-8');
+      return;
+    }
     if (formData.password !== formData.confirmPassword) {
       setError('Xác nhận mật khẩu không trùng khớp');
       return;
     }
 
+    requestInFlight.current = true;
     setIsLoading(true);
-
-    // Giả lập gửi OTP qua Gmail
-    setTimeout(() => {
-      setIsLoading(false);
-      setCountdown(60);
-      setCanResend(false);
-      setOtp(['', '', '', '', '', '']);
+    try {
+      const email = formData.email.trim().toLowerCase();
+      const response = await registerPatient({
+        fullName: formData.fullName.trim(),
+        dateOfBirth: formData.birthDate,
+        gender: formData.gender,
+        address: formData.address.trim(),
+        branchId: formData.branchId,
+        email,
+        phone: formData.phone.trim(),
+        password: formData.password,
+        confirmPassword: formData.confirmPassword,
+      });
+      setRegistrationEmail(email);
+      startOtpCountdown(response.data);
       setCurrentStep('OTP');
-      toast.success(`Đã gửi mã OTP tới: ${formData.email}`);
-    }, 800);
+      toast.success(`Đã gửi mã OTP tới: ${email}`);
+    } catch (err) {
+      showRequestError(err);
+    } finally {
+      requestInFlight.current = false;
+      setIsLoading(false);
+    }
   };
 
   // OTP inputs handling
@@ -191,32 +251,52 @@ export default function PatientRegister() {
     }
   };
 
-  const handleResendOtp = () => {
-    if (!canResend) return;
-    setCanResend(false);
-    setCountdown(60);
-    setOtp(['', '', '', '', '', '']);
-    toast.success(`Mã OTP mới đã gửi đến ${formData.email}`);
-    otpInputsRef.current[0]?.focus();
+  const handleResendOtp = async () => {
+    if (!canResend || requestInFlight.current) return;
+    requestInFlight.current = true;
+    setIsLoading(true);
+    setError('');
+    try {
+      const response = await resendPatientRegistrationOtp(registrationEmail);
+      startOtpCountdown(response.data);
+      toast.success(`Mã OTP mới đã gửi đến ${registrationEmail}`);
+    } catch (err) {
+      showRequestError(err);
+    } finally {
+      requestInFlight.current = false;
+      setIsLoading(false);
+    }
   };
 
-  const handleVerifyOtp = (e) => {
+  const handleVerifyOtp = async (e) => {
     e.preventDefault();
+    if (requestInFlight.current) return;
+    setError('');
+    if (Date.now() >= otpExpiresAt) {
+      setError('OTP đã hết hạn. Vui lòng gửi lại mã mới.');
+      return;
+    }
     const enteredOtp = otp.join('');
     if (enteredOtp.length < 6) {
       toast.error('Vui lòng nhập đủ 6 chữ số mã OTP');
       return;
     }
 
+    requestInFlight.current = true;
     setIsLoading(true);
-
-    setTimeout(() => {
-      setIsLoading(false);
-      const randomCode = 'BN' + Math.floor(100000 + Math.random() * 900000);
-      setGeneratedPatientCode(randomCode);
+    try {
+      const response = await verifyPatientRegistrationOtp(registrationEmail, enteredOtp);
+      setGeneratedPatientCode(response.data.patientCode);
+      setFormData((prev) => ({ ...prev, password: '', confirmPassword: '' }));
+      setOtpExpiresAt(0);
       setCurrentStep('SUCCESS');
       toast.success('Xác thực OTP thành công! Chào mừng quý khách.');
-    }, 1000);
+    } catch (err) {
+      showRequestError(err);
+    } finally {
+      requestInFlight.current = false;
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -446,7 +526,42 @@ export default function PatientRegister() {
                   </AnimatePresence>
 
                   {/* Form Inputs dạng Grid 2 Cột thu gọn chiều cao */}
-                  <form onSubmit={handleFormSubmit} className="space-y-3">
+                  <form onSubmit={handleFormSubmit}>
+                    <fieldset disabled={isLoading} className="space-y-3">
+                      <div>
+                        <label htmlFor="registration-branch" className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                          Cơ sở đăng ký <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          id="registration-branch"
+                          name="branchId"
+                          value={formData.branchId}
+                          onChange={handleChange}
+                          required
+                          disabled={branchesLoading || branches.length === 0}
+                          className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:border-teal-500 disabled:opacity-60"
+                        >
+                          <option value="">{branchesLoading ? 'Đang tải cơ sở...' : 'Chọn cơ sở khám'}</option>
+                          {branches.map((branch) => (
+                            <option key={branch.branchId} value={branch.branchId}>
+                              {branch.branchName}{branch.address ? ` — ${branch.address}` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        {!branchesLoading && !branchesError && branches.length === 0 && (
+                          <p className="mt-1 text-xs text-amber-700">Hiện chưa có cơ sở đang hoạt động để đăng ký.</p>
+                        )}
+                        {branchesError && (
+                          <div role="alert" className="mt-1 text-xs text-red-600">
+                            {branchesError}{' '}
+                            <button type="button" className="underline font-bold" onClick={() => {
+                              setBranchesLoading(true);
+                              setBranchesError('');
+                              setBranchLoadAttempt((attempt) => attempt + 1);
+                            }}>Tải lại</button>
+                          </div>
+                        )}
+                      </div>
                     
                     {/* Hàng 1: Họ tên (cột 1) & Ngày sinh (cột 2) */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -457,6 +572,7 @@ export default function PatientRegister() {
                         <input
                           type="text"
                           name="fullName"
+                          maxLength={255}
                           value={formData.fullName}
                           onChange={handleChange}
                           placeholder="Nguyễn Văn A"
@@ -471,6 +587,7 @@ export default function PatientRegister() {
                         <input
                           type="date"
                           name="birthDate"
+                          max={today}
                           value={formData.birthDate}
                           onChange={handleChange}
                           className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:border-teal-500 focus:bg-white focus:ring-2 focus:ring-teal-100 transition-all duration-200"
@@ -513,11 +630,11 @@ export default function PatientRegister() {
                           onChange={(e) =>
                             setFormData((prev) => ({
                               ...prev,
-                              phone: e.target.value.replace(/[^0-9]/g, ''),
+                              phone: e.target.value.replace(/[^0-9+]/g, ''),
                             }))
                           }
                           placeholder="0912 345 678"
-                          maxLength={11}
+                          maxLength={12}
                           className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-teal-500 focus:bg-white focus:ring-2 focus:ring-teal-100 transition-all duration-200"
                         />
                       </div>
@@ -532,6 +649,7 @@ export default function PatientRegister() {
                         <input
                           type="email"
                           name="email"
+                          maxLength={255}
                           value={formData.email}
                           onChange={handleChange}
                           placeholder="patient@gmail.com"
@@ -546,6 +664,7 @@ export default function PatientRegister() {
                         <input
                           type="text"
                           name="address"
+                          maxLength={1000}
                           value={formData.address}
                           onChange={handleChange}
                           placeholder="Số nhà, đường, quận/huyện"
@@ -631,7 +750,7 @@ export default function PatientRegister() {
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.985 }}
                         type="submit"
-                        disabled={isLoading}
+                        disabled={isLoading || branchesLoading || branches.length === 0 || !formData.branchId}
                         className="w-full py-3 px-5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold rounded-xl text-sm shadow-[0_6px_18px_rgba(13,148,136,0.3)] hover:shadow-[0_8px_22px_rgba(13,148,136,0.35)] transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
                       >
                         {isLoading ? (
@@ -649,6 +768,7 @@ export default function PatientRegister() {
                         )}
                       </motion.button>
                     </div>
+                    </fieldset>
                   </form>
 
                   {/* Footer Switch */}
@@ -706,11 +826,12 @@ export default function PatientRegister() {
                     Mã xác thực gồm 6 chữ số đã được gửi đến hòm thư:
                   </p>
                   <p className="font-bold text-teal-700 text-xs sm:text-sm mt-1 bg-teal-50 inline-block px-3 py-1 rounded-full border border-teal-100">
-                    {formData.email}
+                    {registrationEmail}
                   </p>
 
                   {/* 6 Ô OTP */}
                   <form onSubmit={handleVerifyOtp} className="mt-6">
+                    {error && <p role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-600">{error}</p>}
                     <div className="flex items-center justify-center gap-2 sm:gap-3 mb-5">
                       {otp.map((digit, index) => (
                         <input
@@ -718,6 +839,16 @@ export default function PatientRegister() {
                           ref={(el) => (otpInputsRef.current[index] = el)}
                           type="text"
                           inputMode="numeric"
+                          aria-label={`Chữ số OTP ${index + 1}`}
+                          autoComplete={index === 0 ? 'one-time-code' : 'off'}
+                          disabled={isLoading}
+                          onPaste={(event) => {
+                            event.preventDefault();
+                            const digits = event.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 6);
+                            if (!digits) return;
+                            setOtp(Array.from({ length: 6 }, (_, i) => digits[i] || ''));
+                            otpInputsRef.current[Math.min(digits.length, 5)]?.focus();
+                          }}
                           maxLength={1}
                           value={digit}
                           onChange={(e) => handleOtpChange(index, e.target.value)}
@@ -733,13 +864,14 @@ export default function PatientRegister() {
                         <button
                           type="button"
                           onClick={handleResendOtp}
+                          disabled={isLoading}
                           className="font-bold text-teal-600 hover:text-teal-700 hover:underline cursor-pointer"
                         >
-                          Chưa nhận được mã? Gửi lại mã OTP
+                          {isLoading ? 'Đang xử lý...' : 'OTP đã hết hạn. Gửi lại mã OTP'}
                         </button>
                       ) : (
                         <span className="text-slate-400 font-medium">
-                          Gửi lại mã sau <span className="font-bold text-teal-600">{countdown}s</span>
+                          OTP còn hiệu lực <span className="font-bold text-teal-600">{countdown}s</span>. Có thể gửi lại khi hết hạn.
                         </span>
                       )}
                     </div>
@@ -748,7 +880,7 @@ export default function PatientRegister() {
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.985 }}
                       type="submit"
-                      disabled={isLoading || otp.join('').length < 6}
+                      disabled={isLoading || canResend || otp.join('').length < 6}
                       className="w-full py-3 px-5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold rounded-xl text-sm shadow-[0_6px_18px_rgba(13,148,136,0.3)] transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isLoading ? (
@@ -768,7 +900,8 @@ export default function PatientRegister() {
 
                     <button
                       type="button"
-                      onClick={() => setCurrentStep('FORM')}
+                      disabled={isLoading}
+                      onClick={() => { setError(''); setCurrentStep('FORM'); }}
                       className="mt-3.5 text-xs font-semibold text-slate-400 hover:text-slate-700 transition-colors inline-flex items-center gap-1 cursor-pointer"
                     >
                       ← Chỉnh sửa lại thông tin đăng ký
@@ -814,11 +947,11 @@ export default function PatientRegister() {
                     transition={{ delay: 0.15, duration: 0.4 }}
                     className="mt-4 p-4 rounded-2xl bg-gradient-to-br from-emerald-50/80 to-teal-50/80 border border-emerald-200/60 text-left space-y-2"
                   >
-                    <div className="flex items-center justify-between pb-2 border-b border-emerald-200/50">
+                    <div className="flex flex-col gap-2 pb-2 border-b border-emerald-200/50">
                       <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                         MÃ BỆNH NHÂN CỦA BẠN
                       </span>
-                      <span className="text-base font-black text-emerald-700 bg-white px-3 py-1 rounded-xl shadow-sm border border-emerald-200">
+                      <span className="break-all text-base font-black text-emerald-700 bg-white px-3 py-1 rounded-xl shadow-sm border border-emerald-200">
                         {generatedPatientCode}
                       </span>
                     </div>
@@ -841,7 +974,7 @@ export default function PatientRegister() {
                         <line x1="12" y1="8" x2="12.01" y2="8" />
                       </svg>
                       <span>
-                        Ghi nhớ <strong>Mã bệnh nhân ({generatedPatientCode})</strong> và <strong>Số điện thoại</strong> để đăng nhập.
+                        Ghi nhớ <strong className="break-all">Mã bệnh nhân ({generatedPatientCode})</strong>, <strong>Số điện thoại</strong> và <strong>Mật khẩu đã đăng ký</strong> để đăng nhập. Kiểm tra hộp thư email để nhận mã bệnh nhân.
                       </span>
                     </div>
                   </motion.div>

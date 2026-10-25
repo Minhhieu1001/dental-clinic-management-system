@@ -59,3 +59,9 @@ export const searchPatient = async (keyword) => {
     return null;
   }
 };
+
+// Get patient statistics by ID
+export const getPatientStatistics = async (id) => {
+  const response = await api.get(`/patients/${id}/statistics`);
+  return response.data?.data ?? response.data?.result ?? response.data;
+};
