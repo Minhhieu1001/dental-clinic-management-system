@@ -58,6 +58,17 @@ public class TreatmentPlanController {
         );
     }
 
+    @GetMapping("/patient/{patientId}/in-progress")
+    public ResponseEntity<ApiResponse<List<TreatmentPlanResponse>>> getInProgressTreatmentPlansByPatientId(
+            @PathVariable UUID patientId) {
+        List<TreatmentPlanResponse> plans = treatmentPlanService.getInProgressTreatmentPlansByPatientId(patientId);
+        return ResponseEntity.ok(ApiResponse.<List<TreatmentPlanResponse>>builder()
+                .status(200)
+                .message("Lấy danh sách kế hoạch đang điều trị của bệnh nhân thành công")
+                .data(plans)
+                .build());
+    }
+
     @GetMapping("/examination/{examinationResultId}")
     public ResponseEntity<ApiResponse<TreatmentPlanResponse>> getTreatmentPlanByExaminationResultId(@PathVariable UUID examinationResultId) {
         TreatmentPlanResponse plan = treatmentPlanService.getTreatmentPlanByExaminationResultId(examinationResultId);

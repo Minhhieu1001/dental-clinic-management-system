@@ -556,3 +556,81 @@ VALUES
   ('01a11111-1111-1111-1111-111111111150', 'MED-ENAMELAST', 'Véc-ni Fluoride Enamelast 5% NaF', 'Tuýp', 'Ultradent Products (Mỹ)', 50, 85000.00, '2025-03-10', '2027-09-10', 'Vecni bôi phóng thích fluor kéo dài, đặc trị ê buốt cổ chân răng và ngừa sâu răng tái phát quanh mắc cài niềng răng.', 'ACTIVE', NOW(), NOW())
 
 ON CONFLICT (code) DO NOTHING;
+
+-- Backfill missing instructions from the existing insert_medicines.sql seed.
+-- Preserve instructions already entered by users.
+ALTER TABLE medicines ADD COLUMN IF NOT EXISTS usage_instruction TEXT;
+
+UPDATE medicines AS m
+SET usage_instruction = seed.usage_instruction,
+    updated_at = CURRENT_TIMESTAMP
+FROM (VALUES
+  ('MED-AMOX-500', 'Ngày uống 3 lần, mỗi lần 1 viên sau ăn (cách nhau 8 giờ)'),
+  ('MED-AUG-625', 'Ngày uống 2 lần, mỗi lần 1 viên sau bữa ăn sáng và tối'),
+  ('MED-AUG-1000', 'Ngày uống 2 lần, mỗi lần 1 viên ngay trước bữa ăn'),
+  ('MED-CLAM-500', 'Ngày uống 3 lần, mỗi lần 1 viên sau ăn, uống với nhiều nước'),
+  ('MED-SPI-15M', 'Ngày uống 2 lần, mỗi lần 1 viên trước bữa ăn ít nhất 2 giờ'),
+  ('MED-RODO-250', 'Ngày uống 2 lần, mỗi lần 2 viên trong hoặc ngay sau bữa ăn'),
+  ('MED-METRO-250', 'Ngày uống 3 lần, mỗi lần 1 viên sau ăn no, kiêng bia rượu'),
+  ('MED-CLIN-300', 'Ngày uống 3 lần, mỗi lần 1 viên với 1 ly nước đầy, không nằm ngay sau uống'),
+  ('MED-ZIN-500', 'Ngày uống 2 lần, mỗi lần 1 viên ngay sau bữa ăn'),
+  ('MED-AZI-500', 'Uống 1 viên/ngày duy nhất, uống trước ăn 1 giờ hoặc sau ăn 2 giờ trong 3 ngày'),
+  ('MED-CIPRO-500', 'Ngày uống 2 lần, mỗi lần 1 viên sau ăn, uống cùng nhiều nước'),
+  ('MED-CEPH-500', 'Ngày uống 3 lần, mỗi lần 1 viên cách mỗi 8 giờ sau ăn'),
+  ('MED-DOXY-100', 'Ngày uống 1-2 lần, mỗi lần 1 viên với ly nước đầy sau bữa ăn'),
+  ('MED-PARA-500', 'Uống 1 viên khi đau hoặc sốt, cách nhau 4-6 giờ (tối đa 4 viên/ngày)'),
+  ('MED-PANADOL-EX', 'Uống 1-2 viên khi đau, cách nhau tối thiểu 4-6 giờ (tối đa 8 viên/ngày)'),
+  ('MED-EF-500', 'Hòa tan 1 viên vào nửa ly nước lọc, uống khi đau, cách nhau 4-6 giờ'),
+  ('MED-EF-COD', 'Hòa tan 1 viên vào nước uống khi đau nhiều, cách nhau ít nhất 6 giờ'),
+  ('MED-IBU-400', 'Ngày uống 2-3 lần, mỗi lần 1 viên sau khi ăn no'),
+  ('MED-MELOX-75', 'Ngày uống 1 lần, mỗi lần 1-2 viên sau bữa ăn trưa'),
+  ('MED-VOLT-50', 'Ngày uống 2 lần, mỗi lần 1 viên sau khi ăn no, nuốt nguyên viên'),
+  ('MED-CELE-200', 'Ngày uống 1 lần, mỗi lần 1 viên sau bữa ăn'),
+  ('MED-ALPHACHOAY', 'Ngậm dưới lưỡi 2 viên/lần, ngày 3-4 lần để tan từ từ'),
+  ('MED-KATADOL', 'Ngày uống 3 lần, mỗi lần 2 viên sau ăn với 1 ly nước đầy'),
+  ('MED-PRED-5', 'Uống 2-4 viên 1 lần duy nhất vào buổi sáng sau ăn no trong 2-3 ngày'),
+  ('MED-DEXA-05', 'Uống 1-2 viên vào buổi sáng sau ăn theo đúng chỉ định bác sĩ'),
+  ('MED-TRAMA-50', 'Uống 1 viên khi đau dữ dội, cách nhau tối thiểu 6 giờ (theo đơn)'),
+  ('MED-LIDO-2', 'Tiêm tê tại chỗ hoặc gây tê vùng theo chỉ định thủ thuật của nha sĩ'),
+  ('MED-SEPT-4', 'Tiêm tê tại chỗ hoặc tiêm ngấm xương vỏ theo chỉ định của nha sĩ'),
+  ('MED-SCAN-3', 'Gây tê vùng/tiêm ngấm cho người có bệnh lý tim mạch, cao huyết áp theo chỉ định nha sĩ'),
+  ('MED-XYLO-SPRAY', 'Xịt 1-2 nhát vào vị trí niêm mạc cần gây tê trước thủ thuật 1-2 phút'),
+  ('MED-EMLA-5', 'Bôi một lớp mỏng lên niêm mạc cần gây tê trước khi chích tê 3-5 phút'),
+  ('MED-BENZO-20', 'Dùng tăm bông lấy một lượng nhỏ gel bôi lên niêm mạc trong 30 giây'),
+  ('MED-KIN-GING', 'Súc miệng 15ml nguyên chất trong 30-60 giây, ngày 2 lần sau khi chải răng (không nuốt)'),
+  ('MED-MEDORAL', 'Súc miệng 10-15ml trong 1 phút, ngày 2 lần sau ăn, không ăn uống trong 30 phút sau súc'),
+  ('MED-BETA-GARG', 'Pha loãng với nước ấm tỉ lệ 1:1, súc miệng và họng trong 30 giây, ngày 2-3 lần'),
+  ('MED-POVI-10', 'Dùng gạc vô khuẩn thấm dung dịch sát khuẩn phẫu trường trước phẫu thuật'),
+  ('MED-ELUDRIL', 'Pha 10-15ml dung dịch vào cốc nước ấm đến vạch, súc miệng ngày 2-3 lần'),
+  ('MED-NACL-09', 'Súc miệng thật nhẹ nhàng sau mỗi bữa ăn và trước khi đi ngủ, ngày 3-4 lần'),
+  ('MED-KAMI-GEL', 'Bôi một lượng gel cỡ hạt đậu lên vùng niêm mạc tổn thương, ngày 3 lần sau ăn'),
+  ('MED-GENG-GEL', 'Bôi trực tiếp gel lên vùng nướu viêm sau khi vệ sinh răng, massage nhẹ 1-2 phút, ngày 3-4 lần'),
+  ('MED-METRO-DENT', 'Thoa gel vào túi nha chu hoặc chân răng viêm ngày 2 lần sau khi chải răng sạch'),
+  ('MED-PERIO-GEL', 'Bôi gel quanh cổ Implant hoặc vùng nướu tổn thương ngày 2-3 lần sau ăn'),
+  ('MED-ZYTEE-RB', 'Nhỏ 1-2 giọt gel lên đầu ngón tay sạch, thoa nhẹ lên vết trợt loét ngày 3-4 lần'),
+  ('MED-ORACORTIA', 'Bôi một lượng nhỏ lên vết loét trước khi đi ngủ hoặc sau ăn ngày 2-3 lần (không chà xát)'),
+  ('MED-SPONGO', 'Đặt trực tiếp miếng xốp vào ổ răng sau nhổ, cắn gạc chặt trong 30-45 phút'),
+  ('MED-TRANS-500', 'Ngày uống 2-3 lần, mỗi lần 1 viên sau ăn để hỗ trợ cầm máu theo đơn'),
+  ('MED-BIOFLORA', 'Hòa tan gói men vào nước ấm hoặc uống trực tiếp, ngày 1-2 gói cách xa thời điểm uống kháng sinh 2 giờ'),
+  ('MED-OMEP-20', 'Uống 1 viên trước bữa ăn sáng 30 phút'),
+  ('MED-VITC-500', 'Ngày uống 1 lần, 1 viên sau bữa ăn sáng (không uống vào buổi tối)'),
+  ('MED-ENAMELAST', 'Lau khô bề mặt răng, quét một lớp vecni mỏng lên vùng cổ răng ê buốt theo chỉ định nha sĩ')
+) AS seed(code, usage_instruction)
+WHERE m.code = seed.code
+  AND (m.usage_instruction IS NULL OR BTRIM(m.usage_instruction) = '');
+
+-- Preserve legacy prescriber names; only link unambiguous exact name matches.
+ALTER TABLE prescriptions ADD COLUMN IF NOT EXISTS dentist_id UUID;
+-- Hibernate creates fk_prescriptions_dentist from Prescription.dentist before
+-- this script (ddl-auto=update, defer-datasource-initialization=true).
+-- Keep statements compatible with Spring's semicolon-based SQL script parser.
+CREATE INDEX IF NOT EXISTS idx_prescriptions_dentist_id ON prescriptions(dentist_id);
+
+UPDATE prescriptions p
+SET dentist_id = d.id
+FROM dentists d
+WHERE p.dentist_id IS NULL
+  AND NULLIF(BTRIM(p.prescriber), '') IS NOT NULL
+  AND LOWER(BTRIM(p.prescriber)) = LOWER(BTRIM(d.full_name))
+  AND (SELECT COUNT(*) FROM dentists other
+       WHERE LOWER(BTRIM(other.full_name)) = LOWER(BTRIM(d.full_name))) = 1;

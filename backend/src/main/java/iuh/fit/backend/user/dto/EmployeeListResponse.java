@@ -25,6 +25,9 @@ public record EmployeeListResponse(
         String branchId,
         String branchName,
         String branchAddress,
+        String branchImage,
+        String clinicLogoUrl,
+        String clinicAddress,
         String dentalClinicName,
         String employeeCode,
         LocalDate dateOfBirth

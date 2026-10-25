@@ -17,6 +17,14 @@ import static jakarta.persistence.LockModeType.PESSIMISTIC_WRITE;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, UUID> {
+    boolean existsByEmailIgnoreCase(String email);
+
+    @Query(value = """
+            select count(*) from users
+            where regexp_replace(regexp_replace(phone, '[^0-9]', '', 'g'), '^84', '0') = :phone
+            """, nativeQuery = true)
+    long countByNormalizedPhone(@Param("phone") String phone);
+
     @Lock(PESSIMISTIC_WRITE)
     @Query("select u from User u where u.email = :email")
     Optional<User> findByEmailForPasswordReset(@Param("email") String email);

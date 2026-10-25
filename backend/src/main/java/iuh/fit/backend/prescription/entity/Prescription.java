@@ -39,6 +39,11 @@ public class Prescription {
     private LocalDateTime prescriptionDate;
 
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "dentist_id", foreignKey = @ForeignKey(name = "fk_prescriptions_dentist"))
+    private Dentist dentist;
+
+    // Snapshot of the dentist's name when the prescription was issued.
     @Column(length = 255)
     private String prescriber;
 

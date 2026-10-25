@@ -86,6 +86,11 @@ public class Dentist {
     @OneToMany(mappedBy = "dentist", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<FollowUpAppointment> followUpAppointments = new ArrayList<>();
 
+    @JsonIgnore
+    @Builder.Default
+    @OneToMany(mappedBy = "dentist", fetch = FetchType.LAZY)
+    private List<Prescription> prescriptions = new ArrayList<>();
+
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(name = "branch_id", nullable = true)
     private Branch branch;

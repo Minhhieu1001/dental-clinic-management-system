@@ -14,6 +14,8 @@ public interface ExaminationResultService {
 
     List<ExaminationResultDTO> getExaminationResultsByMedicalRecordId(UUID medicalRecordId);
 
+    List<ExaminationResultDTO> getExaminationResultsByPatientId(UUID patientId);
+
     ExaminationResultDTO createExaminationResult(ExaminationResultRequest request);
 
     ExaminationResultDTO updateExaminationResult(UUID id, ExaminationResultRequest request);

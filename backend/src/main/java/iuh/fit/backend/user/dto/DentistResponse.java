@@ -13,6 +13,10 @@ public record DentistResponse(
         String education,
         String branchId,
         String branchName,
+        String branchAddress,
+        String branchImage,
+        String clinicLogoUrl,
+        String clinicAddress,
         String dentistCode
 ) {
 }

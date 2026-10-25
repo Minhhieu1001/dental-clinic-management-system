@@ -57,6 +57,10 @@ public class AuthServiceImpl implements AuthService {
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
             User user = userDetails.getUser();
 
+            if (user.getRole() != Role.ADMIN && user.getRole() != Role.DENTIST
+                    && user.getRole() != Role.EMPLOYEE) {
+                throw new AppException(ErrorCode.STAFF_LOGIN_ROLE_REQUIRED);
+            }
             validateAccountStatus(user);
 
             String accessToken = jwtTokenProvider.generateAccessToken(userDetails);
@@ -93,8 +97,7 @@ public class AuthServiceImpl implements AuthService {
 
         // Đảm bảo đúng role bệnh nhân
         if (user.getRole() != Role.PATIENT) {
-            throw new AppException(ErrorCode.PATIENT_INVALID_CREDENTIALS,
-                    "Tài khoản không thuộc quyền truy cập bệnh nhân");
+            throw new AppException(ErrorCode.PATIENT_LOGIN_ROLE_REQUIRED);
         }
 
         // 2. Đối chiếu số điện thoại trực tiếp trong bảng users

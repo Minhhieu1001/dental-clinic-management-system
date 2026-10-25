@@ -9,10 +9,22 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Repository
 public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
+
+    long countByPatientId(UUID patientId);
+
+    @Query("""
+            SELECT COALESCE(SUM(i.remainingAmount), 0) FROM Invoice i
+            WHERE i.patient.id = :patientId
+              AND (i.paymentStatus IS NULL OR i.paymentStatus <> :excludedStatus)
+              AND i.remainingAmount > 0
+            """)
+    BigDecimal sumOutstandingDebtByPatientId(@Param("patientId") UUID patientId,
+                                            @Param("excludedStatus") PaymentStatus excludedStatus);
 
     boolean existsByTreatmentPlanId(UUID treatmentPlanId);
 

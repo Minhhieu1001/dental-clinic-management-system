@@ -244,6 +244,12 @@ public class DentistServiceImpl implements DentistService {
                 dentist.getEducation(),
                 dentist.getBranch() != null ? dentist.getBranch().getBranchId() : null,
                 dentist.getBranch() != null ? dentist.getBranch().getBranchName() : null,
+                dentist.getBranch() != null ? dentist.getBranch().getAddress() : null,
+                dentist.getBranch() != null ? dentist.getBranch().getImageBranch() : null,
+                dentist.getBranch() != null && dentist.getBranch().getClinic() != null
+                        ? dentist.getBranch().getClinic().getLogoUrl() : null,
+                dentist.getBranch() != null && dentist.getBranch().getClinic() != null
+                        ? dentist.getBranch().getClinic().getRegisteredAddress() : null,
                 user != null ? user.getCodeName() : null
         );
     }
@@ -285,6 +291,11 @@ public class DentistServiceImpl implements DentistService {
                 dentist.getBranch() != null ? dentist.getBranch().getBranchId() : null,
                 dentist.getBranch() != null ? dentist.getBranch().getBranchName() : null,
                 dentist.getBranch() != null ? dentist.getBranch().getAddress() : null,
+                dentist.getBranch() != null ? dentist.getBranch().getImageBranch() : null,
+                dentist.getBranch() != null && dentist.getBranch().getClinic() != null
+                        ? dentist.getBranch().getClinic().getLogoUrl() : null,
+                dentist.getBranch() != null && dentist.getBranch().getClinic() != null
+                        ? dentist.getBranch().getClinic().getRegisteredAddress() : null,
                 dentist.getBranch() != null && dentist.getBranch().getClinic() != null
                         ? dentist.getBranch().getClinic().getLegalName() : null,
                 user != null ? user.getCodeName() : null

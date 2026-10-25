@@ -5,6 +5,23 @@ import org.springframework.http.HttpStatus;
 
 @Getter
 public enum ErrorCode {
+    ACTIVATION_PATIENT_MISMATCH(HttpStatus.BAD_REQUEST, "Không tìm thấy bệnh nhân khớp cả mã bệnh nhân và số điện thoại"),
+    ACTIVATION_EMAIL_MISMATCH(HttpStatus.BAD_REQUEST, "Email phải trùng email trong hồ sơ bệnh nhân. Vui lòng liên hệ phòng khám nếu cần cập nhật email"),
+    PATIENT_ALREADY_ACTIVATED(HttpStatus.CONFLICT, "Hồ sơ bệnh nhân đã có tài khoản. Vui lòng đăng nhập hoặc quên mật khẩu"),
+    ACTIVATION_RESEND_TOO_SOON(HttpStatus.TOO_MANY_REQUESTS, "Vui lòng đợi hết 120 giây trước khi gửi lại OTP"),
+    ACTIVATION_CODE_INVALID(HttpStatus.BAD_REQUEST, "OTP kích hoạt không đúng hoặc đã được sử dụng"),
+    ACTIVATION_CODE_EXPIRED(HttpStatus.BAD_REQUEST, "OTP kích hoạt đã hết hạn. Vui lòng gửi lại mã"),
+    ACTIVATION_TOO_MANY_ATTEMPTS(HttpStatus.TOO_MANY_REQUESTS, "Đã nhập sai OTP 5 lần. Vui lòng xin mã mới khi hết 120 giây"),
+    ACTIVATION_TOKEN_INVALID(HttpStatus.BAD_REQUEST, "Phiên đặt mật khẩu không hợp lệ hoặc hết hạn. Vui lòng xác thực OTP lại"),
+    ACTIVATION_PROFILE_CHANGED(HttpStatus.CONFLICT, "Thông tin hồ sơ đã thay đổi. Vui lòng tra cứu và xác thực lại"),
+    STAFF_LOGIN_ROLE_REQUIRED(HttpStatus.FORBIDDEN, "Cổng nội bộ chỉ dành cho nhân sự nha khoa"),
+    PATIENT_LOGIN_ROLE_REQUIRED(HttpStatus.FORBIDDEN, "Cổng bệnh nhân chỉ dành cho tài khoản bệnh nhân"),
+    PHONE_ACCOUNT_LIMIT(HttpStatus.CONFLICT, "Số điện thoại đã có 2 tài khoản, không thể đăng ký thêm"),
+    REGISTRATION_CODE_INVALID(HttpStatus.BAD_REQUEST, "OTP đăng ký không đúng hoặc đã được sử dụng"),
+    REGISTRATION_CODE_EXPIRED(HttpStatus.BAD_REQUEST, "OTP đăng ký đã hết hạn. Vui lòng gửi lại"),
+    REGISTRATION_TOO_MANY_ATTEMPTS(HttpStatus.TOO_MANY_REQUESTS, "Đã nhập sai OTP 5 lần. Vui lòng xin mã mới khi hết 60 giây"),
+    REGISTRATION_RESEND_TOO_SOON(HttpStatus.TOO_MANY_REQUESTS, "Vui lòng đợi 60 giây trước khi gửi lại OTP"),
+    REGISTRATION_MAIL_FAILED(HttpStatus.SERVICE_UNAVAILABLE, "Không gửi được email đăng ký. Vui lòng thử lại"),
 
     // Authentication & Authorization
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "Email hoặc mật khẩu không chính xác"),
