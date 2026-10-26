@@ -60,6 +60,7 @@ import InvoiceLookup from '../features/billing/employee/InvoiceLookup.jsx'
 import CustomerCare from '../features/customer-care/CustomerCare.jsx'
 import EmployeeInventory from '../features/prescriptions/EmployeeInventory.jsx'
 import ImportExport from '../features/prescriptions/ImportExport.jsx'
+import ShiftClosing from '../features/shift-closing/ShiftClosing.jsx'
 import EmployeeReport from '../features/report/EmployeeReport.jsx'
 import EmployeeNotifications from '../features/notification/EmployeeNotifications.jsx'
 import EmployeeGeneralSettings from '../features/setting/employee/EmployeeGeneralSettings.jsx'
@@ -156,7 +157,8 @@ export default function AppRouter() {
             <Route path="invoice-lookup" element={<InvoiceLookup />} />
             <Route path="customer-care" element={<CustomerCare />} />
             <Route path="inventory" element={<EmployeeInventory />} />
-            <Route path="import-export" element={<ImportExport />} />
+            <Route path="shift-closing" element={<ShiftClosing />} />
+            <Route path="import-export" element={<ShiftClosing />} />
             <Route path="report" element={<EmployeeReport />} />
             <Route path="notifications" element={<EmployeeNotifications />} />
             <Route path="settings" element={<Navigate to="general-settings" replace />} />

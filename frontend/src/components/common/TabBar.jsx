@@ -30,6 +30,7 @@ import {
   Building2,
   Building,
   SlidersHorizontal,
+  Calculator,
 } from 'lucide-react';
 
 const getTabIcon = (to, label, customIcon) => {
@@ -51,7 +52,8 @@ const getTabIcon = (to, label, customIcon) => {
   if (key.includes('invoice-lookup') || lbl.includes('tra cứu hóa đơn') || lbl.includes('tra cứu')) return FileSearch;
   if (lbl === 'hóa đơn' || key === 'invoices') return Receipt;
   if (key.includes('billing') || key.includes('invoice') || lbl.includes('thanh toán') || lbl.includes('hóa đơn')) return CreditCard;
-  if (key.includes('inventory') || key.includes('import') || lbl.includes('kho') || lbl.includes('nhập')) return Package;
+  if (key.includes('shift') || lbl.includes('kết ca') || lbl.includes('ca làm việc')) return Calculator;
+  if (key.includes('inventory') || lbl.includes('kho') || lbl.includes('nhập')) return Package;
   if (key.includes('report') || lbl.includes('báo cáo')) return BarChart3;
   if (key.includes('dentist') || lbl.includes('nha sĩ')) return UserCheck;
   if (key.includes('employee') || lbl.includes('nhân viên')) return Briefcase;

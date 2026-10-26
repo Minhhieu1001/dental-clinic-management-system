@@ -98,6 +98,7 @@ public class SecurityConfig {
                                 "/api/v1/invoices/**",
                                 "/api/invoices/**",
                                 "/api/v1/payments/**",
+                                "/api/v1/shift-closings/**",
                                 "/api/v1/sms/**",
                                 "/api/v1/data-fix/**",
                                 "/v3/api-docs/**",

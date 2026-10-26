@@ -172,10 +172,13 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     private EmployeeResponse toEmployeeResponse(Employee employee) {
         User user = employee.getUser();
+        String displayName = employee.getFullName() != null && !employee.getFullName().isBlank()
+                ? employee.getFullName()
+                : (user != null ? user.getUsername() : null);
         return new EmployeeResponse(
                 employee.getId(),
                 user != null ? user.getId() : null,
-                user != null ? user.getUsername() : null,
+                displayName,
                 user != null ? user.getEmail() : null,
                 employee.getPosition(),
                 employee.getSalary(),
@@ -195,11 +198,14 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     private EmployeeListResponse toEmployeeListResponse(Employee employee) {
         User user = employee.getUser();
+        String displayName = employee.getFullName() != null && !employee.getFullName().isBlank()
+                ? employee.getFullName()
+                : (user != null ? user.getUsername() : null);
         return new EmployeeListResponse(
                 employee.getId(),
                 user != null ? user.getId() : null,
                 user != null ? user.getAvatarUrl() : null,
-                user != null ? user.getUsername() : null,
+                displayName,
                 user != null ? user.getEmail() : null,
                 user != null ? user.getPhone() : null,
                 user != null ? user.getRole() : null,

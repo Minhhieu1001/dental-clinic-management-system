@@ -19,4 +19,18 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
            "WHERE i.id = :invoiceId " +
            "ORDER BY pt.paymentTime DESC")
     List<PaymentTransactions> findByInvoiceIdWithDetails(@Param("invoiceId") UUID invoiceId);
+
+    @Query("SELECT pt FROM PaymentTransactions pt " +
+           "LEFT JOIN FETCH pt.invoice i " +
+           "LEFT JOIN FETCH i.patient p " +
+           "LEFT JOIN FETCH pt.employee e " +
+           "LEFT JOIN FETCH e.user u " +
+           "WHERE pt.paymentTime >= :startTime AND pt.paymentTime <= :endTime " +
+           "AND (:employeeId IS NULL OR e.id = :employeeId) " +
+           "ORDER BY pt.paymentTime DESC")
+    List<PaymentTransactions> findTransactionsForShift(
+            @Param("startTime") java.time.LocalDateTime startTime,
+            @Param("endTime") java.time.LocalDateTime endTime,
+            @Param("employeeId") UUID employeeId
+    );
 }
