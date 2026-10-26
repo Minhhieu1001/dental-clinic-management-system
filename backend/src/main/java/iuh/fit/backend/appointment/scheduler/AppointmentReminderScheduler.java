@@ -4,6 +4,11 @@ import iuh.fit.backend.appointment.entity.Appointment;
 import iuh.fit.backend.appointment.entity.FollowUpAppointment;
 import iuh.fit.backend.appointment.repository.AppointmentRepository;
 import iuh.fit.backend.appointment.repository.FollowUpAppointmentRepository;
+import iuh.fit.backend.customercare.entity.CustomerCareRecord;
+import iuh.fit.backend.customercare.enums.CareChannel;
+import iuh.fit.backend.customercare.enums.CareStatus;
+import iuh.fit.backend.customercare.enums.CareType;
+import iuh.fit.backend.customercare.repository.CustomerCareRecordRepository;
 import iuh.fit.backend.notification.dto.NotificationResponseDTO;
 import iuh.fit.backend.notification.entity.Notification;
 import iuh.fit.backend.notification.enums.NotificationType;
@@ -39,6 +44,7 @@ public class AppointmentReminderScheduler {
     private final notificationRepository notificationRepository;
     private final SimpMessagingTemplate simpMessagingTemplate;
     private final TreatmentPlanRepository treatmentPlanRepository;
+    private final CustomerCareRecordRepository careRecordRepository;
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm - dd/MM/yyyy");
 
@@ -161,6 +167,30 @@ public class AppointmentReminderScheduler {
                 type
         );
 
+        // Tự động ghi nhận bản ghi Chăm sóc khách hàng
+        try {
+            Patient p = apt.getPatient();
+            if (p == null && !patientPhone.isEmpty()) {
+                List<Patient> byPhone = patientRepository.findByPhoneNumberOrderByCreatedAtDesc(patientPhone);
+                if (!byPhone.isEmpty()) p = byPhone.get(0);
+            }
+            careRecordRepository.save(CustomerCareRecord.builder()
+                    .patient(p)
+                    .appointment(apt)
+                    .dentist(apt.getDentist())
+                    .careType(CareType.APPOINTMENT_REMINDER)
+                    .channel(CareChannel.EMAIL)
+                    .status(CareStatus.COMPLETED)
+                    .outcome("1DAY".equalsIgnoreCase(type) ? "Nhắc trước 1 ngày" : "Nhắc trước 1 giờ")
+                    .isAuto(true)
+                    .careTime(LocalDateTime.now())
+                    .createdByName("Hệ thống tự động")
+                    .notes("Hệ thống tự động gửi email nhắc lịch hẹn (" + ("1DAY".equalsIgnoreCase(type) ? "trước 1 ngày" : "trước 1 giờ") + ") lúc " + timeStr + " với BS. " + doctorName)
+                    .build());
+        } catch (Exception ex) {
+            log.warn("Không thể lưu bản ghi CSKH tự động cho appointment {}: {}", apt.getId(), ex.getMessage());
+        }
+
         if (apt.getDentist() != null && apt.getDentist().getUser() != null) {
             User docUser = apt.getDentist().getUser();
             String notifTitle = "1HOUR".equalsIgnoreCase(type) ? "Nhắc lịch hẹn khám sắp diễn ra (1h)" : "Nhắc lịch hẹn khám ngày mai";
@@ -227,6 +257,25 @@ public class AppointmentReminderScheduler {
                 fu.getReason() != null ? fu.getReason() : "Tái khám kiểm tra định kỳ",
                 type
         );
+
+        // Tự động ghi nhận bản ghi Chăm sóc khách hàng
+        try {
+            careRecordRepository.save(CustomerCareRecord.builder()
+                    .patient(patient)
+                    .followUpAppointment(fu)
+                    .dentist(fu.getDentist())
+                    .careType(CareType.APPOINTMENT_REMINDER)
+                    .channel(CareChannel.EMAIL)
+                    .status(CareStatus.COMPLETED)
+                    .outcome("1DAY".equalsIgnoreCase(type) ? "Nhắc trước 1 ngày" : "Nhắc trước 1 giờ")
+                    .isAuto(true)
+                    .careTime(LocalDateTime.now())
+                    .createdByName("Hệ thống tự động")
+                    .notes("Hệ thống tự động gửi email nhắc lịch tái khám (" + ("1DAY".equalsIgnoreCase(type) ? "trước 1 ngày" : "trước 1 giờ") + ") lúc " + timeStr + " với BS. " + doctorName)
+                    .build());
+        } catch (Exception ex) {
+            log.warn("Không thể lưu bản ghi CSKH tự động cho followUp {}: {}", fu.getId(), ex.getMessage());
+        }
 
         // 3. Gửi thông báo realtime cho bác sĩ phụ trách (qua WebSocket)
         if (fu.getDentist() != null && fu.getDentist().getUser() != null) {

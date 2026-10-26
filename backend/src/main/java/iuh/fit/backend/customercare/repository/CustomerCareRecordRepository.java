@@ -16,6 +16,8 @@ public interface CustomerCareRecordRepository extends JpaRepository<CustomerCare
 
     List<CustomerCareRecord> findByAppointmentIdOrderByCareTimeDesc(UUID appointmentId);
 
+    List<CustomerCareRecord> findByFollowUpAppointmentIdOrderByCareTimeDesc(UUID followUpAppointmentId);
+
     List<CustomerCareRecord> findByTreatmentPlanIdOrderByCareTimeDesc(UUID treatmentPlanId);
 
     List<CustomerCareRecord> findByPrescriptionIdOrderByCareTimeDesc(UUID prescriptionId);
@@ -27,6 +29,9 @@ public interface CustomerCareRecordRepository extends JpaRepository<CustomerCare
 
     @Query("SELECT c FROM CustomerCareRecord c WHERE c.appointment.id = :appointmentId ORDER BY c.careTime DESC")
     List<CustomerCareRecord> findLatestByAppointmentId(@Param("appointmentId") UUID appointmentId);
+
+    @Query("SELECT c FROM CustomerCareRecord c WHERE c.followUpAppointment.id = :followUpAppointmentId ORDER BY c.careTime DESC")
+    List<CustomerCareRecord> findLatestByFollowUpAppointmentId(@Param("followUpAppointmentId") UUID followUpAppointmentId);
 
     @Query("SELECT c FROM CustomerCareRecord c WHERE c.treatmentPlan.id = :treatmentPlanId ORDER BY c.careTime DESC")
     List<CustomerCareRecord> findLatestByTreatmentPlanId(@Param("treatmentPlanId") UUID treatmentPlanId);

@@ -9,6 +9,7 @@ import iuh.fit.backend.billing.entity.Invoice;
 import iuh.fit.backend.billing.entity.InvoiceDetail;
 import iuh.fit.backend.billing.enums.PaymentStatus;
 import iuh.fit.backend.billing.repository.InvoiceRepository;
+import iuh.fit.backend.common.security.CustomUserDetails;
 import iuh.fit.backend.customercare.dto.*;
 import iuh.fit.backend.customercare.entity.CustomerCareRecord;
 import iuh.fit.backend.customercare.enums.CareChannel;
@@ -21,15 +22,19 @@ import iuh.fit.backend.patient.repository.PatientRepository;
 import iuh.fit.backend.treatment.repository.ServiceRepository;
 import iuh.fit.backend.user.entity.Dentist;
 import iuh.fit.backend.user.entity.Employee;
+import iuh.fit.backend.user.entity.User;
 import iuh.fit.backend.user.repository.DentistRepository;
 import iuh.fit.backend.promotion.entity.Promotion;
 import iuh.fit.backend.promotion.enums.PromotionStatus;
 import iuh.fit.backend.promotion.enums.PromotionType;
 import iuh.fit.backend.promotion.repository.PromotionRepository;
 import iuh.fit.backend.user.repository.EmployeeRepository;
+import iuh.fit.backend.user.repository.UserRepository;
 import iuh.fit.backend.notification.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,6 +56,7 @@ public class CustomerCareServiceImpl implements CustomerCareService {
     private final FollowUpAppointmentRepository followUpAppointmentRepository;
     private final DentistRepository dentistRepository;
     private final EmployeeRepository employeeRepository;
+    private final UserRepository userRepository;
     private final ServiceRepository serviceRepository;
     private final EmailService emailService;
     private final InvoiceRepository invoiceRepository;
@@ -58,6 +64,50 @@ public class CustomerCareServiceImpl implements CustomerCareService {
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DATE_TIME_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy, HH:mm");
+
+    private Employee getCurrentLoggedInEmployee() {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated() && !auth.getName().equalsIgnoreCase("anonymousUser")) {
+                User currentUser = null;
+                if (auth.getPrincipal() instanceof CustomUserDetails cud) {
+                    currentUser = cud.getUser();
+                } else {
+                    String principal = auth.getName();
+                    currentUser = userRepository.findByEmail(principal)
+                            .or(() -> userRepository.findByUsername(principal))
+                            .orElse(null);
+                }
+                if (currentUser != null) {
+                    return employeeRepository.findByUserId(currentUser.getId()).orElse(null);
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("Không thể xác định nhân viên đăng nhập từ session: {}", ex.getMessage());
+        }
+        return null;
+    }
+
+    private String getCurrentLoggedInStaffName() {
+        Employee emp = getCurrentLoggedInEmployee();
+        if (emp != null && emp.getFullName() != null && !emp.getFullName().isBlank()) {
+            return emp.getFullName();
+        }
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated() && !auth.getName().equalsIgnoreCase("anonymousUser")) {
+                if (auth.getPrincipal() instanceof CustomUserDetails cud && cud.getUser() != null) {
+                    return cud.getUser().getUsername();
+                }
+                return auth.getName();
+            }
+        } catch (Exception ignored) {}
+        return "Nhân viên CSKH";
+    }
+
+    private String getCurrentStaffName() {
+        return getCurrentLoggedInStaffName();
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -378,6 +428,8 @@ public class CustomerCareServiceImpl implements CustomerCareService {
             String cChannel = null;
             LocalDateTime cTime = null;
             String cNotes = null;
+            String cOutcome = null;
+            LocalDateTime cNextCare = null;
             UUID lastCareId = null;
 
             if (!cares.isEmpty()) {
@@ -391,6 +443,8 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                 }
                 cTime = latest.getCareTime();
                 cNotes = latest.getNotes();
+                cOutcome = latest.getOutcome();
+                cNextCare = latest.getNextCareDate();
             }
 
             // Apply filters
@@ -403,7 +457,7 @@ public class CustomerCareServiceImpl implements CustomerCareService {
             }
 
             if (careStatus != null && !careStatus.isBlank() && !"ALL".equalsIgnoreCase(careStatus) && !"Tất cả".equalsIgnoreCase(careStatus)) {
-                if (!cStatus.equalsIgnoreCase(careStatus.trim())) continue;
+                if (!cStatus.equalsIgnoreCase(careStatus.trim()) && !CareStatus.fromString(careStatus).getLabel().equalsIgnoreCase(cStatus)) continue;
             }
 
             if (scheduleStatus != null && !scheduleStatus.isBlank() && !"ALL".equalsIgnoreCase(scheduleStatus) && !"Tất cả".equalsIgnoreCase(scheduleStatus)) {
@@ -477,6 +531,10 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                     .careChannel(cChannel)
                     .careTime(cTime)
                     .careNotes(cNotes)
+                    .outcome(cOutcome)
+                    .nextCareDate(cNextCare)
+                    .reminded1Day(Boolean.TRUE.equals(apt.getReminded1Day()))
+                    .reminded1Hour(Boolean.TRUE.equals(apt.getReminded1Hour()))
                     .assignedEmployeeName(apt.getEmployee() != null ? apt.getEmployee().getFullName() : null)
                     .lastCareId(lastCareId)
                     .serviceName(serviceName)
@@ -525,16 +583,15 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                 schedStatus = "Chưa đến";
             }
 
-            // Latest care record for follow-up appointment
-            List<CustomerCareRecord> cares = careRepository.findLatestByAppointmentId(f.getId());
-            if (cares.isEmpty() && patientId != null) {
-                cares = careRepository.findByPatientIdOrderByCareTimeDesc(patientId);
-            }
+            // Latest care record for follow-up appointment (MAP ĐÚNG THEO follow_up_appointment_id)
+            List<CustomerCareRecord> cares = careRepository.findLatestByFollowUpAppointmentId(f.getId());
 
             String cStatus = "Chưa chăm sóc";
             String cChannel = null;
             LocalDateTime cTime = null;
             String cNotes = null;
+            String cOutcome = null;
+            LocalDateTime cNextCare = null;
             UUID lastCareId = null;
 
             if (!cares.isEmpty()) {
@@ -548,6 +605,8 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                 }
                 cTime = latest.getCareTime();
                 cNotes = latest.getNotes();
+                cOutcome = latest.getOutcome();
+                cNextCare = latest.getNextCareDate();
             }
 
             // Apply filters
@@ -560,7 +619,7 @@ public class CustomerCareServiceImpl implements CustomerCareService {
             }
 
             if (careStatus != null && !careStatus.isBlank() && !"ALL".equalsIgnoreCase(careStatus) && !"Tất cả".equalsIgnoreCase(careStatus)) {
-                if (!cStatus.equalsIgnoreCase(careStatus.trim())) continue;
+                if (!cStatus.equalsIgnoreCase(careStatus.trim()) && !CareStatus.fromString(careStatus).getLabel().equalsIgnoreCase(cStatus)) continue;
             }
 
             if (scheduleStatus != null && !scheduleStatus.isBlank() && !"ALL".equalsIgnoreCase(scheduleStatus) && !"Tất cả".equalsIgnoreCase(scheduleStatus)) {
@@ -610,6 +669,10 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                     .careChannel(cChannel)
                     .careTime(cTime)
                     .careNotes(cNotes)
+                    .outcome(cOutcome)
+                    .nextCareDate(cNextCare)
+                    .reminded1Day(Boolean.TRUE.equals(f.getReminded1Day()))
+                    .reminded1Hour(Boolean.TRUE.equals(f.getReminded1Hour()))
                     .assignedEmployeeName(null)
                     .lastCareId(lastCareId)
                     .serviceName(serviceName)
@@ -636,6 +699,142 @@ public class CustomerCareServiceImpl implements CustomerCareService {
             } else {
                 return b.getAppointmentTime().compareTo(a.getAppointmentTime());
             }
+        });
+
+        return result;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PostTreatmentCareItemDTO> getPostTreatmentCareList(
+            String search,
+            String startDate,
+            String endDate,
+            String careStatus,
+            String dentistId,
+            String employeeId
+    ) {
+        List<Appointment> completedAppointments = appointmentRepository.findAll().stream()
+                .filter(a -> a.getStatus() == StatusAppointment.COMPLETED)
+                .toList();
+        List<PostTreatmentCareItemDTO> result = new ArrayList<>();
+        LocalDate today = LocalDate.now();
+
+        for (Appointment apt : completedAppointments) {
+            LocalDateTime compTime = apt.getAppointmentTime() != null ? apt.getAppointmentTime() : apt.getAppointmentDate();
+            if (compTime == null) continue;
+
+            Patient p = apt.getPatient();
+            UUID patientId = p != null ? p.getId() : null;
+            String patientCode = p != null && p.getPatientCode() != null ? p.getPatientCode() : "";
+            String patientName = p != null && p.getFullName() != null ? p.getFullName() : (apt.getPatientName() != null ? apt.getPatientName() : "—");
+            String phone = p != null && p.getPhoneNumber() != null ? p.getPhoneNumber() : (apt.getPhone() != null ? apt.getPhone() : "—");
+            String email = p != null && p.getEmail() != null ? p.getEmail() : "";
+            String custGroup = p != null && p.getCustomerGroup() != null ? p.getCustomerGroup() : "Khách mới";
+
+            String dentistName = "";
+            if (apt.getDentist() != null) {
+                dentistName = apt.getDentist().getFullName();
+                if (dentistName == null || dentistName.isBlank()) {
+                    if (apt.getDentist().getUser() != null) {
+                        dentistName = apt.getDentist().getUser().getUsername();
+                    }
+                }
+            }
+
+            // Date filtering on completed time
+            if (startDate != null && !startDate.isBlank()) {
+                try {
+                    LocalDate s = LocalDate.parse(startDate.trim());
+                    if (compTime.toLocalDate().isBefore(s)) continue;
+                } catch (Exception ignored) {}
+            }
+            if (endDate != null && !endDate.isBlank()) {
+                try {
+                    LocalDate e = LocalDate.parse(endDate.trim());
+                    if (compTime.toLocalDate().isAfter(e)) continue;
+                } catch (Exception ignored) {}
+            }
+
+            // Dentist filter
+            if (dentistId != null && !dentistId.isBlank() && !"ALL".equalsIgnoreCase(dentistId) && !"Tất cả".equalsIgnoreCase(dentistId)) {
+                if (apt.getDentist() == null || !apt.getDentist().getId().toString().equals(dentistId.trim())) {
+                    continue;
+                }
+            }
+
+            // Search filter
+            if (search != null && !search.isBlank()) {
+                String q = search.toLowerCase().trim();
+                boolean match = patientName.toLowerCase().contains(q) ||
+                                phone.contains(q) ||
+                                patientCode.toLowerCase().contains(q) ||
+                                (apt.getReason() != null && apt.getReason().toLowerCase().contains(q));
+                if (!match) continue;
+            }
+
+            // Care record for post-treatment
+            List<CustomerCareRecord> cares = careRepository.findByAppointmentIdOrderByCareTimeDesc(apt.getId()).stream()
+                    .filter(c -> c.getCareType() == CareType.POST_TREATMENT)
+                    .toList();
+
+            String cStatus = "Chưa chăm sóc";
+            String cChannel = null;
+            LocalDateTime cTime = null;
+            String cNotes = null;
+            String cOutcome = null;
+            LocalDateTime cNextCare = null;
+            String assignedStaff = null;
+            UUID lastCareId = null;
+
+            if (!cares.isEmpty()) {
+                CustomerCareRecord latest = cares.get(0);
+                lastCareId = latest.getId();
+                if (latest.getStatus() != null) cStatus = latest.getStatus().getLabel();
+                if (latest.getChannel() != null) cChannel = latest.getChannel().getLabel();
+                cTime = latest.getCareTime();
+                cNotes = latest.getNotes();
+                cOutcome = latest.getOutcome();
+                cNextCare = latest.getNextCareDate();
+                assignedStaff = latest.getCreatedByName();
+            }
+
+            if (careStatus != null && !careStatus.isBlank() && !"ALL".equalsIgnoreCase(careStatus) && !"Tất cả".equalsIgnoreCase(careStatus)) {
+                if (!cStatus.equalsIgnoreCase(careStatus.trim()) && !CareStatus.fromString(careStatus).getLabel().equalsIgnoreCase(cStatus)) {
+                    continue;
+                }
+            }
+
+            int daysSince = (int) java.time.temporal.ChronoUnit.DAYS.between(compTime.toLocalDate(), today);
+
+            result.add(PostTreatmentCareItemDTO.builder()
+                    .appointmentId(apt.getId())
+                    .patientId(patientId)
+                    .patientCode(patientCode)
+                    .patientName(patientName)
+                    .phone(phone)
+                    .email(email)
+                    .completedTime(compTime)
+                    .dentistName(dentistName)
+                    .serviceName(apt.getReason() != null && !apt.getReason().isBlank() ? apt.getReason() : "Điều trị nha khoa")
+                    .customerGroup(custGroup)
+                    .careStatus(cStatus)
+                    .careChannel(cChannel)
+                    .careTime(cTime)
+                    .careNotes(cNotes)
+                    .outcome(cOutcome)
+                    .nextCareDate(cNextCare)
+                    .assignedEmployeeName(assignedStaff)
+                    .lastCareId(lastCareId)
+                    .daysSinceTreatment(daysSince)
+                    .build());
+        }
+
+        // Sort: Most recently completed treatments first
+        result.sort((a, b) -> {
+            if (a.getCompletedTime() == null) return 1;
+            if (b.getCompletedTime() == null) return -1;
+            return b.getCompletedTime().compareTo(a.getCompletedTime());
         });
 
         return result;
@@ -684,6 +883,9 @@ public class CustomerCareServiceImpl implements CustomerCareService {
 
             String assignedEmployeeName = null;
 
+            String cOutcome = null;
+            LocalDateTime cNextCare = null;
+
             if (!cares.isEmpty()) {
                 CustomerCareRecord latest = cares.get(0);
                 LocalDate careDate = latest.getCareTime() != null ? latest.getCareTime().toLocalDate() : null;
@@ -695,6 +897,8 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                     if (latest.getChannel() != null) cChannel = latest.getChannel().getLabel();
                     cTime = latest.getCareTime();
                     cNotes = latest.getNotes();
+                    cOutcome = latest.getOutcome();
+                    cNextCare = latest.getNextCareDate();
                     if (latest.getEmployee() != null) {
                         assignedEmployeeName = latest.getEmployee().getFullName();
                     } else if (latest.getCreatedByName() != null) {
@@ -713,7 +917,7 @@ public class CustomerCareServiceImpl implements CustomerCareService {
             }
 
             if (careStatus != null && !careStatus.isBlank() && !"ALL".equalsIgnoreCase(careStatus) && !"Tất cả".equalsIgnoreCase(careStatus)) {
-                if (!cStatus.equalsIgnoreCase(careStatus.trim())) continue;
+                if (!cStatus.equalsIgnoreCase(careStatus.trim()) && !CareStatus.fromString(careStatus).getLabel().equalsIgnoreCase(cStatus)) continue;
             }
 
             // Date filter for birthday: compare day-of-month and month if startDate/endDate specified
@@ -751,6 +955,8 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                     .careChannel(cChannel)
                     .careTime(cTime)
                     .careNotes(cNotes)
+                    .outcome(cOutcome)
+                    .nextCareDate(cNextCare)
                     .assignedEmployeeName(assignedEmployeeName)
                     .lastCareId(lastCareId)
                     .isToday(isToday)
@@ -852,40 +1058,33 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                 pStatusLabel = "Đã hủy";
             }
 
-            // Care record for this invoice
+            // Care record for this invoice (chỉ lấy đúng bản ghi của hóa đơn này, không fallback sang hóa đơn khác)
             List<CustomerCareRecord> cares = careRepository.findLatestByInvoiceId(inv.getId());
-            CustomerCareRecord latestCare = null;
-            if (cares != null && !cares.isEmpty()) {
-                latestCare = cares.get(0);
-            } else if (p != null) {
-                List<CustomerCareRecord> patientCares = careRepository.findByPatientIdOrderByCareTimeDesc(p.getId());
-                for (CustomerCareRecord c : patientCares) {
-                    if (c.getCareType() == CareType.PAYMENT) {
-                        latestCare = c;
-                        break;
-                    }
-                }
-            }
+            CustomerCareRecord latestCare = (cares != null && !cares.isEmpty()) ? cares.get(0) : null;
 
             String cStatus = "Chưa chăm sóc";
-            String cChannel = "Chưa liên hệ";
+            String cChannel = null;
             LocalDateTime cTime = null;
             String cNotes = null;
+            String cOutcome = null;
+            LocalDateTime cNextCare = null;
             String staff = null;
             UUID lastCareId = null;
 
             if (latestCare != null) {
                 lastCareId = latestCare.getId();
-                cStatus = latestCare.getStatus() != null ? latestCare.getStatus().getLabel() : "Hoàn thành";
+                cStatus = latestCare.getStatus() != null ? latestCare.getStatus().getLabel() : "Liên hệ thành công";
                 cChannel = latestCare.getChannel() != null ? latestCare.getChannel().getLabel() : "Gọi điện";
                 cTime = latestCare.getCareTime();
                 cNotes = latestCare.getNotes();
+                cOutcome = latestCare.getOutcome();
+                cNextCare = latestCare.getNextCareDate();
                 staff = latestCare.getCreatedByName();
             }
 
             // Filter careStatus
             if (careStatus != null && !careStatus.isBlank() && !"ALL".equalsIgnoreCase(careStatus) && !"Tất cả".equalsIgnoreCase(careStatus)) {
-                if (!cStatus.equalsIgnoreCase(careStatus.trim())) {
+                if (!cStatus.equalsIgnoreCase(careStatus.trim()) && !CareStatus.fromString(careStatus).getLabel().equalsIgnoreCase(cStatus)) {
                     continue;
                 }
             }
@@ -941,7 +1140,9 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                     .careChannel(cChannel)
                     .careTime(cTime)
                     .careNotes(cNotes)
-                    .assignedEmployeeName(staff != null && !staff.isBlank() ? staff : (inv.getEmployee() != null && inv.getEmployee().getFullName() != null ? inv.getEmployee().getFullName() : "Nguyệt Nguyễn"))
+                    .outcome(cOutcome)
+                    .nextCareDate(cNextCare)
+                    .assignedEmployeeName(staff != null && !staff.isBlank() ? staff : (inv.getEmployee() != null && inv.getEmployee().getFullName() != null ? inv.getEmployee().getFullName() : null))
                     .lastCareId(lastCareId)
                     .suggestedTemplate(suggestedTemplate)
                     .build());
@@ -972,7 +1173,6 @@ public class CustomerCareServiceImpl implements CustomerCareService {
             String customerGroup,
             String employeeId
     ) {
-        ensureHolidayPromotionsExist();
         List<Patient> allPatients = patientRepository.findAll();
         List<Promotion> allPromotions = promotionRepository.findAll().stream()
                 .filter(p -> p.getStatus() == PromotionStatus.ACTIVE && p.getCouponCode() != null && !p.getCouponCode().isBlank())
@@ -1005,15 +1205,8 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                     .max(LocalDateTime::compareTo)
                     .orElse(null);
 
-            // Customer group
-            String grp = "Khách hàng Mới";
-            if (totalSpent.compareTo(new BigDecimal("20000000")) >= 0) {
-                grp = "Khách hàng VIP";
-            } else if (totalSpent.compareTo(new BigDecimal("5000000")) >= 0 || patientInvoices.size() >= 2) {
-                grp = "Khách hàng Thân thiết";
-            } else if (!patientInvoices.isEmpty()) {
-                grp = "Khách hàng Tiềm năng";
-            }
+            // Customer group lấy chuẩn theo dữ liệu thật của hồ sơ bệnh nhân
+            String grp = (p.getCustomerGroup() != null && !p.getCustomerGroup().isBlank()) ? p.getCustomerGroup() : "Khách mới";
 
             // Determine preferred / treating doctor from appointments & invoices
             List<Appointment> pAppointments = allAppointments.stream()
@@ -1037,7 +1230,7 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                         .orElse(null);
             }
             if (preferredDoctor == null || preferredDoctor.isBlank()) {
-                preferredDoctor = (i % 2 == 0) ? "BS. Nguyễn Thị Phương" : "BS. Trần Quang";
+                preferredDoctor = "Bác sĩ phụ trách";
             }
             if (!preferredDoctor.startsWith("BS")) {
                 preferredDoctor = "BS. " + preferredDoctor;
@@ -1088,11 +1281,12 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                         .startDate(promo.getStartDate())
                         .endDate(promo.getEndDate())
                         .promotionStatus(promo.getStatus() != null ? promo.getStatus().name() : "ACTIVE")
-                        .careStatus("Đã sử dụng (Hóa đơn)")
+                        .careStatus("Đã sử dụng")
                         .careChannel("Tại quầy")
                         .careTime(inv.getInvoiceDate())
                         .lastCareTime(inv.getInvoiceDate())
                         .careNotes(String.format("Đã áp dụng voucher %s cho hóa đơn %s (Giảm: %s đ)", code, inv.getInvoiceCode() != null ? inv.getInvoiceCode() : "", formatVnd(inv.getDiscountAmount())))
+                        .outcome("Đã áp dụng vào hóa đơn")
                         .assignedEmployeeName(empName)
                         .lastCareStaff(empName)
                         .suggestedTemplate(fastTpl)
@@ -1125,17 +1319,7 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                 }
                 addedPromotionIds.add(promo.getId());
 
-                String statusLabel = "Đã gửi ưu đãi";
-                if (c.getStatus() == CareStatus.COMPLETED) {
-                    if (c.getNotes() != null && c.getNotes().toLowerCase().contains("quan tâm")) statusLabel = "Khách quan tâm";
-                    else if (c.getNotes() != null && (c.getNotes().toLowerCase().contains("đặt lịch") || c.getNotes().toLowerCase().contains("đặt hẹn"))) statusLabel = "Đã đặt lịch hẹn";
-                } else if (c.getStatus() == CareStatus.PENDING) {
-                    statusLabel = "Chờ gửi ưu đãi";
-                } else if (c.getStatus() == CareStatus.RECARE) {
-                    statusLabel = "Cần gửi lại";
-                } else if (c.getStatus() == CareStatus.FAILED) {
-                    statusLabel = "Không có nhu cầu";
-                }
+                String statusLabel = c.getStatus() != null ? c.getStatus().getLabel() : "Liên hệ thành công";
 
                 String promoName = promo.getTitle() != null ? promo.getTitle() : "Chương trình ưu đãi";
                 String code = promo.getCouponCode() != null ? promo.getCouponCode() : "VOUCHER";
@@ -1146,7 +1330,7 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                 String fastTpl = String.format("Kính gửi Quý khách %s,\nNha Khoa Quốc Tế Crown Dental trân trọng gửi tặng Quý khách mã ưu đãi đặc biệt [%s] giảm %s nhân dịp %s. Kính chúc Quý khách luôn có nụ cười rạng rỡ và tự tin!\nHotline đặt lịch: 0343632524",
                         p.getFullName(), code, discountStr, promoName);
 
-                String staff = c.getCreatedByName() != null ? c.getCreatedByName() : "Nguyệt Nguyễn";
+                String staff = c.getCreatedByName() != null ? c.getCreatedByName() : (c.getEmployee() != null ? c.getEmployee().getFullName() : null);
 
                 PromotionCareItemDTO item = PromotionCareItemDTO.builder()
                         .patientId(p.getId())
@@ -1174,6 +1358,8 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                         .careTime(c.getCareTime())
                         .lastCareTime(c.getCareTime())
                         .careNotes(c.getNotes())
+                        .outcome(c.getOutcome())
+                        .nextCareDate(c.getNextCareDate())
                         .assignedEmployeeName(staff)
                         .lastCareStaff(staff)
                         .lastCareId(c.getId())
@@ -1573,24 +1759,28 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                 boolean match = (pName != null && pName.toLowerCase().contains(q)) ||
                                 (phone != null && phone.contains(q)) ||
                                 (pCode != null && pCode.toLowerCase().contains(q)) ||
-                                (c.getNotes() != null && c.getNotes().toLowerCase().contains(q));
+                                (c.getNotes() != null && c.getNotes().toLowerCase().contains(q)) ||
+                                (c.getOutcome() != null && c.getOutcome().toLowerCase().contains(q));
                 if (!match) continue;
             }
 
             if (careType != null && !careType.isBlank() && !"ALL".equalsIgnoreCase(careType) && !"Tất cả".equalsIgnoreCase(careType)) {
-                if (c.getCareType() == null || !c.getCareType().name().equalsIgnoreCase(careType.trim())) {
+                CareType ct = CareType.fromString(careType);
+                if (c.getCareType() != ct && (c.getCareType() == null || !c.getCareType().name().equalsIgnoreCase(careType.trim()))) {
                     continue;
                 }
             }
 
             if (careStatus != null && !careStatus.isBlank() && !"ALL".equalsIgnoreCase(careStatus) && !"Tất cả".equalsIgnoreCase(careStatus)) {
-                if (c.getStatus() == null || !c.getStatus().name().equalsIgnoreCase(careStatus.trim())) {
+                CareStatus cs = CareStatus.fromString(careStatus);
+                if (c.getStatus() != cs && (c.getStatus() == null || !c.getStatus().name().equalsIgnoreCase(careStatus.trim()))) {
                     continue;
                 }
             }
 
             if (channel != null && !channel.isBlank() && !"ALL".equalsIgnoreCase(channel) && !"Tất cả".equalsIgnoreCase(channel)) {
-                if (c.getChannel() == null || !c.getChannel().name().equalsIgnoreCase(channel.trim())) {
+                CareChannel cc = CareChannel.fromString(channel);
+                if (c.getChannel() != cc && (c.getChannel() == null || !c.getChannel().name().equalsIgnoreCase(channel.trim()))) {
                     continue;
                 }
             }
@@ -1646,6 +1836,15 @@ public class CustomerCareServiceImpl implements CustomerCareService {
             }
         }
 
+        FollowUpAppointment followUp = null;
+        if (request.getFollowUpAppointmentId() != null) {
+            followUp = followUpAppointmentRepository.findById(request.getFollowUpAppointmentId()).orElse(null);
+            if (patient == null && followUp != null && followUp.getExaminationResult() != null &&
+                    followUp.getExaminationResult().getMedicalRecord() != null) {
+                patient = followUp.getExaminationResult().getMedicalRecord().getPatient();
+            }
+        }
+
         Invoice invoice = null;
         if (request.getInvoiceId() != null) {
             invoice = invoiceRepository.findById(request.getInvoiceId()).orElse(null);
@@ -1672,28 +1871,86 @@ public class CustomerCareServiceImpl implements CustomerCareService {
             promotion = promotionRepository.findById(request.getPromotionId()).orElse(null);
         }
 
+        // Get currently authenticated staff name and employee
+        Employee currentEmployee = getCurrentLoggedInEmployee();
+        String currentStaffName = getCurrentStaffName();
+        String staffNameToRecord = (request.getCreatedByName() != null && !request.getCreatedByName().isBlank())
+                ? request.getCreatedByName()
+                : currentStaffName;
+
         CustomerCareRecord record = CustomerCareRecord.builder()
                 .patient(patient)
                 .appointment(apt)
+                .followUpAppointment(followUp)
                 .invoice(invoice)
                 .promotion(promotion)
+                .employee(currentEmployee)
                 .careType(type)
                 .channel(channel)
                 .status(status)
                 .careTime(careTime)
                 .notes(request.getNotes())
-                .createdByName(request.getCreatedByName() != null ? request.getCreatedByName() : "Nguyệt Nguyễn")
+                .outcome(request.getOutcome())
+                .nextCareDate(request.getNextCareDate())
+                .isAuto(false)
+                .createdByName(staffNameToRecord)
                 .build();
 
         record = careRepository.save(record);
         log.info("Saved customer care record ID={}", record.getId());
 
+        // Synchronize Appointment / FollowUpAppointment status based on customer outcome
+        syncAppointmentStatusWithOutcome(apt, followUp, status, request.getOutcome());
+
         // If channel is GMAIL or EMAIL, send real email directly to patient
         if ((channel == CareChannel.GMAIL || channel == CareChannel.EMAIL) && patient != null && patient.getEmail() != null && !patient.getEmail().isBlank()) {
-            sendCareEmailHtml(patient.getEmail(), patient.getFullName(), request.getNotes(), type, invoice, promotion);
+            try {
+                sendCareEmailHtml(patient.getEmail(), patient.getFullName(), request.getNotes(), type, invoice, promotion);
+            } catch (Exception ex) {
+                log.error("Failed to send care email: {}", ex.getMessage());
+                record.setStatus(CareStatus.FAILED);
+                record = careRepository.save(record);
+            }
         }
 
         return mapToResponseDTO(record);
+    }
+
+    private void syncAppointmentStatusWithOutcome(Appointment apt, FollowUpAppointment followUp, CareStatus careStatus, String outcome) {
+        if (outcome == null) {
+            outcome = "";
+        }
+        String outcomeLower = outcome.toLowerCase();
+
+        // 1. Sync standard Appointment
+        if (apt != null) {
+            if (outcomeLower.contains("xác nhận đến") || outcomeLower.contains("đồng ý đến") || outcomeLower.contains("sẽ đến") || outcomeLower.contains("đúng giờ")) {
+                apt.setStatus(StatusAppointment.CONFIRMED);
+                appointmentRepository.save(apt);
+                log.info("[CSKH-SYNC] Đã tự động cập nhật lịch hẹn {} sang CONFIRMED dựa trên phản hồi: {}", apt.getId(), outcome);
+            } else if (outcomeLower.contains("hủy") || outcomeLower.contains("bận") || outcomeLower.contains("không đến") || careStatus == CareStatus.REJECTED) {
+                apt.setStatus(StatusAppointment.CANCELLED);
+                appointmentRepository.save(apt);
+                log.info("[CSKH-SYNC] Đã tự động cập nhật lịch hẹn {} sang CANCELLED dựa trên phản hồi: {}", apt.getId(), outcome);
+            } else if (outcomeLower.contains("dời") || outcomeLower.contains("đổi giờ") || outcomeLower.contains("đổi ngày")) {
+                apt.setStatus(StatusAppointment.WAITING);
+                appointmentRepository.save(apt);
+                log.info("[CSKH-SYNC] Đã tự động cập nhật lịch hẹn {} sang WAITING dựa trên phản hồi: {}", apt.getId(), outcome);
+            }
+        }
+
+        // 2. Sync FollowUpAppointment
+        if (followUp != null) {
+            if (outcomeLower.contains("xác nhận đến") || outcomeLower.contains("đồng ý đến") || outcomeLower.contains("sẽ đến") || outcomeLower.contains("đúng giờ")) {
+                followUp.setStatus(true);
+                followUpAppointmentRepository.save(followUp);
+                log.info("[CSKH-SYNC] Đã tự động cập nhật lịch tái khám {} sang Active (true) dựa trên phản hồi: {}", followUp.getId(), outcome);
+            } else if (outcomeLower.contains("hủy") || outcomeLower.contains("bận") || outcomeLower.contains("không đến") || careStatus == CareStatus.REJECTED) {
+                followUp.setStatus(false);
+                followUpAppointmentRepository.save(followUp);
+                log.info("[CSKH-SYNC] Đã tự động cập nhật lịch tái khám {} sang Inactive/Hủy (false) dựa trên phản hồi: {}", followUp.getId(), outcome);
+            }
+        }
     }
 
     @Override
@@ -1751,18 +2008,33 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                     .orElse(null);
         }
 
-        sendCareEmailHtml(recipientEmail, patient != null ? patient.getFullName() : "Quý khách", notes, type, invoice, promotion);
+        CareStatus finalStatus = CareStatus.COMPLETED;
+        try {
+            sendCareEmailHtml(recipientEmail, patient != null ? patient.getFullName() : "Quý khách", notes, type, invoice, promotion);
+        } catch (Exception ex) {
+            log.error("Failed to send direct email: {}", ex.getMessage());
+            finalStatus = CareStatus.FAILED;
+        }
+
+        Employee currentEmployee = getCurrentLoggedInEmployee();
+        String currentStaffName = getCurrentStaffName();
+        String staffNameToRecord = (request.getCreatedByName() != null && !request.getCreatedByName().isBlank())
+                ? request.getCreatedByName()
+                : currentStaffName;
 
         CustomerCareRecord record = CustomerCareRecord.builder()
                 .patient(patient)
                 .invoice(invoice)
                 .promotion(promotion)
+                .employee(currentEmployee)
                 .careType(type)
                 .channel(CareChannel.GMAIL)
-                .status(CareStatus.COMPLETED)
+                .status(finalStatus)
                 .careTime(LocalDateTime.now())
                 .notes(notes)
-                .createdByName(request.getCreatedByName() != null ? request.getCreatedByName() : "Nguyệt Nguyễn")
+                .outcome(finalStatus == CareStatus.COMPLETED ? "Đã gửi Email" : "Gửi thất bại")
+                .isAuto(false)
+                .createdByName(staffNameToRecord)
                 .build();
 
         record = careRepository.save(record);
@@ -1778,6 +2050,8 @@ public class CustomerCareServiceImpl implements CustomerCareService {
             String subject = "[Crown Dental] Thông tin chăm sóc khách hàng";
             if (careType == CareType.APPOINTMENT_REMINDER) {
                 subject = "[Crown Dental] Nhắc lịch hẹn khám tại phòng khám";
+            } else if (careType == CareType.POST_TREATMENT) {
+                subject = "[Crown Dental] Thăm hỏi sức khỏe & Hướng dẫn sau điều trị";
             } else if (careType == CareType.BIRTHDAY) {
                 subject = "[Crown Dental] Chúc mừng sinh nhật Quý khách!";
             } else if (careType == CareType.PAYMENT) {
@@ -1895,11 +2169,12 @@ public class CustomerCareServiceImpl implements CustomerCareService {
 
         long completed = allCares.stream().filter(c -> c.getStatus() == CareStatus.COMPLETED).count();
         long recare = allCares.stream().filter(c -> c.getStatus() == CareStatus.RECARE).count();
-        long failed = allCares.stream().filter(c -> c.getStatus() == CareStatus.FAILED || c.getStatus() == CareStatus.NO_ANSWER).count();
+        long failed = allCares.stream().filter(c -> c.getStatus() == CareStatus.FAILED || c.getStatus() == CareStatus.NO_ANSWER || c.getStatus() == CareStatus.REJECTED).count();
         long pending = allCares.stream().filter(c -> c.getStatus() == CareStatus.PENDING).count();
 
         long aptCount = appointmentRepository.count() + followUpAppointmentRepository.count();
         long bdayCount = patientRepository.findAll().stream().filter(p -> p.getDateOfBirth() != null).count();
+        long postTreatmentCount = allCares.stream().filter(c -> c.getCareType() == CareType.POST_TREATMENT).count();
         long generalCareCount = allCares.stream().filter(c -> c.getCareType() == CareType.GENERAL_CARE).count();
         long paymentCareCount = allCares.stream().filter(c -> c.getCareType() == CareType.PAYMENT).count();
         long promoCareCount = allCares.stream().filter(c -> c.getCareType() == CareType.PROMOTION).count();
@@ -1923,6 +2198,7 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                 .totalFailed(failed)
                 .totalAppointments(aptCount)
                 .totalBirthdays(bdayCount)
+                .totalPostTreatmentCare(postTreatmentCount)
                 .totalGeneralCare(generalCareCount)
                 .totalPaymentCare(paymentCareCount)
                 .totalPromotionCare(promoCareCount)
@@ -1977,8 +2253,31 @@ public class CustomerCareServiceImpl implements CustomerCareService {
             );
         }
 
-        List<String> cGroups = Arrays.asList("Tất cả", "Khách VIP", "Khách thân thiết", "Khách mới", "Khách tiềm năng");
-        List<String> cSources = Arrays.asList("Tất cả", "Facebook", "Website", "Người quen giới thiệu", "Trực tiếp", "Hotline", "Tiktok");
+        List<Patient> allPatients = patientRepository.findAll();
+        List<String> cGroups = new ArrayList<>();
+        cGroups.add("Tất cả");
+        allPatients.stream()
+                .map(Patient::getCustomerGroup)
+                .filter(Objects::nonNull)
+                .filter(s -> !s.isBlank())
+                .distinct()
+                .forEach(cGroups::add);
+        if (cGroups.size() == 1) {
+            cGroups.addAll(Arrays.asList("Khách VIP", "Khách thân thiết", "Khách mới", "Khách tiềm năng"));
+        }
+
+        List<String> cSources = new ArrayList<>();
+        cSources.add("Tất cả");
+        allPatients.stream()
+                .map(Patient::getCustomerSource)
+                .filter(Objects::nonNull)
+                .filter(s -> !s.isBlank())
+                .distinct()
+                .forEach(cSources::add);
+        if (cSources.size() == 1) {
+            cSources.addAll(Arrays.asList("Facebook", "Website", "Người quen giới thiệu", "Trực tiếp", "Hotline", "Tiktok"));
+        }
+
         List<String> cities = Arrays.asList("Tất cả", "TP. Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Bình Dương", "Đồng Nai", "Cần Thơ");
         List<String> districts = Arrays.asList("Tất cả", "Quận 1", "Quận 3", "Quận 5", "Quận 10", "Bình Thạnh", "Gò Vấp", "TP. Thủ Đức", "Phú Nhuận", "Tân Bình");
 
@@ -2005,10 +2304,10 @@ public class CustomerCareServiceImpl implements CustomerCareService {
         if (staff == null || staff.isBlank()) {
             if (c.getEmployee() != null && c.getEmployee().getFullName() != null) {
                 staff = c.getEmployee().getFullName();
-            } else if (c.getChannel() == CareChannel.GMAIL || c.getChannel() == CareChannel.EMAIL || c.getChannel() == CareChannel.SMS || c.getChannel() == CareChannel.ZALO_SMS) {
+            } else if (Boolean.TRUE.equals(c.getIsAuto()) || c.getChannel() == CareChannel.GMAIL || c.getChannel() == CareChannel.EMAIL || c.getChannel() == CareChannel.SMS || c.getChannel() == CareChannel.ZALO_SMS) {
                 staff = "Hệ thống tự động";
             } else {
-                staff = "Nguyễn Thảo (Lễ tân)";
+                staff = "Lễ tân phòng khám";
             }
         }
 
@@ -2017,6 +2316,8 @@ public class CustomerCareServiceImpl implements CustomerCareService {
         UUID promoId = c.getPromotion() != null ? c.getPromotion().getId() : null;
         String promoTitle = c.getPromotion() != null ? c.getPromotion().getTitle() : null;
         String couponCode = c.getPromotion() != null ? c.getPromotion().getCouponCode() : null;
+        UUID aptId = c.getAppointment() != null ? c.getAppointment().getId() : null;
+        UUID followUpId = c.getFollowUpAppointment() != null ? c.getFollowUpAppointment().getId() : null;
 
         return CustomerCareRecordResponseDTO.builder()
                 .id(c.getId())
@@ -2033,6 +2334,11 @@ public class CustomerCareServiceImpl implements CustomerCareService {
                 .statusLabel(c.getStatus() != null ? c.getStatus().getLabel() : "")
                 .careTime(c.getCareTime())
                 .notes(c.getNotes())
+                .outcome(c.getOutcome())
+                .nextCareDate(c.getNextCareDate())
+                .isAuto(Boolean.TRUE.equals(c.getIsAuto()))
+                .appointmentId(aptId)
+                .followUpAppointmentId(followUpId)
                 .invoiceId(invId)
                 .invoiceCode(invCode)
                 .promotionId(promoId)

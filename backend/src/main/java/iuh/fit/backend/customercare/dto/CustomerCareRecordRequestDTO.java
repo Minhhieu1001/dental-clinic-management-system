@@ -15,6 +15,7 @@ import java.util.UUID;
 public class CustomerCareRecordRequestDTO {
     private UUID patientId;
     private UUID appointmentId;
+    private UUID followUpAppointmentId;
     private UUID treatmentPlanId;
     private UUID prescriptionId;
     private UUID invoiceId;
@@ -24,6 +25,8 @@ public class CustomerCareRecordRequestDTO {
     private String careType;
     private String channel;
     private String status;
+    private String outcome;
+    private LocalDateTime nextCareDate;
     private LocalDateTime careTime;
     private String notes;
     private String createdByName;

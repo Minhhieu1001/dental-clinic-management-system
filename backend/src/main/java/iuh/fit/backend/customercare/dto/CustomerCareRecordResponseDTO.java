@@ -25,8 +25,13 @@ public class CustomerCareRecordResponseDTO {
     private String channelLabel;
     private String status;
     private String statusLabel;
+    private String outcome;
+    private LocalDateTime nextCareDate;
+    private Boolean isAuto;
     private LocalDateTime careTime;
     private String notes;
+    private UUID appointmentId;
+    private UUID followUpAppointmentId;
     private UUID invoiceId;
     private String invoiceCode;
     private UUID promotionId;

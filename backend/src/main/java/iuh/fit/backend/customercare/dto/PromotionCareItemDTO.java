@@ -43,6 +43,8 @@ public class PromotionCareItemDTO {
     private LocalDateTime careTime;
     private LocalDateTime lastCareTime; // Alias for careTime
     private String careNotes;
+    private String outcome;
+    private LocalDateTime nextCareDate;
     private String assignedEmployeeName;
     private String lastCareStaff;       // Alias for assignedEmployeeName
     private UUID lastCareId;

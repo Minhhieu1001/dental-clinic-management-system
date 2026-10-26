@@ -1,6 +1,7 @@
 package iuh.fit.backend.customercare.entity;
 
 import iuh.fit.backend.appointment.entity.Appointment;
+import iuh.fit.backend.appointment.entity.FollowUpAppointment;
 import iuh.fit.backend.billing.entity.Invoice;
 import iuh.fit.backend.customercare.enums.CareChannel;
 import iuh.fit.backend.customercare.enums.CareStatus;
@@ -48,6 +49,10 @@ public class CustomerCareRecord {
     private Appointment appointment;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "follow_up_appointment_id")
+    private FollowUpAppointment followUpAppointment;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "treatment_plan_id")
     private TreatmentPlan treatmentPlan;
 
@@ -77,6 +82,15 @@ public class CustomerCareRecord {
 
     @Column(name = "care_time")
     private LocalDateTime careTime;
+
+    @Column(name = "outcome", length = 100)
+    private String outcome;
+
+    @Column(name = "next_care_date")
+    private LocalDateTime nextCareDate;
+
+    @Column(name = "is_auto")
+    private Boolean isAuto;
 
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;

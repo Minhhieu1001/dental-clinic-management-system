@@ -2,10 +2,11 @@ package iuh.fit.backend.customercare.enums;
 
 public enum CareStatus {
     PENDING("Chưa chăm sóc"),
-    COMPLETED("Hoàn thành"),
-    RECARE("Cần chăm sóc lại"),
-    FAILED("Gửi thất bại"),
-    NO_ANSWER("Không nghe máy");
+    COMPLETED("Liên hệ thành công"),
+    RECARE("Hẹn chăm sóc lại"),
+    NO_ANSWER("Không nghe máy"),
+    REJECTED("Từ chối"),
+    FAILED("Gửi thất bại");
 
     private final String label;
 
@@ -19,11 +20,18 @@ public enum CareStatus {
 
     public static CareStatus fromString(String val) {
         if (val == null || val.isBlank()) return PENDING;
+        String trimmed = val.trim();
         try {
-            return CareStatus.valueOf(val.toUpperCase().trim());
+            return CareStatus.valueOf(trimmed.toUpperCase());
         } catch (IllegalArgumentException e) {
             for (CareStatus s : CareStatus.values()) {
-                if (s.getLabel().equalsIgnoreCase(val.trim())) return s;
+                if (s.getLabel().equalsIgnoreCase(trimmed) || s.name().equalsIgnoreCase(trimmed)) return s;
+            }
+            if ("Hoàn thành".equalsIgnoreCase(trimmed) || "Đã chăm sóc".equalsIgnoreCase(trimmed) || "Đã gửi ưu đãi".equalsIgnoreCase(trimmed) || "Đã gửi".equalsIgnoreCase(trimmed)) {
+                return COMPLETED;
+            }
+            if ("Cần chăm sóc lại".equalsIgnoreCase(trimmed) || "Cần gửi lại".equalsIgnoreCase(trimmed)) {
+                return RECARE;
             }
             return PENDING;
         }

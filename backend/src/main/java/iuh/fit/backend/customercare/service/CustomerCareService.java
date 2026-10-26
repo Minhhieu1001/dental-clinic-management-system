@@ -37,6 +37,15 @@ public interface CustomerCareService {
             String employeeId
     );
 
+    List<PostTreatmentCareItemDTO> getPostTreatmentCareList(
+            String search,
+            String startDate,
+            String endDate,
+            String careStatus,
+            String dentistId,
+            String employeeId
+    );
+
 
     List<BirthdayCareItemDTO> getBirthdayCareList(
             String search,

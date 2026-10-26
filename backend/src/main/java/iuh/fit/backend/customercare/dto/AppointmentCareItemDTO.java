@@ -25,6 +25,10 @@ public class AppointmentCareItemDTO {
     private String careChannel; // Gọi điện, Zalo SMS, Tin nhắn...
     private LocalDateTime careTime;
     private String careNotes;
+    private String outcome;
+    private LocalDateTime nextCareDate;
+    private Boolean reminded1Day;
+    private Boolean reminded1Hour;
     private String assignedEmployeeName;
     private UUID lastCareId;
     private String serviceName; // Dịch vụ / Lý do khám

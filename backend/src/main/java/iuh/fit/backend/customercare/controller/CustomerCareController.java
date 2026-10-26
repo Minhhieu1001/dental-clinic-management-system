@@ -66,6 +66,21 @@ public class CustomerCareController {
         return ResponseEntity.ok(result);
     }
 
+    @GetMapping("/post-treatments")
+    public ResponseEntity<List<PostTreatmentCareItemDTO>> getPostTreatmentCareList(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String careStatus,
+            @RequestParam(required = false) String dentistId,
+            @RequestParam(required = false) String employeeId
+    ) {
+        List<PostTreatmentCareItemDTO> result = customerCareService.getPostTreatmentCareList(
+                search, startDate, endDate, careStatus, dentistId, employeeId
+        );
+        return ResponseEntity.ok(result);
+    }
+
     @GetMapping("/birthdays")
     public ResponseEntity<List<BirthdayCareItemDTO>> getBirthdayCareList(
             @RequestParam(required = false) String search,

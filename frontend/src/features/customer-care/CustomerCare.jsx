@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Search,
   Calendar,
@@ -50,25 +51,30 @@ import {
   Megaphone,
   Flame,
   Share2,
+  CalendarPlus,
+  Headset,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 import customerCareService from '../../services/customerCare.service';
 import { getInvoiceById } from '../../services/invoice.service';
 import CustomerCareDetailModal from './CustomerCareDetailModal';
+import { OUTCOME_OPTIONS_BY_TAB } from './customerCare.constants';
 
 const TABS = [
-  { id: 'FILTER', label: 'Lọc tổng hợp' },
-  { id: 'GENERAL', label: 'Chăm sóc tổng hợp' },
+  { id: 'FILTER', label: 'Danh bạ CRM' },
+  { id: 'GENERAL', label: 'Lịch sử chăm sóc' },
   { id: 'APPOINTMENT', label: 'Nhắc lịch hẹn' },
+  { id: 'POST_TREATMENT', label: 'Sau điều trị' },
   { id: 'BIRTHDAY', label: 'Ngày sinh nhật' },
   { id: 'PAYMENT', label: 'Thanh toán' },
   { id: 'PROMOTION', label: 'Khuyến mãi' },
 ];
 
 export default function CustomerCare() {
+  const navigate = useNavigate();
   const { user } = useAuthStore();
-  const currentStaffName = user?.username || 'Nguyệt Nguyễn';
+  const currentStaffName = user?.fullName || user?.username || 'Nhân viên CSKH';
 
   // Active Tab
   const [activeTab, setActiveTab] = useState('FILTER');
@@ -119,6 +125,7 @@ export default function CustomerCare() {
   // Real Database Lists
   const [filterPatients, setFilterPatients] = useState([]);
   const [appointmentList, setAppointmentList] = useState([]);
+  const [postTreatmentList, setPostTreatmentList] = useState([]);
   const [birthdayList, setBirthdayList] = useState([]);
   const [generalCareList, setGeneralCareList] = useState([]);
   const [paymentList, setPaymentList] = useState([]);
@@ -130,6 +137,7 @@ export default function CustomerCare() {
   const [generalCareQuickFilter, setGeneralCareQuickFilter] = useState('ALL');
   const [aptQuickFilter, setAptQuickFilter] = useState('ALL');
   const [aptTypeFilter, setAptTypeFilter] = useState('ALL'); // 'ALL' | 'REGULAR' | 'FOLLOW_UP'
+  const [postTreatmentQuickFilter, setPostTreatmentQuickFilter] = useState('ALL');
   const [bdayQuickFilter, setBdayQuickFilter] = useState('ALL');
   const [bdayCustomerGroupFilter, setBdayCustomerGroupFilter] = useState('ALL');
   const [paymentQuickFilter, setPaymentQuickFilter] = useState('ALL');
@@ -146,6 +154,7 @@ export default function CustomerCare() {
   const [pageFilter, setPageFilter] = useState(1);
   const [pageGeneral, setPageGeneral] = useState(1);
   const [pageAppointment, setPageAppointment] = useState(1);
+  const [pagePostTreatment, setPagePostTreatment] = useState(1);
   const [pageBirthday, setPageBirthday] = useState(1);
   const [pagePayment, setPagePayment] = useState(1);
   const [pagePromotion, setPagePromotion] = useState(1);
@@ -188,6 +197,8 @@ export default function CustomerCare() {
     status: 'COMPLETED',
     careType: 'APPOINTMENT_REMINDER',
     notes: '',
+    outcome: '',
+    nextCareDate: '',
     patientId: '',
     patientName: '',
     patientCode: '',
@@ -316,6 +327,15 @@ export default function CustomerCare() {
           dentistId: dentistFilter !== 'ALL' ? dentistFilter : undefined,
         });
         setAppointmentList(res.data || []);
+      } else if (activeTab === 'POST_TREATMENT') {
+        const res = await customerCareService.getPostTreatmentCareList({
+          search: searchQuery ? searchQuery.trim() : undefined,
+          startDate: startDateFilter || undefined,
+          endDate: endDateFilter || undefined,
+          careStatus: careStatusFilter !== 'ALL' ? careStatusFilter : undefined,
+          dentistId: dentistFilter !== 'ALL' ? dentistFilter : undefined,
+        });
+        setPostTreatmentList(res.data || []);
       } else if (activeTab === 'BIRTHDAY') {
         const res = await customerCareService.getBirthdayCareList({
           search: searchQuery || undefined,
@@ -434,6 +454,9 @@ export default function CustomerCare() {
     if (type === 'APPOINTMENT') {
       careTypeEnum = 'APPOINTMENT_REMINDER';
       defaultNotes = `Nhắc lịch hẹn khám cho khách hàng ${item?.patientName || item?.fullName || ''}.`;
+    } else if (type === 'POST_TREATMENT') {
+      careTypeEnum = 'POST_TREATMENT';
+      defaultNotes = `Thăm hỏi sức khỏe răng miệng sau điều trị (${item?.serviceName || 'dịch vụ nha khoa'}) cho khách hàng ${item?.patientName || ''}.`;
     } else if (type === 'BIRTHDAY') {
       careTypeEnum = 'BIRTHDAY';
       defaultNotes = `Chúc mừng sinh nhật khách hàng ${item?.patientName || item?.fullName || ''}. Tặng voucher ưu đãi 20% dịch vụ trong tháng sinh nhật.`;
@@ -455,6 +478,8 @@ export default function CustomerCare() {
       status: 'COMPLETED',
       careType: careTypeEnum,
       notes: defaultNotes,
+      outcome: '',
+      nextCareDate: '',
       invoiceId: item?.invoiceId || '',
       promotionId: item?.promotionId || '',
       patientId: item?.patientId || '',
@@ -475,6 +500,8 @@ export default function CustomerCare() {
       status: 'COMPLETED',
       careType: 'GENERAL_CARE',
       notes: '',
+      outcome: '',
+      nextCareDate: '',
       patientId: allPatients.length > 0 ? allPatients[0].patientId : '',
       patientName: allPatients.length > 0 ? allPatients[0].fullName : '',
       patientCode: allPatients.length > 0 ? allPatients[0].patientCode : '',
@@ -492,9 +519,11 @@ export default function CustomerCare() {
 
     try {
       const careDateTime = `${modalForm.date}T${modalForm.time}:00`;
+      const isFollowUp = Boolean(modalCareItem?.isFollowUp);
       const payload = {
         patientId: modalForm.patientId || undefined,
-        appointmentId: modalCareItem?.appointmentId || undefined,
+        appointmentId: (!isFollowUp && modalCareItem?.appointmentId) ? modalCareItem.appointmentId : undefined,
+        followUpAppointmentId: (isFollowUp && modalCareItem?.appointmentId) ? modalCareItem.appointmentId : undefined,
         invoiceId: modalCareItem?.invoiceId || modalForm.invoiceId || undefined,
         promotionId: modalCareItem?.promotionId || modalForm.promotionId || undefined,
         careType: modalForm.careType,
@@ -502,6 +531,8 @@ export default function CustomerCare() {
         status: modalForm.status,
         careTime: careDateTime,
         notes: modalForm.notes,
+        outcome: modalForm.outcome || undefined,
+        nextCareDate: modalForm.nextCareDate ? `${modalForm.nextCareDate}T09:00:00` : undefined,
         createdByName: currentStaffName,
       };
 
@@ -964,13 +995,21 @@ export default function CustomerCare() {
     }
   };
 
-  // Render Status Badge
-  const renderStatusBadge = (status) => {
-    if (!status) return null;
+  // Render Status Badge chuẩn xác theo từng nghiệp vụ liên hệ thực tế
+  const renderStatusBadge = (status, context) => {
+    if (!status) {
+      return (
+        <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200">
+          Chưa chăm sóc
+        </span>
+      );
+    }
     const s = status.toLowerCase();
+
+    // 1. Dành riêng cho khuyến mãi / ưu đãi
     if (s.includes('sử dụng') || s.includes('áp dụng') || s.includes('hóa đơn')) {
       return (
-        <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+        <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
           Đã sử dụng
         </span>
       );
@@ -989,44 +1028,82 @@ export default function CustomerCare() {
         </span>
       );
     }
-    if (s.includes('đã gửi') || s.includes('hoàn thành')) {
+    if (s === 'đã gửi ưu đãi' || (context === 'PROMOTION' && (s.includes('đã gửi') || s === 'sent'))) {
       return (
-        <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+        <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
           Đã gửi ưu đãi
         </span>
       );
     }
-    if (s.includes('cần chăm sóc') || s.includes('gửi lại') || s.includes('recare')) {
-      return (
-        <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-          Cần gửi lại
-        </span>
-      );
-    }
-    if (s.includes('chưa gửi') || s.includes('chưa chăm sóc')) {
+    if (s === 'chưa gửi ưu đãi' || (context === 'PROMOTION' && s.includes('chưa gửi'))) {
       return (
         <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200">
           Chưa gửi ưu đãi
         </span>
       );
     }
-    if (s.includes('không có nhu cầu') || s.includes('thất bại')) {
+
+    // 2. Nghiệp vụ CSKH chung (Nhắc lịch, Sau điều trị, Sinh nhật, Thanh toán, Lịch sử)
+    if (s.includes('thành công') || s === 'completed' || s.includes('hoàn thành')) {
       return (
-        <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200">
-          Không có nhu cầu
+        <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          Liên hệ thành công
         </span>
       );
     }
-    if (s.includes('không nghe máy')) {
+    if (s.includes('chăm sóc lại') || s.includes('hẹn lại') || s === 'recare') {
       return (
-        <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-300">
+        <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+          Hẹn chăm sóc lại
+        </span>
+      );
+    }
+    if (s.includes('không nghe') || s === 'no_answer') {
+      return (
+        <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-orange-50 text-orange-700 border border-orange-200">
           Không nghe máy
         </span>
       );
     }
+    if (s.includes('từ chối') || s === 'rejected' || s.includes('không có nhu cầu')) {
+      return (
+        <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+          Từ chối tiếp nhận
+        </span>
+      );
+    }
+    if (s.includes('thất bại') || s === 'failed') {
+      return (
+        <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-red-50 text-red-700 border border-red-200">
+          Gửi thất bại
+        </span>
+      );
+    }
+    if (s.includes('chưa chăm sóc') || s === 'pending') {
+      return (
+        <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200">
+          Chưa chăm sóc
+        </span>
+      );
+    }
+
     return (
       <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200">
         {status}
+      </span>
+    );
+  };
+
+  // Render Outcome Badge (Phản hồi thực tế của khách hàng)
+  const renderOutcomeBadge = (outcome) => {
+    if (!outcome) return null;
+    return (
+      <span
+        title={`Phản hồi khách hàng: ${outcome}`}
+        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-purple-50 text-purple-700 border border-purple-200"
+      >
+        <CheckCircle2 size={11} className="text-purple-600 shrink-0" />
+        <span className="truncate max-w-[150px]">{outcome}</span>
       </span>
     );
   };
@@ -1285,6 +1362,8 @@ export default function CustomerCare() {
     switch (type) {
       case 'APPOINTMENT_REMINDER':
         return 'Nhắc lịch hẹn';
+      case 'POST_TREATMENT':
+        return 'Sau điều trị';
       case 'BIRTHDAY':
         return 'Ngày sinh nhật';
       case 'PAYMENT':
@@ -1293,7 +1372,7 @@ export default function CustomerCare() {
         return 'Khuyến mãi';
       case 'GENERAL_CARE':
       default:
-        return 'Chăm sóc tổng hợp';
+        return 'Lịch sử chăm sóc';
     }
   };
 
@@ -1645,6 +1724,55 @@ export default function CustomerCare() {
     const start = (pageAppointment - 1) * pageSize;
     return filteredAppointmentList.slice(start, start + pageSize);
   }, [filteredAppointmentList, pageAppointment, pageSize]);
+
+  // Filtered & Paginated Lists for Tab Post-Treatment (Sau điều trị)
+  const filteredPostTreatmentList = useMemo(() => {
+    let list = postTreatmentList;
+
+    if (postTreatmentQuickFilter === 'UNATTENDED') {
+      list = list.filter((p) => !p.careStatus || p.careStatus.includes('Chưa chăm sóc'));
+    } else if (postTreatmentQuickFilter === 'COMPLETED') {
+      list = list.filter((p) => p.careStatus && p.careStatus.includes('thành công'));
+    } else if (postTreatmentQuickFilter === 'RECARE') {
+      list = list.filter((p) => p.careStatus && (p.careStatus.includes('Hẹn') || p.careStatus.includes('Không nghe')));
+    } else if (postTreatmentQuickFilter === 'RECENT') {
+      list = list.filter((p) => p.daysSinceTreatment <= 3);
+    }
+
+    if (searchQuery && searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(
+        (p) =>
+          (p.patientCode && p.patientCode.toLowerCase().includes(q)) ||
+          (p.patientName && p.patientName.toLowerCase().includes(q)) ||
+          (p.phone && p.phone.includes(q)) ||
+          (p.serviceName && p.serviceName.toLowerCase().includes(q)) ||
+          (p.dentistName && p.dentistName.toLowerCase().includes(q)) ||
+          (p.careNotes && p.careNotes.toLowerCase().includes(q)) ||
+          (p.outcome && p.outcome.toLowerCase().includes(q))
+      );
+    }
+
+    if (careStatusFilter !== 'ALL') {
+      list = list.filter((p) => (p.careStatus || '') === careStatusFilter);
+    }
+
+    if (dentistFilter !== 'ALL') {
+      const selectedDentist = filterOptions.dentists.find((d) => String(d.id) === String(dentistFilter));
+      const dentistName = selectedDentist ? selectedDentist.name.toLowerCase() : '';
+      list = list.filter((p) => {
+        if (!p.dentistName) return false;
+        return p.dentistName.toLowerCase().includes(dentistName);
+      });
+    }
+
+    return list;
+  }, [postTreatmentList, postTreatmentQuickFilter, searchQuery, careStatusFilter, dentistFilter, filterOptions.dentists]);
+
+  const paginatedPostTreatment = useMemo(() => {
+    const start = (pagePostTreatment - 1) * pageSize;
+    return filteredPostTreatmentList.slice(start, start + pageSize);
+  }, [filteredPostTreatmentList, pagePostTreatment, pageSize]);
 
   // Filtered & Paginated Lists for Tab 4 (Birthdays)
   const filteredBirthdayList = useMemo(() => {
@@ -2587,9 +2715,10 @@ export default function CustomerCare() {
                     type="button"
                     onClick={handleOpenGeneralCreateCare}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#7c3aed] hover:bg-[#6d28d9] rounded-md transition-colors shadow-xs cursor-pointer"
+                    title="Ghi nhận khi khách hàng gọi đến hotline hoặc đến trực tiếp hỏi đáp"
                   >
-                    <Plus size={14} />
-                    Thêm chăm sóc
+                    <Headset size={14} />
+                    Tiếp nhận tư vấn / Cuộc gọi đến
                   </button>
                   <button
                     type="button"
@@ -3216,10 +3345,11 @@ export default function CustomerCare() {
                             {renderStatusBadge(apt.careStatus)}
                           </td>
                           <td className="py-2.5 px-3 text-gray-600 align-middle max-w-xs">
-                            {apt.careChannel || apt.careTime || apt.careNotes ? (
-                              <div className="flex flex-col gap-0.5">
+                            {apt.careChannel || apt.careTime || apt.careNotes || apt.outcome ? (
+                              <div className="flex flex-col gap-1">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   {renderChannelTag(apt.careChannel, apt.careChannel, apt)}
+                                  {renderOutcomeBadge(apt.outcome)}
                                   {apt.careTime && (
                                     <span className="text-[10px] text-gray-500 font-medium">
                                       {formatDateTime(apt.careTime)}
@@ -3271,6 +3401,234 @@ export default function CustomerCare() {
                 </table>
               </div>
               {renderPagination(filteredAppointmentList.length, pageAppointment, setPageAppointment)}
+            </div>
+          </div>
+        )}
+
+        {/* ===================== TAB: CHĂM SÓC SAU ĐIỀU TRỊ ===================== */}
+        {activeTab === 'POST_TREATMENT' && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-lg border border-gray-200 p-3 shadow-2xs space-y-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2.5 border-b border-gray-100">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 mr-2">
+                    <Activity size={15} className="text-emerald-600" />
+                    <span className="text-xs font-bold text-gray-700">Theo dõi sau điều trị:</span>
+                  </div>
+                  {[
+                    { id: 'ALL', label: 'Tất cả', count: postTreatmentList.length },
+                    {
+                      id: 'UNATTENDED',
+                      label: 'Chưa thăm hỏi',
+                      count: postTreatmentList.filter((p) => !p.careStatus || p.careStatus.includes('Chưa chăm sóc')).length,
+                      color: 'amber',
+                    },
+                    {
+                      id: 'COMPLETED',
+                      label: 'Đã liên hệ',
+                      count: postTreatmentList.filter((p) => p.careStatus && p.careStatus.includes('thành công')).length,
+                      color: 'emerald',
+                    },
+                    {
+                      id: 'RECARE',
+                      label: 'Cần hẹn lại',
+                      count: postTreatmentList.filter((p) => p.careStatus && (p.careStatus.includes('Hẹn') || p.careStatus.includes('Không nghe'))).length,
+                      color: 'rose',
+                    },
+                    {
+                      id: 'RECENT',
+                      label: 'Mới làm xong (≤ 3 ngày)',
+                      count: postTreatmentList.filter((p) => p.daysSinceTreatment <= 3).length,
+                      color: 'purple',
+                    },
+                  ].map((pill) => (
+                    <button
+                      key={pill.id}
+                      type="button"
+                      onClick={() => {
+                        setPostTreatmentQuickFilter(pill.id);
+                        setPagePostTreatment(1);
+                      }}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                        postTreatmentQuickFilter === pill.id
+                          ? 'bg-purple-600 text-white shadow-xs'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      <span>{pill.label}</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                          postTreatmentQuickFilter === pill.id
+                            ? 'bg-white/20 text-white'
+                            : pill.color === 'amber'
+                              ? 'bg-amber-100 text-amber-800'
+                              : pill.color === 'emerald'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : pill.color === 'rose'
+                                  ? 'bg-rose-100 text-rose-800'
+                                  : 'bg-gray-200 text-gray-700'
+                        }`}
+                      >
+                        {pill.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">
+                    Hiển thị <strong className="text-gray-900 font-bold">{filteredPostTreatmentList.length}</strong> ca điều trị
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleResetTabFilters()}
+                    className="p-1.5 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-md transition-colors"
+                    title="Làm mới danh sách"
+                  >
+                    <RefreshCw size={14} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Table */}
+              <div className="overflow-x-auto rounded-lg border border-gray-200">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-[#f8f9fc] text-gray-700 font-semibold uppercase text-[11px] tracking-wider border-b border-gray-200">
+                    <tr>
+                      <th className="py-2.5 px-3">Mã BN</th>
+                      <th className="py-2.5 px-3">Bệnh nhân</th>
+                      <th className="py-2.5 px-2.5">Điện thoại</th>
+                      <th className="py-2.5 px-3">Dịch vụ đã điều trị</th>
+                      <th className="py-2.5 px-3">Bác sĩ điều trị</th>
+                      <th className="py-2.5 px-3">Ngày hoàn thành</th>
+                      <th className="py-2.5 px-2.5 text-center">Trạng thái CSKH</th>
+                      <th className="py-2.5 px-3">Phản hồi & Kết quả hồi phục</th>
+                      <th className="py-2.5 px-3 text-center sticky right-0 bg-[#f8f9fc] z-10 w-24">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {paginatedPostTreatment.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="py-8 text-center text-gray-400">
+                          <Inbox size={28} className="mx-auto mb-2 text-gray-300" />
+                          Không có bệnh nhân nào hoàn thành điều trị phù hợp với bộ lọc
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedPostTreatment.map((item) => (
+                        <tr key={item.appointmentId} className="hover:bg-purple-50/30 transition-colors group">
+                          <td className="py-2.5 px-3 whitespace-nowrap font-mono font-semibold text-purple-700">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenHistory(item)}
+                              className="hover:underline cursor-pointer"
+                            >
+                              {item.patientCode || '—'}
+                            </button>
+                          </td>
+                          <td className="py-2.5 px-3 whitespace-nowrap">
+                            <div className="flex flex-col">
+                              <span className="font-semibold text-gray-900">{item.patientName}</span>
+                              <div className="mt-0.5">{renderCustomerGroupBadge(item.customerGroup)}</div>
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-2.5 whitespace-nowrap">
+                            <a
+                              href={item.phone ? `tel:${item.phone}` : undefined}
+                              className="font-medium text-gray-800 hover:text-purple-700 inline-flex items-center gap-1"
+                            >
+                              <Phone size={11} className="text-gray-400" />
+                              {item.phone || '—'}
+                            </a>
+                          </td>
+                          <td className="py-2.5 px-3 text-gray-800 font-medium max-w-xs">
+                            <div className="truncate" title={item.serviceName}>{item.serviceName}</div>
+                          </td>
+                          <td className="py-2.5 px-3 text-gray-700 whitespace-nowrap font-medium">
+                            {item.dentistName || '—'}
+                          </td>
+                          <td className="py-2.5 px-3 whitespace-nowrap">
+                            <div className="flex flex-col">
+                              <span className="font-medium text-gray-900">{formatDateTime(item.completedTime)}</span>
+                              <span className="text-[10px] text-gray-500 font-medium">
+                                {item.daysSinceTreatment === 0
+                                  ? 'Hôm nay'
+                                  : item.daysSinceTreatment === 1
+                                    ? '1 ngày trước'
+                                    : `${item.daysSinceTreatment} ngày trước`}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-2.5 text-center whitespace-nowrap">
+                            {renderStatusBadge(item.careStatus)}
+                          </td>
+                          <td className="py-2.5 px-3 max-w-xs">
+                            {item.careTime || item.careNotes || item.outcome ? (
+                              <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  {renderChannelTag(item.careChannel, item.careChannel, item)}
+                                  {renderOutcomeBadge(item.outcome)}
+                                  {item.careTime && (
+                                    <span className="text-[10px] text-gray-500 font-medium">
+                                      {formatDateTime(item.careTime)}
+                                    </span>
+                                  )}
+                                </div>
+                                {item.careNotes && (
+                                  <p className="text-[11px] text-gray-600 truncate italic" title={item.careNotes}>
+                                    "{item.careNotes}"
+                                  </p>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-gray-400 italic text-[11px]">Chưa thăm hỏi sau điều trị</span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3 text-center sticky right-0 bg-white group-hover:bg-[#fbf9fe] z-10 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap align-middle w-24">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                title="Xem hồ sơ bệnh nhân & lịch sử chăm sóc"
+                                onClick={() => handleOpenHistory(item)}
+                                className="w-7 h-7 rounded-md border border-sky-400 text-sky-600 hover:bg-sky-50 flex items-center justify-center transition-colors cursor-pointer"
+                              >
+                                <Info size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                title="Ghi nhận thăm hỏi sau điều trị"
+                                onClick={() => handleOpenCreateCare(item, 'POST_TREATMENT')}
+                                className="w-7 h-7 rounded-md border border-purple-400 text-purple-600 hover:bg-purple-50 flex items-center justify-center transition-colors cursor-pointer"
+                              >
+                                <Plus size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                title="Đặt lịch khám / Tái khám cho bệnh nhân"
+                                onClick={() => {
+                                  navigate(`/employee/appointments?patientCode=${item.patientCode || ''}&patientName=${encodeURIComponent(item.patientName || '')}`);
+                                }}
+                                className="w-7 h-7 rounded-md border border-emerald-400 text-emerald-600 hover:bg-emerald-50 flex items-center justify-center transition-colors cursor-pointer"
+                              >
+                                <CalendarPlus size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                title="Gửi Gmail thăm hỏi & hướng dẫn phục hồi"
+                                onClick={() => handleOpenDirectEmail(item)}
+                                className="w-7 h-7 rounded-md border border-rose-300 text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer"
+                              >
+                                <Mail size={13} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              {renderPagination(filteredPostTreatmentList.length, pagePostTreatment, setPagePostTreatment)}
             </div>
           </div>
         )}
@@ -4636,12 +4994,28 @@ export default function CustomerCare() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-2xs p-4 animate-in fade-in duration-150">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden border border-gray-200">
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between shrink-0">
-              <h2 className="text-base font-bold text-gray-800 tracking-tight">TẠO MỚI CHĂM SÓC</h2>
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between shrink-0 bg-gradient-to-r from-purple-50/80 to-white">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-purple-100 text-[#7c3aed] flex items-center justify-center font-bold">
+                  {modalCareItem ? <HeartHandshake size={18} /> : <Headset size={18} />}
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-gray-800 tracking-tight uppercase">
+                    {modalCareItem
+                      ? `Ghi nhận chăm sóc: ${modalForm.patientName || 'Khách hàng'}`
+                      : 'Tiếp nhận tư vấn / Cuộc gọi đến (Hotline)'}
+                  </h2>
+                  <p className="text-[11px] text-gray-500">
+                    {modalCareItem
+                      ? `Sự kiện: ${getCareTypeLabel(modalForm.careType)} • Kết quả tự động đồng bộ sang lịch hẹn & hồ sơ`
+                      : 'Ghi nhận thông tin khi khách hàng gọi hotline phòng khám hoặc hỏi đáp tại quầy'}
+                  </p>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={() => setIsCreateModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 p-1 rounded-md hover:bg-gray-100 transition-colors"
+                className="text-gray-400 hover:text-gray-600 p-1.5 rounded-md hover:bg-gray-100 transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -4693,29 +5067,49 @@ export default function CustomerCare() {
                     <option value="PHONE">Gọi điện</option>
                     <option value="GMAIL">Gmail</option>
                     <option value="SMS">Tin nhắn SMS</option>
-                    <option value="DIRECT">Trực tiếp</option>
-                    <option value="GIFT">Tặng quà</option>
+                    <option value="DIRECT">Trực tiếp tại quầy</option>
+                    <option value="ZALO">Zalo</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Trạng thái <span className="text-red-500">*</span>
+                    Trạng thái kết quả <span className="text-red-500">*</span>
                   </label>
                   <select
                     required
                     value={modalForm.status}
                     onChange={(e) => setModalForm({ ...modalForm, status: e.target.value })}
-                    className="w-full text-xs border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:outline-hidden focus:border-purple-500 bg-white"
+                    className="w-full text-xs border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:outline-hidden focus:border-purple-500 bg-white font-medium"
                   >
-                    <option value="COMPLETED">Hoàn thành</option>
-                    <option value="PENDING">Chưa chăm sóc</option>
-                    <option value="RECARE">Cần chăm sóc lại</option>
-                    <option value="FAILED">Gửi thất bại</option>
+                    <option value="COMPLETED">Liên hệ thành công</option>
+                    <option value="RECARE">Hẹn chăm sóc lại</option>
                     <option value="NO_ANSWER">Không nghe máy</option>
+                    <option value="REJECTED">Từ chối tiếp nhận</option>
+                    <option value="FAILED">Gửi thất bại</option>
+                    <option value="PENDING">Chưa chăm sóc</option>
                   </select>
                 </div>
               </div>
+
+              {/* Conditional Row: Ngày hẹn chăm sóc lại (nếu cần gọi lại hoặc không nghe máy) */}
+              {(modalForm.status === 'RECARE' || modalForm.status === 'NO_ANSWER') && (
+                <div className="bg-amber-50/70 border border-amber-200 rounded-md p-3">
+                  <label className="block text-xs font-semibold text-amber-900 mb-1">
+                    Ngày hẹn chăm sóc lại (Gọi lại) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={modalForm.nextCareDate}
+                    onChange={(e) => setModalForm({ ...modalForm, nextCareDate: e.target.value })}
+                    className="w-full text-xs border border-amber-300 rounded-md px-3 py-2 text-gray-800 bg-white focus:outline-hidden focus:border-amber-500"
+                  />
+                  <p className="text-[11px] text-amber-700 mt-1">
+                    Hệ thống sẽ nhắc nhở nhân viên liên hệ lại khách hàng vào ngày này.
+                  </p>
+                </div>
+              )}
 
               {/* If General Care opened: Select Patient from real DB */}
               {!modalCareItem && (
@@ -4777,11 +5171,12 @@ export default function CustomerCare() {
                   ) : (
                     <select
                       value={modalForm.careType}
-                      onChange={(e) => setModalForm({ ...modalForm, careType: e.target.value })}
+                      onChange={(e) => setModalForm({ ...modalForm, careType: e.target.value, outcome: '' })}
                       className="w-full text-xs border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:outline-hidden focus:border-purple-500 bg-white"
                     >
-                      <option value="GENERAL_CARE">Chăm sóc tổng hợp</option>
+                      <option value="GENERAL_CARE">Lịch sử chăm sóc chung</option>
                       <option value="APPOINTMENT_REMINDER">Nhắc lịch hẹn</option>
+                      <option value="POST_TREATMENT">Sau điều trị</option>
                       <option value="BIRTHDAY">Ngày sinh nhật</option>
                       <option value="PAYMENT">Thanh toán / Công nợ</option>
                       <option value="PROMOTION">Khuyến mãi / Sự kiện / Lễ tết</option>
@@ -4790,17 +5185,66 @@ export default function CustomerCare() {
                 </div>
               </div>
 
-              {/* Row 4: Nội dung chăm sóc * */}
+              {/* Row 4: Phản hồi khách hàng (Outcome) */}
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Nội dung chăm sóc <span className="text-red-500">*</span>
+                  Phản hồi của khách hàng (Kết quả)
+                </label>
+                {(() => {
+                  const careKey = modalForm.careType === 'APPOINTMENT_REMINDER'
+                    ? 'appointments'
+                    : modalForm.careType === 'POST_TREATMENT'
+                      ? 'post-treatment'
+                      : modalForm.careType === 'BIRTHDAY'
+                        ? 'birthdays'
+                        : modalForm.careType === 'PAYMENT'
+                          ? 'payments'
+                          : modalForm.careType === 'PROMOTION'
+                            ? 'promotions'
+                            : 'general';
+                  const suggestions = OUTCOME_OPTIONS_BY_TAB[careKey] || OUTCOME_OPTIONS_BY_TAB.general;
+                  return (
+                    <div className="space-y-1.5">
+                      <select
+                        value={suggestions.includes(modalForm.outcome) ? modalForm.outcome : (modalForm.outcome ? '__CUSTOM__' : '')}
+                        onChange={(e) => {
+                          if (e.target.value !== '__CUSTOM__') {
+                            setModalForm({ ...modalForm, outcome: e.target.value });
+                          }
+                        }}
+                        className="w-full text-xs border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:outline-hidden focus:border-purple-500 bg-white"
+                      >
+                        <option value="">-- Chọn phản hồi phổ biến --</option>
+                        {suggestions.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                        <option value="__CUSTOM__">Nhập phản hồi khác...</option>
+                      </select>
+                      <input
+                        type="text"
+                        placeholder="Hoặc nhập chi tiết phản hồi của khách..."
+                        value={modalForm.outcome}
+                        onChange={(e) => setModalForm({ ...modalForm, outcome: e.target.value })}
+                        className="w-full text-xs border border-gray-300 rounded-md px-3 py-1.5 text-gray-700 focus:outline-hidden focus:border-purple-500 bg-white"
+                      />
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Row 5: Ghi chú chi tiết * */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Nội dung chăm sóc chi tiết <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   required
                   rows={4}
                   value={modalForm.notes}
                   onChange={(e) => setModalForm({ ...modalForm, notes: e.target.value })}
-                  placeholder="Nội dung chăm sóc"
+                  placeholder="Ghi nhận nội dung trao đổi, tình trạng của khách hàng..."
                   className="w-full text-xs border border-gray-300 rounded-md p-3 text-gray-700 focus:outline-hidden focus:border-purple-500"
                 />
               </div>

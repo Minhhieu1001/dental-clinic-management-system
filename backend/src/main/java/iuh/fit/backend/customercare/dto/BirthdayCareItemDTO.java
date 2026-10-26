@@ -26,6 +26,8 @@ public class BirthdayCareItemDTO {
     private String careChannel;
     private LocalDateTime careTime;
     private String careNotes;
+    private String outcome;
+    private LocalDateTime nextCareDate;
     private String assignedEmployeeName;
     private UUID lastCareId;
     private Boolean isToday;

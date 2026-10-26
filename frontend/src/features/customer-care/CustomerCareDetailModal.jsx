@@ -53,6 +53,8 @@ export default function CustomerCareDetailModal({
     channel: 'PHONE',
     status: 'COMPLETED',
     careType: invoiceId ? 'PAYMENT' : 'APPOINTMENT_REMINDER',
+    outcome: '',
+    nextCareDate: '',
     notes: '',
     careTime: new Date().toISOString().substring(0, 16),
   });
@@ -298,6 +300,8 @@ export default function CustomerCareDetailModal({
         status: addCareForm.status,
         careType: addCareForm.careType,
         notes: addCareForm.notes,
+        outcome: addCareForm.outcome || undefined,
+        nextCareDate: addCareForm.nextCareDate ? `${addCareForm.nextCareDate}T09:00:00` : undefined,
         careTime: addCareForm.careTime,
         createdByName: currentStaffName,
       });
@@ -307,6 +311,8 @@ export default function CustomerCareDetailModal({
         channel: 'PHONE',
         status: 'COMPLETED',
         careType: invoiceId ? 'PAYMENT' : 'APPOINTMENT_REMINDER',
+        outcome: '',
+        nextCareDate: '',
         notes: '',
         careTime: new Date().toISOString().substring(0, 16),
       });
@@ -613,12 +619,25 @@ export default function CustomerCareDetailModal({
                               >
                                 {c.statusLabel || c.status || 'Hoàn thành'}
                               </span>
+                              {c.nextCareDate && (
+                                <div className="text-[10px] text-amber-700 font-medium mt-0.5">
+                                  Hẹn lại: {formatDateTime(c.nextCareDate).split(',')[0]}
+                                </div>
+                              )}
                             </td>
                             <td className="py-2.5 px-3 text-gray-700 whitespace-nowrap border-b border-gray-100">
-                              {c.createdByName || 'Nguyệt Nguyễn'}
+                              {c.createdByName || 'Nhân viên CSKH'}
                             </td>
-                            <td className="py-2.5 px-3 text-gray-700 max-w-md truncate border-b border-gray-100" title={c.notes}>
-                              {c.notes || '—'}
+                            <td className="py-2.5 px-3 text-gray-700 max-w-md border-b border-gray-100">
+                              <div className="flex flex-col gap-0.5">
+                                {c.outcome && (
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200 self-start">
+                                    <CheckCircle2 size={11} className="text-purple-600" />
+                                    {c.outcome}
+                                  </span>
+                                )}
+                                <span className="truncate italic" title={c.notes}>{c.notes || '—'}</span>
+                              </div>
                             </td>
                           </tr>
                         ))
@@ -949,13 +968,14 @@ export default function CustomerCareDetailModal({
                 <label className="block text-gray-700 font-medium mb-1">Loại chăm sóc</label>
                 <select
                   value={addCareForm.careType}
-                  onChange={(e) => setAddCareForm({ ...addCareForm, careType: e.target.value })}
+                  onChange={(e) => setAddCareForm({ ...addCareForm, careType: e.target.value, outcome: '' })}
                   className="w-full border border-gray-300 rounded px-2.5 py-1.5 focus:outline-purple-500"
                 >
                   <option value="APPOINTMENT_REMINDER">Nhắc lịch hẹn</option>
+                  <option value="POST_TREATMENT">Sau điều trị</option>
                   <option value="PAYMENT">Thanh toán / Công nợ</option>
                   <option value="BIRTHDAY">Ngày sinh nhật</option>
-                  <option value="GENERAL_CARE">Chăm sóc tổng hợp</option>
+                  <option value="GENERAL_CARE">Lịch sử chăm sóc chung</option>
                 </select>
               </div>
 
@@ -969,23 +989,49 @@ export default function CustomerCareDetailModal({
                   <option value="PHONE">Gọi điện</option>
                   <option value="GMAIL">Gmail</option>
                   <option value="SMS">Tin nhắn SMS</option>
-                  <option value="DIRECT">Trực tiếp</option>
+                  <option value="DIRECT">Trực tiếp tại quầy</option>
+                  <option value="ZALO">Zalo</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-gray-700 font-medium mb-1">Trạng thái chăm sóc</label>
+                <label className="block text-gray-700 font-medium mb-1">Trạng thái kết quả</label>
                 <select
                   value={addCareForm.status}
                   onChange={(e) => setAddCareForm({ ...addCareForm, status: e.target.value })}
-                  className="w-full border border-gray-300 rounded px-2.5 py-1.5 focus:outline-purple-500"
+                  className="w-full border border-gray-300 rounded px-2.5 py-1.5 focus:outline-purple-500 font-medium"
                 >
-                  <option value="COMPLETED">Hoàn thành</option>
-                  <option value="RECARE">Cần chăm sóc lại</option>
+                  <option value="COMPLETED">Liên hệ thành công</option>
+                  <option value="RECARE">Hẹn chăm sóc lại</option>
                   <option value="NO_ANSWER">Không nghe máy</option>
+                  <option value="REJECTED">Từ chối tiếp nhận</option>
                   <option value="FAILED">Gửi thất bại</option>
                   <option value="PENDING">Chưa chăm sóc</option>
                 </select>
+              </div>
+
+              {(addCareForm.status === 'RECARE' || addCareForm.status === 'NO_ANSWER') && (
+                <div className="bg-amber-50 p-2.5 rounded border border-amber-200">
+                  <label className="block text-amber-900 font-medium mb-1">Ngày hẹn chăm sóc lại</label>
+                  <input
+                    type="date"
+                    required
+                    value={addCareForm.nextCareDate}
+                    onChange={(e) => setAddCareForm({ ...addCareForm, nextCareDate: e.target.value })}
+                    className="w-full border border-amber-300 rounded px-2 py-1 bg-white focus:outline-amber-500"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-gray-700 font-medium mb-1">Phản hồi của khách hàng (Kết quả)</label>
+                <input
+                  type="text"
+                  placeholder="Ví dụ: Xác nhận đến đúng giờ / Hồi phục tốt / Hứa thanh toán..."
+                  value={addCareForm.outcome}
+                  onChange={(e) => setAddCareForm({ ...addCareForm, outcome: e.target.value })}
+                  className="w-full border border-gray-300 rounded px-2.5 py-1.5 focus:outline-purple-500"
+                />
               </div>
 
               <div>
@@ -999,11 +1045,11 @@ export default function CustomerCareDetailModal({
               </div>
 
               <div>
-                <label className="block text-gray-700 font-medium mb-1">Nội dung chăm sóc *</label>
+                <label className="block text-gray-700 font-medium mb-1">Nội dung chăm sóc chi tiết *</label>
                 <textarea
                   rows={3}
                   required
-                  placeholder="Ví dụ: khách đồng ý thời gian đó đến được..."
+                  placeholder="Ghi nhận nội dung trao đổi cụ thể..."
                   value={addCareForm.notes}
                   onChange={(e) => setAddCareForm({ ...addCareForm, notes: e.target.value })}
                   className="w-full border border-gray-300 rounded px-2.5 py-1.5 focus:outline-purple-500"

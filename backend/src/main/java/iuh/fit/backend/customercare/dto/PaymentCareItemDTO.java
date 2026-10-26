@@ -42,6 +42,8 @@ public class PaymentCareItemDTO {
     private String careChannel;        // Gọi điện, Zalo / SMS, Email, Trực tiếp...
     private LocalDateTime careTime;
     private String careNotes;
+    private String outcome;
+    private LocalDateTime nextCareDate;
     private String assignedEmployeeName;
     private UUID lastCareId;
 

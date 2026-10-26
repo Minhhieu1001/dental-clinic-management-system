@@ -16,6 +16,11 @@ export const customerCareService = {
     return api.get('/customer-care/appointments', { params });
   },
 
+  // 3b. Chăm sóc sau điều trị
+  getPostTreatmentCareList: (params) => {
+    return api.get('/customer-care/post-treatments', { params });
+  },
+
   // 4. Ngày sinh nhật
   getBirthdayCareList: (params) => {
     return api.get('/customer-care/birthdays', { params });
