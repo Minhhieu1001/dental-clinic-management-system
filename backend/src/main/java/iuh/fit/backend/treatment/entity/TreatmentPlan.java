@@ -32,6 +32,14 @@ public class TreatmentPlan {
     @JoinColumn(name = "examination_result_id", unique = true)
     private ExaminationResult examinationResult;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "patient_id")
+    private Patient patient;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "dentist_id")
+    private Dentist dentist;
+
     @Column(length = 255)
     private String planName;
 

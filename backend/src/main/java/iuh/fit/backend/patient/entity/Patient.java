@@ -81,6 +81,18 @@ public class Patient {
     @JoinColumn(name = "user_id")
     private User user;
 
+    @Column(name = "customer_group", length = 100)
+    private String customerGroup;
+
+    @Column(name = "customer_source", length = 100)
+    private String customerSource;
+
+    @Column(name = "customer_card", length = 100)
+    private String customerCard;
+
+    @Column(name = "notes", columnDefinition = "TEXT")
+    private String notes;
+
     @Builder.Default
     @OneToMany(mappedBy = "patient", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<MedicalRecord> medicalRecords = new ArrayList<>();

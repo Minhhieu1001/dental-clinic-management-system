@@ -3,6 +3,7 @@ package iuh.fit.backend.appointment.entity;
 import iuh.fit.backend.appointment.enums.StatusAppointment;
 import iuh.fit.backend.inforclinic.entity.Branch;
 import iuh.fit.backend.medicalrecord.entity.MedicalRecord;
+import iuh.fit.backend.patient.entity.Patient;
 import iuh.fit.backend.user.entity.Dentist;
 import iuh.fit.backend.user.entity.Employee;
 import jakarta.persistence.*;
@@ -23,6 +24,10 @@ public class Appointment {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "patient_id")
+    private Patient patient;
 
     @Column(length = 255)
     private String patientName;

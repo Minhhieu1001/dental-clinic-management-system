@@ -44,7 +44,6 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
     private final AppointmentRepository appointmentRepository;
     private final SimpMessagingTemplate simpMessagingTemplate;
 
-
     @Override
     @Transactional
     public TreatmentPlanResponse createTreatmentPlan(TreatmentPlanRequest request) {
