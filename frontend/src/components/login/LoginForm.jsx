@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /* ─── Animation variants ─── */
@@ -208,9 +209,9 @@ export default function LoginForm({
                   Ghi nhớ đăng nhập
                 </span>
               </label>
-              <a href="#" className="text-sm text-blue-600 hover:text-blue-700 transition-colors font-medium">
+              <Link to="/forgot-password" className="text-sm text-blue-600 hover:text-blue-700 transition-colors font-medium">
                 Quên mật khẩu?
-              </a>
+              </Link>
             </motion.div>
 
             {/* Submit Button */}

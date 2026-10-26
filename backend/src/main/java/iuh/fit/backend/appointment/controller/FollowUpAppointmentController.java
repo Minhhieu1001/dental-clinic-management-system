@@ -20,6 +20,14 @@ public class FollowUpAppointmentController {
 
     private final FollowUpAppointmentService followUpAppointmentService;
 
+    @GetMapping("/patient/{patientId}/current-month")
+    public ResponseEntity<ApiResponse<List<FollowUpAppointmentDTO>>> getCurrentMonthFollowUpAppointmentsByPatientId(
+            @PathVariable UUID patientId) {
+        List<FollowUpAppointmentDTO> list = followUpAppointmentService
+                .getCurrentMonthFollowUpAppointmentsByPatientId(patientId);
+        return ResponseEntity.ok(ApiResponse.success("Lấy lịch tái khám trong tháng hiện tại của bệnh nhân thành công", list));
+    }
+
     @GetMapping
     public ResponseEntity<ApiResponse<List<FollowUpAppointmentDTO>>> getAllFollowUpAppointments(
             @RequestParam(required = false) UUID patientId,

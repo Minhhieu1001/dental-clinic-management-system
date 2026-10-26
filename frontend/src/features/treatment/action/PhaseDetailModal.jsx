@@ -21,6 +21,8 @@ import {
   Edit3,
   Trash2,
   Save,
+  Building2,
+  MapPin,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { TreatmentVisitModal } from './TreatmentVisitModal';
@@ -33,6 +35,7 @@ export function PhaseDetailModal({
   allPhases = [],
   patient = null,
   planInfo = {},
+  dentistId = null,
   loggedInDoctorName = '',
   onUpdatePhaseStatus,
   onSaveVisit,
@@ -184,9 +187,6 @@ export function PhaseDetailModal({
     }
     if (onUpdatePhaseStatus) {
       onUpdatePhaseStatus(currentPhase.phase_id, 'COMPLETED');
-      toast.success(`Đã nghiệm thu và hoàn tất ${currentPhase.phase_name}!`, {
-        icon: '✓',
-      });
     }
   };
 
@@ -198,7 +198,7 @@ export function PhaseDetailModal({
       visitOrder: nextOrder,
       visitName: `Buổi ${nextOrder}: `,
       start_date: new Date().toISOString().split('T')[0],
-      status: 'PENDING',
+      status: 'IN_PROGRESS',
       clinical_notes: '',
       assigned_dentist: loggedInDoctorName || planInfo.dentistName || '',
     });
@@ -215,7 +215,6 @@ export function PhaseDetailModal({
   const handleQuickChangeVisitStatus = (visitId, newStatus) => {
     if (onToggleVisitStatus) {
       onToggleVisitStatus(currentPhase.phase_id, visitId, newStatus);
-      toast.success(`Đã đổi trạng thái buổi khám sang "${STATUS_CONFIG[newStatus]?.label || newStatus}"`);
     }
   };
 
@@ -301,9 +300,7 @@ export function PhaseDetailModal({
             {/* ================= 2. TIMELINE TIẾN TRÌNH CÁC GIAI ĐOẠN ================= */}
             <div className="bg-slate-900 border-b border-slate-800 px-4 py-2 sm:px-5 shrink-0 overflow-x-auto">
               <div className="flex items-center gap-2.5 min-w-max py-0.5">
-                <span className="text-xs font-semibold text-slate-400 mr-1">
-                  Lộ trình:
-                </span>
+
 
                 {allPhases.map((p, idx) => {
                   const isCurrent = String(p.phase_id) === String(currentPhase.phase_id);
@@ -459,6 +456,7 @@ export function PhaseDetailModal({
                         { value: 'PENDING', label: 'Chờ thực hiện', active: 'bg-amber-100 text-amber-900 border-amber-300 font-bold' },
                         { value: 'IN_PROGRESS', label: 'Đang điều trị', active: 'bg-blue-100 text-blue-900 border-blue-300 font-bold' },
                         { value: 'COMPLETED', label: 'Đã hoàn thành', active: 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold' },
+                        { value: 'CANCEL', label: 'Đã hủy', active: 'bg-rose-100 text-rose-900 border-rose-300 font-bold' },
                       ].map((st) => (
                         <button
                           key={st.value}
@@ -632,7 +630,7 @@ export function PhaseDetailModal({
                                   <h5 className="font-bold text-slate-900 text-sm leading-snug truncate" title={visit.visitName}>
                                     {visit.visitName}
                                   </h5>
-                                  <div className="flex items-center gap-2.5 text-[11px] text-slate-500 font-medium mt-1">
+                                  <div className="flex items-center gap-2.5 text-[11px] text-slate-500 font-medium mt-1 flex-wrap">
                                     <span className="inline-flex items-center gap-1">
                                       <Calendar size={11} className="text-slate-400 shrink-0" />
                                       <span>{formatDateDisplay(visit.start_date)}</span>
@@ -642,6 +640,15 @@ export function PhaseDetailModal({
                                       <User size={11} className="text-indigo-500 shrink-0" />
                                       <span className="truncate max-w-[160px]">{visit.assigned_dentist || planInfo.dentistName || 'Chưa phân công'}</span>
                                     </span>
+                                    {visit.branchName && (
+                                      <>
+                                        <span className="text-slate-300">•</span>
+                                        <span className="inline-flex items-center gap-1 text-teal-700 font-semibold" title={visit.branchAddress}>
+                                          <Building2 size={11} className="text-teal-600 shrink-0" />
+                                          <span className="truncate max-w-[180px]">{visit.branchName}</span>
+                                        </span>
+                                      </>
+                                    )}
                                   </div>
                                 </div>
                               </div>
@@ -650,8 +657,7 @@ export function PhaseDetailModal({
                               <div className="flex items-center gap-2 shrink-0">
                                 <div className="inline-flex rounded-md border border-slate-200 bg-white p-0.5 shadow-2xs">
                                   {[
-                                    { key: 'PENDING', label: 'Chờ khám', active: 'bg-amber-100 text-amber-900 border-amber-300 font-bold' },
-                                    { key: 'IN_PROGRESS', label: 'Đang làm', active: 'bg-blue-100 text-blue-900 border-blue-300 font-bold' },
+                                    { key: 'IN_PROGRESS', label: 'Đang thực hiện', active: 'bg-blue-100 text-blue-900 border-blue-300 font-bold' },
                                     { key: 'COMPLETED', label: 'Hoàn tất', active: 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold' },
                                   ].map((s) => (
                                     <button
@@ -678,6 +684,25 @@ export function PhaseDetailModal({
                                 </button>
                               </div>
                             </div>
+
+                            {/* Thông tin cơ sở khám */}
+                            {(visit.branchName || visit.branchAddress) && (
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-600 px-2.5 py-1.5 rounded bg-white border border-slate-200">
+                                <div className="flex items-center gap-1 font-semibold text-teal-800">
+                                  <Building2 size={12} className="text-teal-600 shrink-0" />
+                                  <span>Cơ sở: <strong>{visit.branchName}</strong></span>
+                                </div>
+                                {visit.branchAddress && (
+                                  <>
+                                    <span className="text-slate-300 hidden sm:inline">•</span>
+                                    <div className="flex items-center gap-1 text-slate-500">
+                                      <MapPin size={12} className="text-rose-500 shrink-0" />
+                                      <span className="truncate">{visit.branchAddress}</span>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            )}
 
                             {/* Ghi chú kết quả thao tác lâm sàng */}
                             <div className="bg-white p-3 rounded-md border border-slate-200 text-xs space-y-2 shadow-2xs">

@@ -3,10 +3,18 @@ package iuh.fit.backend.patient.service.impl;
 import iuh.fit.backend.common.exception.AppException;
 import iuh.fit.backend.common.exception.ErrorCode;
 import iuh.fit.backend.billing.dto.PatientInvoiceDataResponse;
+import iuh.fit.backend.inforclinic.entity.Branch;
+import iuh.fit.backend.inforclinic.repository.BranchRepository;
 import iuh.fit.backend.medicalrecord.entity.MedicalRecord;
 import iuh.fit.backend.medicalrecord.repository.MedicalRecordRepository;
 import iuh.fit.backend.patient.dto.PatientCreateDTO;
 import iuh.fit.backend.patient.dto.PatientDTO;
+import iuh.fit.backend.patient.dto.PatientStatisticsResponse;
+import iuh.fit.backend.appointment.repository.AppointmentRepository;
+import iuh.fit.backend.prescription.repository.PrescriptionRepository;
+import iuh.fit.backend.treatment.repository.TreatmentPlanRepository;
+import iuh.fit.backend.billing.repository.InvoiceRepository;
+import iuh.fit.backend.billing.enums.PaymentStatus;
 import iuh.fit.backend.patient.entity.Patient;
 import iuh.fit.backend.patient.enums.Gender;
 import iuh.fit.backend.patient.repository.PatientRepository;
@@ -25,6 +33,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -46,6 +56,36 @@ public class PatientServiceImpl implements PatientService {
     private final UserRepository userRepository;
     private final DentistRepository dentistRepository;
     private final MedicalRecordRepository medicalRecordRepository;
+    private final BranchRepository branchRepository;
+    private final AppointmentRepository appointmentRepository;
+    private final PrescriptionRepository prescriptionRepository;
+    private final TreatmentPlanRepository treatmentPlanRepository;
+    private final InvoiceRepository invoiceRepository;
+
+    @Override
+    @Transactional(readOnly = true)
+    public PatientStatisticsResponse getPatientStatistics(UUID id) {
+        if (!patientRepository.existsById(id)) {
+            throw new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy hồ sơ bệnh nhân ID: " + id);
+        }
+
+        // Include today and the preceding 29 calendar days in Vietnam.
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+        LocalDateTime start = today.minusDays(29).atStartOfDay();
+        LocalDateTime end = today.plusDays(1).atStartOfDay();
+
+        return PatientStatisticsResponse.builder()
+                .totalAppointmentsLast30Days(appointmentRepository.countByPatientAndDateRange(id, start, end))
+                .totalPrescriptions(prescriptionRepository.countByExaminationResultMedicalRecordPatientId(id))
+                .totalTreatmentPlans(treatmentPlanRepository.countByExaminationResultMedicalRecordPatientId(id))
+                .completedTreatmentPlans(treatmentPlanRepository
+                        .countByExaminationResultMedicalRecordPatientIdAndStatus(id, StatusPhase.COMPLETED))
+                .inProgressTreatmentPlans(treatmentPlanRepository
+                        .countByExaminationResultMedicalRecordPatientIdAndStatus(id, StatusPhase.IN_PROGRESS))
+                .totalOutstandingDebt(invoiceRepository.sumOutstandingDebtByPatientId(id, PaymentStatus.CANCELLED))
+                .totalInvoices(invoiceRepository.countByPatientId(id))
+                .build();
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -110,6 +150,12 @@ public class PatientServiceImpl implements PatientService {
     @Override
     @Transactional
     public PatientDTO createPatient(PatientCreateDTO dto) {
+        if (dto.getBranchId() == null || dto.getBranchId().isBlank()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Vui lòng chọn chi nhánh");
+        }
+        Branch branch = branchRepository.findById(dto.getBranchId().trim())
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND,
+                        "Không tìm thấy chi nhánh: " + dto.getBranchId()));
         String patientCode = "PA-" + (System.currentTimeMillis() % 1000000);
         Patient patient = Patient.builder()
                 .patientCode(patientCode)
@@ -164,37 +210,20 @@ public class PatientServiceImpl implements PatientService {
                 }
             }
 
-            // 3 biến truyền từ FE: tên bệnh viện/phòng khám, địa chỉ bệnh viện, tên hồ sơ
-            String clinicName = (dto.getDentalClinicName() != null && !dto.getDentalClinicName().trim().isEmpty())
-                    ? dto.getDentalClinicName().trim()
-                    : "Nha Khoa Quốc Tế Crown Dental";
-
-            String clinicAddress = (dto.getClinicAddress() != null && !dto.getClinicAddress().trim().isEmpty())
-                    ? dto.getClinicAddress().trim()
-                    : (patient.getAddress() != null && !patient.getAddress().trim().isEmpty()
-                            ? patient.getAddress().trim()
-                            : "12 Nguyễn Văn Bảo, Phường 4, Quận Gò Vấp, TP. Hồ Chí Minh");
-
-            String defaultFileName = "Hồ sơ điện tử răng hàm mặt";
-
-            String fileName = (dto.getFileName() != null && !dto.getFileName().trim().isEmpty())
-                    ? dto.getFileName().trim()
-                    : defaultFileName;
 
             MedicalRecord medicalRecord = MedicalRecord.builder()
                     .patient(patient)
                     .dentist(assignedDentist)
-                    .fileName(fileName)
-                    .dentalClinicName(clinicName)
-                    .address(clinicAddress)
+                    .branch(branch)
+                    .treatmentNotes(dto.getNotes())
                     .recordDate(LocalDateTime.now())
                     .build();
 
             medicalRecordRepository.save(medicalRecord);
-            log.info("Successfully created default medical record for patient: {} (File: {}, Dentist: {})",
-                    patient.getPatientCode(), fileName, (assignedDentist != null ? assignedDentist.getId() : "NONE (Receptionist)"));
+            log.info("Successfully created default medical record for patient");
         } catch (Exception e) {
             log.error("Failed to create default medical record for patient {}: {}", patient.getPatientCode(), e.getMessage(), e);
+            throw e;
         }
 
         return mapToDTO(patient);

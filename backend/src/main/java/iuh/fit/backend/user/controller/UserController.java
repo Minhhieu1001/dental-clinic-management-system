@@ -1,6 +1,13 @@
 package iuh.fit.backend.user.controller;
 
 import iuh.fit.backend.user.dto.UserRequest;
+import iuh.fit.backend.user.dto.ChangePasswordRequest;
+import iuh.fit.backend.common.exception.AppException;
+import iuh.fit.backend.common.exception.ErrorCode;
+import iuh.fit.backend.common.response.ApiResponse;
+import iuh.fit.backend.common.security.CustomUserDetails;
+import jakarta.validation.Valid;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import iuh.fit.backend.user.dto.UserResponse;
 import iuh.fit.backend.user.dto.UpdateUserStatusRequest;
 import iuh.fit.backend.user.service.UserService;
@@ -54,6 +61,17 @@ public class UserController {
     @PutMapping("/{id}")
     public UserResponse updateUser(@PathVariable UUID id, @RequestBody UserRequest request) {
         return userService.updateUser(id, request);
+    }
+
+    @PutMapping("/me/password")
+    public ApiResponse<Void> changePassword(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @Valid @RequestBody ChangePasswordRequest request) {
+        if (principal == null) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+        userService.changePassword(principal.getUser().getId(), request);
+        return ApiResponse.success("Đổi mật khẩu thành công", null);
     }
 
     @PutMapping("/{id}/status")

@@ -1,6 +1,11 @@
 import { create } from 'zustand';
-import { login as loginService, logout as logoutService, getMe as getMeService } from '../services/auth.service';
-import type { User, LoginRequest } from '../types/auth';
+import {
+  login as loginService,
+  patientLogin as patientLoginService,
+  logout as logoutService,
+  getMe as getMeService,
+} from '../services/auth.service';
+import type { User, LoginRequest, PatientLoginRequest } from '../types/auth';
 
 interface AuthState {
   user: User | null;
@@ -9,6 +14,7 @@ interface AuthState {
 
   // Actions
   login: (data: LoginRequest) => Promise<void>;
+  patientLogin: (data: PatientLoginRequest) => Promise<void>;
   logout: () => Promise<void>;
   fetchUser: () => Promise<void>;
   setUser: (user: User | null) => void;
@@ -31,6 +37,27 @@ export const useAuthStore = create<AuthState>((set) => ({
         role: user.role,
         avatarUrl: user.avatarUrl,
         employeeId: user.employeeId ?? null,
+        dentistId: user.dentistId ?? null,
+        patientId: user.patientId ?? null,
+      },
+      isAuthenticated: true,
+      isLoading: false,
+    });
+  },
+
+  patientLogin: async (data: PatientLoginRequest) => {
+    const response = await patientLoginService(data);
+    const user = response.data;
+    set({
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+        avatarUrl: user.avatarUrl,
+        employeeId: user.employeeId ?? null,
+        dentistId: user.dentistId ?? null,
+        patientId: user.patientId ?? null,
       },
       isAuthenticated: true,
       isLoading: false,
@@ -64,6 +91,8 @@ export const useAuthStore = create<AuthState>((set) => ({
           role: user.role,
           avatarUrl: user.avatarUrl,
           employeeId: user.employeeId ?? null,
+          dentistId: user.dentistId ?? null,
+          patientId: user.patientId ?? null,
         },
         isAuthenticated: true,
         isLoading: false,

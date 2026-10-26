@@ -48,9 +48,11 @@ export default function ProtectedRoute({ allowedRoles }) {
     );
   }
 
-  // Not authenticated - redirect to login
+  // Not authenticated - redirect to appropriate login page
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    const isPatientPath = location.pathname.startsWith('/patient') || (allowedRoles?.length === 1 && allowedRoles.includes('PATIENT'));
+    const loginPath = isPatientPath ? '/patient/login' : '/staff/login';
+    return <Navigate to={loginPath} state={{ from: location }} replace />;
   }
 
   // Check role authorization

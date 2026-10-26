@@ -163,6 +163,14 @@ export default function DentistDetailPanel({ isOpen, onClose, dentist, onEdit, o
                             <div className="rounded-lg border border-slate-200 bg-white p-3.5 space-y-2.5 shadow-2xs">
                                 <h4 className="text-xs font-bold text-slate-800 border-b border-slate-100 pb-1.5">Thông tin cá nhân</h4>
                                 <div className="space-y-2.5">
+                                    {dentist.dentistCode && (
+                                        <DetailRow icon={FileText} label="Mã bác sĩ">
+                                            <p className="text-xs font-mono font-bold text-teal-800">
+                                                {dentist.dentistCode}
+                                            </p>
+                                        </DetailRow>
+                                    )}
+
                                     <DetailRow icon={Mail} label="Email">
                                         <p className="text-xs font-semibold text-slate-700 truncate">
                                             {dentist.email || 'Chưa cập nhật'}

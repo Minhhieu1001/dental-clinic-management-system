@@ -1,6 +1,7 @@
 package iuh.fit.backend.medicalrecord.entity;
 
 import iuh.fit.backend.appointment.entity.Appointment;
+import iuh.fit.backend.inforclinic.entity.Branch;
 import iuh.fit.backend.patient.entity.Patient;
 import iuh.fit.backend.prescription.entity.Prescription;
 import iuh.fit.backend.user.entity.Dentist;
@@ -35,6 +36,10 @@ public class MedicalRecord {
     @JoinColumn(name = "dentist_id")
     private Dentist dentist;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "branch_id", nullable = true)
+    private Branch branch;
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "appointment_id")
     private Appointment appointment;
@@ -43,15 +48,6 @@ public class MedicalRecord {
     private String treatmentNotes;
 
     private LocalDateTime recordDate;
-
-    @Column(length = 255)
-    private String fileName;
-
-    @Column(columnDefinition = "TEXT")
-    private String address;
-
-    @Column(columnDefinition = "TEXT")
-    private String dentalClinicName;
 
     @Builder.Default
     @OneToMany(mappedBy = "medicalRecord", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})

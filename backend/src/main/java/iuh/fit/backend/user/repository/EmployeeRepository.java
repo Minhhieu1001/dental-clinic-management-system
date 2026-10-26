@@ -1,6 +1,8 @@
 package iuh.fit.backend.user.repository;
 
 import iuh.fit.backend.user.entity.Employee;
+import iuh.fit.backend.user.enums.Role;
+import iuh.fit.backend.user.enums.StatusUser;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -17,6 +19,12 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
 
     @Query("SELECT e FROM Employee e WHERE e.user.id = :userId")
     Optional<Employee> findByUserId(@Param("userId") UUID userId);
+
+    @Query("SELECT e FROM Employee e JOIN FETCH e.user u WHERE e.branch.branchId = :branchId AND u.status = :status AND u.role = :role")
+    List<Employee> findActiveEmployeesByBranch(
+            @Param("branchId") String branchId,
+            @Param("status") StatusUser status,
+            @Param("role") Role role);
 
     boolean existsByUserId(UUID userId);
 

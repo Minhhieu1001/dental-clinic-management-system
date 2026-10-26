@@ -257,13 +257,13 @@ export function PhaseModal({
                     <Activity size={14} className="text-teal-700" />
                     Trạng thái giai đoạn
                   </label>
-                  <div className="grid grid-cols-3 gap-1.5">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                     {PHASE_STATUS_BUTTON_OPTIONS.map((st) => (
                       <button
                         key={st.value}
                         type="button"
                         onClick={() => setPhaseStatus(st.value)}
-                        className={`py-2 px-1.5 text-xs rounded-xl border transition-all cursor-pointer text-center font-medium ${phaseStatus === st.value
+                        className={`py-2 px-1.5 text-xs rounded-xl border transition-all cursor-pointer text-center font-semibold whitespace-nowrap flex items-center justify-center ${phaseStatus === st.value
                           ? st.active
                           : 'border-slate-200 text-slate-600 bg-slate-50/50 hover:bg-slate-100'
                           }`}

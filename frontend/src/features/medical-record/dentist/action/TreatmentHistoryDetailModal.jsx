@@ -20,6 +20,8 @@ import {
   Hash,
   Maximize2,
   Printer,
+  Building2,
+  MapPin,
 } from 'lucide-react';
 
 // =========================================================================
@@ -570,6 +572,16 @@ export const TreatmentHistoryDetailModal = ({
                   </div>
 
                   <div>
+                    <div className="mb-3 space-y-2 rounded-lg border border-teal-200 bg-teal-50/60 p-3 text-sm">
+                      <p className="flex items-start gap-2">
+                        <Building2 size={16} className="mt-0.5 shrink-0 text-teal-700" aria-hidden="true" />
+                        <span>Tên cơ sở: <strong className="text-teal-800">{record.branchName || 'Chưa có thông tin cơ sở'}</strong></span>
+                      </p>
+                      <p className="flex items-start gap-2">
+                        <MapPin size={16} className="mt-0.5 shrink-0 text-teal-700" aria-hidden="true" />
+                        <span className="break-words">Địa chỉ: {record.addressBranch || 'Chưa có thông tin địa chỉ'}</span>
+                      </p>
+                    </div>
                     <span className="text-slate-400 block text-[11px]">Lý do khám / Triệu chứng lâm sàng:</span>
                     <p className="font-semibold text-slate-900 bg-slate-50 p-2 border border-slate-200 mt-1">
                       {record.chiefComplaint || 'Khám răng hàm mặt'}

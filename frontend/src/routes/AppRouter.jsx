@@ -3,7 +3,7 @@ import ProtectedRoute from '../components/common/ProtectedRoute.jsx'
 import AdminLayout from '../layouts/AdminLayouts.jsx'
 import DentistLayout from '../layouts/DentistLayout.jsx'
 import EmployeeLayout from '../layouts/EmployeeLayout.jsx'
-import PatientLayout from '../layouts/PatientLayout.jsx'
+import PatientLayout from '../layouts/PatientLayout/PatientLayout.jsx'
 import PublicLayout from '../layouts/PublicLayout.jsx'
 import Home from '../pages/Home.jsx'
 import About from '../pages/About.jsx'
@@ -18,6 +18,11 @@ import Celebrities from '../pages/Celebrities.jsx'
 import Knowledge from '../pages/Knowledge.jsx'
 import KnowledgeDetail from '../pages/KnowledgeDetail.jsx'
 import Login from '../pages/Login.jsx'
+import PatientLogin from '../pages/PatientLogin.jsx'
+import PatientRegister from '../pages/PatientRegister.jsx'
+import PatientActivate from '../pages/PatientActivate.jsx'
+import ForgotPassword from '../pages/ForgotPassword.jsx'
+import NotFound from '../pages/NotFound.jsx'
 
 // Feature Components - Admin
 import AdminDashboard from '../features/dashboard/AdminDashboard.jsx'
@@ -29,8 +34,8 @@ import AdminBilling from '../features/billing/admin/AdminBilling.jsx'
 import MedicationManagement from '../features/prescriptions/admin/MedicationManagement.jsx'
 import Promotions from '../features/promotion/Promotions.jsx'
 import AdminNotifications from '../features/notification/AdminNotifications.jsx'
-import AdminSettings from '../features/setting/AdminSettings.jsx'
-import GeneralSettings from '../features/setting/GeneralSettings.jsx'
+import AdminSettings from '../features/setting/admin/AdminSettings.jsx'
+import GeneralSettings from '../features/setting/admin/GeneralSettings.jsx'
 import ServicesAdmin from '../features/treatment/Services.jsx'
 
 // Feature Components - Dentist
@@ -44,6 +49,7 @@ import Prescriptions from '../features/prescriptions/dentist/Prescriptions.jsx'
 import XrayAnalysis from '../features/ai-xray/XrayAnalysis.jsx'
 import DentistPatients from '../features/patient/DentistPatients.jsx'
 import DentistNotifications from '../features/notification/DentistNotifications.jsx'
+import DentistGeneralSettings from '../features/setting/dentist/DentistGeneralSettings.jsx'
 
 // Feature Components - Employee
 import EmployeeDashboard from '../features/dashboard/EmployeeDashboard.jsx'
@@ -56,9 +62,10 @@ import EmployeeInventory from '../features/prescriptions/EmployeeInventory.jsx'
 import ImportExport from '../features/prescriptions/ImportExport.jsx'
 import EmployeeReport from '../features/report/EmployeeReport.jsx'
 import EmployeeNotifications from '../features/notification/EmployeeNotifications.jsx'
+import EmployeeGeneralSettings from '../features/setting/employee/EmployeeGeneralSettings.jsx'
 
 // Feature Components - Patient
-import PatientDashboard from '../features/dashboard/PatientDashboard.jsx'
+import PatientDashboard from '../features/dashboard/patient/PatientDashboard.jsx'
 import PatientAppointments from '../features/appointment/PatientAppointments.jsx'
 import PatientMedicalRecords from '../features/medical-record/PatientMedicalRecords.jsx'
 import PatientPrescriptions from '../features/prescriptions/dentist/PatientPrescriptions.jsx'
@@ -88,8 +95,13 @@ export default function AppRouter() {
           <Route path="doctors" element={<PublicInfo />} />
         </Route>
 
-        {/* Login page */}
-        <Route path="/login" element={<Login />} />
+        {/* Auth pages */}
+        <Route path="/staff/login" element={<Login />} />
+        <Route path="/login" element={<Navigate to="/staff/login" replace />} />
+        <Route path="/patient/login" element={<PatientLogin />} />
+        <Route path="/patient/register" element={<PatientRegister />} />
+        <Route path="/patient/activate" element={<PatientActivate />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
 
         {/* Protected routes - Admin */}
         <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
@@ -127,6 +139,8 @@ export default function AppRouter() {
             <Route path="xray-analysis" element={<XrayAnalysis />} />
             <Route path="patients" element={<DentistPatients />} />
             <Route path="notifications" element={<DentistNotifications />} />
+            <Route path="settings" element={<Navigate to="general-settings" replace />} />
+            <Route path="general-settings" element={<DentistGeneralSettings />} />
           </Route>
         </Route>
 
@@ -145,6 +159,8 @@ export default function AppRouter() {
             <Route path="import-export" element={<ImportExport />} />
             <Route path="report" element={<EmployeeReport />} />
             <Route path="notifications" element={<EmployeeNotifications />} />
+            <Route path="settings" element={<Navigate to="general-settings" replace />} />
+            <Route path="general-settings" element={<EmployeeGeneralSettings />} />
           </Route>
         </Route>
 
@@ -164,7 +180,7 @@ export default function AppRouter() {
         </Route>
 
         {/* Catch-all */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   )

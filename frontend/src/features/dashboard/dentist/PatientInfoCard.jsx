@@ -48,8 +48,8 @@ const formatGender = (gender, fullName) => {
 
 export default function PatientInfoCard({
   patientInfo = null,
-  onViewRecord = () => {},
-  onCreateRecord = () => {},
+  onViewRecord = () => { },
+  onCreateRecord = () => { },
 }) {
   const [profiles, setProfiles] = useState([]);
   const [selectedIdx, setSelectedIdx] = useState(0);
@@ -120,11 +120,10 @@ export default function PatientInfoCard({
                   key={prof.id || prof.patientCode || idx}
                   type="button"
                   onClick={() => setSelectedIdx(idx)}
-                  className={`rounded px-2 py-1 text-[10px] font-bold transition-all cursor-pointer ${
-                    selectedIdx === idx
-                      ? 'bg-teal-700 text-white shadow-2xs'
-                      : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
-                  }`}
+                  className={`rounded px-2 py-1 text-[10px] font-bold transition-all cursor-pointer ${selectedIdx === idx
+                    ? 'bg-teal-700 text-white shadow-2xs'
+                    : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                    }`}
                 >
                   Hồ sơ {idx + 1}: {prof.fullName || prof.patientName || 'BN'} ({prof.patientCode || 'Mã'})
                 </button>
@@ -194,16 +193,6 @@ export default function PatientInfoCard({
                   {activeProfile.reason || activeProfile.serviceName || patientInfo?.reason || 'Tư vấn & Khám tổng quát'}
                 </span>
               </div>
-            </div>
-
-            {/* Medical History / Allergies Warning */}
-            <div className="bg-amber-50/70 border border-amber-200/80 p-2.5 rounded text-xs">
-              <span className="text-amber-800 font-bold block text-[11px] flex items-center gap-1">
-                <AlertTriangle size={12} className="text-amber-600" /> Tiền sử y tế & Cảnh báo:
-              </span>
-              <p className="text-amber-900 font-medium text-[11px] mt-0.5">
-                {activeProfile.systemicDisease || activeProfile.allergies || activeProfile.medicalHistory || activeProfile.notes || 'Chưa ghi nhận dữ liệu tiền sử y tế / dị ứng.'}
-              </p>
             </div>
 
             {/* Nút Xem Hồ Sơ */}

@@ -13,6 +13,8 @@ import java.util.UUID;
 @Repository
 public interface PrescriptionRepository extends JpaRepository<Prescription, UUID> {
 
+    long countByExaminationResultMedicalRecordPatientId(UUID patientId);
+
     List<Prescription> findByExaminationResultId(UUID examinationResultId);
 
     @Query("SELECT p FROM Prescription p WHERE p.examinationResult.medicalRecord.patient.id = :patientId ORDER BY p.prescriptionDate DESC")

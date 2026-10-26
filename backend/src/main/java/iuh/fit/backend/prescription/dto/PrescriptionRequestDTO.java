@@ -2,6 +2,7 @@ package iuh.fit.backend.prescription.dto;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -24,7 +25,8 @@ public class PrescriptionRequestDTO {
 
     private LocalDateTime prescriptionDate;
 
-    private String prescriber;
+    @NotNull(message = "Bác sĩ kê đơn không được để trống")
+    private UUID dentistId;
 
     private String doctorAdvice;
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Phone,
@@ -33,14 +33,16 @@ import MedicalRecordEmptyState from './components/MedicalRecordEmptyState';
 import MultiplePatientsModal from '../../../components/common/MultiplePatientsModal';
 import {
   createDefaultMedicalRecord,
-  DEFAULT_DENTAL_CLINIC_NAME,
-  DEFAULT_DENTAL_CLINIC_ADDRESS,
-  generateRecordFileName,
+
+
+
 } from './medicalRecordHelpers';
 
 export default function MedicalRecords() {
   const location = useLocation();
   const navigate = useNavigate();
+  const recordLoadVersion = useRef(0);
+  const [loadingMedicalRecord, setLoadingMedicalRecord] = useState(false);
 
   // Passed patient object from previous route or fallback default
   const passedPatient = location.state?.patient;
@@ -79,16 +81,8 @@ export default function MedicalRecords() {
     };
   }, []);
 
-  // Medical Record State matching MedicalRecord.java entity properties (helper generated)
-  const [medicalRecordData, setMedicalRecordData] = useState(() =>
-    createDefaultMedicalRecord(
-      passedPatient || {
-        fullName: location.state?.fullName,
-        patientCode: location.state?.patientCode,
-      }
-    )
-  );
-
+  // Store the complete MedicalRecord DTO returned by the API.
+  const [medicalRecordData, setMedicalRecordData] = useState(createDefaultMedicalRecord);
   // Treatment History Records state & Loading
   const [treatmentRecords, setTreatmentRecords] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -230,6 +224,8 @@ export default function MedicalRecords() {
             historyList.push({
               id: exam.id || matchedPlan?.id || mr.id,
               examinationResultId: exam.id,
+              branchName: exam.branchName || '',
+              addressBranch: exam.addressBranch || '',
               treatmentPlanId: matchedPlan?.id,
               startDate,
               recordDate: startDate,
@@ -314,37 +310,24 @@ export default function MedicalRecords() {
       avatar: patientObj.avatar || patientObj.avatarUrl || null,
     });
 
-    const pName = patientObj.fullName || patientObj.patientName || patientObj.user?.fullName || '';
-    const pCode = patientObj.patientCode || '';
-    setMedicalRecordData((prev) => ({
-      ...prev,
-      medicalRecordCode: patientObj.medicalRecordCode || prev.medicalRecordCode || '',
-      fileName: patientObj.fileName || generateRecordFileName(pName, pCode),
-      dentalClinicName: patientObj.dentalClinicName || DEFAULT_DENTAL_CLINIC_NAME,
-      address: patientObj.clinicAddress || DEFAULT_DENTAL_CLINIC_ADDRESS,
-    }));
-
-    // Tự động load MedicalRecord thật của bệnh nhân từ backend
-    if (pCode) {
-      getMedicalRecordsByPatientCode(pCode)
-        .then((records) => {
-          if (Array.isArray(records) && records.length > 0) {
-            const rec = records[0];
-            setMedicalRecordData((prev) => ({
-              ...prev,
-              id: rec.id,
-              medicalRecordCode: rec.medicalRecordCode || `HSBA-${String(rec.id).slice(0, 8).toUpperCase()}`,
-              fileName: rec.fileName || prev.fileName,
-              dentalClinicName: rec.dentalClinicName || prev.dentalClinicName,
-              address: rec.address || prev.address,
-              treatmentNotes: rec.treatmentNotes || prev.treatmentNotes,
-              recordDate: rec.recordDate || prev.recordDate,
-            }));
-          }
-        })
-        .catch(() => { });
-    }
-
+    // Keep the complete DTO returned by the API, including branch and clinic fields.
+    const loadVersion = ++recordLoadVersion.current;
+    const pCode = patientObj.patientCode;
+    setMedicalRecordData(createDefaultMedicalRecord());
+    setLoadingMedicalRecord(true);
+    const request = pCode
+      ? getMedicalRecordsByPatientCode(pCode)
+      : patientObj.id ? getMedicalRecordsByPatientId(patientObj.id) : Promise.resolve([]);
+    request.then((records) => {
+      if (loadVersion !== recordLoadVersion.current) return;
+      setMedicalRecordData(records[0] || createDefaultMedicalRecord());
+    }).catch((error) => {
+      if (loadVersion === recordLoadVersion.current) {
+        toast.error(error.response?.data?.message || 'Không tải được hồ sơ bệnh án.');
+      }
+    }).finally(() => {
+      if (loadVersion === recordLoadVersion.current) setLoadingMedicalRecord(false);
+    });
     // Tải dữ liệu thật lịch sử điều trị cho bệnh nhân
     fetchRealTreatmentHistory(patientObj);
 
@@ -359,6 +342,8 @@ export default function MedicalRecords() {
 
   // Clear currently loaded patient to show empty state
   const handleClearPatient = () => {
+    recordLoadVersion.current += 1;
+    setLoadingMedicalRecord(false);
     setPatientData({
       id: '',
       patientCode: '',
@@ -378,7 +363,7 @@ export default function MedicalRecords() {
       email: '',
       avatar: '',
     });
-    setMedicalRecordData(createDefaultMedicalRecord({}));
+    setMedicalRecordData(createDefaultMedicalRecord());
     setTreatmentRecords([]);
     setPhoneSearchQuery('');
     toast.success('Đã đóng hồ sơ để tìm kiếm bệnh nhân khác');
@@ -492,6 +477,11 @@ export default function MedicalRecords() {
   const [saving, setSaving] = useState(false);
 
   const handleSaveProfile = async () => {
+    if (loadingMedicalRecord) return;
+    if (!medicalRecordData.id && !medicalRecordData.branchId) {
+      toast.error('Chưa có hồ sơ bệnh án hoặc chi nhánh để lưu.');
+      return;
+    }
     setSaving(true);
     try {
       const isUUID = (str) =>
@@ -554,9 +544,7 @@ export default function MedicalRecords() {
       const mrPayload = {
         patientId: targetId,
         patientCode: patientData.patientCode,
-        dentalClinicName: medicalRecordData.dentalClinicName,
-        address: medicalRecordData.address,
-        fileName: medicalRecordData.fileName,
+        branchId: medicalRecordData.branchId,
         treatmentNotes: medicalRecordData.treatmentNotes,
       };
 
@@ -568,7 +556,7 @@ export default function MedicalRecords() {
           updatedMr = await createMedicalRecord(mrPayload);
         }
       } catch (mrErr) {
-        console.warn('Lỗi khi lưu medical record:', mrErr);
+        throw mrErr;
       }
 
       // 4. Đồng bộ State trực tiếp từ dữ liệu DB vừa lưu (Không gọi applyPatientToForm để tránh race condition)
@@ -599,16 +587,7 @@ export default function MedicalRecords() {
       }
 
       if (updatedMr) {
-        setMedicalRecordData((prev) => ({
-          ...prev,
-          id: updatedMr.id || prev.id,
-          medicalRecordCode: updatedMr.medicalRecordCode || prev.medicalRecordCode,
-          fileName: updatedMr.fileName || prev.fileName,
-          dentalClinicName: updatedMr.dentalClinicName || prev.dentalClinicName,
-          address: updatedMr.address || prev.address,
-          treatmentNotes: updatedMr.treatmentNotes || prev.treatmentNotes,
-          recordDate: updatedMr.recordDate || prev.recordDate,
-        }));
+        setMedicalRecordData(updatedMr);
       }
 
       setIsEditing(false);
@@ -656,7 +635,7 @@ export default function MedicalRecords() {
         patientCode: patientData.patientCode,
         medicalRecordId: currentMrId,
         medicalRecordCode:
-          medicalRecordData?.fileName ||
+          medicalRecordData?.medicalRecordCode ||
           (currentMrId ? `HSBA-${String(currentMrId).slice(0, 8)}` : ''),
         reason: currentSymptoms,
         symptoms: currentSymptoms,
@@ -672,8 +651,7 @@ export default function MedicalRecords() {
         patientName={patientData.fullName}
         patientCode={patientData.patientCode}
         medicalRecordData={medicalRecordData}
-        setMedicalRecordData={setMedicalRecordData}
-        isEditing={isEditing}
+        loadingMedicalRecord={loadingMedicalRecord}
         saving={saving}
         onSave={handleSaveProfile}
         onBack={() => navigate(-1)}

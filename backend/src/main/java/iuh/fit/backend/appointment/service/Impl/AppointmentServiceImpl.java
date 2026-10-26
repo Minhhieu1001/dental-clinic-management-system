@@ -226,9 +226,20 @@ public class AppointmentServiceImpl implements AppointmentService {
                 }
             }
 
-            // 2. Active receptionists/employees (must be ACTIVE)
-            List<User> activeEmployees = userRepository.findByRoleAndStatus(Role.EMPLOYEE, StatusUser.ACTIVE);
-            recipients.addAll(activeEmployees);
+            // 2. Active receptionists/employees of that branch (must be ACTIVE)
+            String createBranchId = appointment.getBranch() != null ? appointment.getBranch().getBranchId() : null;
+            if (createBranchId != null && !createBranchId.isBlank()) {
+                List<Employee> branchEmployees = employeeRepository.findActiveEmployeesByBranch(
+                        createBranchId.trim(), StatusUser.ACTIVE, Role.EMPLOYEE);
+                for (Employee emp : branchEmployees) {
+                    if (emp.getUser() != null) {
+                        recipients.add(emp.getUser());
+                    }
+                }
+            } else {
+                List<User> activeEmployees = userRepository.findByRoleAndStatus(Role.EMPLOYEE, StatusUser.ACTIVE);
+                recipients.addAll(activeEmployees);
+            }
 
             String doctorNameStr = appointment.getDentist() != null ? appointment.getDentist().getFullName()
                     : "chưa chỉ định";
@@ -398,7 +409,7 @@ public class AppointmentServiceImpl implements AppointmentService {
         try {
             Set<User> recipients = new HashSet<>();
 
-            // 1. Check assigned dentist (must be ACTIVE)
+            // 1. Chỉ thông báo cho Bác sĩ phụ trách ca khám (phải ACTIVE)
             if (appointment.getDentist() != null && appointment.getDentist().getUser() != null) {
                 User docUser = appointment.getDentist().getUser();
                 if (docUser.getStatus() == StatusUser.ACTIVE) {
@@ -406,12 +417,31 @@ public class AppointmentServiceImpl implements AppointmentService {
                 }
             }
 
-            // 2. Check active employees/receptionists and admins (must be ACTIVE)
-            List<User> activeEmployees = userRepository.findByRoleAndStatus(Role.EMPLOYEE, StatusUser.ACTIVE);
-            recipients.addAll(activeEmployees);
+            // 2. Chỉ thông báo cho Nhân viên / Lễ tân thuộc chi nhánh của ca khám (phải ACTIVE)
+            String branchId = null;
+            if (appointment.getBranch() != null && appointment.getBranch().getBranchId() != null) {
+                branchId = appointment.getBranch().getBranchId();
+            } else if (appointment.getDentist() != null && appointment.getDentist().getBranch() != null) {
+                branchId = appointment.getDentist().getBranch().getBranchId();
+            } else if (appointment.getEmployee() != null && appointment.getEmployee().getBranch() != null) {
+                branchId = appointment.getEmployee().getBranch().getBranchId();
+            }
 
-            List<User> activeAdmins = userRepository.findByRoleAndStatus(Role.ADMIN, StatusUser.ACTIVE);
-            recipients.addAll(activeAdmins);
+            if (branchId != null && !branchId.isBlank()) {
+                List<Employee> branchEmployees = employeeRepository.findActiveEmployeesByBranch(
+                        branchId.trim(), StatusUser.ACTIVE, Role.EMPLOYEE);
+                for (Employee emp : branchEmployees) {
+                    if (emp.getUser() != null) {
+                        recipients.add(emp.getUser());
+                    }
+                }
+            } else {
+                // Fallback nếu lịch hẹn không gắn với chi nhánh cụ thể
+                List<User> activeEmployees = userRepository.findByRoleAndStatus(Role.EMPLOYEE, StatusUser.ACTIVE);
+                recipients.addAll(activeEmployees);
+            }
+
+            // 3. Admin: Không cần nhận thông báo theo yêu cầu
 
             String title;
             String content;

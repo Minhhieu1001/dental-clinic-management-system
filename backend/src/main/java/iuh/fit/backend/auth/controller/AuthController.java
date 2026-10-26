@@ -2,6 +2,7 @@ package iuh.fit.backend.auth.controller;
 
 import iuh.fit.backend.auth.dto.AuthResponse;
 import iuh.fit.backend.auth.dto.LoginRequest;
+import iuh.fit.backend.auth.dto.PatientLoginRequest;
 import iuh.fit.backend.auth.service.AuthService;
 import iuh.fit.backend.common.response.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,6 +26,15 @@ public class AuthController {
 
         AuthResponse authResponse = authService.login(request, response);
         return ResponseEntity.ok(ApiResponse.success("Đăng nhập thành công", authResponse));
+    }
+
+    @PostMapping("/patient/login")
+    public ResponseEntity<ApiResponse<AuthResponse>> patientLogin(
+            @Valid @RequestBody PatientLoginRequest request,
+            HttpServletResponse response) {
+
+        AuthResponse authResponse = authService.patientLogin(request, response);
+        return ResponseEntity.ok(ApiResponse.success("Đăng nhập bệnh nhân thành công", authResponse));
     }
 
     @PostMapping("/logout")

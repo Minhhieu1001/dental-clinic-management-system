@@ -77,6 +77,10 @@ public class Patient {
     @CreationTimestamp
     private LocalDateTime createdAt;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
+
     @Column(name = "customer_group", length = 100)
     private String customerGroup;
 

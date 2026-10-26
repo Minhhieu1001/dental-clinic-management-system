@@ -24,6 +24,15 @@ public class PrescriptionDTO {
     private String prescriptionName;
     private LocalDateTime prescriptionDate;
     private String prescriber;
+    private UUID dentistId;
+    private String dentistName;
+    private String branchId;
+    private String branchName;
+    private String branchAddress;
+    private String branchImage;
+    private String clinicLogoUrl;
+    private String clinicAddress;
+    private String dentalClinicName;
     private String doctorAdvice;
     private BigDecimal totalAmount;
     @Builder.Default

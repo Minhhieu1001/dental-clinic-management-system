@@ -120,3 +120,12 @@ export const deleteFollowUpAppointment = async (id) => {
   saveLocalBackup(all.filter((x) => String(x.id) !== String(id)));
   return true;
 };
+
+// Lấy danh sách lịch tái khám trong tháng hiện tại của bệnh nhân
+export const getCurrentMonthFollowUpAppointmentsByPatientId = async (patientId) => {
+  const response = await api.get(
+    `/follow-up-appointments/patient/${patientId}/current-month`
+  );
+
+  return response.data?.data ?? response.data?.result ?? response.data ?? [];
+};

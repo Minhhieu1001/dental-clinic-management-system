@@ -13,4 +13,6 @@ public interface ExaminationResultRepository extends JpaRepository<ExaminationRe
     List<ExaminationResult> findAllByOrderByExaminationDateDesc();
 
     List<ExaminationResult> findByMedicalRecordIdOrderByExaminationDateDesc(UUID medicalRecordId);
+
+    List<ExaminationResult> findByMedicalRecordPatientIdOrderByExaminationDateDesc(UUID patientId);
 }

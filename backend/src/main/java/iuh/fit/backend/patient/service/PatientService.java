@@ -2,12 +2,14 @@ package iuh.fit.backend.patient.service;
 
 import iuh.fit.backend.patient.dto.PatientCreateDTO;
 import iuh.fit.backend.patient.dto.PatientDTO;
+import iuh.fit.backend.patient.dto.PatientStatisticsResponse;
 import iuh.fit.backend.billing.dto.PatientInvoiceDataResponse;
 
 import java.util.List;
 import java.util.UUID;
 
 public interface PatientService {
+    PatientStatisticsResponse getPatientStatistics(UUID id);
     List<PatientDTO> getAllPatients();
     PatientDTO getPatientById(UUID id);
     List<PatientDTO> getPatientsByPhoneNumber(String phoneNumber);

@@ -15,6 +15,10 @@ import iuh.fit.backend.prescription.entity.PrescriptionDetail;
 import iuh.fit.backend.prescription.repository.MedicineRepository;
 import iuh.fit.backend.prescription.repository.PrescriptionRepository;
 import iuh.fit.backend.prescription.service.PrescriptionService;
+import iuh.fit.backend.user.entity.Dentist;
+import iuh.fit.backend.inforclinic.entity.Branch;
+import iuh.fit.backend.inforclinic.entity.Clinic;
+import iuh.fit.backend.user.repository.DentistRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +38,7 @@ public class PrescriptionServiceImpl implements PrescriptionService {
     private final PrescriptionRepository prescriptionRepository;
     private final ExaminationResultRepository examinationResultRepository;
     private final MedicineRepository medicineRepository;
+    private final DentistRepository dentistRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -82,6 +87,7 @@ public class PrescriptionServiceImpl implements PrescriptionService {
 
     @Override
     public PrescriptionDTO createPrescription(PrescriptionRequestDTO request) {
+        Dentist dentist = findDentist(request.getDentistId());
         ExaminationResult examinationResult = null;
         if (request.getExaminationResultId() != null) {
             examinationResult = examinationResultRepository.findById(request.getExaminationResultId())
@@ -100,7 +106,8 @@ public class PrescriptionServiceImpl implements PrescriptionService {
                 .prescriptionCode(code)
                 .prescriptionName(request.getPrescriptionName())
                 .prescriptionDate(request.getPrescriptionDate() != null ? request.getPrescriptionDate() : LocalDateTime.now())
-                .prescriber(request.getPrescriber())
+                .dentist(dentist)
+                .prescriber(dentist.getFullName())
                 .doctorAdvice(request.getDoctorAdvice())
                 .prescriptionDetails(new ArrayList<>())
                 .build();
@@ -148,7 +155,11 @@ public class PrescriptionServiceImpl implements PrescriptionService {
         if (request.getPrescriptionDate() != null) {
             prescription.setPrescriptionDate(request.getPrescriptionDate());
         }
-        prescription.setPrescriber(request.getPrescriber());
+        Dentist dentist = findDentist(request.getDentistId());
+        if (prescription.getDentist() == null || !dentist.getId().equals(prescription.getDentist().getId())) {
+            prescription.setPrescriber(dentist.getFullName());
+        }
+        prescription.setDentist(dentist);
         prescription.setDoctorAdvice(request.getDoctorAdvice());
 
         prescription.getPrescriptionDetails().clear();
@@ -185,7 +196,17 @@ public class PrescriptionServiceImpl implements PrescriptionService {
         prescriptionRepository.deleteById(id);
     }
 
+    private Dentist findDentist(UUID dentistId) {
+        if (dentistId == null) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Vui lòng cung cấp ID bác sĩ kê đơn");
+        }
+        return dentistRepository.findById(dentistId)
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy bác sĩ ID: " + dentistId));
+    }
+
     private PrescriptionDTO mapToDTO(Prescription p) {
+        Branch branch = p.getDentist() != null ? p.getDentist().getBranch() : null;
+        Clinic clinic = branch != null ? branch.getClinic() : null;
         UUID examId = null;
         UUID medRecId = null;
         UUID patId = null;
@@ -244,7 +265,16 @@ public class PrescriptionServiceImpl implements PrescriptionService {
                 .prescriptionName(p.getPrescriptionName())
                 .prescriptionDate(p.getPrescriptionDate())
                 .prescriber(p.getPrescriber())
+                .dentistId(p.getDentist() != null ? p.getDentist().getId() : null)
+                .dentistName(p.getDentist() != null ? p.getDentist().getFullName() : p.getPrescriber())
                 .doctorAdvice(p.getDoctorAdvice())
+                .branchId(branch != null ? branch.getBranchId() : null)
+                .branchName(branch != null ? branch.getBranchName() : null)
+                .branchAddress(branch != null ? branch.getAddress() : null)
+                .branchImage(branch != null ? branch.getImageBranch() : null)
+                .clinicLogoUrl(clinic != null ? clinic.getLogoUrl() : null)
+                .clinicAddress(clinic != null ? clinic.getRegisteredAddress() : null)
+                .dentalClinicName(clinic != null ? clinic.getLegalName() : null)
                 .totalAmount(total)
                 .prescriptionDetails(details)
                 .build();

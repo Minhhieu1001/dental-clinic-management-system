@@ -298,6 +298,7 @@ export default function EmployeeManagement() {
             <thead className="sticky top-0 bg-white shadow-xs z-10 border-b border-slate-100">
               <tr>
                 <th className="px-5 py-3 text-left text-[12px] font-semibold text-slate-600 w-12">#</th>
+                <th className="px-5 py-3 text-left text-[12px] font-semibold text-slate-600">Mã nhân viên</th>
                 <th className="px-5 py-3 text-left text-[12px] font-semibold text-slate-600">Nhân viên</th>
                 <th className="px-5 py-3 text-left text-[12px] font-semibold text-slate-600">Số điện thoại</th>
                 <th className="px-5 py-3 text-left text-[12px] font-semibold text-slate-600">Ngày vào làm</th>
@@ -310,13 +311,13 @@ export default function EmployeeManagement() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-16 text-center text-slate-400">
+                  <td colSpan={9} className="px-6 py-16 text-center text-slate-400">
                     Đang tải dữ liệu...
                   </td>
                 </tr>
               ) : paginatedEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-16 text-center text-slate-400">
+                  <td colSpan={9} className="px-6 py-16 text-center text-slate-400">
                     Không tìm thấy nhân viên phù hợp.
                   </td>
                 </tr>
@@ -330,6 +331,11 @@ export default function EmployeeManagement() {
                     >
                       <td className="px-5 py-3 text-[13px] text-slate-500 font-medium">
                         {startIndex + index + 1}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className="font-mono text-xs font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200 inline-block">
+                          {emp.employeeCode || '—'}
+                        </span>
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3">

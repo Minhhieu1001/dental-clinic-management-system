@@ -106,6 +106,14 @@ export default function EmployeeDetailPanel({ isOpen, onClose, employee, onEdit,
               <div className="rounded-lg border border-slate-200 bg-white p-3.5 space-y-2.5 shadow-2xs">
                 <h4 className="text-xs font-bold text-slate-800 border-b border-slate-100 pb-1.5">Thông tin cá nhân</h4>
                 <div className="space-y-2.5">
+                  {employee.employeeCode && (
+                    <DetailRow icon={UserRound} label="Mã nhân viên">
+                      <p className="text-xs font-mono font-bold text-teal-800">
+                        {employee.employeeCode}
+                      </p>
+                    </DetailRow>
+                  )}
+
                   <DetailRow icon={Mail} label="Email">
                     <p className="text-xs font-semibold text-slate-700 truncate">
                       {employee.email || 'Chưa cập nhật'}

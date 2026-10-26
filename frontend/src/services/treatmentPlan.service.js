@@ -1,5 +1,11 @@
 import api from './axios';
 
+// Lấy danh sách kế hoạch đang điều trị (IN_PROGRESS) của bệnh nhân
+export const getInProgressTreatmentPlansByPatientId = async (patientId) => {
+  const response = await api.get(`/treatment-plans/patient/${patientId}/in-progress`);
+  return response.data?.data ?? response.data?.result ?? response.data ?? [];
+};
+
 // Lấy danh sách kế hoạch điều trị của bệnh nhân
 export const getTreatmentPlansByPatientId = async (patientId) => {
   const response = await api.get(`/treatment-plans/patient/${patientId}`);
@@ -42,3 +48,10 @@ export const autoScheduleFollowUpAppointments = async (id) => {
   const response = await api.post(`/treatment-plans/${id}/auto-schedule`);
   return response.data?.data ?? response.data?.result ?? response.data;
 };
+
+// Cập nhật trạng thái kế hoạch điều trị (PENDING, IN_PROGRESS, COMPLETED, CANCEL)
+export const updateTreatmentPlanStatus = async (id, status) => {
+  const response = await api.patch(`/treatment-plans/${id}/status`, { status });
+  return response.data?.data ?? response.data?.result ?? response.data;
+};
+

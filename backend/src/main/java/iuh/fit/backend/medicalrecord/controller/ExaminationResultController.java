@@ -57,6 +57,16 @@ public class ExaminationResultController {
         );
     }
 
+    @GetMapping("/patient/{patientId}")
+    public ResponseEntity<ApiResponse<List<ExaminationResultDTO>>> getByPatientId(@PathVariable UUID patientId) {
+        List<ExaminationResultDTO> list = examinationResultService.getExaminationResultsByPatientId(patientId);
+        return ResponseEntity.ok(ApiResponse.<List<ExaminationResultDTO>>builder()
+                .status(200)
+                .message("Lấy danh sách đợt khám của bệnh nhân thành công")
+                .data(list)
+                .build());
+    }
+
     @PostMapping
     public ResponseEntity<ApiResponse<ExaminationResultDTO>> create(
             @Valid @RequestBody ExaminationResultRequest request) {

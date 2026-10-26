@@ -5,6 +5,7 @@ import iuh.fit.backend.user.enums.Role;
 import iuh.fit.backend.user.enums.StatusUser;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.UUID;
 
 public record EmployeeListResponse(
@@ -23,6 +24,12 @@ public record EmployeeListResponse(
         String address,
         String branchId,
         String branchName,
-        String branchAddress
+        String branchAddress,
+        String branchImage,
+        String clinicLogoUrl,
+        String clinicAddress,
+        String dentalClinicName,
+        String employeeCode,
+        LocalDate dateOfBirth
 ) {
 }

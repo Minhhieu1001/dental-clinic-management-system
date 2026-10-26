@@ -684,6 +684,7 @@ export function ClinicalExamProvider({ children }) {
     }
 
     try {
+      if (!formData.branchId) throw new Error('Vui lòng tải cơ sở khám của bác sĩ trước khi tạo đợt điều trị.');
       toast.loading('Đang khởi tạo đợt điều trị mới...', { id: 'create-session' });
 
       let currentMrId = medicalRecord?.id || location.state?.medicalRecordId || location.state?.medicalRecord?.id;
@@ -694,6 +695,7 @@ export function ClinicalExamProvider({ children }) {
           const payload = {
             patientId: patient.id,
             patientCode: patient.patientCode,
+            branchId: formData.branchId,
             recordDate: formData.examinationDate
               ? new Date(formData.examinationDate).toISOString()
               : new Date().toISOString(),
@@ -734,6 +736,7 @@ export function ClinicalExamProvider({ children }) {
       const examRes = await createExaminationResult({
         medicalRecordId: currentMrId,
         dentistId: currentDoctorId,
+        branchId: formData.branchId,
         chiefComplaint: formData.chiefComplaint?.trim() || 'Khám theo dõi điều trị đợt tiếp theo',
         examinationDate: examDateTimeIso,
         disabled: true,
@@ -1548,6 +1551,7 @@ export function ClinicalExamProvider({ children }) {
     isHistoricalSession,
     handleSelectTreatmentSession,
     handleCreateNewTreatmentSession,
+    currentDoctorId,
     createSessionModalOpen,
     setCreateSessionModalOpen,
     openCreateSessionModal,

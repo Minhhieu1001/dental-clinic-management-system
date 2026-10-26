@@ -10,6 +10,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -43,13 +44,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(
-            UserDetailsService userDetailsService,
-            PasswordEncoder passwordEncoder) {
-        DaoAuthenticationProvider authenticationProvider = new DaoAuthenticationProvider(userDetailsService);
-        authenticationProvider.setPasswordEncoder(passwordEncoder);
-
-        return new ProviderManager(authenticationProvider);
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
     }
 
     @Bean
@@ -67,6 +63,18 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/v1/auth/login",
+                                "/api/v1/auth/patient/login",
+                                "/api/v1/auth/patient/activate",
+                                "/api/v1/auth/patient/activate/resend",
+                                "/api/v1/auth/patient/activate/verify",
+                                "/api/v1/auth/patient/activate/complete",
+                                "/api/v1/auth/patient/register",
+                                "/api/v1/auth/patient/register/resend",
+                                "/api/v1/auth/patient/register/verify",
+                                "/api/v1/auth/forgot-password",
+                                "/api/v1/auth/forgot-password/resend",
+                                "/api/v1/auth/forgot-password/verify",
+                                "/api/v1/auth/reset-password",
                                 "/api/v1/auth/refresh",
                                 "/api/services/**",
                                 "/api/v1/services/**",
@@ -99,6 +107,8 @@ public class SecurityConfig {
                                 "/version.json",
                                 "/favicon.ico",
                                 "/icon/**",
+                                "/api/v1/dashboard/**",
+                                "/api/v1/admin/dashboard/**",
                                 "/ws/**",
                                 "/ws"
                         ).permitAll()

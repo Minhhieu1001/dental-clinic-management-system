@@ -72,5 +72,7 @@ public class TreatmentPlanResponse {
         private StatusPhase status;
         private String clinicalNotes;
         private String assignedDentist;
+        private String facilityName;
+        private String facilityAddress;
     }
 }

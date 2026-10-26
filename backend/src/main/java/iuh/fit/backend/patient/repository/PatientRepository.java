@@ -2,6 +2,7 @@ package iuh.fit.backend.patient.repository;
 
 import iuh.fit.backend.patient.entity.Patient;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -11,14 +12,25 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import static jakarta.persistence.LockModeType.PESSIMISTIC_WRITE;
+
 @Repository
 public interface PatientRepository extends JpaRepository<Patient, UUID> {
+    @Lock(PESSIMISTIC_WRITE)
+    @Query("select p from Patient p where upper(p.patientCode) = upper(:code)")
+    Optional<Patient> findForActivationByCode(@Param("code") String code);
+
+    @Lock(PESSIMISTIC_WRITE)
+    @Query("select p from Patient p where p.id = :id")
+    Optional<Patient> findForActivationById(@Param("id") UUID id);
+    boolean existsByPatientCode(String patientCode);
     Optional<Patient> findByPatientCode(String patientCode);
     List<Patient> findAllByOrderByCreatedAtDesc();
     List<Patient> findByPhoneNumberOrderByCreatedAtDesc(String phoneNumber);
     Optional<Patient> findFirstByPhoneNumberOrderByCreatedAtDesc(String phoneNumber);
     Optional<Patient> findFirstByCccdOrderByCreatedAtDesc(String cccd);
     Optional<Patient> findFirstByPatientCodeOrderByCreatedAtDesc(String patientCode);
+    Optional<Patient> findByUserId(UUID userId);
 
     @Query(value = """
         SELECT

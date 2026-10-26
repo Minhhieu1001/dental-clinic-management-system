@@ -11,6 +11,8 @@ import iuh.fit.backend.notification.repository.notificationRepository;
 import iuh.fit.backend.notification.service.NotificationService;
 import iuh.fit.backend.patient.entity.Patient;
 import iuh.fit.backend.patient.repository.PatientRepository;
+import iuh.fit.backend.treatment.repository.TreatmentPlanRepository;
+import iuh.fit.backend.treatment.service.TreatmentPlanService;
 import iuh.fit.backend.user.entity.User;
 import iuh.fit.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +38,7 @@ public class AppointmentReminderScheduler {
     private final NotificationService notificationService;
     private final notificationRepository notificationRepository;
     private final SimpMessagingTemplate simpMessagingTemplate;
+    private final TreatmentPlanRepository treatmentPlanRepository;
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm - dd/MM/yyyy");
 

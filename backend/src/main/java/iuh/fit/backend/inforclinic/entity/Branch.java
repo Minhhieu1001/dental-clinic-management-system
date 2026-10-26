@@ -5,6 +5,8 @@ import iuh.fit.backend.appointment.entity.AppointmentRequest;
 import iuh.fit.backend.billing.entity.Invoice;
 import iuh.fit.backend.billing.entity.PaymentTransactions;
 import iuh.fit.backend.inforclinic.enums.BranchStatus;
+import iuh.fit.backend.medicalrecord.entity.ExaminationResult;
+import iuh.fit.backend.medicalrecord.entity.MedicalRecord;
 import iuh.fit.backend.user.entity.Dentist;
 import iuh.fit.backend.user.entity.Employee;
 import jakarta.persistence.*;
@@ -86,5 +88,13 @@ public class Branch {
     @Builder.Default
     @OneToMany(mappedBy = "branch", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<PaymentTransactions> paymentTransactions = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "branch", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    private List<MedicalRecord> medicalRecords = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "branch", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    private List<ExaminationResult> examinationResults = new ArrayList<>();
 
 }

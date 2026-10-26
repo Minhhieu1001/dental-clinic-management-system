@@ -15,6 +15,15 @@ import java.util.UUID;
 public interface AppointmentRepository extends JpaRepository<Appointment, UUID> {
 
   @Query("""
+      SELECT COUNT(a) FROM Appointment a
+      WHERE a.medicalRecord.patient.id = :patientId
+        AND a.appointmentDate >= :start
+        AND a.appointmentDate < :end
+      """)
+  long countByPatientAndDateRange(@Param("patientId") UUID patientId,
+      @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+  @Query("""
       SELECT a FROM Appointment a
       WHERE a.branch.branchId = :branchId
         AND a.appointmentDate >= :start

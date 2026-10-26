@@ -14,6 +14,12 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface PatientLoginRequest {
+  patientCode: string;
+  phone: string;
+  password: string;
+}
+
 export interface AuthResponse {
   id: string;
   email: string;
@@ -21,6 +27,8 @@ export interface AuthResponse {
   role: UserRole;
   avatarUrl: string | null;
   employeeId: string | null;
+  dentistId: string | null;
+  patientId?: string | null;
 }
 
 // ==================== User Types ====================
@@ -34,6 +42,8 @@ export interface User {
   role: UserRole;
   avatarUrl: string | null;
   employeeId: string | null;
+  dentistId: string | null;
+  patientId?: string | null;
 }
 
 // ==================== Role Routing Map ====================
