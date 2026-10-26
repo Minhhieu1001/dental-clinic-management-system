@@ -39,7 +39,11 @@ public class DashboardServiceImpl implements DashboardService {
     public ResolvedPeriod resolvePeriod(DashboardFilterRequest filter) {
         String filterType = filter != null && filter.getFilterType() != null
                 ? filter.getFilterType().trim().toUpperCase()
-                : "YEAR"; // Default to YEAR to show rich 2026 data
+                : "YEAR";
+
+        String comparisonMode = filter != null && filter.getComparisonMode() != null
+                ? filter.getComparisonMode().trim().toUpperCase()
+                : "NONE";
 
         int defaultYear = 2026;
         int targetYear = (filter != null && filter.getYear() != null && filter.getYear() > 0)
@@ -58,8 +62,13 @@ public class DashboardServiceImpl implements DashboardService {
                 LocalDate today = LocalDate.now();
                 start = today.atStartOfDay();
                 end = today.atTime(LocalTime.MAX);
-                prevStart = start.minusDays(1);
-                prevEnd = end.minusDays(1);
+                if ("YOY".equalsIgnoreCase(comparisonMode)) {
+                    prevStart = start.minusYears(1);
+                    prevEnd = end.minusYears(1);
+                } else {
+                    prevStart = start.minusDays(1);
+                    prevEnd = end.minusDays(1);
+                }
                 label = "Hôm nay (" + today.format(DISPLAY_DATE_FMT) + ")";
                 groupBy = "DAY";
                 break;
@@ -70,8 +79,13 @@ public class DashboardServiceImpl implements DashboardService {
                         : LocalDate.of(targetYear, 10, 20);
                 start = targetDate.atStartOfDay();
                 end = targetDate.atTime(LocalTime.MAX);
-                prevStart = start.minusDays(1);
-                prevEnd = end.minusDays(1);
+                if ("YOY".equalsIgnoreCase(comparisonMode)) {
+                    prevStart = start.minusYears(1);
+                    prevEnd = end.minusYears(1);
+                } else {
+                    prevStart = start.minusDays(1);
+                    prevEnd = end.minusDays(1);
+                }
                 label = "Ngày " + targetDate.format(DISPLAY_DATE_FMT);
                 groupBy = "DAY";
                 break;
@@ -80,8 +94,13 @@ public class DashboardServiceImpl implements DashboardService {
                 LocalDate today = filter != null && filter.getDate() != null ? filter.getDate() : LocalDate.of(targetYear, 10, 20);
                 start = today.minusDays(6).atStartOfDay();
                 end = today.atTime(LocalTime.MAX);
-                prevStart = start.minusDays(7);
-                prevEnd = start.minusNanos(1);
+                if ("YOY".equalsIgnoreCase(comparisonMode)) {
+                    prevStart = start.minusYears(1);
+                    prevEnd = end.minusYears(1);
+                } else {
+                    prevStart = start.minusDays(7);
+                    prevEnd = start.minusNanos(1);
+                }
                 label = "7 ngày qua (" + start.format(DISPLAY_DATE_FMT) + " - " + end.format(DISPLAY_DATE_FMT) + ")";
                 groupBy = "DAY";
                 break;
@@ -90,8 +109,13 @@ public class DashboardServiceImpl implements DashboardService {
                 LocalDate today = filter != null && filter.getDate() != null ? filter.getDate() : LocalDate.of(targetYear, 10, 20);
                 start = today.minusDays(29).atStartOfDay();
                 end = today.atTime(LocalTime.MAX);
-                prevStart = start.minusDays(30);
-                prevEnd = start.minusNanos(1);
+                if ("YOY".equalsIgnoreCase(comparisonMode)) {
+                    prevStart = start.minusYears(1);
+                    prevEnd = end.minusYears(1);
+                } else {
+                    prevStart = start.minusDays(30);
+                    prevEnd = start.minusNanos(1);
+                }
                 label = "30 ngày qua (" + start.format(DISPLAY_DATE_FMT) + " - " + end.format(DISPLAY_DATE_FMT) + ")";
                 groupBy = "DAY";
                 break;
@@ -104,9 +128,15 @@ public class DashboardServiceImpl implements DashboardService {
                 start = ym.atDay(1).atStartOfDay();
                 end = ym.atEndOfMonth().atTime(LocalTime.MAX);
 
-                YearMonth prevYm = ym.minusMonths(1);
-                prevStart = prevYm.atDay(1).atStartOfDay();
-                prevEnd = prevYm.atEndOfMonth().atTime(LocalTime.MAX);
+                if ("YOY".equalsIgnoreCase(comparisonMode)) {
+                    YearMonth prevYm = ym.minusYears(1);
+                    prevStart = prevYm.atDay(1).atStartOfDay();
+                    prevEnd = prevYm.atEndOfMonth().atTime(LocalTime.MAX);
+                } else {
+                    YearMonth prevYm = ym.minusMonths(1);
+                    prevStart = prevYm.atDay(1).atStartOfDay();
+                    prevEnd = prevYm.atEndOfMonth().atTime(LocalTime.MAX);
+                }
 
                 label = "Tháng " + month + "/" + targetYear;
                 groupBy = "DAY";
@@ -121,12 +151,18 @@ public class DashboardServiceImpl implements DashboardService {
                 start = YearMonth.of(targetYear, startMonth).atDay(1).atStartOfDay();
                 end = YearMonth.of(targetYear, endMonth).atEndOfMonth().atTime(LocalTime.MAX);
 
-                int prevQ = q > 1 ? q - 1 : 4;
-                int prevYear = q > 1 ? targetYear : targetYear - 1;
-                int pStartMonth = (prevQ - 1) * 3 + 1;
-                int pEndMonth = pStartMonth + 2;
-                prevStart = YearMonth.of(prevYear, pStartMonth).atDay(1).atStartOfDay();
-                prevEnd = YearMonth.of(prevYear, pEndMonth).atEndOfMonth().atTime(LocalTime.MAX);
+                if ("YOY".equalsIgnoreCase(comparisonMode)) {
+                    int prevYear = targetYear - 1;
+                    prevStart = YearMonth.of(prevYear, startMonth).atDay(1).atStartOfDay();
+                    prevEnd = YearMonth.of(prevYear, endMonth).atEndOfMonth().atTime(LocalTime.MAX);
+                } else {
+                    int prevQ = q > 1 ? q - 1 : 4;
+                    int prevYear = q > 1 ? targetYear : targetYear - 1;
+                    int pStartMonth = (prevQ - 1) * 3 + 1;
+                    int pEndMonth = pStartMonth + 2;
+                    prevStart = YearMonth.of(prevYear, pStartMonth).atDay(1).atStartOfDay();
+                    prevEnd = YearMonth.of(prevYear, pEndMonth).atEndOfMonth().atTime(LocalTime.MAX);
+                }
 
                 label = "Quý " + q + "/" + targetYear;
                 groupBy = "MONTH";
@@ -142,11 +178,16 @@ public class DashboardServiceImpl implements DashboardService {
                 }
                 start = sDate.atStartOfDay();
                 end = eDate.atTime(LocalTime.MAX);
-                long days = ChronoUnit.DAYS.between(sDate, eDate) + 1;
-                prevStart = start.minusDays(days);
-                prevEnd = end.minusDays(days);
+                if ("YOY".equalsIgnoreCase(comparisonMode)) {
+                    prevStart = start.minusYears(1);
+                    prevEnd = end.minusYears(1);
+                } else {
+                    long days = ChronoUnit.DAYS.between(sDate, eDate) + 1;
+                    prevStart = start.minusDays(days);
+                    prevEnd = end.minusDays(days);
+                }
                 label = sDate.format(DISPLAY_DATE_FMT) + " - " + eDate.format(DISPLAY_DATE_FMT);
-                groupBy = days > 60 ? "MONTH" : "DAY";
+                groupBy = (ChronoUnit.DAYS.between(sDate, eDate) + 1) > 60 ? "MONTH" : "DAY";
                 break;
             }
             case "ALL":
@@ -185,8 +226,7 @@ public class DashboardServiceImpl implements DashboardService {
             if (!names.isEmpty() && names.get(0) != null) {
                 return names.get(0);
             }
-        } catch (Exception ignored) {
-        }
+        } catch (Exception ignored) {}
         return switch (branchId) {
             case "BRANCH_Q1" -> "Cơ sở 1 - Trung tâm Nha khoa Quốc Tế (Q1)";
             case "BRANCH_BT" -> "Cơ sở 2 - Nha khoa Thẩm mỹ Công nghệ cao (BT)";
@@ -194,7 +234,96 @@ public class DashboardServiceImpl implements DashboardService {
         };
     }
 
-    private Double calculateGrowthRate(BigDecimal current, BigDecimal previous) {
+    private String buildInvoiceFilterSql(String alias, String branchId, String paymentStatus, String paymentMethod, String patientSegment) {
+        String tbl = (alias != null && !alias.trim().isEmpty()) ? alias.trim() : "invoices";
+        String pfx = tbl + ".";
+        StringBuilder sb = new StringBuilder();
+        if (branchId != null) {
+            sb.append(" AND ").append(pfx).append("branch_id = '").append(branchId.replace("'", "''")).append("'");
+        }
+        if (paymentStatus != null && !paymentStatus.trim().isEmpty() && !"ALL".equalsIgnoreCase(paymentStatus)) {
+            switch (paymentStatus.toUpperCase()) {
+                case "PAID" -> sb.append(" AND ").append(pfx).append("payment_status = 'PAID'");
+                case "DEBT" -> sb.append(" AND (").append(pfx).append("payment_status IN ('PARTIALLY_PAID', 'UNPAID') OR ").append(pfx).append("remaining_amount > 0)");
+                case "PROMO" -> sb.append(" AND (").append(pfx).append("promotion_id IS NOT NULL OR ").append(pfx).append("discount_amount > 0)");
+            }
+        }
+        if (paymentMethod != null && !paymentMethod.trim().isEmpty() && !"ALL".equalsIgnoreCase(paymentMethod)) {
+            String invIdCol = pfx + "id";
+            switch (paymentMethod.toUpperCase()) {
+                case "BANK_TRANSFER" -> sb.append(" AND EXISTS (SELECT 1 FROM payment_transactions pt_sub WHERE pt_sub.invoice_id = ").append(invIdCol).append(" AND pt_sub.status = 'SUCCESS' AND pt_sub.payment_method = 'BANK_TRANSFER')");
+                case "CASH" -> sb.append(" AND EXISTS (SELECT 1 FROM payment_transactions pt_sub WHERE pt_sub.invoice_id = ").append(invIdCol).append(" AND pt_sub.status = 'SUCCESS' AND pt_sub.payment_method = 'CASH')");
+                case "CARD" -> sb.append(" AND EXISTS (SELECT 1 FROM payment_transactions pt_sub WHERE pt_sub.invoice_id = ").append(invIdCol).append(" AND pt_sub.status = 'SUCCESS' AND pt_sub.payment_method IN ('CARD', 'CREDIT_CARD'))");
+            }
+        }
+        if (patientSegment != null && !patientSegment.trim().isEmpty() && !"ALL".equalsIgnoreCase(patientSegment)) {
+            String patIdCol = pfx + "patient_id";
+            switch (patientSegment.toUpperCase()) {
+                case "NEW" -> sb.append(" AND EXISTS (SELECT 1 FROM patients p_sub WHERE p_sub.id = ").append(patIdCol).append(" AND (p_sub.customer_group = 'Khách mới' OR p_sub.customer_card LIKE 'NEW%'))");
+                case "RETURNING" -> sb.append(" AND EXISTS (SELECT 1 FROM patients p_sub WHERE p_sub.id = ").append(patIdCol).append(" AND (p_sub.customer_group = 'Khách thân thiết' OR p_sub.customer_card LIKE 'MEM%'))");
+                case "VIP" -> sb.append(" AND EXISTS (SELECT 1 FROM patients p_sub WHERE p_sub.id = ").append(patIdCol).append(" AND (p_sub.customer_group = 'Khách VIP' OR p_sub.customer_card LIKE 'VIP%'))");
+            }
+        }
+        return sb.toString();
+    }
+
+    private String buildPaymentFilterSql(String alias, String branchId, String paymentStatus, String paymentMethod, String patientSegment) {
+        String tbl = (alias != null && !alias.trim().isEmpty()) ? alias.trim() : "payment_transactions";
+        String pfx = tbl + ".";
+        StringBuilder sb = new StringBuilder();
+        if (branchId != null) {
+            sb.append(" AND (").append(pfx).append("branch_id = '").append(branchId.replace("'", "''")).append("'")
+              .append(" OR EXISTS (SELECT 1 FROM invoices i_b WHERE i_b.id = ").append(pfx).append("invoice_id AND i_b.branch_id = '").append(branchId.replace("'", "''")).append("'))");
+        }
+        if (paymentMethod != null && !paymentMethod.trim().isEmpty() && !"ALL".equalsIgnoreCase(paymentMethod)) {
+            switch (paymentMethod.toUpperCase()) {
+                case "BANK_TRANSFER" -> sb.append(" AND ").append(pfx).append("payment_method = 'BANK_TRANSFER'");
+                case "CASH" -> sb.append(" AND ").append(pfx).append("payment_method = 'CASH'");
+                case "CARD" -> sb.append(" AND ").append(pfx).append("payment_method IN ('CARD', 'CREDIT_CARD')");
+            }
+        }
+        if (paymentStatus != null && !paymentStatus.trim().isEmpty() && !"ALL".equalsIgnoreCase(paymentStatus)) {
+            String invId = pfx + "invoice_id";
+            switch (paymentStatus.toUpperCase()) {
+                case "PAID" -> sb.append(" AND EXISTS (SELECT 1 FROM invoices i_st WHERE i_st.id = ").append(invId).append(" AND i_st.payment_status = 'PAID')");
+                case "DEBT" -> sb.append(" AND EXISTS (SELECT 1 FROM invoices i_st WHERE i_st.id = ").append(invId).append(" AND (i_st.payment_status IN ('PARTIALLY_PAID', 'UNPAID') OR i_st.remaining_amount > 0))");
+                case "PROMO" -> sb.append(" AND EXISTS (SELECT 1 FROM invoices i_st WHERE i_st.id = ").append(invId).append(" AND (i_st.promotion_id IS NOT NULL OR i_st.discount_amount > 0))");
+            }
+        }
+        if (patientSegment != null && !patientSegment.trim().isEmpty() && !"ALL".equalsIgnoreCase(patientSegment)) {
+            String invId = pfx + "invoice_id";
+            switch (patientSegment.toUpperCase()) {
+                case "NEW" -> sb.append(" AND EXISTS (SELECT 1 FROM invoices i_p JOIN patients p_sub ON i_p.patient_id = p_sub.id WHERE i_p.id = ").append(invId).append(" AND (p_sub.customer_group = 'Khách mới' OR p_sub.customer_card LIKE 'NEW%'))");
+                case "RETURNING" -> sb.append(" AND EXISTS (SELECT 1 FROM invoices i_p JOIN patients p_sub ON i_p.patient_id = p_sub.id WHERE i_p.id = ").append(invId).append(" AND (p_sub.customer_group = 'Khách thân thiết' OR p_sub.customer_card LIKE 'MEM%'))");
+                case "VIP" -> sb.append(" AND EXISTS (SELECT 1 FROM invoices i_p JOIN patients p_sub ON i_p.patient_id = p_sub.id WHERE i_p.id = ").append(invId).append(" AND (p_sub.customer_group = 'Khách VIP' OR p_sub.customer_card LIKE 'VIP%'))");
+            }
+        }
+        return sb.toString();
+    }
+
+    private String buildAppointmentFilterSql(String alias, String branchId, String patientSegment) {
+        String tbl = (alias != null && !alias.trim().isEmpty()) ? alias.trim() : "appointments";
+        String pfx = tbl + ".";
+        StringBuilder sb = new StringBuilder();
+        if (branchId != null) {
+            sb.append(" AND ").append(pfx).append("branch_id = '").append(branchId.replace("'", "''")).append("'");
+        }
+        if (patientSegment != null && !patientSegment.trim().isEmpty() && !"ALL".equalsIgnoreCase(patientSegment)) {
+            String patId = pfx + "patient_id";
+            String phoneCol = pfx + "phone";
+            switch (patientSegment.toUpperCase()) {
+                case "NEW" -> sb.append(" AND EXISTS (SELECT 1 FROM patients p_sub WHERE (p_sub.id = ").append(patId).append(" OR p_sub.phone_number = ").append(phoneCol).append(") AND (p_sub.customer_group = 'Khách mới' OR p_sub.customer_card LIKE 'NEW%'))");
+                case "RETURNING" -> sb.append(" AND EXISTS (SELECT 1 FROM patients p_sub WHERE (p_sub.id = ").append(patId).append(" OR p_sub.phone_number = ").append(phoneCol).append(") AND (p_sub.customer_group = 'Khách thân thiết' OR p_sub.customer_card LIKE 'MEM%'))");
+                case "VIP" -> sb.append(" AND EXISTS (SELECT 1 FROM patients p_sub WHERE (p_sub.id = ").append(patId).append(" OR p_sub.phone_number = ").append(phoneCol).append(") AND (p_sub.customer_group = 'Khách VIP' OR p_sub.customer_card LIKE 'VIP%'))");
+            }
+        }
+        return sb.toString();
+    }
+
+    private Double calculateGrowthRate(BigDecimal current, BigDecimal previous, String comparisonMode) {
+        if ("NONE".equalsIgnoreCase(comparisonMode)) {
+            return 0.0;
+        }
         if (current == null) current = BigDecimal.ZERO;
         if (previous == null) previous = BigDecimal.ZERO;
         if (previous.compareTo(BigDecimal.ZERO) == 0) {
@@ -207,7 +336,10 @@ public class DashboardServiceImpl implements DashboardService {
                 .doubleValue();
     }
 
-    private Double calculateGrowthRateLong(Long current, Long previous) {
+    private Double calculateGrowthRateLong(Long current, Long previous, String comparisonMode) {
+        if ("NONE".equalsIgnoreCase(comparisonMode)) {
+            return 0.0;
+        }
         if (current == null) current = 0L;
         if (previous == null) previous = 0L;
         if (previous == 0L) {
@@ -227,8 +359,17 @@ public class DashboardServiceImpl implements DashboardService {
         Timestamp endTs = Timestamp.valueOf(period.endDate());
         Timestamp pStartTs = Timestamp.valueOf(period.prevStartDate());
         Timestamp pEndTs = Timestamp.valueOf(period.prevEndDate());
+
         String branchId = resolveBranchId(filter);
         String branchName = resolveBranchName(branchId);
+        String comparisonMode = filter != null && filter.getComparisonMode() != null ? filter.getComparisonMode() : "NONE";
+        String paymentStatus = filter != null && filter.getPaymentStatus() != null ? filter.getPaymentStatus() : "ALL";
+        String paymentMethod = filter != null && filter.getPaymentMethod() != null ? filter.getPaymentMethod() : "ALL";
+        String patientSegment = filter != null && filter.getPatientSegment() != null ? filter.getPatientSegment() : "ALL";
+
+        String invFilterClause = buildInvoiceFilterSql("", branchId, paymentStatus, paymentMethod, patientSegment);
+        String payFilterClause = buildPaymentFilterSql("", branchId, paymentStatus, paymentMethod, patientSegment);
+        String apptFilterClause = buildAppointmentFilterSql("", branchId, patientSegment);
 
         // 1. Revenue Summary
         String invSql = """
@@ -238,18 +379,14 @@ public class DashboardServiceImpl implements DashboardService {
                 COALESCE(SUM(remaining_amount), 0) AS remaining_debt
             FROM invoices
             WHERE invoice_date BETWEEN ? AND ?
-        """ + (branchId != null ? " AND branch_id = ? " : "");
+        """ + invFilterClause;
 
-        var invData = branchId != null
-                ? jdbcTemplate.queryForMap(invSql, startTs, endTs, branchId)
-                : jdbcTemplate.queryForMap(invSql, startTs, endTs);
+        var invData = jdbcTemplate.queryForMap(invSql, startTs, endTs);
         Long totalInvoices = ((Number) invData.get("total_invoices")).longValue();
         BigDecimal invoiceRevenue = (BigDecimal) invData.get("invoice_revenue");
         BigDecimal remainingDebt = (BigDecimal) invData.get("remaining_debt");
 
-        var prevInvData = branchId != null
-                ? jdbcTemplate.queryForMap(invSql, pStartTs, pEndTs, branchId)
-                : jdbcTemplate.queryForMap(invSql, pStartTs, pEndTs);
+        var prevInvData = jdbcTemplate.queryForMap(invSql, pStartTs, pEndTs);
         BigDecimal prevInvoiceRevenue = (BigDecimal) prevInvData.get("invoice_revenue");
 
         String paySql = """
@@ -259,19 +396,15 @@ public class DashboardServiceImpl implements DashboardService {
                 COALESCE(SUM(medicine_amount), 0) AS medicine_amount
             FROM payment_transactions
             WHERE status = 'SUCCESS' AND payment_time BETWEEN ? AND ?
-        """ + (branchId != null ? " AND branch_id = ? " : "");
+        """ + payFilterClause;
 
-        var payData = branchId != null
-                ? jdbcTemplate.queryForMap(paySql, startTs, endTs, branchId)
-                : jdbcTemplate.queryForMap(paySql, startTs, endTs);
+        var payData = jdbcTemplate.queryForMap(paySql, startTs, endTs);
         BigDecimal actualCollected = (BigDecimal) payData.get("actual_collected");
         BigDecimal serviceAmount = (BigDecimal) payData.get("service_amount");
         BigDecimal medicineAmount = (BigDecimal) payData.get("medicine_amount");
         BigDecimal otherAmount = actualCollected.subtract(serviceAmount).subtract(medicineAmount).max(BigDecimal.ZERO);
 
-        var prevPayData = branchId != null
-                ? jdbcTemplate.queryForMap(paySql, pStartTs, pEndTs, branchId)
-                : jdbcTemplate.queryForMap(paySql, pStartTs, pEndTs);
+        var prevPayData = jdbcTemplate.queryForMap(paySql, pStartTs, pEndTs);
         BigDecimal prevActual = (BigDecimal) prevPayData.get("actual_collected");
 
         var revenueSummary = DashboardOverviewResponse.RevenueSummary.builder()
@@ -279,8 +412,8 @@ public class DashboardServiceImpl implements DashboardService {
                 .invoiceRevenue(invoiceRevenue)
                 .actualCollected(actualCollected)
                 .remainingDebt(remainingDebt)
-                .revenueGrowthRate(calculateGrowthRate(invoiceRevenue, prevInvoiceRevenue))
-                .actualGrowthRate(calculateGrowthRate(actualCollected, prevActual))
+                .revenueGrowthRate(calculateGrowthRate(invoiceRevenue, prevInvoiceRevenue, comparisonMode))
+                .actualGrowthRate(calculateGrowthRate(actualCollected, prevActual, comparisonMode))
                 .serviceAmount(serviceAmount)
                 .medicineAmount(medicineAmount)
                 .otherAmount(otherAmount)
@@ -341,14 +474,10 @@ public class DashboardServiceImpl implements DashboardService {
             FROM invoice_details idt
             JOIN invoices i ON idt.invoice_id = i.id
             WHERE i.invoice_date BETWEEN ? AND ?
-        """ + (branchId != null ? " AND i.branch_id = ? " : "");
+        """ + buildInvoiceFilterSql("i", branchId, paymentStatus, paymentMethod, patientSegment);
 
-        var srvData = branchId != null
-                ? jdbcTemplate.queryForMap(srvUsageSql, startTs, endTs, branchId)
-                : jdbcTemplate.queryForMap(srvUsageSql, startTs, endTs);
-        var prevSrvData = branchId != null
-                ? jdbcTemplate.queryForMap(srvUsageSql, pStartTs, pEndTs, branchId)
-                : jdbcTemplate.queryForMap(srvUsageSql, pStartTs, pEndTs);
+        var srvData = jdbcTemplate.queryForMap(srvUsageSql, startTs, endTs);
+        var prevSrvData = jdbcTemplate.queryForMap(srvUsageSql, pStartTs, pEndTs);
         BigDecimal currentSrvRev = (BigDecimal) srvData.get("total_revenue");
         BigDecimal prevSrvRev = (BigDecimal) prevSrvData.get("total_revenue");
 
@@ -356,7 +485,7 @@ public class DashboardServiceImpl implements DashboardService {
                 .totalServices(totalServices)
                 .totalUsageCount(((Number) srvData.get("total_usage")).longValue())
                 .totalRevenue(currentSrvRev)
-                .growthRate(calculateGrowthRate(currentSrvRev, prevSrvRev))
+                .growthRate(calculateGrowthRate(currentSrvRev, prevSrvRev, comparisonMode))
                 .build();
 
         // 5. Promotion Summary
@@ -369,11 +498,9 @@ public class DashboardServiceImpl implements DashboardService {
             FROM invoices
             WHERE (promotion_id IS NOT NULL OR discount_amount > 0)
               AND invoice_date BETWEEN ? AND ?
-        """ + (branchId != null ? " AND branch_id = ? " : "");
+        """ + buildInvoiceFilterSql("", branchId, paymentStatus, paymentMethod, patientSegment);
 
-        var promoData = branchId != null
-                ? jdbcTemplate.queryForMap(promoSql, startTs, endTs, branchId)
-                : jdbcTemplate.queryForMap(promoSql, startTs, endTs);
+        var promoData = jdbcTemplate.queryForMap(promoSql, startTs, endTs);
         Long promoInvoices = ((Number) promoData.get("promo_invoices")).longValue();
 
         var promotionSummary = DashboardOverviewResponse.PromotionSummary.builder()
@@ -393,19 +520,15 @@ public class DashboardServiceImpl implements DashboardService {
                 COUNT(id) FILTER (WHERE status = 'CONFIRMED') AS confirmed
             FROM appointments
             WHERE appointment_date BETWEEN ? AND ?
-        """ + (branchId != null ? " AND branch_id = ? " : "");
+        """ + apptFilterClause;
 
-        var apptData = branchId != null
-                ? jdbcTemplate.queryForMap(apptSql, startTs, endTs, branchId)
-                : jdbcTemplate.queryForMap(apptSql, startTs, endTs);
+        var apptData = jdbcTemplate.queryForMap(apptSql, startTs, endTs);
         Long apptTotal = ((Number) apptData.get("total")).longValue();
         Long apptCompleted = ((Number) apptData.get("completed")).longValue();
         Long apptCancelled = ((Number) apptData.get("cancelled")).longValue();
         Long apptConfirmed = ((Number) apptData.get("confirmed")).longValue();
 
-        var prevApptData = branchId != null
-                ? jdbcTemplate.queryForMap(apptSql, pStartTs, pEndTs, branchId)
-                : jdbcTemplate.queryForMap(apptSql, pStartTs, pEndTs);
+        var prevApptData = jdbcTemplate.queryForMap(apptSql, pStartTs, pEndTs);
         Long prevApptTotal = ((Number) prevApptData.get("total")).longValue();
 
         double compRate = apptTotal > 0 ? Math.round(((double) apptCompleted / apptTotal) * 1000.0) / 10.0 : 0.0;
@@ -418,7 +541,7 @@ public class DashboardServiceImpl implements DashboardService {
                 .confirmedAppointments(apptConfirmed)
                 .completionRate(compRate)
                 .cancellationRate(cancRate)
-                .growthRate(calculateGrowthRateLong(apptTotal, prevApptTotal))
+                .growthRate(calculateGrowthRateLong(apptTotal, prevApptTotal, comparisonMode))
                 .build();
 
         return DashboardOverviewResponse.builder()
@@ -427,6 +550,10 @@ public class DashboardServiceImpl implements DashboardService {
                 .endDate(period.endDate())
                 .branchId(branchId)
                 .branchName(branchName)
+                .comparisonMode(comparisonMode)
+                .paymentStatus(paymentStatus)
+                .paymentMethod(paymentMethod)
+                .patientSegment(patientSegment)
                 .revenue(revenueSummary)
                 .staff(staffSummary)
                 .medicines(medicineSummary)
@@ -446,8 +573,16 @@ public class DashboardServiceImpl implements DashboardService {
         Timestamp endTs = Timestamp.valueOf(period.endDate());
         Timestamp pStartTs = Timestamp.valueOf(period.prevStartDate());
         Timestamp pEndTs = Timestamp.valueOf(period.prevEndDate());
+
         String branchId = resolveBranchId(filter);
         String branchName = resolveBranchName(branchId);
+        String comparisonMode = filter != null && filter.getComparisonMode() != null ? filter.getComparisonMode() : "NONE";
+        String paymentStatus = filter != null && filter.getPaymentStatus() != null ? filter.getPaymentStatus() : "ALL";
+        String paymentMethod = filter != null && filter.getPaymentMethod() != null ? filter.getPaymentMethod() : "ALL";
+        String patientSegment = filter != null && filter.getPatientSegment() != null ? filter.getPatientSegment() : "ALL";
+
+        String invFilterClause = buildInvoiceFilterSql("", branchId, paymentStatus, paymentMethod, patientSegment);
+        String payFilterClause = buildPaymentFilterSql("", branchId, paymentStatus, paymentMethod, patientSegment);
 
         // Invoices summary
         String invSql = """
@@ -459,20 +594,16 @@ public class DashboardServiceImpl implements DashboardService {
                 COALESCE(SUM(remaining_amount), 0) AS remaining_debt
             FROM invoices
             WHERE invoice_date BETWEEN ? AND ?
-        """ + (branchId != null ? " AND branch_id = ? " : "");
+        """ + invFilterClause;
 
-        var invData = branchId != null
-                ? jdbcTemplate.queryForMap(invSql, startTs, endTs, branchId)
-                : jdbcTemplate.queryForMap(invSql, startTs, endTs);
+        var invData = jdbcTemplate.queryForMap(invSql, startTs, endTs);
         Long totalInvoices = ((Number) invData.get("total_invoices")).longValue();
         BigDecimal totalAmount = (BigDecimal) invData.get("total_amount");
         BigDecimal discountAmount = (BigDecimal) invData.get("discount_amount");
         BigDecimal invoiceRevenue = (BigDecimal) invData.get("invoice_revenue");
         BigDecimal remainingDebt = (BigDecimal) invData.get("remaining_debt");
 
-        var prevInvData = branchId != null
-                ? jdbcTemplate.queryForMap(invSql, pStartTs, pEndTs, branchId)
-                : jdbcTemplate.queryForMap(invSql, pStartTs, pEndTs);
+        var prevInvData = jdbcTemplate.queryForMap(invSql, pStartTs, pEndTs);
         Long prevTotalInvoices = ((Number) prevInvData.get("total_invoices")).longValue();
         BigDecimal prevInvoiceRevenue = (BigDecimal) prevInvData.get("invoice_revenue");
         BigDecimal prevDebt = (BigDecimal) prevInvData.get("remaining_debt");
@@ -485,19 +616,15 @@ public class DashboardServiceImpl implements DashboardService {
                 COALESCE(SUM(medicine_amount), 0) AS medicine_amount
             FROM payment_transactions
             WHERE status = 'SUCCESS' AND payment_time BETWEEN ? AND ?
-        """ + (branchId != null ? " AND branch_id = ? " : "");
+        """ + payFilterClause;
 
-        var payData = branchId != null
-                ? jdbcTemplate.queryForMap(paySql, startTs, endTs, branchId)
-                : jdbcTemplate.queryForMap(paySql, startTs, endTs);
+        var payData = jdbcTemplate.queryForMap(paySql, startTs, endTs);
         BigDecimal actualCollected = (BigDecimal) payData.get("actual_collected");
         BigDecimal serviceAmount = (BigDecimal) payData.get("service_amount");
         BigDecimal medicineAmount = (BigDecimal) payData.get("medicine_amount");
         BigDecimal otherAmount = actualCollected.subtract(serviceAmount).subtract(medicineAmount).max(BigDecimal.ZERO);
 
-        var prevPayData = branchId != null
-                ? jdbcTemplate.queryForMap(paySql, pStartTs, pEndTs, branchId)
-                : jdbcTemplate.queryForMap(paySql, pStartTs, pEndTs);
+        var prevPayData = jdbcTemplate.queryForMap(paySql, pStartTs, pEndTs);
         BigDecimal prevActual = (BigDecimal) prevPayData.get("actual_collected");
 
         // Trend points
@@ -514,7 +641,7 @@ public class DashboardServiceImpl implements DashboardService {
             WHERE invoice_date BETWEEN ? AND ? %s
             GROUP BY TO_CHAR(invoice_date, '%s')
             ORDER BY d_key ASC
-        """, datePattern, branchId != null ? " AND branch_id = ? " : "", datePattern);
+        """, datePattern, invFilterClause, datePattern);
 
         String trendPaySql = String.format("""
             SELECT
@@ -524,7 +651,7 @@ public class DashboardServiceImpl implements DashboardService {
             WHERE status = 'SUCCESS' AND payment_time BETWEEN ? AND ? %s
             GROUP BY TO_CHAR(payment_time, '%s')
             ORDER BY d_key ASC
-        """, datePattern, branchId != null ? " AND branch_id = ? " : "", datePattern);
+        """, datePattern, payFilterClause, datePattern);
 
         Map<String, RevenueDashboardResponse.RevenueTrendPoint> trendMap = new TreeMap<>();
         var invTrendCallback = (org.springframework.jdbc.core.RowMapper<Void>) (rs, rowNum) -> {
@@ -543,11 +670,7 @@ public class DashboardServiceImpl implements DashboardService {
             return null;
         };
 
-        if (branchId != null) {
-            jdbcTemplate.query(trendInvSql, invTrendCallback, startTs, endTs, branchId);
-        } else {
-            jdbcTemplate.query(trendInvSql, invTrendCallback, startTs, endTs);
-        }
+        jdbcTemplate.query(trendInvSql, invTrendCallback, startTs, endTs);
 
         var payTrendCallback = (org.springframework.jdbc.core.RowMapper<Void>) (rs, rowNum) -> {
             String key = rs.getString("d_key");
@@ -570,15 +693,10 @@ public class DashboardServiceImpl implements DashboardService {
             return null;
         };
 
-        if (branchId != null) {
-            jdbcTemplate.query(trendPaySql, payTrendCallback, startTs, endTs, branchId);
-        } else {
-            jdbcTemplate.query(trendPaySql, payTrendCallback, startTs, endTs);
-        }
-
+        jdbcTemplate.query(trendPaySql, payTrendCallback, startTs, endTs);
         List<RevenueDashboardResponse.RevenueTrendPoint> trendList = new ArrayList<>(trendMap.values());
 
-        // Payment Methods
+        // Payment Methods breakdown (cho thấy phân bổ các phương thức thanh toán)
         String methodSql = """
             SELECT
                 payment_method,
@@ -586,7 +704,7 @@ public class DashboardServiceImpl implements DashboardService {
                 COALESCE(SUM(total_amount), 0) AS amt
             FROM payment_transactions
             WHERE status = 'SUCCESS' AND payment_time BETWEEN ? AND ?
-        """ + (branchId != null ? " AND branch_id = ? " : "") + """
+        """ + buildPaymentFilterSql("", branchId, paymentStatus, null, patientSegment) + """
             GROUP BY payment_method
             ORDER BY amt DESC
         """;
@@ -599,8 +717,8 @@ public class DashboardServiceImpl implements DashboardService {
                     : 0.0;
             String name = switch (method != null ? method : "") {
                 case "CASH" -> "Tiền mặt";
-                case "BANK_TRANSFER" -> "Chuyển khoản";
-                case "CREDIT_CARD" -> "Thẻ tín dụng";
+                case "BANK_TRANSFER" -> "Chuyển khoản VietQR";
+                case "CREDIT_CARD", "CARD" -> "Thẻ tín dụng / POS";
                 case "MOMO" -> "Ví MoMo";
                 case "VNPAY" -> "VNPay QR";
                 default -> method != null ? method : "Khác";
@@ -614,11 +732,9 @@ public class DashboardServiceImpl implements DashboardService {
                     .build();
         };
 
-        List<RevenueDashboardResponse.PaymentMethodStat> paymentMethods = branchId != null
-                ? jdbcTemplate.query(methodSql, methodCallback, startTs, endTs, branchId)
-                : jdbcTemplate.query(methodSql, methodCallback, startTs, endTs);
+        List<RevenueDashboardResponse.PaymentMethodStat> paymentMethods = jdbcTemplate.query(methodSql, methodCallback, startTs, endTs);
 
-        // Invoice Statuses
+        // Invoice Statuses breakdown
         String statusSql = """
             SELECT
                 payment_status,
@@ -626,7 +742,7 @@ public class DashboardServiceImpl implements DashboardService {
                 COALESCE(SUM(final_amount), 0) AS amt
             FROM invoices
             WHERE invoice_date BETWEEN ? AND ?
-        """ + (branchId != null ? " AND branch_id = ? " : "") + """
+        """ + buildInvoiceFilterSql("", branchId, null, paymentMethod, patientSegment) + """
             GROUP BY payment_status
         """;
         var statusCallback = (org.springframework.jdbc.core.RowMapper<RevenueDashboardResponse.InvoiceStatusStat>) (rs, rowNum) -> {
@@ -646,9 +762,7 @@ public class DashboardServiceImpl implements DashboardService {
                     .build();
         };
 
-        List<RevenueDashboardResponse.InvoiceStatusStat> invoiceStatuses = branchId != null
-                ? jdbcTemplate.query(statusSql, statusCallback, startTs, endTs, branchId)
-                : jdbcTemplate.query(statusSql, statusCallback, startTs, endTs);
+        List<RevenueDashboardResponse.InvoiceStatusStat> invoiceStatuses = jdbcTemplate.query(statusSql, statusCallback, startTs, endTs);
 
         // Recent Payments
         String recentSql = """
@@ -667,7 +781,7 @@ public class DashboardServiceImpl implements DashboardService {
             LEFT JOIN patients p ON i.patient_id = p.id
             LEFT JOIN employees e ON pt.employee_id = e.id
             WHERE pt.status = 'SUCCESS' AND pt.payment_time BETWEEN ? AND ?
-        """ + (branchId != null ? " AND (pt.branch_id = ? OR i.branch_id = ?) " : "") + """
+        """ + buildPaymentFilterSql("pt", branchId, paymentStatus, paymentMethod, patientSegment) + """
             ORDER BY pt.payment_time DESC
             LIMIT 100
         """;
@@ -684,9 +798,7 @@ public class DashboardServiceImpl implements DashboardService {
                         .cashierName(rs.getString("cashier_name"))
                         .build();
 
-        List<RevenueDashboardResponse.RecentPaymentItem> recentPayments = branchId != null
-                ? jdbcTemplate.query(recentSql, recentCallback, startTs, endTs, branchId, branchId)
-                : jdbcTemplate.query(recentSql, recentCallback, startTs, endTs);
+        List<RevenueDashboardResponse.RecentPaymentItem> recentPayments = jdbcTemplate.query(recentSql, recentCallback, startTs, endTs);
 
         return RevenueDashboardResponse.builder()
                 .periodLabel(period.label())
@@ -694,14 +806,18 @@ public class DashboardServiceImpl implements DashboardService {
                 .endDate(period.endDate())
                 .branchId(branchId)
                 .branchName(branchName)
+                .comparisonMode(comparisonMode)
+                .paymentStatus(paymentStatus)
+                .paymentMethod(paymentMethod)
+                .patientSegment(patientSegment)
                 .totalInvoices(totalInvoices)
                 .invoiceRevenue(invoiceRevenue)
                 .actualCollected(actualCollected)
                 .remainingDebt(remainingDebt)
-                .invoiceCountGrowthRate(calculateGrowthRateLong(totalInvoices, prevTotalInvoices))
-                .invoiceRevenueGrowthRate(calculateGrowthRate(invoiceRevenue, prevInvoiceRevenue))
-                .actualCollectedGrowthRate(calculateGrowthRate(actualCollected, prevActual))
-                .remainingDebtGrowthRate(calculateGrowthRate(remainingDebt, prevDebt))
+                .invoiceCountGrowthRate(calculateGrowthRateLong(totalInvoices, prevTotalInvoices, comparisonMode))
+                .invoiceRevenueGrowthRate(calculateGrowthRate(invoiceRevenue, prevInvoiceRevenue, comparisonMode))
+                .actualCollectedGrowthRate(calculateGrowthRate(actualCollected, prevActual, comparisonMode))
+                .remainingDebtGrowthRate(calculateGrowthRate(remainingDebt, prevDebt, comparisonMode))
                 .totalAmount(totalAmount)
                 .totalDiscount(discountAmount)
                 .serviceAmount(serviceAmount)
@@ -725,6 +841,10 @@ public class DashboardServiceImpl implements DashboardService {
         String branchId = resolveBranchId(filter);
         String branchName = resolveBranchName(branchId);
 
+        String paymentStatus = filter != null && filter.getPaymentStatus() != null ? filter.getPaymentStatus() : "ALL";
+        String paymentMethod = filter != null && filter.getPaymentMethod() != null ? filter.getPaymentMethod() : "ALL";
+        String patientSegment = filter != null && filter.getPatientSegment() != null ? filter.getPatientSegment() : "ALL";
+
         Long totalDoctors = branchId != null
                 ? jdbcTemplate.queryForObject("SELECT COUNT(*) FROM dentists WHERE branch_id = ?", Long.class, branchId)
                 : jdbcTemplate.queryForObject("SELECT COUNT(*) FROM dentists", Long.class);
@@ -738,7 +858,6 @@ public class DashboardServiceImpl implements DashboardService {
                 ? jdbcTemplate.queryForObject("SELECT COUNT(*) FROM employees WHERE position = 'WAREHOUSE' AND branch_id = ?", Long.class, branchId)
                 : jdbcTemplate.queryForObject("SELECT COUNT(*) FROM employees WHERE position = 'WAREHOUSE'", Long.class);
 
-        // Doctor stats
         String docSql = """
             SELECT
                 d.id,
@@ -781,6 +900,7 @@ public class DashboardServiceImpl implements DashboardService {
                             WHERE a2.dentist_id = d.id
                         )
                    )
+                """ + buildInvoiceFilterSql("i", branchId, paymentStatus, paymentMethod, patientSegment) + """
                 ) AS service_revenue
             FROM dentists d
             LEFT JOIN users u ON d.user_id = u.id
@@ -812,7 +932,6 @@ public class DashboardServiceImpl implements DashboardService {
                 ? jdbcTemplate.query(docSql, docCallback, startTs, endTs, startTs, endTs, startTs, endTs, startTs, endTs, startTs, endTs, branchId)
                 : jdbcTemplate.query(docSql, docCallback, startTs, endTs, startTs, endTs, startTs, endTs, startTs, endTs, startTs, endTs);
 
-        // Employee stats
         String empSql = """
             SELECT
                 e.id,
@@ -892,7 +1011,6 @@ public class DashboardServiceImpl implements DashboardService {
         Long lowStockCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM medicines WHERE stock_quantity < 30", Long.class);
 
-        // Medicines usage query
         String medSql = """
             SELECT
                 m.id,
@@ -947,7 +1065,6 @@ public class DashboardServiceImpl implements DashboardService {
                 .map(MedicineDashboardResponse.MedicineUsageItem::getTotalRevenue)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Supplies query
         String supSql = """
             SELECT
                 s.id,
@@ -1010,13 +1127,19 @@ public class DashboardServiceImpl implements DashboardService {
         Timestamp endTs = Timestamp.valueOf(period.endDate());
         Timestamp pStartTs = Timestamp.valueOf(period.prevStartDate());
         Timestamp pEndTs = Timestamp.valueOf(period.prevEndDate());
+
         String branchId = resolveBranchId(filter);
         String branchName = resolveBranchName(branchId);
+        String comparisonMode = filter != null && filter.getComparisonMode() != null ? filter.getComparisonMode() : "NONE";
+        String paymentStatus = filter != null && filter.getPaymentStatus() != null ? filter.getPaymentStatus() : "ALL";
+        String paymentMethod = filter != null && filter.getPaymentMethod() != null ? filter.getPaymentMethod() : "ALL";
+        String patientSegment = filter != null && filter.getPatientSegment() != null ? filter.getPatientSegment() : "ALL";
+
+        String invFilterClause = buildInvoiceFilterSql("i", branchId, paymentStatus, paymentMethod, patientSegment);
 
         Long totalServicesCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM services", Long.class);
         Long activeServicesCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM services WHERE is_active = true", Long.class);
 
-        // Service usage in current period
         String srvSql = """
             SELECT
                 COALESCE(s.id::text, '') AS service_id,
@@ -1031,7 +1154,7 @@ public class DashboardServiceImpl implements DashboardService {
             JOIN invoices i ON idt.invoice_id = i.id
             LEFT JOIN services s ON LOWER(TRIM(s.service_name)) = LOWER(TRIM(idt.item_name))
             WHERE i.invoice_date BETWEEN ? AND ?
-        """ + (branchId != null ? " AND i.branch_id = ? " : "") + """
+        """ + invFilterClause + """
             GROUP BY s.id, s.service_code, idt.item_name, s.category, s.unit, s.price
             ORDER BY total_revenue DESC
         """;
@@ -1044,7 +1167,7 @@ public class DashboardServiceImpl implements DashboardService {
             FROM invoice_details idt
             JOIN invoices i ON idt.invoice_id = i.id
             WHERE i.invoice_date BETWEEN ? AND ?
-        """ + (branchId != null ? " AND i.branch_id = ? " : "") + """
+        """ + invFilterClause + """
             GROUP BY idt.item_name
         """;
 
@@ -1057,11 +1180,7 @@ public class DashboardServiceImpl implements DashboardService {
             return null;
         };
 
-        if (branchId != null) {
-            jdbcTemplate.query(prevSrvSql, prevSrvCallback, pStartTs, pEndTs, branchId);
-        } else {
-            jdbcTemplate.query(prevSrvSql, prevSrvCallback, pStartTs, pEndTs);
-        }
+        jdbcTemplate.query(prevSrvSql, prevSrvCallback, pStartTs, pEndTs);
 
         var srvCallback = (org.springframework.jdbc.core.RowMapper<ServiceDashboardResponse.ServiceUsageItem>) (rs, rowNum) -> {
             String name = rs.getString("service_name");
@@ -1081,13 +1200,11 @@ public class DashboardServiceImpl implements DashboardService {
                     .usageCount(rs.getLong("usage_count"))
                     .totalRevenue(rev)
                     .prevPeriodRevenue(pRev)
-                    .growthPercent(calculateGrowthRate(rev, pRev))
+                    .growthPercent(calculateGrowthRate(rev, pRev, comparisonMode))
                     .build();
         };
 
-        List<ServiceDashboardResponse.ServiceUsageItem> services = branchId != null
-                ? jdbcTemplate.query(srvSql, srvCallback, startTs, endTs, branchId)
-                : jdbcTemplate.query(srvSql, srvCallback, startTs, endTs);
+        List<ServiceDashboardResponse.ServiceUsageItem> services = jdbcTemplate.query(srvSql, srvCallback, startTs, endTs);
 
         long totalUsage = services.stream().mapToLong(ServiceDashboardResponse.ServiceUsageItem::getUsageCount).sum();
         BigDecimal totalRev = services.stream()
@@ -1097,7 +1214,6 @@ public class DashboardServiceImpl implements DashboardService {
         BigDecimal prevTotalRev = prevRevMap.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
         long prevTotalUsage = prevUsageMap.values().stream().mapToLong(Long::longValue).sum();
 
-        // Monthly service usage trend
         int year = period.startDate().getYear();
         Timestamp yStart = Timestamp.valueOf(LocalDateTime.of(year, 1, 1, 0, 0, 0));
         Timestamp yEnd = Timestamp.valueOf(LocalDateTime.of(year, 12, 31, 23, 59, 59));
@@ -1110,7 +1226,7 @@ public class DashboardServiceImpl implements DashboardService {
             FROM invoice_details idt
             JOIN invoices i ON idt.invoice_id = i.id
             WHERE i.invoice_date BETWEEN ? AND ?
-        """ + (branchId != null ? " AND i.branch_id = ? " : "") + """
+        """ + invFilterClause + """
             GROUP BY TO_CHAR(i.invoice_date, 'YYYY-MM')
             ORDER BY month_key ASC
         """;
@@ -1127,17 +1243,14 @@ public class DashboardServiceImpl implements DashboardService {
                     .build();
         };
 
-        List<ServiceDashboardResponse.MonthlyServiceStat> monthlyStats = branchId != null
-                ? jdbcTemplate.query(monthlySql, monthlyCallback, yStart, yEnd, branchId)
-                : jdbcTemplate.query(monthlySql, monthlyCallback, yStart, yEnd);
+        List<ServiceDashboardResponse.MonthlyServiceStat> monthlyStats = jdbcTemplate.query(monthlySql, monthlyCallback, yStart, yEnd);
 
         for (int i = 1; i < monthlyStats.size(); i++) {
             BigDecimal prevMRev = monthlyStats.get(i - 1).getRevenue();
             BigDecimal currMRev = monthlyStats.get(i).getRevenue();
-            monthlyStats.get(i).setGrowthRate(calculateGrowthRate(currMRev, prevMRev));
+            monthlyStats.get(i).setGrowthRate(calculateGrowthRate(currMRev, prevMRev, comparisonMode));
         }
 
-        // Category stats breakdown
         String catSql = """
             SELECT
                 COALESCE(s.category::text, 'KHAC') AS category,
@@ -1147,7 +1260,7 @@ public class DashboardServiceImpl implements DashboardService {
             FROM services s
             LEFT JOIN invoice_details idt ON LOWER(TRIM(s.service_name)) = LOWER(TRIM(idt.item_name))
             LEFT JOIN invoices i ON idt.invoice_id = i.id AND i.invoice_date BETWEEN ? AND ?
-        """ + (branchId != null ? " AND i.branch_id = ? " : "") + """
+        """ + invFilterClause + """
             GROUP BY s.category
             ORDER BY total_revenue DESC
         """;
@@ -1168,9 +1281,7 @@ public class DashboardServiceImpl implements DashboardService {
                     .build();
         };
 
-        List<ServiceDashboardResponse.ServiceCategoryStat> categoryStats = branchId != null
-                ? jdbcTemplate.query(catSql, catCallback, startTs, endTs, branchId)
-                : jdbcTemplate.query(catSql, catCallback, startTs, endTs);
+        List<ServiceDashboardResponse.ServiceCategoryStat> categoryStats = jdbcTemplate.query(catSql, catCallback, startTs, endTs);
 
         return ServiceDashboardResponse.builder()
                 .periodLabel(period.label())
@@ -1184,8 +1295,8 @@ public class DashboardServiceImpl implements DashboardService {
                 .totalServiceRevenue(totalRev)
                 .prevServiceRevenue(prevTotalRev)
                 .prevUsageCount(prevTotalUsage)
-                .revenueGrowthPercent(calculateGrowthRate(totalRev, prevTotalRev))
-                .usageGrowthPercent(calculateGrowthRateLong(totalUsage, prevTotalUsage))
+                .revenueGrowthPercent(calculateGrowthRate(totalRev, prevTotalRev, comparisonMode))
+                .usageGrowthPercent(calculateGrowthRateLong(totalUsage, prevTotalUsage, comparisonMode))
                 .monthlyStats(monthlyStats)
                 .services(services)
                 .categoryStats(categoryStats)
@@ -1213,8 +1324,14 @@ public class DashboardServiceImpl implements DashboardService {
         ResolvedPeriod period = resolvePeriod(filter);
         Timestamp startTs = Timestamp.valueOf(period.startDate());
         Timestamp endTs = Timestamp.valueOf(period.endDate());
+
         String branchId = resolveBranchId(filter);
         String branchName = resolveBranchName(branchId);
+        String paymentStatus = filter != null && filter.getPaymentStatus() != null ? filter.getPaymentStatus() : "ALL";
+        String paymentMethod = filter != null && filter.getPaymentMethod() != null ? filter.getPaymentMethod() : "ALL";
+        String patientSegment = filter != null && filter.getPatientSegment() != null ? filter.getPatientSegment() : "ALL";
+
+        String invFilterClause = buildInvoiceFilterSql("i", branchId, paymentStatus, paymentMethod, patientSegment);
 
         Long totalPromotions = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM promotions", Long.class);
         Long activePromotions = jdbcTemplate.queryForObject(
@@ -1236,7 +1353,7 @@ public class DashboardServiceImpl implements DashboardService {
                 COALESCE(SUM(i.final_amount), 0) AS total_sales
             FROM promotions p
             LEFT JOIN invoices i ON i.promotion_id = p.id AND i.invoice_date BETWEEN ? AND ?
-        """ + (branchId != null ? " AND i.branch_id = ? " : "") + """
+        """ + invFilterClause + """
             GROUP BY p.id, p.title, p.coupon_code, p.promotion_type, p.discount_percent, p.discount_amount, p.start_date, p.end_date, p.status
             ORDER BY total_discount DESC, invoices_count DESC, p.title ASC
         """;
@@ -1258,9 +1375,7 @@ public class DashboardServiceImpl implements DashboardService {
                         .salesGenerated(rs.getBigDecimal("total_sales"))
                         .build();
 
-        List<PromotionDashboardResponse.PromotionDetailItem> promotions = branchId != null
-                ? jdbcTemplate.query(promoSql, promoCallback, startTs, endTs, branchId)
-                : jdbcTemplate.query(promoSql, promoCallback, startTs, endTs);
+        List<PromotionDashboardResponse.PromotionDetailItem> promotions = jdbcTemplate.query(promoSql, promoCallback, startTs, endTs);
 
         long totalUsage = promotions.stream().mapToLong(PromotionDashboardResponse.PromotionDetailItem::getUsageCount).sum();
         BigDecimal totalDiscount = promotions.stream()
@@ -1296,8 +1411,14 @@ public class DashboardServiceImpl implements DashboardService {
         Timestamp endTs = Timestamp.valueOf(period.endDate());
         Timestamp pStartTs = Timestamp.valueOf(period.prevStartDate());
         Timestamp pEndTs = Timestamp.valueOf(period.prevEndDate());
+
         String branchId = resolveBranchId(filter);
         String branchName = resolveBranchName(branchId);
+        String comparisonMode = filter != null && filter.getComparisonMode() != null ? filter.getComparisonMode() : "NONE";
+        String patientSegment = filter != null && filter.getPatientSegment() != null ? filter.getPatientSegment() : "ALL";
+
+        String apptFilterClause = buildAppointmentFilterSql("", branchId, patientSegment);
+        String apptFilterClauseWithAlias = buildAppointmentFilterSql("a", branchId, patientSegment);
 
         String apptSql = """
             SELECT
@@ -1309,11 +1430,9 @@ public class DashboardServiceImpl implements DashboardService {
                 COUNT(id) FILTER (WHERE status IN ('IN_PROGRESS', 'CALLED')) AS in_progress
             FROM appointments
             WHERE appointment_date BETWEEN ? AND ?
-        """ + (branchId != null ? " AND branch_id = ? " : "");
+        """ + apptFilterClause;
 
-        var apptData = branchId != null
-                ? jdbcTemplate.queryForMap(apptSql, startTs, endTs, branchId)
-                : jdbcTemplate.queryForMap(apptSql, startTs, endTs);
+        var apptData = jdbcTemplate.queryForMap(apptSql, startTs, endTs);
         Long total = ((Number) apptData.get("total")).longValue();
         Long completed = ((Number) apptData.get("completed")).longValue();
         Long cancelled = ((Number) apptData.get("cancelled")).longValue();
@@ -1321,9 +1440,7 @@ public class DashboardServiceImpl implements DashboardService {
         Long waiting = ((Number) apptData.get("waiting")).longValue();
         Long inProgress = ((Number) apptData.get("in_progress")).longValue();
 
-        var prevApptData = branchId != null
-                ? jdbcTemplate.queryForMap(apptSql, pStartTs, pEndTs, branchId)
-                : jdbcTemplate.queryForMap(apptSql, pStartTs, pEndTs);
+        var prevApptData = jdbcTemplate.queryForMap(apptSql, pStartTs, pEndTs);
         Long prevTotal = ((Number) prevApptData.get("total")).longValue();
         Long prevCompleted = ((Number) prevApptData.get("completed")).longValue();
         Long prevCancelled = ((Number) prevApptData.get("cancelled")).longValue();
@@ -1331,12 +1448,11 @@ public class DashboardServiceImpl implements DashboardService {
         double compRate = total > 0 ? Math.round(((double) completed / total) * 1000.0) / 10.0 : 0.0;
         double cancRate = total > 0 ? Math.round(((double) cancelled / total) * 1000.0) / 10.0 : 0.0;
 
-        // Status Breakdown
         String stSql = """
             SELECT status, COUNT(*) AS cnt
             FROM appointments
             WHERE appointment_date BETWEEN ? AND ?
-        """ + (branchId != null ? " AND branch_id = ? " : "") + """
+        """ + apptFilterClause + """
             GROUP BY status
             ORDER BY cnt DESC
         """;
@@ -1362,11 +1478,8 @@ public class DashboardServiceImpl implements DashboardService {
                     .build();
         };
 
-        List<AppointmentDashboardResponse.AppointmentStatusStat> statusBreakdown = branchId != null
-                ? jdbcTemplate.query(stSql, stCallback, startTs, endTs, branchId)
-                : jdbcTemplate.query(stSql, stCallback, startTs, endTs);
+        List<AppointmentDashboardResponse.AppointmentStatusStat> statusBreakdown = jdbcTemplate.query(stSql, stCallback, startTs, endTs);
 
-        // Trend
         boolean isDayGroup = "DAY".equalsIgnoreCase(period.groupBy());
         String datePattern = isDayGroup ? "YYYY-MM-DD" : "YYYY-MM";
 
@@ -1381,7 +1494,7 @@ public class DashboardServiceImpl implements DashboardService {
             WHERE appointment_date BETWEEN ? AND ? %s
             GROUP BY TO_CHAR(appointment_date, '%s')
             ORDER BY d_key ASC
-        """, datePattern, branchId != null ? " AND branch_id = ? " : "", datePattern);
+        """, datePattern, apptFilterClause, datePattern);
 
         var trendCallback = (org.springframework.jdbc.core.RowMapper<AppointmentDashboardResponse.AppointmentTrendPoint>) (rs, rowNum) -> {
             String key = rs.getString("d_key");
@@ -1398,11 +1511,8 @@ public class DashboardServiceImpl implements DashboardService {
                     .build();
         };
 
-        List<AppointmentDashboardResponse.AppointmentTrendPoint> trend = branchId != null
-                ? jdbcTemplate.query(trendSql, trendCallback, startTs, endTs, branchId)
-                : jdbcTemplate.query(trendSql, trendCallback, startTs, endTs);
+        List<AppointmentDashboardResponse.AppointmentTrendPoint> trend = jdbcTemplate.query(trendSql, trendCallback, startTs, endTs);
 
-        // Doctor stats
         String docApptSql = """
             SELECT
                 d.id,
@@ -1413,7 +1523,7 @@ public class DashboardServiceImpl implements DashboardService {
             FROM dentists d
             JOIN appointments a ON a.dentist_id = d.id
             WHERE a.appointment_date BETWEEN ? AND ?
-        """ + (branchId != null ? " AND (a.branch_id = ? OR d.branch_id = ?) " : "") + """
+        """ + apptFilterClauseWithAlias + """
             GROUP BY d.id, d.full_name
             ORDER BY total DESC
             LIMIT 10
@@ -1428,9 +1538,7 @@ public class DashboardServiceImpl implements DashboardService {
                         .cancelled(rs.getLong("cancelled"))
                         .build();
 
-        List<AppointmentDashboardResponse.DoctorAppointmentStat> doctorStats = branchId != null
-                ? jdbcTemplate.query(docApptSql, docApptCallback, startTs, endTs, branchId, branchId)
-                : jdbcTemplate.query(docApptSql, docApptCallback, startTs, endTs);
+        List<AppointmentDashboardResponse.DoctorAppointmentStat> doctorStats = jdbcTemplate.query(docApptSql, docApptCallback, startTs, endTs);
 
         return AppointmentDashboardResponse.builder()
                 .periodLabel(period.label())
@@ -1449,7 +1557,7 @@ public class DashboardServiceImpl implements DashboardService {
                 .prevTotalAppointments(prevTotal)
                 .prevCompletedAppointments(prevCompleted)
                 .prevCancelledAppointments(prevCancelled)
-                .totalGrowthRate(calculateGrowthRateLong(total, prevTotal))
+                .totalGrowthRate(calculateGrowthRateLong(total, prevTotal, comparisonMode))
                 .statusBreakdown(statusBreakdown)
                 .trend(trend)
                 .doctorStats(doctorStats)
