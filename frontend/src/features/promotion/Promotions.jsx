@@ -6,13 +6,39 @@ import { uploadImage } from '../../services/media.service'
 
 const emptyForm = {
   title: '',
+  couponCode: '',
   category: 'Niềng răng',
   description: '',
   imageUrl: '',
+  discountType: 'PERCENT', // 'PERCENT' | 'AMOUNT'
   discountPercent: '',
+  discountAmount: '',
+  maxDiscountAmount: '',
+  minOrderAmount: '',
+  usageLimit: '',
+  applyAllServices: false,
+  status: 'ACTIVE',
   startDate: '',
   endDate: '',
   serviceIds: [],
+}
+
+const formatDiscountBadge = (promo) => {
+  if (!promo) return 'Ưu đãi'
+  if (promo.discountPercent && Number(promo.discountPercent) > 0) {
+    return `-${Number(promo.discountPercent)}%`
+  }
+  if (promo.discountAmount && Number(promo.discountAmount) > 0) {
+    const val = Number(promo.discountAmount)
+    if (val >= 1000000 && val % 1000000 === 0) {
+      return `-${val / 1000000}Tr`
+    }
+    if (val >= 1000) {
+      return `-${(val / 1000).toLocaleString('vi-VN')}k`
+    }
+    return `-${formatMoney(val)}`
+  }
+  return 'Ưu đãi'
 }
 
 const CATEGORY_OPTIONS = [
@@ -196,12 +222,25 @@ export default function Promotions() {
 
   const openEditModal = (promotion) => {
     setEditingId(promotion.id)
+    const isAmount = Boolean(
+      promotion.discountAmount &&
+      Number(promotion.discountAmount) > 0 &&
+      (!promotion.discountPercent || Number(promotion.discountPercent) === 0)
+    )
     setForm({
       title: promotion.title || '',
+      couponCode: promotion.couponCode || '',
       category: promotion.category || 'Niềng răng',
       description: promotion.description || '',
       imageUrl: promotion.imageUrl || '',
+      discountType: isAmount ? 'AMOUNT' : 'PERCENT',
       discountPercent: promotion.discountPercent || '',
+      discountAmount: promotion.discountAmount || '',
+      maxDiscountAmount: promotion.maxDiscountAmount || '',
+      minOrderAmount: promotion.minOrderAmount || '',
+      usageLimit: promotion.usageLimit || '',
+      applyAllServices: Boolean(promotion.applyAllServices || (!promotion.services || promotion.services.length === 0)),
+      status: promotion.status || 'ACTIVE',
       startDate: toInputDate(promotion.startDate),
       endDate: toInputDate(promotion.endDate),
       serviceIds: (promotion.services || []).map((service) => service.id),
@@ -229,8 +268,8 @@ export default function Promotions() {
     setError('')
     setMessage('')
 
-    if (!form.serviceIds.length) {
-      return setError('Vui lòng chọn ít nhất một dịch vụ áp dụng cho ưu đãi này.')
+    if (!form.applyAllServices && !form.serviceIds.length) {
+      return setError('Vui lòng chọn ít nhất một dịch vụ áp dụng, hoặc tích chọn "Áp dụng cho toàn bộ dịch vụ".')
     }
 
     if (!form.startDate || !form.endDate) {
@@ -241,12 +280,32 @@ export default function Promotions() {
       return setError('Ngày kết thúc phải sau ngày bắt đầu.')
     }
 
+    const isAmount = form.discountType === 'AMOUNT'
+    if (isAmount && (!form.discountAmount || Number(form.discountAmount) <= 0)) {
+      return setError('Vui lòng nhập số tiền giảm giá hợp lệ lớn hơn 0đ.')
+    }
+    if (!isAmount && (!form.discountPercent || Number(form.discountPercent) <= 0)) {
+      return setError('Vui lòng nhập phần trăm giảm giá hợp lệ (từ 0.01% đến 100%).')
+    }
+
     setSubmitting(true)
     const payload = {
-      ...form,
-      discountPercent: Number(form.discountPercent),
+      title: form.title.trim(),
+      couponCode: form.couponCode ? form.couponCode.trim().toUpperCase() : null,
+      category: form.category,
+      description: form.description,
+      imageUrl: form.imageUrl,
+      promotionType: form.couponCode ? 'VOUCHER' : (isAmount ? 'FIXED_AMOUNT' : 'DISCOUNT_PERCENT'),
+      discountPercent: isAmount ? null : Number(form.discountPercent),
+      discountAmount: isAmount ? Number(form.discountAmount) : null,
+      maxDiscountAmount: form.maxDiscountAmount ? Number(form.maxDiscountAmount) : null,
+      minOrderAmount: form.minOrderAmount ? Number(form.minOrderAmount) : null,
+      usageLimit: form.usageLimit ? parseInt(form.usageLimit) : null,
+      applyAllServices: Boolean(form.applyAllServices),
+      status: form.status || 'ACTIVE',
       startDate: toApiLocalDateTime(form.startDate),
       endDate: toApiLocalDateTime(form.endDate),
+      serviceIds: form.applyAllServices ? [] : form.serviceIds,
     }
 
     try {
@@ -329,19 +388,8 @@ export default function Promotions() {
 
     setSubmittingExtend(true)
     try {
-      const payload = {
-        title: extendPromo.title,
-        category: extendPromo.category,
-        description: extendPromo.description,
-        imageUrl: extendPromo.imageUrl,
-        discountPercent: Number(extendPromo.discountPercent),
-        startDate: toApiLocalDateTime(extendPromo.startDate),
-        endDate: toApiLocalDateTime(newEnd),
-        serviceIds: (extendPromo.services || []).map((s) => (typeof s === 'object' ? s.id : s)),
-      }
-
-      await api.put(`/admin/promotions/${extendPromo.id}`, payload)
-      setMessage(`Đã gia hạn thành công ưu đãi "${extendPromo.title}" thêm ${days} ngày! Mốc thời gian mới: ${formatDate(newEnd)}.`)
+      await api.put(`/admin/promotions/${extendPromo.id}/extend?days=${days}`)
+      setMessage(`Đã gia hạn thành công ưu đãi "${extendPromo.title}" thêm ${days} ngày!`)
       closeExtendModal()
       await loadData()
     } catch (err) {
@@ -1125,7 +1173,7 @@ export default function Promotions() {
                             </div>
                           )}
                           <span className="absolute top-1 left-1 z-20 rounded bg-[#ff5b15] px-1.5 py-0.5 text-[9px] font-bold text-white uppercase shadow-2xs">
-                            -{Number(promo.discountPercent)}%
+                            {formatDiscountBadge(promo)}
                           </span>
                         </div>
 
@@ -1137,6 +1185,11 @@ export default function Promotions() {
                             >
                               {promo.title}
                             </h4>
+                            {promo.couponCode && (
+                              <span className="rounded bg-amber-50 border border-amber-200/80 px-2 py-0.5 text-[10px] font-bold text-amber-700 tracking-wider">
+                                {promo.couponCode}
+                              </span>
+                            )}
                             <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-medium ${status.badgeClass}`}>
                               <span className={`h-1.5 w-1.5 rounded-full ${status.dotClass}`} />
                               {status.label}
@@ -1149,14 +1202,16 @@ export default function Promotions() {
                           {/* Applied Services summary */}
                           <div className="flex flex-wrap items-center gap-1 text-xs text-slate-600">
                             <span className="font-semibold text-slate-400 text-[10px] uppercase tracking-wider">Áp dụng:</span>
-                            {promo.services && promo.services.length > 0 ? (
+                            {promo.applyAllServices || (!promo.services || promo.services.length === 0) ? (
+                              <span className="inline-block rounded-md bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                                Toàn bộ dịch vụ / Hóa đơn
+                              </span>
+                            ) : (
                               promo.services.map((svc) => (
                                 <span key={svc.id} className="inline-block rounded-md bg-slate-100/80 border border-slate-200/60 px-2 py-0.5 text-[11px] font-medium text-slate-700">
                                   {svc.serviceName}
                                 </span>
                               ))
-                            ) : (
-                              <span className="text-slate-400 italic text-[11px]">Chưa áp dụng dịch vụ</span>
                             )}
                           </div>
 
@@ -1234,7 +1289,7 @@ export default function Promotions() {
                           </div>
                         )}
                         <span className="absolute top-2.5 left-2.5 z-20 rounded bg-[#ff5b15] px-2 py-0.5 text-xs font-bold text-white uppercase shadow-xs">
-                          -{Number(promo.discountPercent)}%
+                          {formatDiscountBadge(promo)}
                         </span>
                         <span className={`absolute top-2.5 right-2.5 z-20 inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold backdrop-blur-md shadow-2xs ${status.badgeClass}`}>
                           <span className={`h-1.5 w-1.5 rounded-full ${status.dotClass}`} />
@@ -1248,6 +1303,11 @@ export default function Promotions() {
                             <span className="rounded-full bg-blue-50 border border-blue-100/80 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
                               {promo.category || 'Dịch vụ'}
                             </span>
+                            {promo.couponCode && (
+                              <span className="rounded bg-amber-50 border border-amber-200/80 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                                {promo.couponCode}
+                              </span>
+                            )}
                             <span className="text-[11px] text-slate-400 font-medium">
                               {formatDate(promo.startDate)} – {formatDate(promo.endDate)}
                             </span>
@@ -1267,11 +1327,11 @@ export default function Promotions() {
 
                         <div className="pt-2 border-t border-slate-100 space-y-2">
                           <div className="text-[11px] text-slate-500">
-                            <span className="font-semibold text-slate-700">Áp dụng ({promo.services?.length || 0}): </span>
-                            {promo.services && promo.services.length > 0 ? (
-                              promo.services.map(s => s.serviceName).join(', ')
+                            <span className="font-semibold text-slate-700">Áp dụng: </span>
+                            {promo.applyAllServices || (!promo.services || promo.services.length === 0) ? (
+                              <span className="font-semibold text-emerald-700">Toàn bộ dịch vụ / Hóa đơn</span>
                             ) : (
-                              <span className="italic text-slate-400">Chưa chọn dịch vụ</span>
+                              promo.services.map(s => s.serviceName).join(', ')
                             )}
                           </div>
 
@@ -1355,34 +1415,30 @@ export default function Promotions() {
 
               <div className="grid gap-3.5 md:grid-cols-2">
                 {/* Tên chương trình */}
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Tên chương trình <span className="text-red-500">*</span>
+                    Tên chương trình ưu đãi <span className="text-red-500">*</span>
                   </label>
                   <input
                     required
                     value={form.title}
                     onChange={(e) => updateForm('title', e.target.value)}
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-normal text-slate-800 outline-none focus:border-[#005f73] transition"
-                    placeholder="VD: Ưu đãi niềng răng mùa hè"
+                    placeholder="VD: Ưu đãi chào hè - Giảm 200.000đ hoặc Giảm 20% Niềng răng"
                   />
                 </div>
 
-                {/* Phần trăm giảm */}
+                {/* Mã Coupon / Voucher */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Phần trăm giảm (%) <span className="text-red-500">*</span>
+                    Mã Coupon / Voucher (Nếu có)
                   </label>
                   <input
-                    required
-                    min="0.01"
-                    max="100"
-                    step="0.01"
-                    type="number"
-                    value={form.discountPercent}
-                    onChange={(e) => updateForm('discountPercent', e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-normal text-slate-800 outline-none focus:border-[#005f73] transition"
-                    placeholder="20"
+                    type="text"
+                    value={form.couponCode}
+                    onChange={(e) => updateForm('couponCode', e.target.value.toUpperCase())}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-mono uppercase text-slate-800 outline-none focus:border-[#005f73] transition"
+                    placeholder="VD: SUMMER2026, CROWNVIP"
                   />
                 </div>
 
@@ -1404,8 +1460,121 @@ export default function Promotions() {
                   </select>
                 </div>
 
+                {/* Chọn loại giảm giá */}
+                <div className="md:col-span-2 bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700">
+                      Hình thức giảm giá <span className="text-red-500">*</span>
+                    </label>
+                    <div className="flex rounded-lg bg-slate-200/70 p-0.5 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => updateForm('discountType', 'PERCENT')}
+                        className={`rounded-md px-3 py-1 font-semibold transition ${
+                          form.discountType === 'PERCENT'
+                            ? 'bg-white text-[#005f73] shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        Giảm theo phần trăm (%)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => updateForm('discountType', 'AMOUNT')}
+                        className={`rounded-md px-3 py-1 font-semibold transition ${
+                          form.discountType === 'AMOUNT'
+                            ? 'bg-white text-[#005f73] shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        Giảm số tiền cố định (VNĐ)
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {form.discountType === 'PERCENT' ? (
+                      <>
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                            Mức giảm (%) <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            min="0.01"
+                            max="100"
+                            step="0.01"
+                            value={form.discountPercent}
+                            onChange={(e) => updateForm('discountPercent', e.target.value)}
+                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-normal text-slate-800 outline-none focus:border-[#005f73] bg-white transition"
+                            placeholder="VD: 20 (tức giảm 20%)"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                            Giảm tối đa (VNĐ) (Tùy chọn)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1000"
+                            value={form.maxDiscountAmount}
+                            onChange={(e) => updateForm('maxDiscountAmount', e.target.value)}
+                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-normal text-slate-800 outline-none focus:border-[#005f73] bg-white transition"
+                            placeholder="VD: 1000000 (tối đa 1 triệu)"
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="sm:col-span-2">
+                        <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                          Số tiền giảm trực tiếp (VNĐ) <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          min="1000"
+                          step="1000"
+                          value={form.discountAmount}
+                          onChange={(e) => updateForm('discountAmount', e.target.value)}
+                          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-normal text-slate-800 outline-none focus:border-[#005f73] bg-white transition"
+                          placeholder="VD: 200000 (giảm 200.000đ)"
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                        Giá trị đơn hàng tối thiểu (VNĐ)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1000"
+                        value={form.minOrderAmount}
+                        onChange={(e) => updateForm('minOrderAmount', e.target.value)}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-normal text-slate-800 outline-none focus:border-[#005f73] bg-white transition"
+                        placeholder="VD: 500000 (đơn từ 500k mới áp dụng)"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                        Giới hạn số lượt dùng (Lượt)
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={form.usageLimit}
+                        onChange={(e) => updateForm('usageLimit', e.target.value)}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-normal text-slate-800 outline-none focus:border-[#005f73] bg-white transition"
+                        placeholder="VD: 100 (để trống nếu không giới hạn)"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 {/* URL / Tải ảnh chương trình */}
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Ảnh chương trình (Dán URL hoặc Tải file lên)
                   </label>
@@ -1483,6 +1652,26 @@ export default function Promotions() {
                   />
                 </div>
 
+                {/* Áp dụng cho toàn bộ dịch vụ / Hóa đơn */}
+                <div className="md:col-span-2 bg-emerald-50/70 p-3 rounded-xl border border-emerald-200/80">
+                  <label className="flex items-center gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.applyAllServices}
+                      onChange={(e) => updateForm('applyAllServices', e.target.checked)}
+                      className="h-4 w-4 rounded border-slate-300 text-[#005f73] focus:ring-[#005f73]"
+                    />
+                    <div>
+                      <span className="text-xs font-bold text-emerald-950">
+                        Áp dụng cho toàn bộ dịch vụ / Toàn bộ hóa đơn
+                      </span>
+                      <p className="text-[11px] text-emerald-700 mt-0.5">
+                        Tích chọn mục này nếu chương trình ưu đãi áp dụng chung cho mọi dịch vụ nha khoa hoặc giảm trực tiếp trên tổng hóa đơn.
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
                 {/* Mô tả */}
                 <div className="md:col-span-2">
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -1499,14 +1688,22 @@ export default function Promotions() {
               </div>
 
               {/* Dịch vụ áp dụng Fieldset */}
-              <fieldset className="border-t border-slate-100 pt-3.5">
+              <fieldset className={`border-t border-slate-100 pt-3.5 transition ${form.applyAllServices ? 'opacity-40 pointer-events-none' : ''}`}>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 mb-2.5">
                   <div>
-                    <legend className="text-xs font-bold text-slate-800">
-                      Dịch vụ áp dụng <span className="text-red-500">*</span>
+                    <legend className="text-xs font-bold text-slate-800 flex items-center gap-2">
+                      <span>Dịch vụ áp dụng</span>
+                      {!form.applyAllServices && <span className="text-red-500">*</span>}
+                      {form.applyAllServices && (
+                        <span className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                          Áp dụng tất cả dịch vụ
+                        </span>
+                      )}
                     </legend>
                     <p className="text-[11px] text-slate-500 mt-0.5">
-                      Đã chọn {form.serviceIds.length} dịch vụ
+                      {form.applyAllServices
+                        ? 'Đã bật chế độ áp dụng toàn bộ dịch vụ & hóa đơn.'
+                        : `Đã chọn ${form.serviceIds.length} dịch vụ`}
                     </p>
                   </div>
 
@@ -1600,8 +1797,8 @@ export default function Promotions() {
           <div className="relative w-full max-w-2xl rounded-2xl bg-white p-5 sm:p-6 shadow-xl border border-slate-200/80 max-h-[85vh] flex flex-col">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
               <div className="flex items-center gap-2.5">
-                <span className="rounded bg-[#ff5b15] px-2.5 py-0.5 text-xs font-bold text-white">
-                  -{Number(inspectPromo.discountPercent)}%
+                <span className="rounded bg-[#ff5b15] px-2.5 py-0.5 text-xs font-bold text-white shadow-2xs">
+                  {formatDiscountBadge(inspectPromo)}
                 </span>
                 <h3 className="text-sm font-bold text-slate-900 line-clamp-1">
                   {inspectPromo.title}
@@ -1632,6 +1829,26 @@ export default function Promotions() {
                 </div>
               )}
 
+              {/* Thông số khuyến mãi */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 bg-slate-50 p-3 rounded-xl border border-slate-200/70 text-xs">
+                <div>
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase block">Mã Coupon</span>
+                  <span className="font-bold text-slate-800">{inspectPromo.couponCode || 'Không áp dụng'}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase block">Đơn tối thiểu</span>
+                  <span className="font-bold text-slate-800">{inspectPromo.minOrderAmount ? formatMoney(inspectPromo.minOrderAmount) : '0đ'}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase block">Giảm tối đa</span>
+                  <span className="font-bold text-slate-800">{inspectPromo.maxDiscountAmount ? formatMoney(inspectPromo.maxDiscountAmount) : 'Không giới hạn'}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase block">Đã dùng / Giới hạn</span>
+                  <span className="font-bold text-slate-800">{inspectPromo.usedCount || 0} / {inspectPromo.usageLimit || '∞'}</span>
+                </div>
+              </div>
+
               <div>
                 <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Thời gian diễn ra</h4>
                 <p className="text-xs font-bold text-slate-800 mt-1">
@@ -1648,13 +1865,22 @@ export default function Promotions() {
 
               <div>
                 <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                  Dịch vụ áp dụng ({inspectPromo.services?.length || 0})
+                  Phạm vi áp dụng
                 </h4>
-                <div className="space-y-1.5">
-                  {inspectPromo.services && inspectPromo.services.length > 0 ? (
-                    inspectPromo.services.map((svc) => {
+                {inspectPromo.applyAllServices || (!inspectPromo.services || inspectPromo.services.length === 0) ? (
+                  <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200/80 text-xs font-medium text-emerald-800">
+                    🎉 Chương trình ưu đãi này áp dụng cho <strong>toàn bộ dịch vụ & mọi hóa đơn</strong> tại Crown Dental.
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    {inspectPromo.services.map((svc) => {
                       const origPrice = Number(svc.price)
-                      const finalPrice = origPrice * (1 - Number(inspectPromo.discountPercent) / 100)
+                      let finalPrice = origPrice
+                      if (inspectPromo.discountPercent && Number(inspectPromo.discountPercent) > 0) {
+                        finalPrice = origPrice * (1 - Number(inspectPromo.discountPercent) / 100)
+                      } else if (inspectPromo.discountAmount && Number(inspectPromo.discountAmount) > 0) {
+                        finalPrice = Math.max(0, origPrice - Number(inspectPromo.discountAmount))
+                      }
                       return (
                         <div key={svc.id} className="flex items-center justify-between border border-slate-200/70 rounded-lg p-2.5 bg-slate-50/50 text-xs">
                           <span className="font-bold text-slate-800">{svc.serviceName}</span>
@@ -1664,11 +1890,9 @@ export default function Promotions() {
                           </div>
                         </div>
                       )
-                    })
-                  ) : (
-                    <p className="text-xs text-slate-400 italic">Chưa áp dụng dịch vụ nào.</p>
-                  )}
-                </div>
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 

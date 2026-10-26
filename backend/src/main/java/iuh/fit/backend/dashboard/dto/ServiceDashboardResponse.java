@@ -17,6 +17,8 @@ public class ServiceDashboardResponse {
     private String periodLabel;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
+    private String branchId;
+    private String branchName;
 
     // Tổng quan dịch vụ
     private Long totalServicesCount;        // Tổng số dịch vụ trong hệ thống

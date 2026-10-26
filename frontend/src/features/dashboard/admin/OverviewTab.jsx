@@ -88,11 +88,22 @@ export default function OverviewTab({ data, onSelectTab, onOpenDetail }) {
               <ToothIcon className="h-4 w-4" />
             </div>
             <div>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-2">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-2 flex-wrap">
                 Chỉ Số Vận Hành Nha Khoa Thực Tế
                 <span className="rounded bg-cyan-50 px-2 py-0.5 text-[10px] font-semibold text-cyan-700 border border-cyan-200/80">
                   Chuẩn Y Khoa
                 </span>
+                {data?.branchName && (
+                  <span
+                    className={`rounded px-2 py-0.5 text-[10px] font-semibold border ${
+                      data?.branchId
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                        : 'bg-slate-100 text-slate-700 border-slate-200'
+                    }`}
+                  >
+                    {data.branchName}
+                  </span>
+                )}
               </h2>
             </div>
           </div>

@@ -17,6 +17,12 @@ public class RevenueDashboardResponse {
     private String periodLabel;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
+    private String branchId;
+    private String branchName;
+    private String comparisonMode;
+    private String paymentStatus;
+    private String paymentMethod;
+    private String patientSegment;
 
     // Core indicators
     private Long totalInvoices;

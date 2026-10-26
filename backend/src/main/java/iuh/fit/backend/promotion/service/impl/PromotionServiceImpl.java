@@ -60,12 +60,17 @@ public class PromotionServiceImpl implements PromotionService {
                 promotion.getDiscountPercent(),
                 promotion.getDiscountAmount(),
                 promotion.getMaxDiscountAmount(),
+                promotion.getMinOrderAmount(),
                 promotion.getStartDate(),
                 promotion.getEndDate(),
                 promotion.getUsageLimit(),
                 promotion.getUsedCount(),
                 promotion.getStatus(),
+                promotion.getApplyAllServices(),
+                promotion.isValid(),
+                promotion.isExpiringSoon(7),
                 promotion.getCreatedAt(),
+                promotion.getUpdatedAt(),
                 promotion.getPromotionServices().stream()
                         .map(item -> new PromotionResponse.PromotionServiceResponse(
                                 item.getService().getId(),

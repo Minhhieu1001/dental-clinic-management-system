@@ -32,4 +32,24 @@ public class DashboardFilterRequest {
     private LocalDate endDate;
 
     private String branchId;
+
+    /**
+     * NONE, YOY, MOM, KPI
+     */
+    private String comparisonMode;
+
+    /**
+     * ALL, PAID, DEBT, PROMO
+     */
+    private String paymentStatus;
+
+    /**
+     * ALL, BANK_TRANSFER, CASH, CARD
+     */
+    private String paymentMethod;
+
+    /**
+     * ALL, NEW, RETURNING, VIP
+     */
+    private String patientSegment;
 }

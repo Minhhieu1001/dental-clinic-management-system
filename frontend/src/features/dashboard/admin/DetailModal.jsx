@@ -182,6 +182,17 @@ export default function DetailModal({
                       <Calendar className="h-3 w-3" />
                       {periodLabel || 'Năm 2026'}
                     </span>
+                    {data?.branchName && (
+                      <span
+                        className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-semibold border ${
+                          data?.branchId
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                            : 'bg-slate-100 text-slate-700 border-slate-200'
+                        }`}
+                      >
+                        {data.branchName}
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-slate-500 mt-0.5 hidden sm:block">
                     {currentConfig.subtitle}

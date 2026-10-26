@@ -95,6 +95,17 @@ public class PromotionController {
         promotionRepository.delete(findPromotion(id));
     }
 
+    @PutMapping("/api/v1/admin/promotions/{id}/extend")
+    @Transactional
+    public PromotionResponse extendPromotion(@PathVariable UUID id, @RequestParam(defaultValue = "30") int days) {
+        if (days <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Số ngày gia hạn phải lớn hơn 0");
+        }
+        Promotion promotion = findPromotion(id);
+        promotion.extendEndDate(days);
+        return toResponse(promotionRepository.save(promotion));
+    }
+
     private Promotion findPromotion(UUID id) {
         return promotionRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy ưu đãi"));
@@ -102,28 +113,51 @@ public class PromotionController {
 
     private void applyRequest(Promotion promotion, PromotionRequest request) {
         promotion.setTitle(request.title().trim());
+        promotion.setCouponCode(request.couponCode() != null && !request.couponCode().isBlank()
+                ? request.couponCode().trim().toUpperCase()
+                : null);
         promotion.setDescription(request.description());
         promotion.setImageUrl(request.imageUrl());
+        if (request.promotionType() != null) {
+            promotion.setPromotionType(request.promotionType());
+        }
         promotion.setDiscountPercent(request.discountPercent());
+        promotion.setDiscountAmount(request.discountAmount());
+        promotion.setMaxDiscountAmount(request.maxDiscountAmount());
+        promotion.setMinOrderAmount(request.minOrderAmount());
+        promotion.setUsageLimit(request.usageLimit());
+        if (request.status() != null) {
+            promotion.setStatus(request.status());
+        }
         promotion.setStartDate(request.startDate());
         promotion.setEndDate(request.endDate());
+
+        boolean applyAll = Boolean.TRUE.equals(request.applyAllServices())
+                || request.serviceIds() == null
+                || request.serviceIds().isEmpty();
+        promotion.setApplyAllServices(applyAll);
+
         promotion.getPromotionServices().clear();
 
         List<Service> services = List.of();
-        if (request.serviceIds() != null && !request.serviceIds().isEmpty()) {
+        if (!applyAll && request.serviceIds() != null && !request.serviceIds().isEmpty()) {
             services = serviceRepository.findAllById(request.serviceIds());
             if (services.size() != request.serviceIds().stream().distinct().count()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Có dịch vụ ưu đãi không tồn tại");
             }
-            services.forEach(service -> promotion.getPromotionServices().add(iuh.fit.backend.promotion.entity.PromotionService.builder()
-                    .promotion(promotion).service(service).build()));
+            services.forEach(service -> promotion.getPromotionServices().add(
+                    iuh.fit.backend.promotion.entity.PromotionService.builder()
+                            .promotion(promotion)
+                            .service(service)
+                            .build()
+            ));
         }
 
         String cat = request.category() != null ? request.category().trim() : "";
         if (cat.isEmpty() && !services.isEmpty() && services.get(0).getCategory() != null) {
             cat = mapEnumCategoryToDisplayName(services.get(0).getCategory());
         }
-        promotion.setCategory(!cat.isEmpty() ? cat : "Dịch vụ");
+        promotion.setCategory(!cat.isEmpty() ? cat : (applyAll ? "Toàn bộ dịch vụ" : "Dịch vụ"));
     }
 
     private String mapEnumCategoryToDisplayName(iuh.fit.backend.treatment.enums.ServiceCategory serviceCat) {
@@ -143,6 +177,11 @@ public class PromotionController {
         if (request.endDate().isBefore(request.startDate())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ngày kết thúc phải sau ngày bắt đầu");
         }
+        boolean hasPercent = request.discountPercent() != null && request.discountPercent().compareTo(java.math.BigDecimal.ZERO) > 0;
+        boolean hasAmount = request.discountAmount() != null && request.discountAmount().compareTo(java.math.BigDecimal.ZERO) > 0;
+        if (!hasPercent && !hasAmount) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ưu đãi phải có mức giảm giá theo phần trăm (%) hoặc số tiền (VNĐ)");
+        }
     }
 
     private PromotionResponse toResponse(Promotion promotion) {
@@ -157,15 +196,24 @@ public class PromotionController {
                 promotion.getDiscountPercent(),
                 promotion.getDiscountAmount(),
                 promotion.getMaxDiscountAmount(),
+                promotion.getMinOrderAmount(),
                 promotion.getStartDate(),
                 promotion.getEndDate(),
                 promotion.getUsageLimit(),
                 promotion.getUsedCount(),
                 promotion.getStatus(),
+                promotion.getApplyAllServices(),
+                promotion.isValid(),
+                promotion.isExpiringSoon(7),
                 promotion.getCreatedAt(),
+                promotion.getUpdatedAt(),
                 promotion.getPromotionServices().stream()
-                        .map(item -> new PromotionResponse.PromotionServiceResponse(item.getService().getId(),
-                                item.getService().getServiceName(), item.getService().getPrice()))
-                        .toList());
+                        .map(item -> new PromotionResponse.PromotionServiceResponse(
+                                item.getService().getId(),
+                                item.getService().getServiceName(),
+                                item.getService().getPrice()
+                        ))
+                        .toList()
+        );
     }
 }
