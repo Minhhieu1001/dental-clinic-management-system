@@ -17,6 +17,8 @@ public class StaffDashboardResponse {
     private String periodLabel;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
+    private String branchId;
+    private String branchName;
 
     // Tổng quan nhân sự
     private Long totalStaff;

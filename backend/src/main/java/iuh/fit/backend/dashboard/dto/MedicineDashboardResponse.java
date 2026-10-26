@@ -17,6 +17,8 @@ public class MedicineDashboardResponse {
     private String periodLabel;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
+    private String branchId;
+    private String branchName;
 
     // Tổng quan
     private Long totalMedicinesCount;       // Tổng số loại thuốc trong danh mục

@@ -17,6 +17,8 @@ public class PromotionDashboardResponse {
     private String periodLabel;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
+    private String branchId;
+    private String branchName;
 
     // Tổng quan khuyến mãi
     private Long totalPromotions;           // Tổng chương trình khuyến mãi

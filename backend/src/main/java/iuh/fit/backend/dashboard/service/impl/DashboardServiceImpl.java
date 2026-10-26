@@ -9,8 +9,6 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -27,7 +25,6 @@ public class DashboardServiceImpl implements DashboardService {
 
     private final JdbcTemplate jdbcTemplate;
 
-    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DISPLAY_DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     public record ResolvedPeriod(
@@ -168,6 +165,35 @@ public class DashboardServiceImpl implements DashboardService {
         return new ResolvedPeriod(start, end, prevStart, prevEnd, label, groupBy);
     }
 
+    private String resolveBranchId(DashboardFilterRequest filter) {
+        if (filter == null || filter.getBranchId() == null || filter.getBranchId().trim().isEmpty() || "ALL".equalsIgnoreCase(filter.getBranchId().trim())) {
+            return null;
+        }
+        return filter.getBranchId().trim();
+    }
+
+    private String resolveBranchName(String branchId) {
+        if (branchId == null) {
+            return "Toàn hệ thống (Crown Dental Central)";
+        }
+        try {
+            List<String> names = jdbcTemplate.query(
+                    "SELECT branch_name FROM branches WHERE branch_id = ?",
+                    (rs, rowNum) -> rs.getString("branch_name"),
+                    branchId
+            );
+            if (!names.isEmpty() && names.get(0) != null) {
+                return names.get(0);
+            }
+        } catch (Exception ignored) {
+        }
+        return switch (branchId) {
+            case "BRANCH_Q1" -> "Cơ sở 1 - Trung tâm Nha khoa Quốc Tế (Q1)";
+            case "BRANCH_BT" -> "Cơ sở 2 - Nha khoa Thẩm mỹ Công nghệ cao (BT)";
+            default -> branchId;
+        };
+    }
+
     private Double calculateGrowthRate(BigDecimal current, BigDecimal previous) {
         if (current == null) current = BigDecimal.ZERO;
         if (previous == null) previous = BigDecimal.ZERO;
@@ -201,6 +227,8 @@ public class DashboardServiceImpl implements DashboardService {
         Timestamp endTs = Timestamp.valueOf(period.endDate());
         Timestamp pStartTs = Timestamp.valueOf(period.prevStartDate());
         Timestamp pEndTs = Timestamp.valueOf(period.prevEndDate());
+        String branchId = resolveBranchId(filter);
+        String branchName = resolveBranchName(branchId);
 
         // 1. Revenue Summary
         String invSql = """
@@ -210,13 +238,18 @@ public class DashboardServiceImpl implements DashboardService {
                 COALESCE(SUM(remaining_amount), 0) AS remaining_debt
             FROM invoices
             WHERE invoice_date BETWEEN ? AND ?
-        """;
-        var invData = jdbcTemplate.queryForMap(invSql, startTs, endTs);
+        """ + (branchId != null ? " AND branch_id = ? " : "");
+
+        var invData = branchId != null
+                ? jdbcTemplate.queryForMap(invSql, startTs, endTs, branchId)
+                : jdbcTemplate.queryForMap(invSql, startTs, endTs);
         Long totalInvoices = ((Number) invData.get("total_invoices")).longValue();
         BigDecimal invoiceRevenue = (BigDecimal) invData.get("invoice_revenue");
         BigDecimal remainingDebt = (BigDecimal) invData.get("remaining_debt");
 
-        var prevInvData = jdbcTemplate.queryForMap(invSql, pStartTs, pEndTs);
+        var prevInvData = branchId != null
+                ? jdbcTemplate.queryForMap(invSql, pStartTs, pEndTs, branchId)
+                : jdbcTemplate.queryForMap(invSql, pStartTs, pEndTs);
         BigDecimal prevInvoiceRevenue = (BigDecimal) prevInvData.get("invoice_revenue");
 
         String paySql = """
@@ -226,14 +259,19 @@ public class DashboardServiceImpl implements DashboardService {
                 COALESCE(SUM(medicine_amount), 0) AS medicine_amount
             FROM payment_transactions
             WHERE status = 'SUCCESS' AND payment_time BETWEEN ? AND ?
-        """;
-        var payData = jdbcTemplate.queryForMap(paySql, startTs, endTs);
+        """ + (branchId != null ? " AND branch_id = ? " : "");
+
+        var payData = branchId != null
+                ? jdbcTemplate.queryForMap(paySql, startTs, endTs, branchId)
+                : jdbcTemplate.queryForMap(paySql, startTs, endTs);
         BigDecimal actualCollected = (BigDecimal) payData.get("actual_collected");
         BigDecimal serviceAmount = (BigDecimal) payData.get("service_amount");
         BigDecimal medicineAmount = (BigDecimal) payData.get("medicine_amount");
         BigDecimal otherAmount = actualCollected.subtract(serviceAmount).subtract(medicineAmount).max(BigDecimal.ZERO);
 
-        var prevPayData = jdbcTemplate.queryForMap(paySql, pStartTs, pEndTs);
+        var prevPayData = branchId != null
+                ? jdbcTemplate.queryForMap(paySql, pStartTs, pEndTs, branchId)
+                : jdbcTemplate.queryForMap(paySql, pStartTs, pEndTs);
         BigDecimal prevActual = (BigDecimal) prevPayData.get("actual_collected");
 
         var revenueSummary = DashboardOverviewResponse.RevenueSummary.builder()
@@ -249,10 +287,15 @@ public class DashboardServiceImpl implements DashboardService {
                 .build();
 
         // 2. Staff Summary
-        Long totalDoctors = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM dentists", Long.class);
-        Long totalEmployees = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM employees", Long.class);
-        Long totalReceptions = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM employees WHERE position = 'RECEPTIONIST'", Long.class);
+        Long totalDoctors = branchId != null
+                ? jdbcTemplate.queryForObject("SELECT COUNT(*) FROM dentists WHERE branch_id = ?", Long.class, branchId)
+                : jdbcTemplate.queryForObject("SELECT COUNT(*) FROM dentists", Long.class);
+        Long totalEmployees = branchId != null
+                ? jdbcTemplate.queryForObject("SELECT COUNT(*) FROM employees WHERE branch_id = ?", Long.class, branchId)
+                : jdbcTemplate.queryForObject("SELECT COUNT(*) FROM employees", Long.class);
+        Long totalReceptions = branchId != null
+                ? jdbcTemplate.queryForObject("SELECT COUNT(*) FROM employees WHERE position = 'RECEPTIONIST' AND branch_id = ?", Long.class, branchId)
+                : jdbcTemplate.queryForObject("SELECT COUNT(*) FROM employees WHERE position = 'RECEPTIONIST'", Long.class);
 
         var staffSummary = DashboardOverviewResponse.StaffSummary.builder()
                 .totalStaff(totalDoctors + totalEmployees)
@@ -271,9 +314,13 @@ public class DashboardServiceImpl implements DashboardService {
             FROM prescription_details pd
             JOIN prescriptions p ON pd.prescription_id = p.id
             JOIN medicines m ON pd.medicine_id = m.id
+        """ + (branchId != null ? " JOIN dentists d ON p.dentist_id = d.id " : "") + """
             WHERE p.prescription_date BETWEEN ? AND ?
-        """;
-        var medData = jdbcTemplate.queryForMap(medUsageSql, startTs, endTs);
+        """ + (branchId != null ? " AND d.branch_id = ? " : "");
+
+        var medData = branchId != null
+                ? jdbcTemplate.queryForMap(medUsageSql, startTs, endTs, branchId)
+                : jdbcTemplate.queryForMap(medUsageSql, startTs, endTs);
         Long lowStockCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM medicines WHERE stock_quantity < 30", Long.class);
 
@@ -294,9 +341,14 @@ public class DashboardServiceImpl implements DashboardService {
             FROM invoice_details idt
             JOIN invoices i ON idt.invoice_id = i.id
             WHERE i.invoice_date BETWEEN ? AND ?
-        """;
-        var srvData = jdbcTemplate.queryForMap(srvUsageSql, startTs, endTs);
-        var prevSrvData = jdbcTemplate.queryForMap(srvUsageSql, pStartTs, pEndTs);
+        """ + (branchId != null ? " AND i.branch_id = ? " : "");
+
+        var srvData = branchId != null
+                ? jdbcTemplate.queryForMap(srvUsageSql, startTs, endTs, branchId)
+                : jdbcTemplate.queryForMap(srvUsageSql, startTs, endTs);
+        var prevSrvData = branchId != null
+                ? jdbcTemplate.queryForMap(srvUsageSql, pStartTs, pEndTs, branchId)
+                : jdbcTemplate.queryForMap(srvUsageSql, pStartTs, pEndTs);
         BigDecimal currentSrvRev = (BigDecimal) srvData.get("total_revenue");
         BigDecimal prevSrvRev = (BigDecimal) prevSrvData.get("total_revenue");
 
@@ -317,8 +369,11 @@ public class DashboardServiceImpl implements DashboardService {
             FROM invoices
             WHERE (promotion_id IS NOT NULL OR discount_amount > 0)
               AND invoice_date BETWEEN ? AND ?
-        """;
-        var promoData = jdbcTemplate.queryForMap(promoSql, startTs, endTs);
+        """ + (branchId != null ? " AND branch_id = ? " : "");
+
+        var promoData = branchId != null
+                ? jdbcTemplate.queryForMap(promoSql, startTs, endTs, branchId)
+                : jdbcTemplate.queryForMap(promoSql, startTs, endTs);
         Long promoInvoices = ((Number) promoData.get("promo_invoices")).longValue();
 
         var promotionSummary = DashboardOverviewResponse.PromotionSummary.builder()
@@ -338,14 +393,19 @@ public class DashboardServiceImpl implements DashboardService {
                 COUNT(id) FILTER (WHERE status = 'CONFIRMED') AS confirmed
             FROM appointments
             WHERE appointment_date BETWEEN ? AND ?
-        """;
-        var apptData = jdbcTemplate.queryForMap(apptSql, startTs, endTs);
+        """ + (branchId != null ? " AND branch_id = ? " : "");
+
+        var apptData = branchId != null
+                ? jdbcTemplate.queryForMap(apptSql, startTs, endTs, branchId)
+                : jdbcTemplate.queryForMap(apptSql, startTs, endTs);
         Long apptTotal = ((Number) apptData.get("total")).longValue();
         Long apptCompleted = ((Number) apptData.get("completed")).longValue();
         Long apptCancelled = ((Number) apptData.get("cancelled")).longValue();
         Long apptConfirmed = ((Number) apptData.get("confirmed")).longValue();
 
-        var prevApptData = jdbcTemplate.queryForMap(apptSql, pStartTs, pEndTs);
+        var prevApptData = branchId != null
+                ? jdbcTemplate.queryForMap(apptSql, pStartTs, pEndTs, branchId)
+                : jdbcTemplate.queryForMap(apptSql, pStartTs, pEndTs);
         Long prevApptTotal = ((Number) prevApptData.get("total")).longValue();
 
         double compRate = apptTotal > 0 ? Math.round(((double) apptCompleted / apptTotal) * 1000.0) / 10.0 : 0.0;
@@ -365,6 +425,8 @@ public class DashboardServiceImpl implements DashboardService {
                 .periodLabel(period.label())
                 .startDate(period.startDate())
                 .endDate(period.endDate())
+                .branchId(branchId)
+                .branchName(branchName)
                 .revenue(revenueSummary)
                 .staff(staffSummary)
                 .medicines(medicineSummary)
@@ -384,6 +446,8 @@ public class DashboardServiceImpl implements DashboardService {
         Timestamp endTs = Timestamp.valueOf(period.endDate());
         Timestamp pStartTs = Timestamp.valueOf(period.prevStartDate());
         Timestamp pEndTs = Timestamp.valueOf(period.prevEndDate());
+        String branchId = resolveBranchId(filter);
+        String branchName = resolveBranchName(branchId);
 
         // Invoices summary
         String invSql = """
@@ -395,15 +459,20 @@ public class DashboardServiceImpl implements DashboardService {
                 COALESCE(SUM(remaining_amount), 0) AS remaining_debt
             FROM invoices
             WHERE invoice_date BETWEEN ? AND ?
-        """;
-        var invData = jdbcTemplate.queryForMap(invSql, startTs, endTs);
+        """ + (branchId != null ? " AND branch_id = ? " : "");
+
+        var invData = branchId != null
+                ? jdbcTemplate.queryForMap(invSql, startTs, endTs, branchId)
+                : jdbcTemplate.queryForMap(invSql, startTs, endTs);
         Long totalInvoices = ((Number) invData.get("total_invoices")).longValue();
         BigDecimal totalAmount = (BigDecimal) invData.get("total_amount");
         BigDecimal discountAmount = (BigDecimal) invData.get("discount_amount");
         BigDecimal invoiceRevenue = (BigDecimal) invData.get("invoice_revenue");
         BigDecimal remainingDebt = (BigDecimal) invData.get("remaining_debt");
 
-        var prevInvData = jdbcTemplate.queryForMap(invSql, pStartTs, pEndTs);
+        var prevInvData = branchId != null
+                ? jdbcTemplate.queryForMap(invSql, pStartTs, pEndTs, branchId)
+                : jdbcTemplate.queryForMap(invSql, pStartTs, pEndTs);
         Long prevTotalInvoices = ((Number) prevInvData.get("total_invoices")).longValue();
         BigDecimal prevInvoiceRevenue = (BigDecimal) prevInvData.get("invoice_revenue");
         BigDecimal prevDebt = (BigDecimal) prevInvData.get("remaining_debt");
@@ -416,14 +485,19 @@ public class DashboardServiceImpl implements DashboardService {
                 COALESCE(SUM(medicine_amount), 0) AS medicine_amount
             FROM payment_transactions
             WHERE status = 'SUCCESS' AND payment_time BETWEEN ? AND ?
-        """;
-        var payData = jdbcTemplate.queryForMap(paySql, startTs, endTs);
+        """ + (branchId != null ? " AND branch_id = ? " : "");
+
+        var payData = branchId != null
+                ? jdbcTemplate.queryForMap(paySql, startTs, endTs, branchId)
+                : jdbcTemplate.queryForMap(paySql, startTs, endTs);
         BigDecimal actualCollected = (BigDecimal) payData.get("actual_collected");
         BigDecimal serviceAmount = (BigDecimal) payData.get("service_amount");
         BigDecimal medicineAmount = (BigDecimal) payData.get("medicine_amount");
         BigDecimal otherAmount = actualCollected.subtract(serviceAmount).subtract(medicineAmount).max(BigDecimal.ZERO);
 
-        var prevPayData = jdbcTemplate.queryForMap(paySql, pStartTs, pEndTs);
+        var prevPayData = branchId != null
+                ? jdbcTemplate.queryForMap(paySql, pStartTs, pEndTs, branchId)
+                : jdbcTemplate.queryForMap(paySql, pStartTs, pEndTs);
         BigDecimal prevActual = (BigDecimal) prevPayData.get("actual_collected");
 
         // Trend points
@@ -437,23 +511,23 @@ public class DashboardServiceImpl implements DashboardService {
                 COALESCE(SUM(remaining_amount), 0) AS debt,
                 COUNT(id) AS cnt
             FROM invoices
-            WHERE invoice_date BETWEEN ? AND ?
+            WHERE invoice_date BETWEEN ? AND ? %s
             GROUP BY TO_CHAR(invoice_date, '%s')
             ORDER BY d_key ASC
-        """, datePattern, datePattern);
+        """, datePattern, branchId != null ? " AND branch_id = ? " : "", datePattern);
 
         String trendPaySql = String.format("""
             SELECT
                 TO_CHAR(payment_time, '%s') AS d_key,
                 COALESCE(SUM(total_amount), 0) AS collected
             FROM payment_transactions
-            WHERE status = 'SUCCESS' AND payment_time BETWEEN ? AND ?
+            WHERE status = 'SUCCESS' AND payment_time BETWEEN ? AND ? %s
             GROUP BY TO_CHAR(payment_time, '%s')
             ORDER BY d_key ASC
-        """, datePattern, datePattern);
+        """, datePattern, branchId != null ? " AND branch_id = ? " : "", datePattern);
 
         Map<String, RevenueDashboardResponse.RevenueTrendPoint> trendMap = new TreeMap<>();
-        jdbcTemplate.query(trendInvSql, (rs, rowNum) -> {
+        var invTrendCallback = (org.springframework.jdbc.core.RowMapper<Void>) (rs, rowNum) -> {
             String key = rs.getString("d_key");
             String label = isDayGroup && key.length() >= 10
                     ? key.substring(8, 10) + "/" + key.substring(5, 7)
@@ -467,9 +541,15 @@ public class DashboardServiceImpl implements DashboardService {
                     .actualCollected(BigDecimal.ZERO)
                     .build());
             return null;
-        }, startTs, endTs);
+        };
 
-        jdbcTemplate.query(trendPaySql, (rs, rowNum) -> {
+        if (branchId != null) {
+            jdbcTemplate.query(trendInvSql, invTrendCallback, startTs, endTs, branchId);
+        } else {
+            jdbcTemplate.query(trendInvSql, invTrendCallback, startTs, endTs);
+        }
+
+        var payTrendCallback = (org.springframework.jdbc.core.RowMapper<Void>) (rs, rowNum) -> {
             String key = rs.getString("d_key");
             BigDecimal collected = rs.getBigDecimal("collected");
             if (trendMap.containsKey(key)) {
@@ -488,7 +568,13 @@ public class DashboardServiceImpl implements DashboardService {
                         .build());
             }
             return null;
-        }, startTs, endTs);
+        };
+
+        if (branchId != null) {
+            jdbcTemplate.query(trendPaySql, payTrendCallback, startTs, endTs, branchId);
+        } else {
+            jdbcTemplate.query(trendPaySql, payTrendCallback, startTs, endTs);
+        }
 
         List<RevenueDashboardResponse.RevenueTrendPoint> trendList = new ArrayList<>(trendMap.values());
 
@@ -500,10 +586,11 @@ public class DashboardServiceImpl implements DashboardService {
                 COALESCE(SUM(total_amount), 0) AS amt
             FROM payment_transactions
             WHERE status = 'SUCCESS' AND payment_time BETWEEN ? AND ?
+        """ + (branchId != null ? " AND branch_id = ? " : "") + """
             GROUP BY payment_method
             ORDER BY amt DESC
         """;
-        List<RevenueDashboardResponse.PaymentMethodStat> paymentMethods = jdbcTemplate.query(methodSql, (rs, rowNum) -> {
+        var methodCallback = (org.springframework.jdbc.core.RowMapper<RevenueDashboardResponse.PaymentMethodStat>) (rs, rowNum) -> {
             String method = rs.getString("payment_method");
             BigDecimal amt = rs.getBigDecimal("amt");
             long cnt = rs.getLong("cnt");
@@ -525,7 +612,11 @@ public class DashboardServiceImpl implements DashboardService {
                     .amount(amt)
                     .percentage(Math.round(pct * 10.0) / 10.0)
                     .build();
-        }, startTs, endTs);
+        };
+
+        List<RevenueDashboardResponse.PaymentMethodStat> paymentMethods = branchId != null
+                ? jdbcTemplate.query(methodSql, methodCallback, startTs, endTs, branchId)
+                : jdbcTemplate.query(methodSql, methodCallback, startTs, endTs);
 
         // Invoice Statuses
         String statusSql = """
@@ -535,9 +626,10 @@ public class DashboardServiceImpl implements DashboardService {
                 COALESCE(SUM(final_amount), 0) AS amt
             FROM invoices
             WHERE invoice_date BETWEEN ? AND ?
+        """ + (branchId != null ? " AND branch_id = ? " : "") + """
             GROUP BY payment_status
         """;
-        List<RevenueDashboardResponse.InvoiceStatusStat> invoiceStatuses = jdbcTemplate.query(statusSql, (rs, rowNum) -> {
+        var statusCallback = (org.springframework.jdbc.core.RowMapper<RevenueDashboardResponse.InvoiceStatusStat>) (rs, rowNum) -> {
             String st = rs.getString("payment_status");
             String stName = switch (st != null ? st : "") {
                 case "PAID" -> "Đã thanh toán";
@@ -552,7 +644,11 @@ public class DashboardServiceImpl implements DashboardService {
                     .count(rs.getLong("cnt"))
                     .amount(rs.getBigDecimal("amt"))
                     .build();
-        }, startTs, endTs);
+        };
+
+        List<RevenueDashboardResponse.InvoiceStatusStat> invoiceStatuses = branchId != null
+                ? jdbcTemplate.query(statusSql, statusCallback, startTs, endTs, branchId)
+                : jdbcTemplate.query(statusSql, statusCallback, startTs, endTs);
 
         // Recent Payments
         String recentSql = """
@@ -571,27 +667,33 @@ public class DashboardServiceImpl implements DashboardService {
             LEFT JOIN patients p ON i.patient_id = p.id
             LEFT JOIN employees e ON pt.employee_id = e.id
             WHERE pt.status = 'SUCCESS' AND pt.payment_time BETWEEN ? AND ?
+        """ + (branchId != null ? " AND (pt.branch_id = ? OR i.branch_id = ?) " : "") + """
             ORDER BY pt.payment_time DESC
             LIMIT 100
         """;
-        List<RevenueDashboardResponse.RecentPaymentItem> recentPayments = jdbcTemplate.query(recentSql, (rs, rowNum) ->
-            RevenueDashboardResponse.RecentPaymentItem.builder()
-                    .id(rs.getString("id"))
-                    .transactionCode(rs.getString("transaction_code"))
-                    .invoiceCode(rs.getString("invoice_code"))
-                    .patientName(rs.getString("patient_name") != null ? rs.getString("patient_name") : "Khách lẻ")
-                    .amount(rs.getBigDecimal("total_amount"))
-                    .paymentMethod(rs.getString("payment_method"))
-                    .status(rs.getString("status"))
-                    .paymentTime(rs.getTimestamp("payment_time").toLocalDateTime())
-                    .cashierName(rs.getString("cashier_name"))
-                    .build()
-        , startTs, endTs);
+        var recentCallback = (org.springframework.jdbc.core.RowMapper<RevenueDashboardResponse.RecentPaymentItem>) (rs, rowNum) ->
+                RevenueDashboardResponse.RecentPaymentItem.builder()
+                        .id(rs.getString("id"))
+                        .transactionCode(rs.getString("transaction_code"))
+                        .invoiceCode(rs.getString("invoice_code"))
+                        .patientName(rs.getString("patient_name") != null ? rs.getString("patient_name") : "Khách lẻ")
+                        .amount(rs.getBigDecimal("total_amount"))
+                        .paymentMethod(rs.getString("payment_method"))
+                        .status(rs.getString("status"))
+                        .paymentTime(rs.getTimestamp("payment_time").toLocalDateTime())
+                        .cashierName(rs.getString("cashier_name"))
+                        .build();
+
+        List<RevenueDashboardResponse.RecentPaymentItem> recentPayments = branchId != null
+                ? jdbcTemplate.query(recentSql, recentCallback, startTs, endTs, branchId, branchId)
+                : jdbcTemplate.query(recentSql, recentCallback, startTs, endTs);
 
         return RevenueDashboardResponse.builder()
                 .periodLabel(period.label())
                 .startDate(period.startDate())
                 .endDate(period.endDate())
+                .branchId(branchId)
+                .branchName(branchName)
                 .totalInvoices(totalInvoices)
                 .invoiceRevenue(invoiceRevenue)
                 .actualCollected(actualCollected)
@@ -620,13 +722,21 @@ public class DashboardServiceImpl implements DashboardService {
         ResolvedPeriod period = resolvePeriod(filter);
         Timestamp startTs = Timestamp.valueOf(period.startDate());
         Timestamp endTs = Timestamp.valueOf(period.endDate());
+        String branchId = resolveBranchId(filter);
+        String branchName = resolveBranchName(branchId);
 
-        Long totalDoctors = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM dentists", Long.class);
-        Long totalEmployees = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM employees", Long.class);
-        Long totalReceptions = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM employees WHERE position = 'RECEPTIONIST'", Long.class);
-        Long totalWarehouse = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM employees WHERE position = 'WAREHOUSE'", Long.class);
+        Long totalDoctors = branchId != null
+                ? jdbcTemplate.queryForObject("SELECT COUNT(*) FROM dentists WHERE branch_id = ?", Long.class, branchId)
+                : jdbcTemplate.queryForObject("SELECT COUNT(*) FROM dentists", Long.class);
+        Long totalEmployees = branchId != null
+                ? jdbcTemplate.queryForObject("SELECT COUNT(*) FROM employees WHERE branch_id = ?", Long.class, branchId)
+                : jdbcTemplate.queryForObject("SELECT COUNT(*) FROM employees", Long.class);
+        Long totalReceptions = branchId != null
+                ? jdbcTemplate.queryForObject("SELECT COUNT(*) FROM employees WHERE position = 'RECEPTIONIST' AND branch_id = ?", Long.class, branchId)
+                : jdbcTemplate.queryForObject("SELECT COUNT(*) FROM employees WHERE position = 'RECEPTIONIST'", Long.class);
+        Long totalWarehouse = branchId != null
+                ? jdbcTemplate.queryForObject("SELECT COUNT(*) FROM employees WHERE position = 'WAREHOUSE' AND branch_id = ?", Long.class, branchId)
+                : jdbcTemplate.queryForObject("SELECT COUNT(*) FROM employees WHERE position = 'WAREHOUSE'", Long.class);
 
         // Doctor stats
         String docSql = """
@@ -674,10 +784,11 @@ public class DashboardServiceImpl implements DashboardService {
                 ) AS service_revenue
             FROM dentists d
             LEFT JOIN users u ON d.user_id = u.id
+        """ + (branchId != null ? " WHERE d.branch_id = ? " : "") + """
             ORDER BY service_revenue DESC, appts_completed DESC
         """;
 
-        List<StaffDashboardResponse.DoctorStatItem> doctors = jdbcTemplate.query(docSql, (rs, rowNum) -> {
+        var docCallback = (org.springframework.jdbc.core.RowMapper<StaffDashboardResponse.DoctorStatItem>) (rs, rowNum) -> {
             long appts = rs.getLong("appts_completed");
             long exams = rs.getLong("exams_count");
             long totalVisits = Math.max(appts, exams);
@@ -695,7 +806,11 @@ public class DashboardServiceImpl implements DashboardService {
                     .completedTreatments(rs.getLong("treatments_completed"))
                     .serviceRevenue(rs.getBigDecimal("service_revenue"))
                     .build();
-        }, startTs, endTs, startTs, endTs, startTs, endTs, startTs, endTs, startTs, endTs);
+        };
+
+        List<StaffDashboardResponse.DoctorStatItem> doctors = branchId != null
+                ? jdbcTemplate.query(docSql, docCallback, startTs, endTs, startTs, endTs, startTs, endTs, startTs, endTs, startTs, endTs, branchId)
+                : jdbcTemplate.query(docSql, docCallback, startTs, endTs, startTs, endTs, startTs, endTs, startTs, endTs, startTs, endTs);
 
         // Employee stats
         String empSql = """
@@ -718,10 +833,11 @@ public class DashboardServiceImpl implements DashboardService {
                    AND pt.payment_time BETWEEN ? AND ?) AS total_assisted
             FROM employees e
             LEFT JOIN users u ON e.user_id = u.id
+        """ + (branchId != null ? " WHERE e.branch_id = ? " : "") + """
             ORDER BY total_assisted DESC, payments_handled DESC
         """;
 
-        List<StaffDashboardResponse.EmployeeStatItem> employees = jdbcTemplate.query(empSql, (rs, rowNum) -> {
+        var empCallback = (org.springframework.jdbc.core.RowMapper<StaffDashboardResponse.EmployeeStatItem>) (rs, rowNum) -> {
             String pos = rs.getString("position");
             String posLabel = switch (pos != null ? pos : "") {
                 case "RECEPTIONIST" -> "Lễ tân phòng khám";
@@ -739,12 +855,18 @@ public class DashboardServiceImpl implements DashboardService {
                     .invoicesAssisted(rs.getLong("payments_handled"))
                     .totalAssistedAmount(rs.getBigDecimal("total_assisted"))
                     .build();
-        }, startTs, endTs, startTs, endTs, startTs, endTs);
+        };
+
+        List<StaffDashboardResponse.EmployeeStatItem> employees = branchId != null
+                ? jdbcTemplate.query(empSql, empCallback, startTs, endTs, startTs, endTs, startTs, endTs, branchId)
+                : jdbcTemplate.query(empSql, empCallback, startTs, endTs, startTs, endTs, startTs, endTs);
 
         return StaffDashboardResponse.builder()
                 .periodLabel(period.label())
                 .startDate(period.startDate())
                 .endDate(period.endDate())
+                .branchId(branchId)
+                .branchName(branchName)
                 .totalStaff(totalDoctors + totalEmployees)
                 .totalDoctors(totalDoctors)
                 .totalEmployees(totalEmployees)
@@ -763,6 +885,8 @@ public class DashboardServiceImpl implements DashboardService {
         ResolvedPeriod period = resolvePeriod(filter);
         Timestamp startTs = Timestamp.valueOf(period.startDate());
         Timestamp endTs = Timestamp.valueOf(period.endDate());
+        String branchId = resolveBranchId(filter);
+        String branchName = resolveBranchName(branchId);
 
         Long totalMedicinesCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM medicines", Long.class);
         Long lowStockCount = jdbcTemplate.queryForObject(
@@ -791,26 +915,31 @@ public class DashboardServiceImpl implements DashboardService {
                 FROM prescription_details pd
                 JOIN prescriptions p ON pd.prescription_id = p.id
                 JOIN medicines m2 ON pd.medicine_id = m2.id
+        """ + (branchId != null ? " JOIN dentists d ON p.dentist_id = d.id " : "") + """
                 WHERE p.prescription_date BETWEEN ? AND ?
+        """ + (branchId != null ? " AND d.branch_id = ? " : "") + """
                 GROUP BY pd.medicine_id
             ) usage ON m.id = usage.medicine_id
             ORDER BY usage.total_rev DESC NULLS LAST, usage.qty_used DESC NULLS LAST, m.name ASC
         """;
 
-        List<MedicineDashboardResponse.MedicineUsageItem> medicines = jdbcTemplate.query(medSql, (rs, rowNum) ->
-            MedicineDashboardResponse.MedicineUsageItem.builder()
-                    .medicineId(rs.getString("id"))
-                    .code(rs.getString("code") != null ? rs.getString("code") : "MED-" + (rowNum + 1))
-                    .name(rs.getString("name"))
-                    .unit(rs.getString("unit"))
-                    .manufacturer(rs.getString("manufacturer"))
-                    .stockQuantity(rs.getInt("stock_quantity"))
-                    .price(rs.getBigDecimal("price"))
-                    .quantityUsed(rs.getLong("qty_used"))
-                    .totalRevenue(rs.getBigDecimal("total_rev"))
-                    .prescriptionCount(rs.getLong("prescription_cnt"))
-                    .build()
-        , startTs, endTs);
+        var medCallback = (org.springframework.jdbc.core.RowMapper<MedicineDashboardResponse.MedicineUsageItem>) (rs, rowNum) ->
+                MedicineDashboardResponse.MedicineUsageItem.builder()
+                        .medicineId(rs.getString("id"))
+                        .code(rs.getString("code") != null ? rs.getString("code") : "MED-" + (rowNum + 1))
+                        .name(rs.getString("name"))
+                        .unit(rs.getString("unit"))
+                        .manufacturer(rs.getString("manufacturer"))
+                        .stockQuantity(rs.getInt("stock_quantity"))
+                        .price(rs.getBigDecimal("price"))
+                        .quantityUsed(rs.getLong("qty_used"))
+                        .totalRevenue(rs.getBigDecimal("total_rev"))
+                        .prescriptionCount(rs.getLong("prescription_cnt"))
+                        .build();
+
+        List<MedicineDashboardResponse.MedicineUsageItem> medicines = branchId != null
+                ? jdbcTemplate.query(medSql, medCallback, startTs, endTs, branchId)
+                : jdbcTemplate.query(medSql, medCallback, startTs, endTs);
 
         long usedCount = medicines.stream().filter(m -> m.getQuantityUsed() > 0).count();
         long totalUnits = medicines.stream().mapToLong(MedicineDashboardResponse.MedicineUsageItem::getQuantityUsed).sum();
@@ -830,30 +959,37 @@ public class DashboardServiceImpl implements DashboardService {
             FROM supplies s
             LEFT JOIN (
                 SELECT
-                    supply_id,
-                    SUM(quantity) AS exported_qty
-                FROM inventory_transactions
-                WHERE transaction_type = 'EXPORT' AND created_at BETWEEN ? AND ?
-                GROUP BY supply_id
+                    it_inner.supply_id,
+                    SUM(it_inner.quantity) AS exported_qty
+                FROM inventory_transactions it_inner
+        """ + (branchId != null ? " JOIN employees e ON it_inner.employee_id = e.id " : "") + """
+                WHERE it_inner.transaction_type = 'EXPORT' AND it_inner.created_at BETWEEN ? AND ?
+        """ + (branchId != null ? " AND e.branch_id = ? " : "") + """
+                GROUP BY it_inner.supply_id
             ) it ON s.id = it.supply_id
             ORDER BY s.stock_quantity ASC
         """;
 
-        List<MedicineDashboardResponse.SupplyStockItem> supplies = jdbcTemplate.query(supSql, (rs, rowNum) ->
-            MedicineDashboardResponse.SupplyStockItem.builder()
-                    .supplyId(rs.getString("id"))
-                    .suppliesName(rs.getString("supplies_name"))
-                    .unit(rs.getString("unit"))
-                    .stockQuantity(rs.getInt("stock_quantity"))
-                    .minStock(rs.getInt("min_stock"))
-                    .exportedQuantity(rs.getLong("exported_qty"))
-                    .build()
-        , startTs, endTs);
+        var supCallback = (org.springframework.jdbc.core.RowMapper<MedicineDashboardResponse.SupplyStockItem>) (rs, rowNum) ->
+                MedicineDashboardResponse.SupplyStockItem.builder()
+                        .supplyId(rs.getString("id"))
+                        .suppliesName(rs.getString("supplies_name"))
+                        .unit(rs.getString("unit"))
+                        .stockQuantity(rs.getInt("stock_quantity"))
+                        .minStock(rs.getInt("min_stock"))
+                        .exportedQuantity(rs.getLong("exported_qty"))
+                        .build();
+
+        List<MedicineDashboardResponse.SupplyStockItem> supplies = branchId != null
+                ? jdbcTemplate.query(supSql, supCallback, startTs, endTs, branchId)
+                : jdbcTemplate.query(supSql, supCallback, startTs, endTs);
 
         return MedicineDashboardResponse.builder()
                 .periodLabel(period.label())
                 .startDate(period.startDate())
                 .endDate(period.endDate())
+                .branchId(branchId)
+                .branchName(branchName)
                 .totalMedicinesCount(totalMedicinesCount)
                 .totalMedicinesUsedCount(usedCount)
                 .totalUnitsDispensed(totalUnits)
@@ -874,6 +1010,8 @@ public class DashboardServiceImpl implements DashboardService {
         Timestamp endTs = Timestamp.valueOf(period.endDate());
         Timestamp pStartTs = Timestamp.valueOf(period.prevStartDate());
         Timestamp pEndTs = Timestamp.valueOf(period.prevEndDate());
+        String branchId = resolveBranchId(filter);
+        String branchName = resolveBranchName(branchId);
 
         Long totalServicesCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM services", Long.class);
         Long activeServicesCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM services WHERE is_active = true", Long.class);
@@ -893,6 +1031,7 @@ public class DashboardServiceImpl implements DashboardService {
             JOIN invoices i ON idt.invoice_id = i.id
             LEFT JOIN services s ON LOWER(TRIM(s.service_name)) = LOWER(TRIM(idt.item_name))
             WHERE i.invoice_date BETWEEN ? AND ?
+        """ + (branchId != null ? " AND i.branch_id = ? " : "") + """
             GROUP BY s.id, s.service_code, idt.item_name, s.category, s.unit, s.price
             ORDER BY total_revenue DESC
         """;
@@ -905,19 +1044,26 @@ public class DashboardServiceImpl implements DashboardService {
             FROM invoice_details idt
             JOIN invoices i ON idt.invoice_id = i.id
             WHERE i.invoice_date BETWEEN ? AND ?
+        """ + (branchId != null ? " AND i.branch_id = ? " : "") + """
             GROUP BY idt.item_name
         """;
 
         Map<String, BigDecimal> prevRevMap = new HashMap<>();
         Map<String, Long> prevUsageMap = new HashMap<>();
-        jdbcTemplate.query(prevSrvSql, (rs, rowNum) -> {
+        var prevSrvCallback = (org.springframework.jdbc.core.RowMapper<Void>) (rs, rowNum) -> {
             String name = rs.getString("service_name");
             prevRevMap.put(name, rs.getBigDecimal("prev_revenue"));
             prevUsageMap.put(name, rs.getLong("prev_usage"));
             return null;
-        }, pStartTs, pEndTs);
+        };
 
-        List<ServiceDashboardResponse.ServiceUsageItem> services = jdbcTemplate.query(srvSql, (rs, rowNum) -> {
+        if (branchId != null) {
+            jdbcTemplate.query(prevSrvSql, prevSrvCallback, pStartTs, pEndTs, branchId);
+        } else {
+            jdbcTemplate.query(prevSrvSql, prevSrvCallback, pStartTs, pEndTs);
+        }
+
+        var srvCallback = (org.springframework.jdbc.core.RowMapper<ServiceDashboardResponse.ServiceUsageItem>) (rs, rowNum) -> {
             String name = rs.getString("service_name");
             BigDecimal rev = rs.getBigDecimal("total_revenue");
             BigDecimal pRev = prevRevMap.getOrDefault(name, BigDecimal.ZERO);
@@ -937,7 +1083,11 @@ public class DashboardServiceImpl implements DashboardService {
                     .prevPeriodRevenue(pRev)
                     .growthPercent(calculateGrowthRate(rev, pRev))
                     .build();
-        }, startTs, endTs);
+        };
+
+        List<ServiceDashboardResponse.ServiceUsageItem> services = branchId != null
+                ? jdbcTemplate.query(srvSql, srvCallback, startTs, endTs, branchId)
+                : jdbcTemplate.query(srvSql, srvCallback, startTs, endTs);
 
         long totalUsage = services.stream().mapToLong(ServiceDashboardResponse.ServiceUsageItem::getUsageCount).sum();
         BigDecimal totalRev = services.stream()
@@ -947,7 +1097,7 @@ public class DashboardServiceImpl implements DashboardService {
         BigDecimal prevTotalRev = prevRevMap.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
         long prevTotalUsage = prevUsageMap.values().stream().mapToLong(Long::longValue).sum();
 
-        // Monthly service usage trend (dịch vụ được sử dụng trong từng tháng)
+        // Monthly service usage trend
         int year = period.startDate().getYear();
         Timestamp yStart = Timestamp.valueOf(LocalDateTime.of(year, 1, 1, 0, 0, 0));
         Timestamp yEnd = Timestamp.valueOf(LocalDateTime.of(year, 12, 31, 23, 59, 59));
@@ -960,11 +1110,12 @@ public class DashboardServiceImpl implements DashboardService {
             FROM invoice_details idt
             JOIN invoices i ON idt.invoice_id = i.id
             WHERE i.invoice_date BETWEEN ? AND ?
+        """ + (branchId != null ? " AND i.branch_id = ? " : "") + """
             GROUP BY TO_CHAR(i.invoice_date, 'YYYY-MM')
             ORDER BY month_key ASC
         """;
 
-        List<ServiceDashboardResponse.MonthlyServiceStat> monthlyStats = jdbcTemplate.query(monthlySql, (rs, rowNum) -> {
+        var monthlyCallback = (org.springframework.jdbc.core.RowMapper<ServiceDashboardResponse.MonthlyServiceStat>) (rs, rowNum) -> {
             String mKey = rs.getString("month_key");
             String label = mKey.length() >= 7 ? "Thg " + mKey.substring(5, 7) : mKey;
             return ServiceDashboardResponse.MonthlyServiceStat.builder()
@@ -972,11 +1123,14 @@ public class DashboardServiceImpl implements DashboardService {
                     .label(label)
                     .usageCount(rs.getLong("usage_count"))
                     .revenue(rs.getBigDecimal("revenue"))
-                    .growthRate(0.0) // calculated below
+                    .growthRate(0.0)
                     .build();
-        }, yStart, yEnd);
+        };
 
-        // Calculate month-over-month growth for monthlyStats
+        List<ServiceDashboardResponse.MonthlyServiceStat> monthlyStats = branchId != null
+                ? jdbcTemplate.query(monthlySql, monthlyCallback, yStart, yEnd, branchId)
+                : jdbcTemplate.query(monthlySql, monthlyCallback, yStart, yEnd);
+
         for (int i = 1; i < monthlyStats.size(); i++) {
             BigDecimal prevMRev = monthlyStats.get(i - 1).getRevenue();
             BigDecimal currMRev = monthlyStats.get(i).getRevenue();
@@ -993,11 +1147,12 @@ public class DashboardServiceImpl implements DashboardService {
             FROM services s
             LEFT JOIN invoice_details idt ON LOWER(TRIM(s.service_name)) = LOWER(TRIM(idt.item_name))
             LEFT JOIN invoices i ON idt.invoice_id = i.id AND i.invoice_date BETWEEN ? AND ?
+        """ + (branchId != null ? " AND i.branch_id = ? " : "") + """
             GROUP BY s.category
             ORDER BY total_revenue DESC
         """;
 
-        List<ServiceDashboardResponse.ServiceCategoryStat> categoryStats = jdbcTemplate.query(catSql, (rs, rowNum) -> {
+        var catCallback = (org.springframework.jdbc.core.RowMapper<ServiceDashboardResponse.ServiceCategoryStat>) (rs, rowNum) -> {
             String cat = rs.getString("category");
             BigDecimal cRev = rs.getBigDecimal("total_revenue");
             double pct = totalRev.compareTo(BigDecimal.ZERO) > 0
@@ -1011,12 +1166,18 @@ public class DashboardServiceImpl implements DashboardService {
                     .totalRevenue(cRev)
                     .percentage(Math.round(pct * 10.0) / 10.0)
                     .build();
-        }, startTs, endTs);
+        };
+
+        List<ServiceDashboardResponse.ServiceCategoryStat> categoryStats = branchId != null
+                ? jdbcTemplate.query(catSql, catCallback, startTs, endTs, branchId)
+                : jdbcTemplate.query(catSql, catCallback, startTs, endTs);
 
         return ServiceDashboardResponse.builder()
                 .periodLabel(period.label())
                 .startDate(period.startDate())
                 .endDate(period.endDate())
+                .branchId(branchId)
+                .branchName(branchName)
                 .totalServicesCount(totalServicesCount)
                 .activeServicesCount(activeServicesCount)
                 .totalUsageCount(totalUsage)
@@ -1052,6 +1213,8 @@ public class DashboardServiceImpl implements DashboardService {
         ResolvedPeriod period = resolvePeriod(filter);
         Timestamp startTs = Timestamp.valueOf(period.startDate());
         Timestamp endTs = Timestamp.valueOf(period.endDate());
+        String branchId = resolveBranchId(filter);
+        String branchName = resolveBranchName(branchId);
 
         Long totalPromotions = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM promotions", Long.class);
         Long activePromotions = jdbcTemplate.queryForObject(
@@ -1073,27 +1236,31 @@ public class DashboardServiceImpl implements DashboardService {
                 COALESCE(SUM(i.final_amount), 0) AS total_sales
             FROM promotions p
             LEFT JOIN invoices i ON i.promotion_id = p.id AND i.invoice_date BETWEEN ? AND ?
+        """ + (branchId != null ? " AND i.branch_id = ? " : "") + """
             GROUP BY p.id, p.title, p.coupon_code, p.promotion_type, p.discount_percent, p.discount_amount, p.start_date, p.end_date, p.status
             ORDER BY total_discount DESC, invoices_count DESC, p.title ASC
         """;
 
-        List<PromotionDashboardResponse.PromotionDetailItem> promotions = jdbcTemplate.query(promoSql, (rs, rowNum) ->
-            PromotionDashboardResponse.PromotionDetailItem.builder()
-                    .id(rs.getString("id"))
-                    .title(rs.getString("title"))
-                    .couponCode(rs.getString("coupon_code") != null ? rs.getString("coupon_code") : "KM" + (rowNum + 1))
-                    .promotionType(rs.getString("promotion_type") != null ? rs.getString("promotion_type") : "PERCENTAGE")
-                    .discountPercent(rs.getBigDecimal("discount_percent"))
-                    .discountAmount(rs.getBigDecimal("discount_amount"))
-                    .startDate(rs.getTimestamp("start_date") != null ? rs.getTimestamp("start_date").toLocalDateTime() : null)
-                    .endDate(rs.getTimestamp("end_date") != null ? rs.getTimestamp("end_date").toLocalDateTime() : null)
-                    .status(rs.getString("status") != null ? rs.getString("status") : "ACTIVE")
-                    .usageCount(rs.getLong("invoices_count"))
-                    .invoicesCount(rs.getLong("invoices_count"))
-                    .discountGiven(rs.getBigDecimal("total_discount"))
-                    .salesGenerated(rs.getBigDecimal("total_sales"))
-                    .build()
-        , startTs, endTs);
+        var promoCallback = (org.springframework.jdbc.core.RowMapper<PromotionDashboardResponse.PromotionDetailItem>) (rs, rowNum) ->
+                PromotionDashboardResponse.PromotionDetailItem.builder()
+                        .id(rs.getString("id"))
+                        .title(rs.getString("title"))
+                        .couponCode(rs.getString("coupon_code") != null ? rs.getString("coupon_code") : "KM" + (rowNum + 1))
+                        .promotionType(rs.getString("promotion_type") != null ? rs.getString("promotion_type") : "PERCENTAGE")
+                        .discountPercent(rs.getBigDecimal("discount_percent"))
+                        .discountAmount(rs.getBigDecimal("discount_amount"))
+                        .startDate(rs.getTimestamp("start_date") != null ? rs.getTimestamp("start_date").toLocalDateTime() : null)
+                        .endDate(rs.getTimestamp("end_date") != null ? rs.getTimestamp("end_date").toLocalDateTime() : null)
+                        .status(rs.getString("status") != null ? rs.getString("status") : "ACTIVE")
+                        .usageCount(rs.getLong("invoices_count"))
+                        .invoicesCount(rs.getLong("invoices_count"))
+                        .discountGiven(rs.getBigDecimal("total_discount"))
+                        .salesGenerated(rs.getBigDecimal("total_sales"))
+                        .build();
+
+        List<PromotionDashboardResponse.PromotionDetailItem> promotions = branchId != null
+                ? jdbcTemplate.query(promoSql, promoCallback, startTs, endTs, branchId)
+                : jdbcTemplate.query(promoSql, promoCallback, startTs, endTs);
 
         long totalUsage = promotions.stream().mapToLong(PromotionDashboardResponse.PromotionDetailItem::getUsageCount).sum();
         BigDecimal totalDiscount = promotions.stream()
@@ -1107,6 +1274,8 @@ public class DashboardServiceImpl implements DashboardService {
                 .periodLabel(period.label())
                 .startDate(period.startDate())
                 .endDate(period.endDate())
+                .branchId(branchId)
+                .branchName(branchName)
                 .totalPromotions(totalPromotions)
                 .activePromotions(activePromotions)
                 .totalUsageCount(totalUsage)
@@ -1127,6 +1296,8 @@ public class DashboardServiceImpl implements DashboardService {
         Timestamp endTs = Timestamp.valueOf(period.endDate());
         Timestamp pStartTs = Timestamp.valueOf(period.prevStartDate());
         Timestamp pEndTs = Timestamp.valueOf(period.prevEndDate());
+        String branchId = resolveBranchId(filter);
+        String branchName = resolveBranchName(branchId);
 
         String apptSql = """
             SELECT
@@ -1138,9 +1309,11 @@ public class DashboardServiceImpl implements DashboardService {
                 COUNT(id) FILTER (WHERE status IN ('IN_PROGRESS', 'CALLED')) AS in_progress
             FROM appointments
             WHERE appointment_date BETWEEN ? AND ?
-        """;
+        """ + (branchId != null ? " AND branch_id = ? " : "");
 
-        var apptData = jdbcTemplate.queryForMap(apptSql, startTs, endTs);
+        var apptData = branchId != null
+                ? jdbcTemplate.queryForMap(apptSql, startTs, endTs, branchId)
+                : jdbcTemplate.queryForMap(apptSql, startTs, endTs);
         Long total = ((Number) apptData.get("total")).longValue();
         Long completed = ((Number) apptData.get("completed")).longValue();
         Long cancelled = ((Number) apptData.get("cancelled")).longValue();
@@ -1148,7 +1321,9 @@ public class DashboardServiceImpl implements DashboardService {
         Long waiting = ((Number) apptData.get("waiting")).longValue();
         Long inProgress = ((Number) apptData.get("in_progress")).longValue();
 
-        var prevApptData = jdbcTemplate.queryForMap(apptSql, pStartTs, pEndTs);
+        var prevApptData = branchId != null
+                ? jdbcTemplate.queryForMap(apptSql, pStartTs, pEndTs, branchId)
+                : jdbcTemplate.queryForMap(apptSql, pStartTs, pEndTs);
         Long prevTotal = ((Number) prevApptData.get("total")).longValue();
         Long prevCompleted = ((Number) prevApptData.get("completed")).longValue();
         Long prevCancelled = ((Number) prevApptData.get("cancelled")).longValue();
@@ -1161,10 +1336,11 @@ public class DashboardServiceImpl implements DashboardService {
             SELECT status, COUNT(*) AS cnt
             FROM appointments
             WHERE appointment_date BETWEEN ? AND ?
+        """ + (branchId != null ? " AND branch_id = ? " : "") + """
             GROUP BY status
             ORDER BY cnt DESC
         """;
-        List<AppointmentDashboardResponse.AppointmentStatusStat> statusBreakdown = jdbcTemplate.query(stSql, (rs, rowNum) -> {
+        var stCallback = (org.springframework.jdbc.core.RowMapper<AppointmentDashboardResponse.AppointmentStatusStat>) (rs, rowNum) -> {
             String st = rs.getString("status");
             long cnt = rs.getLong("cnt");
             double pct = total > 0 ? Math.round(((double) cnt / total) * 1000.0) / 10.0 : 0.0;
@@ -1184,7 +1360,11 @@ public class DashboardServiceImpl implements DashboardService {
                     .count(cnt)
                     .percentage(pct)
                     .build();
-        }, startTs, endTs);
+        };
+
+        List<AppointmentDashboardResponse.AppointmentStatusStat> statusBreakdown = branchId != null
+                ? jdbcTemplate.query(stSql, stCallback, startTs, endTs, branchId)
+                : jdbcTemplate.query(stSql, stCallback, startTs, endTs);
 
         // Trend
         boolean isDayGroup = "DAY".equalsIgnoreCase(period.groupBy());
@@ -1198,12 +1378,12 @@ public class DashboardServiceImpl implements DashboardService {
                 COUNT(id) FILTER (WHERE status = 'CANCELLED') AS cancelled,
                 COUNT(id) FILTER (WHERE status NOT IN ('COMPLETED', 'CANCELLED')) AS other
             FROM appointments
-            WHERE appointment_date BETWEEN ? AND ?
+            WHERE appointment_date BETWEEN ? AND ? %s
             GROUP BY TO_CHAR(appointment_date, '%s')
             ORDER BY d_key ASC
-        """, datePattern, datePattern);
+        """, datePattern, branchId != null ? " AND branch_id = ? " : "", datePattern);
 
-        List<AppointmentDashboardResponse.AppointmentTrendPoint> trend = jdbcTemplate.query(trendSql, (rs, rowNum) -> {
+        var trendCallback = (org.springframework.jdbc.core.RowMapper<AppointmentDashboardResponse.AppointmentTrendPoint>) (rs, rowNum) -> {
             String key = rs.getString("d_key");
             String label = isDayGroup && key.length() >= 10
                     ? key.substring(8, 10) + "/" + key.substring(5, 7)
@@ -1216,7 +1396,11 @@ public class DashboardServiceImpl implements DashboardService {
                     .cancelled(rs.getLong("cancelled"))
                     .other(rs.getLong("other"))
                     .build();
-        }, startTs, endTs);
+        };
+
+        List<AppointmentDashboardResponse.AppointmentTrendPoint> trend = branchId != null
+                ? jdbcTemplate.query(trendSql, trendCallback, startTs, endTs, branchId)
+                : jdbcTemplate.query(trendSql, trendCallback, startTs, endTs);
 
         // Doctor stats
         String docApptSql = """
@@ -1229,25 +1413,31 @@ public class DashboardServiceImpl implements DashboardService {
             FROM dentists d
             JOIN appointments a ON a.dentist_id = d.id
             WHERE a.appointment_date BETWEEN ? AND ?
+        """ + (branchId != null ? " AND (a.branch_id = ? OR d.branch_id = ?) " : "") + """
             GROUP BY d.id, d.full_name
             ORDER BY total DESC
             LIMIT 10
         """;
 
-        List<AppointmentDashboardResponse.DoctorAppointmentStat> doctorStats = jdbcTemplate.query(docApptSql, (rs, rowNum) ->
-            AppointmentDashboardResponse.DoctorAppointmentStat.builder()
-                    .dentistId(rs.getString("id"))
-                    .doctorName(rs.getString("full_name"))
-                    .total(rs.getLong("total"))
-                    .completed(rs.getLong("completed"))
-                    .cancelled(rs.getLong("cancelled"))
-                    .build()
-        , startTs, endTs);
+        var docApptCallback = (org.springframework.jdbc.core.RowMapper<AppointmentDashboardResponse.DoctorAppointmentStat>) (rs, rowNum) ->
+                AppointmentDashboardResponse.DoctorAppointmentStat.builder()
+                        .dentistId(rs.getString("id"))
+                        .doctorName(rs.getString("full_name"))
+                        .total(rs.getLong("total"))
+                        .completed(rs.getLong("completed"))
+                        .cancelled(rs.getLong("cancelled"))
+                        .build();
+
+        List<AppointmentDashboardResponse.DoctorAppointmentStat> doctorStats = branchId != null
+                ? jdbcTemplate.query(docApptSql, docApptCallback, startTs, endTs, branchId, branchId)
+                : jdbcTemplate.query(docApptSql, docApptCallback, startTs, endTs);
 
         return AppointmentDashboardResponse.builder()
                 .periodLabel(period.label())
                 .startDate(period.startDate())
                 .endDate(period.endDate())
+                .branchId(branchId)
+                .branchName(branchName)
                 .totalAppointments(total)
                 .completedAppointments(completed)
                 .cancelledAppointments(cancelled)

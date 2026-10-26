@@ -16,6 +16,8 @@ public class AppointmentDashboardResponse {
     private String periodLabel;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
+    private String branchId;
+    private String branchName;
 
     // Chỉ số tổng quan
     private Long totalAppointments;         // Tổng số lịch hẹn
