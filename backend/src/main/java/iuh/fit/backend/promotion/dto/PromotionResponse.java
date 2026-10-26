@@ -19,12 +19,17 @@ public record PromotionResponse(
         BigDecimal discountPercent,
         BigDecimal discountAmount,
         BigDecimal maxDiscountAmount,
+        BigDecimal minOrderAmount,
         LocalDateTime startDate,
         LocalDateTime endDate,
         Integer usageLimit,
         Integer usedCount,
         PromotionStatus status,
+        Boolean applyAllServices,
+        Boolean isValid,
+        Boolean isExpiringSoon,
         LocalDateTime createdAt,
+        LocalDateTime updatedAt,
         List<PromotionServiceResponse> services) {
 
     public record PromotionServiceResponse(UUID id, String serviceName, BigDecimal price) {
