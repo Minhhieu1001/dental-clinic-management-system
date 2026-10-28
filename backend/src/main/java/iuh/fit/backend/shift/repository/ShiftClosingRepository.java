@@ -25,7 +25,7 @@ public interface ShiftClosingRepository extends JpaRepository<ShiftClosing, UUID
            "LEFT JOIN FETCH s.employee e " +
            "LEFT JOIN FETCH s.handoverEmployee he " +
            "LEFT JOIN FETCH s.branch b " +
-           "WHERE e.id = :employeeId " +
+           "WHERE e.id = :employeeId OR he.id = :employeeId " +
            "ORDER BY s.createdAt DESC")
     List<ShiftClosing> findByEmployeeIdWithDetails(@Param("employeeId") UUID employeeId);
 
@@ -37,4 +37,17 @@ public interface ShiftClosingRepository extends JpaRepository<ShiftClosing, UUID
     Optional<ShiftClosing> findByIdWithDetails(@Param("id") UUID id);
 
     Optional<ShiftClosing> findByShiftCode(String shiftCode);
+
+    @Query("SELECT s FROM ShiftClosing s " +
+           "LEFT JOIN FETCH s.employee e " +
+           "LEFT JOIN FETCH s.handoverEmployee he " +
+           "LEFT JOIN FETCH s.branch b " +
+           "WHERE s.shiftType = :shiftType " +
+           "AND s.startTime >= :dayStart AND s.startTime < :dayEnd " +
+           "ORDER BY s.createdAt DESC")
+    List<ShiftClosing> findClosedShiftForDate(
+            @Param("shiftType") iuh.fit.backend.shift.enums.ShiftType shiftType,
+            @Param("dayStart") java.time.LocalDateTime dayStart,
+            @Param("dayEnd") java.time.LocalDateTime dayEnd
+    );
 }

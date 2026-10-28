@@ -15,6 +15,7 @@ public class HandoverEmployeeDTO {
     private String fullName;
     private Position position;
     private String positionLabel;
+    private String branchId;
     private String branchName;
     private String username;
 }

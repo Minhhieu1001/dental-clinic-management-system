@@ -30,4 +30,6 @@ public interface ShiftClosingService {
     ShiftClosingResponse getShiftClosingById(UUID id);
 
     List<iuh.fit.backend.shift.dto.HandoverEmployeeDTO> getHandoverEmployees();
+
+    List<iuh.fit.backend.shift.dto.HandoverEmployeeDTO> getHandoverEmployees(String branchId);
 }

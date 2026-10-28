@@ -42,6 +42,10 @@ public class ShiftClosingResponse {
     private BigDecimal differenceAmount;
     private String differenceReason;
 
+    private BigDecimal totalBankTransferActual;
+    private BigDecimal bankTransferDifference;
+    private String bankTransferDifferenceReason;
+
     private Integer totalTransactions;
     private ShiftClosingStatus status;
     private String note;

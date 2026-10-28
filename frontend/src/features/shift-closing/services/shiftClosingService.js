@@ -39,9 +39,9 @@ export const shiftClosingService = {
   /**
    * Lấy danh sách nhân viên để chọn người nhận bàn giao ca
    */
-  async getEmployeesForHandover() {
+  async getEmployeesForHandover(params = {}) {
     try {
-      const response = await api.get('/shift-closings/employees');
+      const response = await api.get('/shift-closings/employees', { params });
       return response.data?.data || response.data || [];
     } catch (err) {
       console.warn('Fallback getting employee list:', err);

@@ -32,6 +32,10 @@ public class ShiftClosingRequest {
     private BigDecimal differenceAmount;
     private String differenceReason;
 
+    private BigDecimal totalBankTransferActual;
+    private BigDecimal bankTransferDifference;
+    private String bankTransferDifferenceReason;
+
     private Integer totalTransactions;
     private String note;
     private String denominationsJson;

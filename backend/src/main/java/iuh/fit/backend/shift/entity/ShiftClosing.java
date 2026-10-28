@@ -88,6 +88,17 @@ public class ShiftClosing {
     @Column(name = "difference_reason", columnDefinition = "TEXT")
     private String differenceReason;
 
+    @Column(name = "total_bank_transfer_actual", precision = 15, scale = 2)
+    @Builder.Default
+    private BigDecimal totalBankTransferActual = BigDecimal.ZERO;
+
+    @Column(name = "bank_transfer_difference", precision = 15, scale = 2)
+    @Builder.Default
+    private BigDecimal bankTransferDifference = BigDecimal.ZERO;
+
+    @Column(name = "bank_transfer_difference_reason", columnDefinition = "TEXT")
+    private String bankTransferDifferenceReason;
+
     @Column(name = "total_transactions")
     @Builder.Default
     private Integer totalTransactions = 0;

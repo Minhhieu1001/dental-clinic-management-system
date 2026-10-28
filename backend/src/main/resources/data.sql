@@ -634,3 +634,11 @@ WHERE p.dentist_id IS NULL
   AND LOWER(BTRIM(p.prescriber)) = LOWER(BTRIM(d.full_name))
   AND (SELECT COUNT(*) FROM dentists other
        WHERE LOWER(BTRIM(other.full_name)) = LOWER(BTRIM(d.full_name))) = 1;
+
+-- Đảm bảo tài khoản employee02 có chức vụ RECEPTIONIST và tên hiển thị đúng với tài khoản (employee02)
+UPDATE employees e
+SET position = 'RECEPTIONIST', full_name = u.username
+FROM users u
+WHERE e.user_id = u.id AND u.username = 'employee02';
+
+

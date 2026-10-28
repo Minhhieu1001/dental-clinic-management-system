@@ -72,8 +72,10 @@ public class ShiftClosingController {
     }
 
     @GetMapping("/employees")
-    public ResponseEntity<ApiResponse<List<iuh.fit.backend.shift.dto.HandoverEmployeeDTO>>> getHandoverEmployees() {
-        List<iuh.fit.backend.shift.dto.HandoverEmployeeDTO> employees = shiftClosingService.getHandoverEmployees();
+    public ResponseEntity<ApiResponse<List<iuh.fit.backend.shift.dto.HandoverEmployeeDTO>>> getHandoverEmployees(
+            @RequestParam(required = false) String branchId
+    ) {
+        List<iuh.fit.backend.shift.dto.HandoverEmployeeDTO> employees = shiftClosingService.getHandoverEmployees(branchId);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách nhân viên bàn giao ca thành công", employees));
     }
 }

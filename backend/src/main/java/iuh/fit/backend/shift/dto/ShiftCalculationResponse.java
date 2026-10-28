@@ -33,6 +33,9 @@ public class ShiftCalculationResponse {
 
     private Integer totalTransactions;
 
+    private Boolean isClosed;
+    private ShiftClosingResponse closedShift;
+
     @Builder.Default
     private List<ShiftTransactionItemDTO> transactions = new ArrayList<>();
 }
