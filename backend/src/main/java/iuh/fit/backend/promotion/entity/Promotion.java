@@ -1,6 +1,7 @@
 package iuh.fit.backend.promotion.entity;
 
 import iuh.fit.backend.billing.entity.Invoice;
+import iuh.fit.backend.treatment.entity.Service;
 import iuh.fit.backend.promotion.enums.PromotionStatus;
 import iuh.fit.backend.promotion.enums.PromotionType;
 import jakarta.persistence.*;
@@ -88,8 +89,8 @@ public class Promotion {
     private LocalDateTime updatedAt;
 
     @Builder.Default
-    @OneToMany(mappedBy = "promotion", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<PromotionService> promotionServices = new ArrayList<>();
+    @OneToMany(mappedBy = "promotion", fetch = FetchType.LAZY)
+    private List<Service> services = new ArrayList<>();
 
     @Builder.Default
     @OneToMany(mappedBy = "promotion", fetch = FetchType.LAZY)
@@ -105,7 +106,7 @@ public class Promotion {
             this.usedCount = 0;
         }
         if (this.applyAllServices == null) {
-            this.applyAllServices = (promotionServices == null || promotionServices.isEmpty());
+            this.applyAllServices = false;
         }
         if (this.status == null) {
             this.status = PromotionStatus.ACTIVE;

@@ -58,10 +58,6 @@ public class MedicalRecord {
     private List<XrayImage> xrayImages = new ArrayList<>();
 
 
-    @Builder.Default
-    @OneToMany(mappedBy = "medicalRecord", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    private List<TreatmentHistorys> treatmentHistorys = new ArrayList<>();
-
     @PrePersist
     private void generateMedicalRecordCode() {
         if (medicalRecordCode == null || medicalRecordCode.isBlank()) {

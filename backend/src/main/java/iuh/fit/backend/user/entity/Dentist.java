@@ -7,9 +7,7 @@ import iuh.fit.backend.appointment.entity.Shift;
 import iuh.fit.backend.inforclinic.entity.Branch;
 import iuh.fit.backend.medicalrecord.entity.ExaminationResult;
 import iuh.fit.backend.medicalrecord.entity.MedicalRecord;
-import iuh.fit.backend.medicalrecord.entity.TreatmentHistorys;
 import iuh.fit.backend.prescription.entity.Prescription;
-import iuh.fit.backend.treatment.entity.TreatmentPlan;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -52,9 +50,6 @@ public class Dentist {
     private String description;
 
     private Integer experienceYears;
-    @Builder.Default
-    @OneToMany(mappedBy = "dentist", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<DentistSpecialization> dentistSpecializations = new ArrayList<>();
 
     @Builder.Default
     @OneToMany(mappedBy = "dentist", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
@@ -77,10 +72,6 @@ public class Dentist {
     @Builder.Default
     @OneToMany(mappedBy = "dentist", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<ExaminationResult> examinationResults = new ArrayList<>();
-
-    @Builder.Default
-    @OneToMany(mappedBy = "dentist", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    private List<TreatmentHistorys> treatmentHistorys = new ArrayList<>();
 
     @Builder.Default
     @OneToMany(mappedBy = "dentist", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})

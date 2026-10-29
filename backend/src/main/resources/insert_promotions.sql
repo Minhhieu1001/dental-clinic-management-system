@@ -1,10 +1,12 @@
+-- Explicit sample-data reset only; never run against production data.
+BEGIN;
 -- =========================================================================
 -- SQL INSERT DATA FOR POSTGRESQL (DENTAL CLINIC PROMOTIONS)
 -- Crown Dental - 11 chương trình ưu đãi đa dạng chuẩn Entity Model
 -- =========================================================================
 
 -- 0. Xóa dữ liệu ưu đãi cũ
-DELETE FROM promotion_services;
+UPDATE services SET promotion_id = NULL;
 DELETE FROM promotions;
 
 -- ── Ưu đãi 1: Niềng răng trẻ em - Giảm 10% (Mã: KIDDENTAL10) ──
@@ -24,9 +26,8 @@ WITH inserted_promo AS (
     'DISCOUNT_PERCENT', 10.00, 0.00, 1000000.00, 100, 0, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '30 days'
   ) RETURNING id
 )
-INSERT INTO promotion_services (id, promotion_id, service_id)
-SELECT gen_random_uuid(), inserted_promo.id, services.id
-FROM inserted_promo, services WHERE services.service_name = 'Gói can thiệp sớm các lệch lạc tiền tăng trưởng - 2 năm (Trẻ em)';
+UPDATE services SET promotion_id = inserted_promo.id
+FROM inserted_promo WHERE services.promotion_id IS NULL AND services.service_name = 'Gói can thiệp sớm các lệch lạc tiền tăng trưởng - 2 năm (Trẻ em)';
 
 -- ── Ưu đãi 2: ClearCorrect bổ sung - Giảm 20% (Mã: CLEAR20) ──
 WITH inserted_promo AS (
@@ -45,9 +46,8 @@ WITH inserted_promo AS (
     'DISCOUNT_PERCENT', 20.00, 0.00, 2000000.00, 100, 0, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '30 days'
   ) RETURNING id
 )
-INSERT INTO promotion_services (id, promotion_id, service_id)
-SELECT gen_random_uuid(), inserted_promo.id, services.id
-FROM inserted_promo, services WHERE services.service_name = 'Niềng răng trong suốt ClearCorrect';
+UPDATE services SET promotion_id = inserted_promo.id
+FROM inserted_promo WHERE services.promotion_id IS NULL AND services.service_name = 'Niềng răng trong suốt ClearCorrect';
 
 -- ── Ưu đãi 3: Hàm duy trì ClearCorrect - Giảm 20% (Mã: RETAIN20) ──
 WITH inserted_promo AS (
@@ -66,9 +66,8 @@ WITH inserted_promo AS (
     'DISCOUNT_PERCENT', 20.00, 0.00, 1500000.00, 100, 0, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '30 days'
   ) RETURNING id
 )
-INSERT INTO promotion_services (id, promotion_id, service_id)
-SELECT gen_random_uuid(), inserted_promo.id, services.id
-FROM inserted_promo, services WHERE services.service_name = 'Niềng răng trong suốt ClearCorrect';
+UPDATE services SET promotion_id = inserted_promo.id
+FROM inserted_promo WHERE services.promotion_id IS NULL AND services.service_name = 'Niềng răng trong suốt ClearCorrect';
 
 -- ── Ưu đãi 4: Invisalign bổ sung - Giảm 20% (Mã: INVIS20) ──
 WITH inserted_promo AS (
@@ -87,9 +86,8 @@ WITH inserted_promo AS (
     'DISCOUNT_PERCENT', 20.00, 0.00, 3000000.00, 100, 0, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '30 days'
   ) RETURNING id
 )
-INSERT INTO promotion_services (id, promotion_id, service_id)
-SELECT gen_random_uuid(), inserted_promo.id, services.id
-FROM inserted_promo, services WHERE services.service_name = 'Invisalign Lite (<= 14 khay)';
+UPDATE services SET promotion_id = inserted_promo.id
+FROM inserted_promo WHERE services.promotion_id IS NULL AND services.service_name = 'Invisalign Lite (<= 14 khay)';
 
 -- ── Ưu đãi 5: Invisalign toàn hàm - Giảm 15% (Mã: INVIS15) ──
 WITH inserted_promo AS (
@@ -108,9 +106,8 @@ WITH inserted_promo AS (
     'DISCOUNT_PERCENT', 15.00, 0.00, 5000000.00, 100, 0, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '45 days'
   ) RETURNING id
 )
-INSERT INTO promotion_services (id, promotion_id, service_id)
-SELECT gen_random_uuid(), inserted_promo.id, services.id
-FROM inserted_promo, services WHERE services.service_name = 'Invisalign Lite (<= 14 khay)';
+UPDATE services SET promotion_id = inserted_promo.id
+FROM inserted_promo WHERE services.promotion_id IS NULL AND services.service_name = 'Invisalign Lite (<= 14 khay)';
 
 -- ── Ưu đãi 6: Răng sứ Veneer - Giảm 25% (Mã: VENEER25) ──
 WITH inserted_promo AS (
@@ -129,9 +126,8 @@ WITH inserted_promo AS (
     'DISCOUNT_PERCENT', 25.00, 0.00, 3000000.00, 100, 0, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '45 days'
   ) RETURNING id
 )
-INSERT INTO promotion_services (id, promotion_id, service_id)
-SELECT gen_random_uuid(), inserted_promo.id, services.id
-FROM inserted_promo, services WHERE services.service_name = 'Mặt dán sứ Veneer e.max siêu mỏng';
+UPDATE services SET promotion_id = inserted_promo.id
+FROM inserted_promo WHERE services.promotion_id IS NULL AND services.service_name = 'Mặt dán sứ Veneer e.max siêu mỏng';
 
 -- ── Ưu đãi 7: Trồng răng Implant - Giảm 10% (Mã: IMPLANT10) ──
 WITH inserted_promo AS (
@@ -150,9 +146,8 @@ WITH inserted_promo AS (
     'DISCOUNT_PERCENT', 10.00, 0.00, 4000000.00, 100, 0, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '60 days'
   ) RETURNING id
 )
-INSERT INTO promotion_services (id, promotion_id, service_id)
-SELECT gen_random_uuid(), inserted_promo.id, services.id
-FROM inserted_promo, services WHERE services.service_name = 'Implant Osstem (Hàn Quốc)';
+UPDATE services SET promotion_id = inserted_promo.id
+FROM inserted_promo WHERE services.promotion_id IS NULL AND services.service_name = 'Implant Osstem (Hàn Quốc)';
 
 -- ── Ưu đãi 8: Tẩy trắng răng Zoom 2 - Giảm 30% (Mã: ZOOM30) ──
 WITH inserted_promo AS (
@@ -171,9 +166,8 @@ WITH inserted_promo AS (
     'DISCOUNT_PERCENT', 30.00, 0.00, 1000000.00, 100, 0, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '30 days'
   ) RETURNING id
 )
-INSERT INTO promotion_services (id, promotion_id, service_id)
-SELECT gen_random_uuid(), inserted_promo.id, services.id
-FROM inserted_promo, services WHERE services.service_name = 'Tẩy trắng răng Zoom 2 (Mỹ)';
+UPDATE services SET promotion_id = inserted_promo.id
+FROM inserted_promo WHERE services.promotion_id IS NULL AND services.service_name = 'Tẩy trắng răng Zoom 2 (Mỹ)';
 
 -- ── Ưu đãi 9: Voucher giảm 200k trực tiếp (Mã: SUMMER200K) ──
 WITH inserted_promo AS (
@@ -192,9 +186,8 @@ WITH inserted_promo AS (
     'VOUCHER', 0.00, 200000.00, 200000.00, 500, 0, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '60 days'
   ) RETURNING id
 )
-INSERT INTO promotion_services (id, promotion_id, service_id)
-SELECT gen_random_uuid(), inserted_promo.id, services.id
-FROM inserted_promo, services WHERE services.service_name = 'Khám răng tổng quát & tư vấn chuyên sâu';
+UPDATE services SET promotion_id = inserted_promo.id
+FROM inserted_promo WHERE services.promotion_id IS NULL AND services.service_name = 'Khám răng tổng quát & tư vấn chuyên sâu';
 
 -- ── Ưu đãi 10: Giảm 10% Tổng Hóa Đơn (Mã: DENTAL10) ──
 WITH inserted_promo AS (
@@ -213,9 +206,8 @@ WITH inserted_promo AS (
     'DISCOUNT_PERCENT', 10.00, 0.00, 500000.00, 500, 0, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '90 days'
   ) RETURNING id
 )
-INSERT INTO promotion_services (id, promotion_id, service_id)
-SELECT gen_random_uuid(), inserted_promo.id, services.id
-FROM inserted_promo, services WHERE services.service_name = 'Khám răng tổng quát & tư vấn chuyên sâu';
+UPDATE services SET promotion_id = inserted_promo.id
+FROM inserted_promo WHERE services.promotion_id IS NULL AND services.service_name = 'Khám răng tổng quát & tư vấn chuyên sâu';
 
 -- ── Ưu đãi 11: Ưu đãi VIP Member - Giảm 15% (Mã: VIPMEM) ──
 WITH inserted_promo AS (
@@ -234,9 +226,8 @@ WITH inserted_promo AS (
     'DISCOUNT_PERCENT', 15.00, 0.00, 1000000.00, 200, 0, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '90 days'
   ) RETURNING id
 )
-INSERT INTO promotion_services (id, promotion_id, service_id)
-SELECT gen_random_uuid(), inserted_promo.id, services.id
-FROM inserted_promo, services WHERE services.service_name = 'Nhổ răng khôn mọc lệch bằng Piezotome';
+UPDATE services SET promotion_id = inserted_promo.id
+FROM inserted_promo WHERE services.promotion_id IS NULL AND services.service_name = 'Nhổ răng khôn mọc lệch bằng Piezotome';
 
 -- =========================================================================
 -- Kiểm tra kết quả
@@ -252,3 +243,5 @@ SELECT
   TO_CHAR(p.end_date, 'DD/MM/YYYY') AS het_han
 FROM promotions p
 ORDER BY p.coupon_code;
+
+COMMIT;
