@@ -54,50 +54,50 @@ export default function ClinicalHistoryTab({ detailExams = [], selectedRecord })
                                 className="bg-white rounded-sm border border-slate-200 overflow-hidden shadow-2xs space-y-0"
                             >
                                 {/* 1. Header đợt khám */}
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 bg-slate-50 border-b border-slate-200">
-                                    <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
-                                      <div className="flex shrink-0 items-center gap-2.5">
-                                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm bg-teal-700 text-white font-bold text-xs shadow-2xs">
-                                            {idx + 1}
-                                        </span>
-                                        <div>
-                                            <h5 className="font-bold text-sm text-slate-900">
-                                                Đợt khám: {formatDateDisplay(exam.examinationDate || exam.createdAt)}
-                                            </h5>
-                                            <p className="text-[11px] font-medium text-slate-500">
-                                                Bác sĩ khám: <strong className="text-teal-800">{exam.dentistName || selectedRecord?.dentistName || 'BS. Nha khoa'}</strong>
-                                            </p>
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 sm:p-3.5 bg-slate-50 border-b border-slate-200">
+                                    <div className="flex min-w-0 flex-1 flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-6">
+                                        <div className="flex shrink-0 items-center gap-2.5">
+                                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm bg-teal-700 text-white font-bold text-xs shadow-2xs">
+                                                {idx + 1}
+                                            </span>
+                                            <div>
+                                                <h5 className="font-bold text-sm text-slate-900">
+                                                    Đợt khám: {formatDateDisplay(exam.examinationDate || exam.createdAt)}
+                                                </h5>
+                                                <p className="text-[11px] font-medium text-slate-500">
+                                                    Bác sĩ khám: <strong className="text-teal-800">{exam.dentistName || selectedRecord?.dentistName || 'BS. Nha khoa'}</strong>
+                                                </p>
+                                            </div>
                                         </div>
-                                      </div>
-                                      <div className="min-w-0 space-y-1 border-t border-teal-200 pt-3 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6">
-                                            <p className="flex items-start gap-1.5 text-sm text-slate-700">
-                                                <Building2 size={15} className="mt-0.5 shrink-0 text-teal-700" aria-hidden="true" />
+                                        <div className="min-w-0 space-y-1 border-t border-teal-100 pt-2 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6">
+                                            <p className="flex items-start gap-1.5 text-xs sm:text-sm text-slate-700">
+                                                <Building2 size={14} className="mt-0.5 shrink-0 text-teal-700" aria-hidden="true" />
                                                 <span>Tên cơ sở: <strong className="text-teal-800">{exam.branchName || 'Chưa có thông tin cơ sở'}</strong></span>
                                             </p>
-                                            <p className="flex items-start gap-1.5 text-sm text-slate-600">
-                                                <MapPin size={15} className="mt-0.5 shrink-0 text-teal-700" aria-hidden="true" />
+                                            <p className="flex items-start gap-1.5 text-xs text-slate-600">
+                                                <MapPin size={14} className="mt-0.5 shrink-0 text-teal-700" aria-hidden="true" />
                                                 <span className="break-words">Địa chỉ: {exam.addressBranch || 'Chưa có thông tin địa chỉ'}</span>
                                             </p>
                                         </div>
                                     </div>
 
-                                    <span className="inline-block shrink-0 px-2.5 py-0.5 rounded-sm text-xs font-bold bg-teal-50 text-teal-800 border border-teal-200 self-start sm:self-auto">
+                                    <span className="inline-block shrink-0 px-2.5 py-0.5 rounded-sm text-[11px] sm:text-xs font-bold bg-teal-50 text-teal-800 border border-teal-200 self-start sm:self-auto">
                                         {exam.status || 'Đã hoàn tất khám'}
                                     </span>
                                 </div>
 
-                                <div className="p-3.5 space-y-3.5">
+                                <div className="p-3 sm:p-3.5 space-y-3.5">
                                     {/* 2. Ghi tên triệu chứng & Lý do đến khám */}
                                     <div className="p-3 bg-amber-50/60 rounded-sm border border-amber-200/80 space-y-1.5">
                                         <div className="flex items-center gap-1.5 text-amber-900 font-bold text-xs uppercase tracking-wide">
                                             <Activity size={14} className="text-amber-700" />
                                             <span>Triệu chứng & Lý do đến khám của bệnh nhân:</span>
                                         </div>
-                                        <p className="text-sm font-semibold text-slate-800 pl-5">
+                                        <p className="text-xs sm:text-sm font-semibold text-slate-800 pl-4 sm:pl-5">
                                             {exam.chiefComplaint || 'Khám kiểm tra sức khỏe răng miệng định kỳ'}
                                         </p>
                                         {exam.notes && (
-                                            <p className="text-xs text-slate-600 pl-5 pt-1 border-t border-amber-200/60">
+                                            <p className="text-xs text-slate-600 pl-4 sm:pl-5 pt-1 border-t border-amber-200/60">
                                                 <span className="font-semibold text-slate-700">Lời dặn / Ghi chú lâm sàng: </span>
                                                 {exam.notes}
                                             </p>
@@ -106,15 +106,18 @@ export default function ClinicalHistoryTab({ detailExams = [], selectedRecord })
 
                                     {/* 3. BẢNG 1: Map hết tất cả thuộc tính của toothRecords */}
                                     <div className="space-y-1.5">
-                                        <div className="flex items-center justify-between">
+                                        <div className="flex items-center justify-between flex-wrap gap-1">
                                             <span className="font-bold text-xs text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
                                                 <ShieldCheck size={14} className="text-teal-700" />
                                                 Bảng ghi nhận tình trạng từng răng ({toothRecords.length} vị trí răng)
                                             </span>
+                                            <span className="text-[10px] text-slate-400 italic block sm:hidden">
+                                                (Cuộn ngang để xem đầy đủ)
+                                            </span>
                                         </div>
 
-                                        <div className="overflow-x-auto rounded-sm border border-slate-200 bg-white">
-                                            <table className="w-full text-left border-collapse text-xs">
+                                        <div className="overflow-x-auto rounded-sm border border-slate-200 bg-white no-scrollbar sm:custom-scrollbar">
+                                            <table className="w-full min-w-[700px] text-left border-collapse text-xs">
                                                 <thead>
                                                     <tr className="bg-slate-100 text-slate-700 border-b border-slate-200 font-bold text-[11px]">
                                                         <th className="py-2 px-2.5 border-r border-slate-200 w-10 text-center">STT</th>
@@ -196,20 +199,23 @@ export default function ClinicalHistoryTab({ detailExams = [], selectedRecord })
 
                                     {/* 4. BẢNG 2: Map bảng chẩn đoán */}
                                     <div className="space-y-1.5 pt-1">
-                                        <div className="flex items-center justify-between">
+                                        <div className="flex items-center justify-between flex-wrap gap-1">
                                             <span className="font-bold text-xs text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
                                                 <FileText size={14} className="text-indigo-700" />
                                                 Bảng chẩn đoán của bác sĩ ({rawDiagnoses.length} chẩn đoán)
                                             </span>
+                                            <span className="text-[10px] text-slate-400 italic block sm:hidden">
+                                                (Cuộn ngang để xem đầy đủ)
+                                            </span>
                                         </div>
 
-                                        <div className="overflow-x-auto rounded-sm border border-slate-200 bg-white">
-                                            <table className="w-full text-left border-collapse text-xs">
+                                        <div className="overflow-x-auto rounded-sm border border-slate-200 bg-white no-scrollbar sm:custom-scrollbar">
+                                            <table className="w-full min-w-[580px] text-left border-collapse text-xs">
                                                 <thead>
                                                     <tr className="bg-slate-100 text-slate-700 border-b border-slate-200 font-bold text-[11px]">
                                                         <th className="py-2 px-2.5 border-r border-slate-200 w-10 text-center">STT</th>
                                                         <th className="py-2 px-2.5 border-r border-slate-200 w-28">Mã ICD-10</th>
-                                                        <th className="py-2 px-2.5 border-r border-slate-200">Tên chẩn đoán / Bệnh lý</th>
+                                                        <th className="py-2 px-2.5 border-r border-slate-200">Tên chẩn đoán</th>
                                                         <th className="py-2 px-2.5 border-r border-slate-200 w-28 text-center">Vị trí răng</th>
                                                         <th className="py-2 px-2.5 border-r border-slate-200 w-28 text-center">Mức độ</th>
                                                         <th className="py-2 px-2.5 min-w-36">Ghi chú chẩn đoán</th>

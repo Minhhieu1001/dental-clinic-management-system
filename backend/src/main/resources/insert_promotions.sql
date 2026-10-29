@@ -10,8 +10,8 @@ DELETE FROM promotions;
 -- ── Ưu đãi 1: Niềng răng trẻ em - Giảm 10% (Mã: KIDDENTAL10) ──
 WITH inserted_promo AS (
   INSERT INTO promotions (
-    id, title, coupon_code, category, description, image_url, 
-    promotion_type, discount_percent, discount_amount, max_discount_amount, 
+    id, title, coupon_code, category, description, image_url,
+    promotion_type, discount_percent, discount_amount, max_discount_amount,
     usage_limit, used_count, status, created_at, start_date, end_date
   )
   VALUES (
@@ -31,8 +31,8 @@ FROM inserted_promo, services WHERE services.service_name = 'Gói can thiệp s�
 -- ── Ưu đãi 2: ClearCorrect bổ sung - Giảm 20% (Mã: CLEAR20) ──
 WITH inserted_promo AS (
   INSERT INTO promotions (
-    id, title, coupon_code, category, description, image_url, 
-    promotion_type, discount_percent, discount_amount, max_discount_amount, 
+    id, title, coupon_code, category, description, image_url,
+    promotion_type, discount_percent, discount_amount, max_discount_amount,
     usage_limit, used_count, status, created_at, start_date, end_date
   )
   VALUES (
@@ -52,8 +52,8 @@ FROM inserted_promo, services WHERE services.service_name = 'Niềng răng trong
 -- ── Ưu đãi 3: Hàm duy trì ClearCorrect - Giảm 20% (Mã: RETAIN20) ──
 WITH inserted_promo AS (
   INSERT INTO promotions (
-    id, title, coupon_code, category, description, image_url, 
-    promotion_type, discount_percent, discount_amount, max_discount_amount, 
+    id, title, coupon_code, category, description, image_url,
+    promotion_type, discount_percent, discount_amount, max_discount_amount,
     usage_limit, used_count, status, created_at, start_date, end_date
   )
   VALUES (
@@ -73,8 +73,8 @@ FROM inserted_promo, services WHERE services.service_name = 'Niềng răng trong
 -- ── Ưu đãi 4: Invisalign bổ sung - Giảm 20% (Mã: INVIS20) ──
 WITH inserted_promo AS (
   INSERT INTO promotions (
-    id, title, coupon_code, category, description, image_url, 
-    promotion_type, discount_percent, discount_amount, max_discount_amount, 
+    id, title, coupon_code, category, description, image_url,
+    promotion_type, discount_percent, discount_amount, max_discount_amount,
     usage_limit, used_count, status, created_at, start_date, end_date
   )
   VALUES (
@@ -94,8 +94,8 @@ FROM inserted_promo, services WHERE services.service_name = 'Invisalign Lite (<=
 -- ── Ưu đãi 5: Invisalign toàn hàm - Giảm 15% (Mã: INVIS15) ──
 WITH inserted_promo AS (
   INSERT INTO promotions (
-    id, title, coupon_code, category, description, image_url, 
-    promotion_type, discount_percent, discount_amount, max_discount_amount, 
+    id, title, coupon_code, category, description, image_url,
+    promotion_type, discount_percent, discount_amount, max_discount_amount,
     usage_limit, used_count, status, created_at, start_date, end_date
   )
   VALUES (
@@ -115,8 +115,8 @@ FROM inserted_promo, services WHERE services.service_name = 'Invisalign Lite (<=
 -- ── Ưu đãi 6: Răng sứ Veneer - Giảm 25% (Mã: VENEER25) ──
 WITH inserted_promo AS (
   INSERT INTO promotions (
-    id, title, coupon_code, category, description, image_url, 
-    promotion_type, discount_percent, discount_amount, max_discount_amount, 
+    id, title, coupon_code, category, description, image_url,
+    promotion_type, discount_percent, discount_amount, max_discount_amount,
     usage_limit, used_count, status, created_at, start_date, end_date
   )
   VALUES (
@@ -136,8 +136,8 @@ FROM inserted_promo, services WHERE services.service_name = 'Mặt dán sứ Ven
 -- ── Ưu đãi 7: Trồng răng Implant - Giảm 10% (Mã: IMPLANT10) ──
 WITH inserted_promo AS (
   INSERT INTO promotions (
-    id, title, coupon_code, category, description, image_url, 
-    promotion_type, discount_percent, discount_amount, max_discount_amount, 
+    id, title, coupon_code, category, description, image_url,
+    promotion_type, discount_percent, discount_amount, max_discount_amount,
     usage_limit, used_count, status, created_at, start_date, end_date
   )
   VALUES (
@@ -157,8 +157,8 @@ FROM inserted_promo, services WHERE services.service_name = 'Implant Osstem (Hà
 -- ── Ưu đãi 8: Tẩy trắng răng Zoom 2 - Giảm 30% (Mã: ZOOM30) ──
 WITH inserted_promo AS (
   INSERT INTO promotions (
-    id, title, coupon_code, category, description, image_url, 
-    promotion_type, discount_percent, discount_amount, max_discount_amount, 
+    id, title, coupon_code, category, description, image_url,
+    promotion_type, discount_percent, discount_amount, max_discount_amount,
     usage_limit, used_count, status, created_at, start_date, end_date
   )
   VALUES (
@@ -178,8 +178,8 @@ FROM inserted_promo, services WHERE services.service_name = 'Tẩy trắng răng
 -- ── Ưu đãi 9: Voucher giảm 200k trực tiếp (Mã: SUMMER200K) ──
 WITH inserted_promo AS (
   INSERT INTO promotions (
-    id, title, coupon_code, category, description, image_url, 
-    promotion_type, discount_percent, discount_amount, max_discount_amount, 
+    id, title, coupon_code, category, description, image_url,
+    promotion_type, discount_percent, discount_amount, max_discount_amount,
     usage_limit, used_count, status, created_at, start_date, end_date
   )
   VALUES (
@@ -199,8 +199,8 @@ FROM inserted_promo, services WHERE services.service_name = 'Khám răng tổng 
 -- ── Ưu đãi 10: Giảm 10% Tổng Hóa Đơn (Mã: DENTAL10) ──
 WITH inserted_promo AS (
   INSERT INTO promotions (
-    id, title, coupon_code, category, description, image_url, 
-    promotion_type, discount_percent, discount_amount, max_discount_amount, 
+    id, title, coupon_code, category, description, image_url,
+    promotion_type, discount_percent, discount_amount, max_discount_amount,
     usage_limit, used_count, status, created_at, start_date, end_date
   )
   VALUES (
@@ -220,8 +220,8 @@ FROM inserted_promo, services WHERE services.service_name = 'Khám răng tổng 
 -- ── Ưu đãi 11: Ưu đãi VIP Member - Giảm 15% (Mã: VIPMEM) ──
 WITH inserted_promo AS (
   INSERT INTO promotions (
-    id, title, coupon_code, category, description, image_url, 
-    promotion_type, discount_percent, discount_amount, max_discount_amount, 
+    id, title, coupon_code, category, description, image_url,
+    promotion_type, discount_percent, discount_amount, max_discount_amount,
     usage_limit, used_count, status, created_at, start_date, end_date
   )
   VALUES (
@@ -241,7 +241,7 @@ FROM inserted_promo, services WHERE services.service_name = 'Nhổ răng khôn m
 -- =========================================================================
 -- Kiểm tra kết quả
 -- =========================================================================
-SELECT 
+SELECT
   p.coupon_code AS ma_voucher,
   p.title,
   p.category,

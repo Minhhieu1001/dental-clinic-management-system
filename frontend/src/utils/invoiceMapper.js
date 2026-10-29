@@ -118,6 +118,8 @@ export const mapBackendInvoiceToUi = (inv) => {
         employeeName: inv.employeeName,
         employeeId: inv.employeeId,
         patientPhone: inv.patientPhone || '',
+        patientDob: inv.patientDob || '',
+        dentistName: inv.dentistName || '',
         patientCccd: inv.patientCccd || '',
         totalAmount: grossTotal,
         finalAmount: finalTotal,
