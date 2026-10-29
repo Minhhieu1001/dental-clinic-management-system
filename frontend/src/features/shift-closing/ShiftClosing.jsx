@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import {
   Clock,
   Coins,
@@ -767,15 +768,35 @@ export default function ShiftClosing() {
 
                     {/* Nếu là Ca Sáng nhận bàn giao qua đêm từ Ca Tối và số tiền khác 2.000.000 đ: Mở Modal xác nhận kiểm tra doanh thu các ca trước khi nộp */}
                     {shiftType === 'MORNING' && Number(initialCash) !== 2000000 && !settlementData.isClosed && (
-                      <button
+                      <motion.button
                         type="button"
                         onClick={() => setIsRemitModalOpen(true)}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-teal-50 hover:bg-teal-100/90 text-teal-800 border border-teal-300 shadow-2xs transition-colors cursor-pointer"
+                        animate={{
+                          boxShadow: [
+                            '0 0 0 0 rgba(13, 148, 136, 0.45)',
+                            '0 0 0 6px rgba(13, 148, 136, 0)',
+                            '0 0 0 0 rgba(13, 148, 136, 0)',
+                          ],
+                        }}
+                        transition={{
+                          duration: 2.2,
+                          repeat: Infinity,
+                          ease: 'easeInOut',
+                        }}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="group relative inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-bold bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-400 shadow-2xs transition-all cursor-pointer"
                         title="Mở bảng đối soát doanh thu các ca hôm trước và xác nhận trích nộp tiền về thủ quỹ/két trung tâm"
                       >
-                        <Receipt className="h-3.5 w-3.5 text-teal-700 shrink-0" />
+                        {/* Chấm tròn phát xung nhịp gây chú ý trực quan */}
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-600" />
+                        </span>
+
+                        <Receipt className="h-3.5 w-3.5 text-teal-700 shrink-0 transition-transform group-hover:scale-110" />
                         <span>Nộp doanh thu, giữ quỹ chuẩn 2.000.000 đ</span>
-                      </button>
+                      </motion.button>
                     )}
                   </div>
                 ) : isCustomInitialCash ? (
