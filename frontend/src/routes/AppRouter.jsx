@@ -67,9 +67,9 @@ import EmployeeGeneralSettings from '../features/setting/employee/EmployeeGenera
 // Feature Components - Patient
 import PatientDashboard from '../features/dashboard/patient/PatientDashboard.jsx'
 import PatientAppointments from '../features/appointment/PatientAppointments.jsx'
-import PatientMedicalRecords from '../features/medical-record/PatientMedicalRecords.jsx'
+import PatientMedicalRecords from '../features/medical-record/patient/PatientMedicalRecords.jsx'
 import PatientPrescriptions from '../features/prescriptions/dentist/PatientPrescriptions.jsx'
-import PatientInvoices from '../features/billing/PatientInvoices.jsx'
+import PatientInvoices from '../features/billing/patient/PatientInvoices.jsx'
 import PatientReviews from '../features/review/PatientReviews.jsx'
 import PatientNotifications from '../features/notification/PatientNotifications.jsx'
 import PatientProfile from '../features/user/PatientProfile.jsx'

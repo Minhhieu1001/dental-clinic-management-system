@@ -11,19 +11,19 @@ ALTER TABLE branches ALTER COLUMN image_branch TYPE TEXT;
 
 -- Cập nhật check constraint cho bảng tooth_records và diagnoses hỗ trợ enum Level mới
 ALTER TABLE tooth_records DROP CONSTRAINT IF EXISTS tooth_records_severity_check;
-ALTER TABLE tooth_records ADD CONSTRAINT tooth_records_severity_check 
+ALTER TABLE tooth_records ADD CONSTRAINT tooth_records_severity_check
     CHECK (severity IS NULL OR severity IN ('ENAMEL', 'DENTIN', 'NEAR_PULP', 'PULP', 'MILD', 'MODERATE', 'SEVERE'));
 
 ALTER TABLE tooth_records DROP CONSTRAINT IF EXISTS tooth_records_caries_location_check;
-ALTER TABLE tooth_records ADD CONSTRAINT tooth_records_caries_location_check 
+ALTER TABLE tooth_records ADD CONSTRAINT tooth_records_caries_location_check
     CHECK (caries_location IS NULL OR caries_location IN ('OCCLUSAL', 'MESIAL', 'DISTAL', 'BUCCAL', 'LINGUAL', 'PALATAL', 'CERVICAL', 'WHOLE_CROWN'));
 
 ALTER TABLE tooth_records DROP CONSTRAINT IF EXISTS tooth_records_tooth_status_check;
-ALTER TABLE tooth_records ADD CONSTRAINT tooth_records_tooth_status_check 
+ALTER TABLE tooth_records ADD CONSTRAINT tooth_records_tooth_status_check
     CHECK (tooth_status IS NULL OR tooth_status IN ('HEALTHY', 'CARIES', 'FILLED', 'MISSING', 'GINGIVITIS', 'ATTENTION_REQUIRE', 'ROOT_CANAL', 'MARROW'));
 
 ALTER TABLE diagnoses DROP CONSTRAINT IF EXISTS diagnoses_level_check;
-ALTER TABLE diagnoses ADD CONSTRAINT diagnoses_level_check 
+ALTER TABLE diagnoses ADD CONSTRAINT diagnoses_level_check
     CHECK (level IS NULL OR level IN ('ENAMEL', 'DENTIN', 'NEAR_PULP', 'PULP', 'MILD', 'MODERATE', 'SEVERE'));
 
 -- Bỏ unique constraint trên examination_result_id để hỗ trợ quan hệ 1-N giữa ExaminationResult và Diagnosis
@@ -360,7 +360,7 @@ ON CONFLICT (id) DO UPDATE SET
 -- ============================================================
 -- BẢNG 2: PROMOTIONS (Chương trình ưu đãi - 10 ưu đãi)
 -- ============================================================
-INSERT INTO promotions (id, title, category, description, image_url, discount_percent, start_date, end_date)
+INSERT INTO promotions (id, title, category, description, image_url, discount_percent, start_date, end_date, created_at, updated_at)
 VALUES
   -- 1. Giảm 10% — Niềng răng trẻ em
   ('ee11111a-aaaa-4b17-b806-ab8c9c0da001',
@@ -368,7 +368,7 @@ VALUES
    'Niềng răng trẻ em',
    'Can thiệp sớm các lệch lạc răng mặt ở trẻ em giúp định hướng xương hàm phát triển hài hòa. Tạo khoảng trống cho răng vĩnh viễn mọc đúng vị trí, giảm thiểu tối đa việc phải nhổ răng hay phẫu thuật xương hàm sau này. Gói điều trị 2 năm toàn diện với đội ngũ bác sĩ chuyên khoa nhi nha.',
    'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&w=800&q=80',
-   10.00, NOW(), NOW() + INTERVAL '30 days'),
+   10.00, NOW(), NOW() + INTERVAL '30 days', NOW(), NOW()),
 
   -- 2. Giảm 20% — ClearCorrect bổ sung
   ('ee22222b-bbbb-4b17-b806-ab8c9c0db002',
@@ -376,7 +376,7 @@ VALUES
    'Niềng răng ClearCorrect',
    'Khay ClearCorrect bổ sung thiết kế riêng để tinh chỉnh và hoàn thiện các bước dịch chuyển răng cuối cùng. Đảm bảo kết quả nụ cười hoàn hảo nhất sau khi hoàn thành liệu trình chính. Ưu đãi áp dụng cho khách hàng đang điều trị tại Crown Dental.',
    'https://images.unsplash.com/photo-1606811971618-4486d14f3f99?auto=format&fit=crop&w=800&q=80',
-   20.00, NOW(), NOW() + INTERVAL '30 days'),
+   20.00, NOW(), NOW() + INTERVAL '30 days', NOW(), NOW()),
 
   -- 3. Giảm 20% — ClearCorrect duy trì
   ('ee33333c-cccc-4b17-b806-ab8c9c0dc003',
@@ -384,7 +384,7 @@ VALUES
    'Niềng răng ClearCorrect',
    'Hàm duy trì ClearCorrect là khí cụ quan trọng sau khi kết thúc chỉnh nha, ổn định vị trí răng trong 6-12 tháng. Vật liệu cao cấp, trong suốt, thoải mái khi đeo và dễ vệ sinh. An toàn tiêu chuẩn y tế quốc tế.',
    'https://images.unsplash.com/photo-1598256989800-fe5f95da9787?auto=format&fit=crop&w=800&q=80',
-   20.00, NOW(), NOW() + INTERVAL '30 days'),
+   20.00, NOW(), NOW() + INTERVAL '30 days', NOW(), NOW()),
 
   -- 4. Giảm 20% — Invisalign bổ sung
   ('ee44444d-dddd-4b17-b806-ab8c9c0dd004',
@@ -392,7 +392,7 @@ VALUES
    'Niềng răng trong suốt Invisalign',
    'Khay Invisalign bổ sung tinh chỉnh các dịch chuyển răng nhỏ chưa đạt yêu cầu sau đợt khay chính thức. Công nghệ ClinCheck 3D theo dõi từng bước, đảm bảo hàm răng đạt độ đều khít hoàn hảo.',
    'https://images.unsplash.com/photo-1513415277900-a62401e5084d?auto=format&fit=crop&w=800&q=80',
-   20.00, NOW(), NOW() + INTERVAL '30 days'),
+   20.00, NOW(), NOW() + INTERVAL '30 days', NOW(), NOW()),
 
   -- 5. Giảm 15% — Invisalign Comprehensive
   ('ee55555e-eeee-4b17-b806-ab8c9c0de005',
@@ -400,7 +400,7 @@ VALUES
    'Niềng răng trong suốt Invisalign',
    'Niềng răng Invisalign với công nghệ khay trong suốt nhập khẩu từ Mỹ, điều trị cá nhân hóa 100% bằng phần mềm ClinCheck 3D. Ưu đãi 15% nhân dịp kỷ niệm thành lập Crown Dental. Crown là Red Diamond Invisalign Provider - cấp cao nhất toàn cầu với hơn 1.000 ca mỗi năm.',
    'https://images.unsplash.com/photo-1606811971618-4486d14f3f99?auto=format&fit=crop&w=800&q=80',
-   15.00, NOW(), NOW() + INTERVAL '45 days'),
+   15.00, NOW(), NOW() + INTERVAL '45 days', NOW(), NOW()),
 
   -- 6. Giảm 25% — Veneer e.max
   ('ee66666f-ffff-4b17-b806-ab8c9c0df006',
@@ -408,7 +408,7 @@ VALUES
    'Răng sứ thẩm mỹ',
    'Mặt dán sứ Veneer siêu mỏng chỉ 0.3-0.5mm, bảo tồn tối đa men răng thật. Đem lại nụ cười trắng sáng, tự nhiên và bền bỉ đến 15-20 năm. Ưu đãi 25% nhân dịp mùa cưới, áp dụng cho khách hàng đặt lịch trong tháng này.',
    'https://images.unsplash.com/photo-1598256989800-fe5f95da9787?auto=format&fit=crop&w=800&q=80',
-   25.00, NOW(), NOW() + INTERVAL '45 days'),
+   25.00, NOW(), NOW() + INTERVAL '45 days', NOW(), NOW()),
 
   -- 7. Giảm 10% — Implant Straumann
   ('ee77777a-aaab-4b17-b806-ab8c9c0d1007',
@@ -416,7 +416,7 @@ VALUES
    'Cấy ghép Implant',
    'Cấy ghép Implant phục hồi toàn diện cả chân răng và thân răng, đảm bảo ăn nhai thoải mái và thẩm mỹ tự nhiên. Ưu đãi 10% cho khách hàng cấy ghép 2 trụ trở lên. Trụ Implant Straumann (Thụy Sĩ) nhập khẩu chính hãng, bảo hành 10 năm.',
    'https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=800&q=80',
-   10.00, NOW(), NOW() + INTERVAL '60 days'),
+   10.00, NOW(), NOW() + INTERVAL '60 days', NOW(), NOW()),
 
   -- 8. Giảm 30% — Tẩy trắng Zoom 2
   ('ee88888b-bbbc-4b17-b806-ab8c9c0d2008',
@@ -424,7 +424,7 @@ VALUES
    'Tẩy trắng răng',
    'Công nghệ Zoom Laser thế hệ mới, nâng tông răng lên đến 8 tông chỉ sau 1 lần điều trị 45 phút. An toàn tuyệt đối cho men răng, không gây ê buốt. Ưu đãi 30% cho khách hàng mới đăng ký trong tháng. Tặng kèm bộ tẩy trắng tại nhà miễn phí trị giá 800.000đ.',
    'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&w=800&q=80',
-   30.00, NOW(), NOW() + INTERVAL '30 days'),
+   30.00, NOW(), NOW() + INTERVAL '30 days', NOW(), NOW()),
 
   -- 9. Giảm 50% — Khám gia đình
   ('ee99999c-cccd-4b17-b806-ab8c9c0d3009',
@@ -432,7 +432,7 @@ VALUES
    'Khám & Điều trị',
    'Khám răng tổng quát định kỳ bao gồm: chụp X-quang, lấy cao răng, kiểm tra sâu răng và tư vấn điều trị miễn phí. Ưu đãi 50% cho gói gia đình từ 3 người trở lên. Phát hiện sớm các vấn đề răng miệng, tiết kiệm tối đa chi phí điều trị.',
    'https://images.unsplash.com/photo-1468495244123-6c6c332eeece?auto=format&fit=crop&w=800&q=80',
-   50.00, NOW(), NOW() + INTERVAL '45 days'),
+   50.00, NOW(), NOW() + INTERVAL '45 days', NOW(), NOW()),
 
   -- 10. Giảm 15% — Nhổ răng khôn
   ('eeaaaaa1-ddde-4b17-b806-ab8c9c0d4010',
@@ -440,7 +440,7 @@ VALUES
    'Khám & Điều trị',
    'Nhổ răng khôn bằng máy siêu âm Piezotome thế hệ mới, không đau, không sưng, lành thương chỉ trong 24-48 giờ. Giảm 15% cho khách hàng nhổ đồng thời 2 răng khôn. Bác sĩ chuyên khoa phẫu thuật miệng giàu kinh nghiệm thực hiện.',
    'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=800&q=80',
-   15.00, NOW(), NOW() + INTERVAL '60 days')
+   15.00, NOW(), NOW() + INTERVAL '60 days', NOW(), NOW())
 
 ON CONFLICT (id) DO NOTHING;
 

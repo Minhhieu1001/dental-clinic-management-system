@@ -133,10 +133,10 @@ export default function PatientHeader({ config }) {
             />
 
             {/* Divider */}
-            <div className="hidden h-7 w-px bg-white/20 sm:block" />
+            <div className="hidden h-7 w-px bg-white/20 lg:block" />
 
             {/* Avatar Profile + Dropdown */}
-            <div className="relative" ref={profileRef}>
+            <div className="relative hidden lg:block" ref={profileRef}>
               <button
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
                 className="flex items-center gap-2.5 rounded-full p-1 sm:pr-3 transition-all border border-white/20 bg-white/10 hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/40 cursor-pointer"

@@ -41,23 +41,23 @@ export default function PrescriptionTab({ detailPrescriptions = [], selectedReco
                                 className="bg-white rounded-sm border border-slate-200 p-4 shadow-2xs space-y-3"
                             >
                                 {/* Prescription Header */}
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-100 pb-2.5">
                                     <div className="flex items-center gap-2.5">
-                                        <span className="flex h-7 w-7 items-center justify-center rounded-sm bg-purple-100 text-purple-800 font-bold text-xs">
+                                        <span className="flex h-10 w-10 items-center justify-center rounded-sm bg-purple-100 text-purple-800 font-bold text-xs shrink-0">
                                             Rx
                                         </span>
-                                        <div>
-                                            <h5 className="font-bold text-sm text-slate-900">
+                                        <div className="min-w-0">
+                                            <h5 className="font-bold text-sm text-slate-900 truncate">
                                                 {prescriptionName}
                                             </h5>
-                                            <p className="text-[11px] font-medium text-slate-500">
-                                                Bác sĩ kê đơn: <strong className="text-purple-800">{pres.dentistName || selectedRecord?.dentistName || 'BS. Nha khoa'}</strong> • Ngày kê: {formatDateDisplay(pres.prescriptionDate || pres.createdAt)}
+                                            <p className="text-[11px] font-medium text-slate-500 mt-0.5">
+                                                Bác sĩ: <strong className="text-purple-800">{pres.dentistName || selectedRecord?.dentistName || 'BS. Nha khoa'}</strong> • Ngày kê: {formatDateDisplay(pres.prescriptionDate || pres.createdAt)}
                                             </p>
                                         </div>
                                     </div>
 
-                                    <span className="inline-block px-2.5 py-0.5 rounded-sm text-xs font-bold bg-purple-50 text-purple-800 border border-purple-200 self-start sm:self-auto">
-                                        {pres.status || 'Đã kê đơn'}
+                                    <span className="inline-block px-2.5 py-0.5 rounded-sm text-[11px] sm:text-xs font-bold bg-purple-50 text-purple-800 border border-purple-200 self-start sm:self-auto shrink-0">
+                                        {pres.prescriptionCode}
                                     </span>
                                 </div>
 
@@ -69,8 +69,8 @@ export default function PrescriptionTab({ detailPrescriptions = [], selectedReco
                                 )}
 
                                 {/* Medicine List Table */}
-                                <div className="overflow-x-auto rounded-sm border border-slate-200">
-                                    <table className="w-full text-xs text-left border-collapse">
+                                <div className="overflow-x-auto rounded-sm border border-slate-200 no-scrollbar sm:custom-scrollbar">
+                                    <table className="w-full min-w-[540px] text-xs text-left border-collapse">
                                         <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 text-[11px]">
                                             <tr>
                                                 <th className="py-2 px-2.5 border-r border-slate-200 w-10 text-center">STT</th>
