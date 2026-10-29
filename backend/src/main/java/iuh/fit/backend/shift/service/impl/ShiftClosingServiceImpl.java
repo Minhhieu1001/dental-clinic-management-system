@@ -8,6 +8,9 @@ import iuh.fit.backend.billing.repository.PaymentTransactionRepository;
 import iuh.fit.backend.inforclinic.entity.Branch;
 import iuh.fit.backend.inforclinic.repository.BranchRepository;
 import iuh.fit.backend.patient.entity.Patient;
+import iuh.fit.backend.shift.dto.DailyRemittanceResponse;
+import iuh.fit.backend.shift.dto.PreviousDayShiftSummaryDTO;
+import iuh.fit.backend.shift.dto.RemittanceRequest;
 import iuh.fit.backend.shift.dto.ShiftCalculationResponse;
 import iuh.fit.backend.shift.dto.ShiftClosingRequest;
 import iuh.fit.backend.shift.dto.ShiftClosingResponse;
@@ -35,6 +38,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -228,6 +232,31 @@ public class ShiftClosingServiceImpl implements ShiftClosingService {
             previousShiftEmployeeName = formatEmployeeDisplayName(previousShift.getEmployee());
         }
 
+        // Kiểm tra xem doanh thu qua đêm (từ ca tối hôm trước) đã được trích nộp về két trung tâm/ngân hàng hay chưa
+        LocalDate targetDate = startTime.toLocalDate();
+        DailyRemittanceResponse remittanceInfo = parseRemittanceInfo(previousShift);
+
+        // Nếu ca liền trước chưa có tag nộp nhưng là Ca Sáng, kiểm tra Ca Tối của ngày hôm trước
+        if (remittanceInfo == null && shiftType == ShiftType.MORNING) {
+            LocalDateTime prevDayStart = targetDate.minusDays(1).atStartOfDay();
+            LocalDateTime prevDayEnd = targetDate.atStartOfDay();
+            List<ShiftClosing> prevEvening = shiftClosingRepository.findClosedShiftForDate(ShiftType.EVENING, prevDayStart, prevDayEnd);
+            if (!prevEvening.isEmpty()) {
+                remittanceInfo = parseRemittanceInfo(prevEvening.get(0));
+            }
+        }
+        if (remittanceInfo == null && existingClosedShift != null) {
+            remittanceInfo = parseRemittanceInfo(existingClosedShift);
+        }
+
+        Boolean isOvernightRemitted = (remittanceInfo != null);
+
+        // Nếu là Ca Sáng, chuẩn bị sẵn danh sách tóm tắt doanh thu các ca ngày hôm trước để thu ngân kiểm tra khi nộp
+        List<PreviousDayShiftSummaryDTO> previousDayShifts = new ArrayList<>();
+        if (shiftType == ShiftType.MORNING) {
+            previousDayShifts = getPreviousDayShiftSummary(targetDate);
+        }
+
         BigDecimal initCash;
         BigDecimal totalCashExpected;
 
@@ -240,9 +269,18 @@ public class ShiftClosingServiceImpl implements ShiftClosingService {
             eWalletRevenue = existingClosedShift.getEWalletRevenue();
             totalSystemRevenue = existingClosedShift.getTotalSystemRevenue();
             totalCashExpected = existingClosedShift.getTotalCashExpected();
+            if (previousShiftActualCash != null && previousShiftActualCash.compareTo(initCash) == 0) {
+                inheritedFromPreviousShift = true;
+            } else if (isOvernightRemitted && remittanceInfo != null && remittanceInfo.getRetainedFloatCash().compareTo(initCash) == 0) {
+                inheritedFromPreviousShift = true;
+            }
         } else {
             // Ca chưa chốt:
-            if (Boolean.TRUE.equals(customInitialCash) && initialCash != null) {
+            if (isOvernightRemitted && remittanceInfo != null && shiftType == ShiftType.MORNING) {
+                // ĐÃ XÁC NHẬN NỘP DOANH THU HÔM TRƯỚC: Tiền đầu ca cố định là số tiền quỹ giữ lại (2.000.000đ), KHÔNG thể khôi phục
+                initCash = remittanceInfo.getRetainedFloatCash();
+                inheritedFromPreviousShift = true;
+            } else if (Boolean.TRUE.equals(customInitialCash) && initialCash != null) {
                 // Thu ngân chủ động nhập số tiền đầu ca theo thực tế kiểm đếm nhận bàn giao
                 initCash = initialCash;
                 inheritedFromPreviousShift = false;
@@ -284,10 +322,14 @@ public class ShiftClosingServiceImpl implements ShiftClosingService {
                 .isClosed(existingClosedShift != null)
                 .closedShift(closedShiftResponse)
                 .inheritedFromPreviousShift(inheritedFromPreviousShift)
+                .previousShiftId(previousShift != null ? previousShift.getId() : null)
                 .previousShiftCode(previousShiftCode)
                 .previousShiftType(previousShiftType)
                 .previousShiftActualCash(previousShiftActualCash)
                 .previousShiftEmployeeName(previousShiftEmployeeName)
+                .isOvernightRemitted(isOvernightRemitted)
+                .remittanceInfo(remittanceInfo)
+                .previousDayShifts(previousDayShifts)
                 .build();
     }
 
@@ -602,5 +644,189 @@ public class ShiftClosingServiceImpl implements ShiftClosingService {
                             .build();
                 }).collect(Collectors.toList());
     }
+
+    @Override
+    @Transactional
+    public DailyRemittanceResponse remitOvernightRevenue(RemittanceRequest request) {
+        if (request.getShiftDate() == null) {
+            request.setShiftDate(LocalDate.now());
+        }
+
+        BigDecimal overnightCash = request.getTotalOvernightCash() != null
+                ? request.getTotalOvernightCash()
+                : BigDecimal.ZERO;
+        BigDecimal retained = request.getRetainedFloatCash() != null
+                ? request.getRetainedFloatCash()
+                : new BigDecimal("2000000");
+        BigDecimal remitted = request.getRemittedAmount() != null
+                ? request.getRemittedAmount()
+                : overnightCash.subtract(retained);
+        if (remitted.compareTo(BigDecimal.ZERO) < 0) {
+            remitted = BigDecimal.ZERO;
+        }
+
+        ShiftClosing fromShift = null;
+        if (request.getFromShiftClosingId() != null) {
+            fromShift = shiftClosingRepository.findById(request.getFromShiftClosingId()).orElse(null);
+        }
+        if (fromShift == null) {
+            List<ShiftClosing> eveningShifts = shiftClosingRepository.findLatestClosedShiftBefore(
+                    request.getShiftDate().atStartOfDay(), null);
+            if (!eveningShifts.isEmpty()) {
+                fromShift = eveningShifts.get(0);
+            }
+        }
+
+        Employee emp = null;
+        if (request.getRemittedById() != null) {
+            emp = employeeRepository.findById(request.getRemittedById()).orElse(null);
+        }
+        String empName = emp != null ? formatEmployeeDisplayName(emp) : "Thu ngân ca sáng";
+
+        String dateStr = request.getShiftDate().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String randomSuffix = String.format("%03d", (int) (Math.random() * 900) + 100);
+        String code = "NOP-" + dateStr + "-" + randomSuffix;
+        String receiver = request.getReceivedBy() != null && !request.getReceivedBy().isBlank()
+                ? request.getReceivedBy()
+                : "Thủ quỹ / Két sắt trung tâm";
+        String customNote = request.getNote() != null ? request.getNote() : "Trích nộp doanh thu ngày hôm trước, để lại quỹ 2.000.000đ cho ca sáng";
+
+        // Ghi nhận trực tiếp vào ghi chú của ca tối hôm trước (ShiftClosing) mà không cần tạo Entity mới
+        if (fromShift != null) {
+            String remittanceTag = String.format(
+                    "[ĐÃ NỘP DOANH THU|CODE=%s|DATE=%s|OVERNIGHT=%s|REMITTED=%s|RETAINED=%s|BY=%s|TO=%s|NOTE=%s]",
+                    code,
+                    request.getShiftDate(),
+                    overnightCash.toPlainString(),
+                    remitted.toPlainString(),
+                    retained.toPlainString(),
+                    empName,
+                    receiver,
+                    customNote.replace("|", " ").replace("[", "").replace("]", "")
+            );
+            String currentNote = fromShift.getNote() != null ? fromShift.getNote() : "";
+            if (!currentNote.contains("[ĐÃ NỘP DOANH THU")) {
+                fromShift.setNote(currentNote.isBlank() ? remittanceTag : currentNote + "\n" + remittanceTag);
+                fromShift.setUpdatedAt(LocalDateTime.now());
+                shiftClosingRepository.save(fromShift);
+            }
+        }
+
+        return DailyRemittanceResponse.builder()
+                .id(fromShift != null ? fromShift.getId() : UUID.randomUUID())
+                .remittanceCode(code)
+                .shiftDate(request.getShiftDate())
+                .fromShiftClosingId(fromShift != null ? fromShift.getId() : null)
+                .fromShiftClosingCode(fromShift != null ? fromShift.getShiftCode() : null)
+                .totalOvernightCash(overnightCash)
+                .remittedAmount(remitted)
+                .retainedFloatCash(retained)
+                .remittedById(emp != null ? emp.getId() : null)
+                .remittedByName(empName)
+                .receivedBy(receiver)
+                .note(customNote)
+                .createdAt(LocalDateTime.now())
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PreviousDayShiftSummaryDTO> getPreviousDayShiftSummary(LocalDate currentDate) {
+        if (currentDate == null) {
+            currentDate = LocalDate.now();
+        }
+        LocalDate prevDate = currentDate.minusDays(1);
+        LocalDateTime dayStart = prevDate.atStartOfDay();
+        LocalDateTime dayEnd = prevDate.plusDays(1).atStartOfDay();
+
+        List<ShiftClosing> allWithDetails = shiftClosingRepository.findAllWithDetails();
+        return allWithDetails.stream()
+                .filter(s -> {
+                    LocalDateTime st = s.getStartTime() != null ? s.getStartTime() : s.getCreatedAt();
+                    return st != null && !st.isBefore(dayStart) && st.isBefore(dayEnd);
+                })
+                .sorted(Comparator.comparing(ShiftClosing::getStartTime, Comparator.nullsLast(Comparator.naturalOrder())))
+                .map(s -> PreviousDayShiftSummaryDTO.builder()
+                        .shiftCode(s.getShiftCode())
+                        .shiftType(s.getShiftType())
+                        .startTime(s.getStartTime())
+                        .endTime(s.getEndTime())
+                        .employeeName(formatEmployeeDisplayName(s.getEmployee()))
+                        .initialCash(s.getInitialCash())
+                        .cashRevenue(s.getCashRevenue())
+                        .bankTransferRevenue(s.getBankTransferRevenue())
+                        .totalSystemRevenue(s.getTotalSystemRevenue())
+                        .totalCashActual(s.getTotalCashActual())
+                        .handoverEmployeeName(formatEmployeeDisplayName(s.getHandoverEmployee()))
+                        .note(s.getNote())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    private DailyRemittanceResponse parseRemittanceInfo(ShiftClosing shift) {
+        if (shift == null || shift.getNote() == null || !shift.getNote().contains("[ĐÃ NỘP DOANH THU")) {
+            return null;
+        }
+        String note = shift.getNote();
+        int startIdx = note.indexOf("[ĐÃ NỘP DOANH THU");
+        int endIdx = note.indexOf("]", startIdx);
+        if (endIdx == -1) endIdx = note.length();
+        String tag = note.substring(startIdx, endIdx);
+
+        String code = extractParam(tag, "CODE=", "NOP-CHOT");
+        String dateStr = extractParam(tag, "DATE=", null);
+        LocalDate shiftDate = dateStr != null ? LocalDate.parse(dateStr) : (shift.getStartTime() != null ? shift.getStartTime().toLocalDate() : LocalDate.now());
+        BigDecimal overnight = parseBigDecimal(extractParam(tag, "OVERNIGHT=", null), shift.getTotalCashActual() != null ? shift.getTotalCashActual() : BigDecimal.ZERO);
+        BigDecimal remitted = parseBigDecimal(extractParam(tag, "REMITTED=", null), BigDecimal.ZERO);
+        BigDecimal retained = parseBigDecimal(extractParam(tag, "RETAINED=", null), new BigDecimal("2000000"));
+        String empName = extractParam(tag, "BY=", "Thu ngân");
+        String receiver = extractParam(tag, "TO=", "Thủ quỹ");
+        String rNote = extractParam(tag, "NOTE=", "");
+
+        return DailyRemittanceResponse.builder()
+                .id(shift.getId())
+                .remittanceCode(code)
+                .shiftDate(shiftDate)
+                .fromShiftClosingId(shift.getId())
+                .fromShiftClosingCode(shift.getShiftCode())
+                .totalOvernightCash(overnight)
+                .remittedAmount(remitted)
+                .retainedFloatCash(retained)
+                .remittedByName(empName)
+                .receivedBy(receiver)
+                .note(rNote)
+                .createdAt(shift.getUpdatedAt() != null ? shift.getUpdatedAt() : shift.getCreatedAt())
+                .build();
+    }
+
+    private String extractParam(String tag, String key, String defaultValue) {
+        int keyIdx = tag.indexOf(key);
+        if (keyIdx == -1) return defaultValue;
+        int valueStart = keyIdx + key.length();
+        int barIdx = tag.indexOf("|", valueStart);
+        int bracketIdx = tag.indexOf("]", valueStart);
+        int valueEnd;
+        if (barIdx != -1 && bracketIdx != -1) {
+            valueEnd = Math.min(barIdx, bracketIdx);
+        } else if (barIdx != -1) {
+            valueEnd = barIdx;
+        } else if (bracketIdx != -1) {
+            valueEnd = bracketIdx;
+        } else {
+            valueEnd = tag.length();
+        }
+        String val = tag.substring(valueStart, valueEnd).trim();
+        return val.isEmpty() ? defaultValue : val;
+    }
+
+    private BigDecimal parseBigDecimal(String str, BigDecimal defaultValue) {
+        if (str == null || str.isBlank()) return defaultValue;
+        try {
+            return new BigDecimal(str);
+        } catch (Exception e) {
+            return defaultValue;
+        }
+    }
 }
+
 

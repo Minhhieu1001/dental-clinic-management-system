@@ -25,6 +25,7 @@ import {
   Sparkles,
   Lock,
   Printer,
+  Vault,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
@@ -33,6 +34,7 @@ import shiftClosingService from './services/shiftClosingService';
 import CashDenominationModal from './components/CashDenominationModal';
 import ShiftPrintReceipt from './components/ShiftPrintReceipt';
 import ShiftHistoryTable from './components/ShiftHistoryTable';
+import OvernightRevenueRemitModal from './components/OvernightRevenueRemitModal';
 
 // Lấy chuỗi ngày YYYY-MM-DD theo giờ địa phương thực tế của máy người dùng
 const getLocalDateString = (dateObj = new Date()) => {
@@ -56,7 +58,6 @@ const SHIFT_OPTIONS = [
   { id: 'MORNING', label: 'Ca Sáng', timeRange: '07:30 - 12:00', icon: Sun },
   { id: 'AFTERNOON', label: 'Ca Chiều', timeRange: '12:00 - 17:30', icon: Sunset },
   { id: 'EVENING', label: 'Ca Tối', timeRange: '17:30 - 21:00+', icon: Moon },
-  { id: 'FULL_DAY', label: 'Trọn Ngày', timeRange: '00:00 - 23:59', icon: CalendarDays },
 ];
 
 // Kiểm tra giao dịch ngoài giờ ca tối (sau 21:00 như 21:01, 21:15)
@@ -192,6 +193,8 @@ export default function ShiftClosing() {
   const [isDenomModalOpen, setIsDenomModalOpen] = useState(false);
   const [printData, setPrintData] = useState(null);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isRemitModalOpen, setIsRemitModalOpen] = useState(false);
+  const [remitting, setRemitting] = useState(false);
 
   // History state
   const [historyList, setHistoryList] = useState([]);
@@ -276,12 +279,18 @@ export default function ShiftClosing() {
     };
   };
 
-  // Các hàm tiện ích chuyển nhanh ngày
+  // Các hàm tiện ích chuyển ngày: khi chuyển ngày khác, ca làm việc tự động default về lại Ca Sáng
+  const handleDateChange = (newDate) => {
+    if (!newDate) return;
+    setSelectedDate(newDate);
+    setShiftType('MORNING');
+  };
+
   const handleStepDay = (step) => {
     const [y, m, d] = selectedDate.split('-').map(Number);
     const date = new Date(y, m - 1, d);
     date.setDate(date.getDate() + step);
-    setSelectedDate(getLocalDateString(date));
+    handleDateChange(getLocalDateString(date));
   };
 
   // Tính toán số liệu ca hiện tại
@@ -416,8 +425,33 @@ export default function ShiftClosing() {
     toast.success(`Đã cập nhật tiền thực đếm: ${total.toLocaleString('vi-VN')} đ`);
   };
 
-  // Kiểm tra ca cuối ngày (Ca Tối hoặc Ca Trọn Ngày)
-  const isEndOfDay = shiftType === 'EVENING' || shiftType === 'FULL_DAY';
+  // Xác nhận nộp doanh thu ngày hôm trước về két trung tâm/ngân hàng & khởi tạo quỹ ca sáng
+  const handleConfirmRemittance = async (payload) => {
+    setRemitting(true);
+    try {
+      const dataToSubmit = {
+        ...payload,
+        remittedById: user?.employeeId,
+      };
+      const res = await shiftClosingService.remitOvernightRevenue(dataToSubmit);
+      const code = res?.data?.remittanceCode || '';
+      toast.success(
+        `Đã lập chứng từ nộp doanh thu ${code} thành công! Két ca sáng đã khóa ở định mức 2.000.000 đ.`
+      );
+      setIsRemitModalOpen(false);
+      setIsCustomInitialCash(false);
+      // Tải lại số liệu để khóa chính thức tiền đầu ca theo số quỹ định mức
+      await fetchShiftCalculation(selectedDate, shiftType, null, false);
+    } catch (err) {
+      console.error('Error remitting revenue:', err);
+      toast.error('Không thể thực hiện nộp doanh thu qua đêm');
+    } finally {
+      setRemitting(false);
+    }
+  };
+
+  // Kiểm tra ca cuối ngày (Ca Tối là ca kết thúc ngày làm việc)
+  const isEndOfDay = shiftType === 'EVENING';
 
   // Xác nhận chốt ca
   const handleSubmitClosing = async () => {
@@ -582,25 +616,39 @@ export default function ShiftClosing() {
                       Hôm nay
                     </span>
                   ) : isYesterday ? (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-                      Hôm qua
-                    </span>
-                  ) : null}
+                    <button
+                      type="button"
+                      onClick={() => handleDateChange(todayStr)}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 text-slate-700 border border-slate-200 transition-colors cursor-pointer"
+                      title="Bấm để về hôm nay (Ca Sáng)"
+                    >
+                      Hôm qua • <span className="underline">Về hôm nay</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleDateChange(todayStr)}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 text-slate-700 border border-slate-200 transition-colors cursor-pointer"
+                      title="Bấm để về hôm nay (Ca Sáng)"
+                    >
+                      <span className="underline">Về hôm nay</span>
+                    </button>
+                  )}
                 </div>
 
                 <div className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 hover:border-slate-300 focus-within:border-teal-700 focus-within:bg-white transition-colors overflow-hidden h-9 shadow-2xs">
                   <button
                     type="button"
                     onClick={() => handleStepDay(-1)}
-                    className="h-full px-2.5 hover:bg-slate-200/60 text-slate-500 hover:text-slate-800 border-r border-slate-200 transition-colors"
-                    title="Lùi lại 1 ngày"
+                    className="h-full px-2.5 hover:bg-slate-200/60 text-slate-500 hover:text-slate-800 border-r border-slate-200 transition-colors cursor-pointer"
+                    title="Lùi lại 1 ngày (Ca Sáng)"
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </button>
                   <input
                     type="date"
                     value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
+                    onChange={(e) => handleDateChange(e.target.value)}
                     className="h-full px-3 text-xs font-bold text-slate-800 bg-transparent focus:outline-none cursor-pointer"
                   />
                   <button
@@ -663,14 +711,14 @@ export default function ShiftClosing() {
                     type="number"
                     step="50000"
                     value={initialCash}
-                    disabled={settlementData.isClosed}
+                    disabled={settlementData.isClosed || settlementData.isOvernightRemitted}
                     onChange={(e) => {
                       const val = Number(e.target.value) || 0;
                       setInitialCash(val);
                       setIsCustomInitialCash(true);
                     }}
                     onBlur={() => fetchShiftCalculation(selectedDate, shiftType, initialCash, true)}
-                    className={`h-full w-36 rounded-lg border px-2.5 pr-8 text-xs font-bold shadow-2xs transition-colors focus:outline-none ${settlementData.isClosed
+                    className={`h-full w-36 rounded-lg border px-2.5 pr-8 text-xs font-bold shadow-2xs transition-colors focus:outline-none ${settlementData.isClosed || settlementData.isOvernightRemitted
                       ? 'border-slate-200 bg-slate-100 text-slate-500 cursor-not-allowed'
                       : 'border-slate-200 bg-white text-slate-800 hover:border-teal-600 focus:border-teal-700'
                       }`}
@@ -681,17 +729,55 @@ export default function ShiftClosing() {
                 </div>
 
                 {/* Huy hiệu thông tin nguồn gốc tiền két */}
-                {settlementData.inheritedFromPreviousShift && !isCustomInitialCash ? (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs">
+                {settlementData.isOvernightRemitted ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-2xs">
                     <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                     <span>
-                      Bàn giao từ {settlementData.previousShiftType === 'MORNING' ? 'Ca Sáng' : settlementData.previousShiftType === 'AFTERNOON' ? 'Ca Chiều' : settlementData.previousShiftType === 'EVENING' ? 'Ca Tối' : 'Ca trước'}
-                      {settlementData.previousShiftCode && <span className="text-emerald-600 font-normal"> ({settlementData.previousShiftCode})</span>}
-                      {settlementData.previousShiftActualCash !== null && settlementData.previousShiftActualCash !== undefined && (
-                        <strong className="text-emerald-900 ml-1">: {Number(settlementData.previousShiftActualCash).toLocaleString('vi-VN')} đ</strong>
+                      Đã nộp doanh thu hôm trước: {Number(settlementData.remittanceInfo?.remittedAmount || 0).toLocaleString('vi-VN')} đ
+                      {settlementData.remittanceInfo?.remittanceCode && (
+                        <span className="text-emerald-700 font-mono font-normal"> ({settlementData.remittanceInfo.remittanceCode})</span>
                       )}
+                      {' • '}Quỹ giữ lại: <strong className="text-emerald-950 font-black">{Number(settlementData.initialCash).toLocaleString('vi-VN')} đ</strong>
                     </span>
                   </span>
+                ) : (settlementData.inheritedFromPreviousShift || (settlementData.previousShiftActualCash && Number(settlementData.previousShiftActualCash) === Number(initialCash))) && !isCustomInitialCash ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs">
+                      {settlementData.previousShiftType === 'EVENING' ? (
+                        <Lock className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                      ) : (
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                      )}
+                      <span>
+                        {settlementData.previousShiftType === 'EVENING'
+                          ? 'Bàn giao qua đêm từ Ca Tối'
+                          : settlementData.previousShiftType === 'MORNING'
+                          ? 'Bàn giao từ Ca Sáng'
+                          : settlementData.previousShiftType === 'AFTERNOON'
+                          ? 'Bàn giao từ Ca Chiều'
+                          : 'Bàn giao từ ca trước'}
+                        {settlementData.previousShiftCode && (
+                          <span className="text-emerald-700 font-normal"> ({settlementData.previousShiftCode})</span>
+                        )}
+                        {settlementData.previousShiftActualCash !== null && settlementData.previousShiftActualCash !== undefined && (
+                          <strong className="text-emerald-900 ml-1">: {Number(settlementData.previousShiftActualCash).toLocaleString('vi-VN')} đ</strong>
+                        )}
+                      </span>
+                    </span>
+
+                    {/* Nếu là Ca Sáng nhận bàn giao qua đêm từ Ca Tối và số tiền khác 2.000.000 đ: Mở Modal xác nhận kiểm tra doanh thu các ca trước khi nộp */}
+                    {shiftType === 'MORNING' && Number(initialCash) !== 2000000 && !settlementData.isClosed && (
+                      <button
+                        type="button"
+                        onClick={() => setIsRemitModalOpen(true)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-teal-50 hover:bg-teal-100/90 text-teal-800 border border-teal-300 shadow-2xs transition-colors cursor-pointer"
+                        title="Mở bảng đối soát doanh thu các ca hôm trước và xác nhận trích nộp tiền về thủ quỹ/két trung tâm"
+                      >
+                        <Receipt className="h-3.5 w-3.5 text-teal-700 shrink-0" />
+                        <span>Nộp doanh thu, giữ quỹ chuẩn 2.000.000 đ</span>
+                      </button>
+                    )}
+                  </div>
                 ) : isCustomInitialCash ? (
                   <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200 shadow-2xs">
                     <span className="flex items-center gap-1">
@@ -755,13 +841,11 @@ export default function ShiftClosing() {
                   {shiftType === 'EVENING' && 'Ca Tối (Ca cuối ngày):'}
                   {shiftType === 'MORNING' && 'Ca Sáng (Đầu ngày):'}
                   {shiftType === 'AFTERNOON' && 'Ca Chiều:'}
-                  {shiftType === 'FULL_DAY' && 'Ca Cả Ngày:'}
                 </span>{' '}
                 <span className="text-slate-600">
                   {shiftType === 'EVENING' && 'Hệ thống tự động gom các hóa đơn thanh toán sau 21:00 (như 21:01, 21:15 do điều trị/tiểu phẫu muộn) vào Ca Tối để đối soát khớp chính xác 100% tiền két.'}
-                  {shiftType === 'MORNING' && 'Tự động tính đầy đủ các khoản thanh toán/đặt cọc sớm từ 00:00:00 đến 12:00:00 để không bỏ sót.'}
+                  {shiftType === 'MORNING' && 'Tự động nhận tiền bàn giao qua đêm từ Ca Tối hoặc Quỹ định mức 2.000.000 đ cho ngày mới.'}
                   {shiftType === 'AFTERNOON' && 'Tổng hợp toàn bộ các giao dịch điều trị & thanh toán từ 12:00:00 đến 17:30:00.'}
-                  {shiftType === 'FULL_DAY' && 'Tổng hợp toàn bộ 24h giao dịch trong ngày từ 00:00:00 đến 23:59:59.'}
                 </span>
               </div>
             </div>
@@ -771,7 +855,7 @@ export default function ShiftClosing() {
               <span className="font-bold text-teal-800">
                 {settlementData.startTime && settlementData.endTime
                   ? formatTimeWindow(settlementData.startTime, settlementData.endTime)
-                  : shiftType === 'EVENING' ? '17:30 - 23:59' : shiftType === 'MORNING' ? '00:00 - 12:00' : shiftType === 'AFTERNOON' ? '12:00 - 17:30' : '00:00 - 23:59'}
+                  : shiftType === 'EVENING' ? '17:30 - 23:59' : shiftType === 'MORNING' ? '00:00 - 12:00' : '12:00 - 17:30'}
               </span>
             </div>
           </div>
@@ -1699,6 +1783,22 @@ export default function ShiftClosing() {
         isOpen={isPrintModalOpen}
         onClose={() => setIsPrintModalOpen(false)}
         shiftData={printData}
+      />
+
+      {/* Modal Đối soát & Xác nhận nộp doanh thu ngày hôm trước */}
+      <OvernightRevenueRemitModal
+        isOpen={isRemitModalOpen}
+        onClose={() => setIsRemitModalOpen(false)}
+        shiftDate={selectedDate}
+        totalOvernightCash={Number(settlementData?.previousShiftActualCash || initialCash || 0)}
+        previousShift={{
+          id: settlementData?.previousShiftId,
+          code: settlementData?.previousShiftCode,
+          type: settlementData?.previousShiftType,
+        }}
+        previousDayShifts={settlementData?.previousDayShifts || []}
+        onConfirm={handleConfirmRemittance}
+        loading={remitting}
       />
     </div>
   );

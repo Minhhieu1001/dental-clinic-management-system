@@ -53,6 +53,22 @@ export const shiftClosingService = {
       }
     }
   },
+
+  /**
+   * Xác nhận trích nộp doanh thu ca tối qua đêm về thủ quỹ/ngân hàng & giữ quỹ định mức
+   */
+  async remitOvernightRevenue(data) {
+    const response = await api.post('/shift-closings/remit-overnight-revenue', data);
+    return response.data;
+  },
+
+  /**
+   * Lấy tóm tắt doanh thu các ca của ngày hôm trước để thu ngân đối soát trước khi nộp
+   */
+  async getPreviousDaySummary(date) {
+    const response = await api.get('/shift-closings/previous-day-summary', { params: { date } });
+    return response.data;
+  },
 };
 
 export default shiftClosingService;

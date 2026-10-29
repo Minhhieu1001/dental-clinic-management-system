@@ -37,10 +37,17 @@ public class ShiftCalculationResponse {
     private ShiftClosingResponse closedShift;
 
     private Boolean inheritedFromPreviousShift;
+    private UUID previousShiftId;
     private String previousShiftCode;
     private ShiftType previousShiftType;
     private BigDecimal previousShiftActualCash;
     private String previousShiftEmployeeName;
+
+    private Boolean isOvernightRemitted;
+    private DailyRemittanceResponse remittanceInfo;
+
+    @Builder.Default
+    private List<PreviousDayShiftSummaryDTO> previousDayShifts = new ArrayList<>();
 
     @Builder.Default
     private List<ShiftTransactionItemDTO> transactions = new ArrayList<>();

@@ -81,4 +81,21 @@ public class ShiftClosingController {
         List<iuh.fit.backend.shift.dto.HandoverEmployeeDTO> employees = shiftClosingService.getHandoverEmployees(branchId);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách nhân viên bàn giao ca thành công", employees));
     }
+
+    @PostMapping("/remit-overnight-revenue")
+    public ResponseEntity<ApiResponse<iuh.fit.backend.shift.dto.DailyRemittanceResponse>> remitOvernightRevenue(
+            @RequestBody iuh.fit.backend.shift.dto.RemittanceRequest request
+    ) {
+        iuh.fit.backend.shift.dto.DailyRemittanceResponse response = shiftClosingService.remitOvernightRevenue(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Xác nhận trích nộp doanh thu ngày hôm trước thành công", response));
+    }
+
+    @GetMapping("/previous-day-summary")
+    public ResponseEntity<ApiResponse<List<iuh.fit.backend.shift.dto.PreviousDayShiftSummaryDTO>>> getPreviousDaySummary(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) java.time.LocalDate date
+    ) {
+        List<iuh.fit.backend.shift.dto.PreviousDayShiftSummaryDTO> list = shiftClosingService.getPreviousDayShiftSummary(date);
+        return ResponseEntity.ok(ApiResponse.success("Lấy tóm tắt doanh thu các ca ngày hôm trước thành công", list));
+    }
 }

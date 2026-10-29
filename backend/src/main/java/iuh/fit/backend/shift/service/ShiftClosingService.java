@@ -44,4 +44,8 @@ public interface ShiftClosingService {
     List<iuh.fit.backend.shift.dto.HandoverEmployeeDTO> getHandoverEmployees();
 
     List<iuh.fit.backend.shift.dto.HandoverEmployeeDTO> getHandoverEmployees(String branchId);
+
+    iuh.fit.backend.shift.dto.DailyRemittanceResponse remitOvernightRevenue(iuh.fit.backend.shift.dto.RemittanceRequest request);
+
+    List<iuh.fit.backend.shift.dto.PreviousDayShiftSummaryDTO> getPreviousDayShiftSummary(java.time.LocalDate currentDate);
 }
