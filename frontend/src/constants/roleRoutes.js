@@ -108,7 +108,7 @@ export const roleRoutes = {
       },
       { label: 'Chăm sóc KH', to: 'customer-care' },
       { label: 'Kho', to: 'inventory' },
-      { label: 'Nhập/Xuất', to: 'import-export' },
+      { label: 'Kết ca', to: 'shift-closing' },
       { label: 'Báo cáo', to: 'report' },
       {
         label: 'Cài đặt',
@@ -126,7 +126,8 @@ export const roleRoutes = {
       { path: 'billing', title: 'Thanh toán hóa đơn' },
       { path: 'customer-care', title: 'Chăm sóc khách hàng' },
       { path: 'inventory', title: 'Quản lý kho' },
-      { path: 'import-export', title: 'Nhập/Xuất vật tư' },
+      { path: 'shift-closing', title: 'Kết toán ca làm việc' },
+      { path: 'import-export', title: 'Kết toán ca làm việc' },
       { path: 'report', title: 'Báo cáo' },
       { path: 'notifications', title: 'Thông báo nhân viên' },
       { path: 'patients-waiting', title: 'Bệnh nhân đang chờ' },
