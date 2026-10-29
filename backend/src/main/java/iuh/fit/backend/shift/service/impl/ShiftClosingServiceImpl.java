@@ -55,7 +55,8 @@ public class ShiftClosingServiceImpl implements ShiftClosingService {
             ShiftType shiftType,
             LocalDateTime startTime,
             LocalDateTime endTime,
-            BigDecimal initialCash
+            BigDecimal initialCash,
+            Boolean customInitialCash
     ) {
         if (shiftType == null) {
             shiftType = ShiftType.MORNING;
@@ -105,8 +106,6 @@ public class ShiftClosingServiceImpl implements ShiftClosingService {
             }
         }
 
-        BigDecimal initCash = initialCash != null ? initialCash : BigDecimal.ZERO;
-
         Employee employee = null;
         if (employeeId != null) {
             employee = employeeRepository.findById(employeeId).orElse(null);
@@ -126,6 +125,13 @@ public class ShiftClosingServiceImpl implements ShiftClosingService {
             }
         }
 
+        String branchId = null;
+        String branchName = null;
+        if (employee != null && employee.getBranch() != null) {
+            branchId = employee.getBranch().getBranchId();
+            branchName = employee.getBranch().getBranchName();
+        }
+
         // Truy vấn các giao dịch thanh toán thực tế trong khoảng thời gian của ca
         List<PaymentTransactions> transactions = paymentTransactionRepository.findTransactionsForShift(
                 startTime,
@@ -136,9 +142,9 @@ public class ShiftClosingServiceImpl implements ShiftClosingService {
         // Nếu lọc theo employeeId cụ thể không có giao dịch, lấy tất cả giao dịch trong khung giờ ca đó để đối soát két
         if (transactions.isEmpty() && employeeId != null) {
             transactions = paymentTransactionRepository.findTransactionsForShift(
-                    startTime,
-                    endTime,
-                    null
+                startTime,
+                endTime,
+                null
             );
         }
 
@@ -193,16 +199,40 @@ public class ShiftClosingServiceImpl implements ShiftClosingService {
         // Tổng doanh thu ca = Tiền mặt + Toàn bộ chuyển khoản/điện tử thực nhận
         BigDecimal totalSystemRevenue = cashRevenue.add(bankTransferRevenue);
 
-        BigDecimal totalCashExpected = initCash.add(cashRevenue);
-
         // Kiểm tra xem ca làm việc này đã được kết toán và bàn giao trong ngày hay chưa
         LocalDateTime dayStart = startTime.toLocalDate().atStartOfDay();
         LocalDateTime dayEnd = dayStart.plusDays(1);
-        List<ShiftClosing> closedShifts = shiftClosingRepository.findClosedShiftForDate(shiftType, dayStart, dayEnd);
+        List<ShiftClosing> closedShifts = branchId != null
+                ? shiftClosingRepository.findClosedShiftForDateAndBranch(shiftType, dayStart, dayEnd, branchId)
+                : Collections.emptyList();
+        if (closedShifts.isEmpty()) {
+            closedShifts = shiftClosingRepository.findClosedShiftForDate(shiftType, dayStart, dayEnd);
+        }
         ShiftClosing existingClosedShift = closedShifts.isEmpty() ? null : closedShifts.get(0);
         ShiftClosingResponse closedShiftResponse = existingClosedShift != null ? mapToResponse(existingClosedShift) : null;
 
+        // Tìm ca đã chốt liền trước để kế thừa tiền bàn giao két (Shift Handover Continuity)
+        ShiftClosing previousShift = findPreviousClosedShift(shiftType, startTime, branchId);
+        Boolean inheritedFromPreviousShift = false;
+        String previousShiftCode = null;
+        ShiftType previousShiftType = null;
+        BigDecimal previousShiftActualCash = null;
+        String previousShiftEmployeeName = null;
+
+        if (previousShift != null) {
+            previousShiftCode = previousShift.getShiftCode();
+            previousShiftType = previousShift.getShiftType();
+            previousShiftActualCash = previousShift.getTotalCashActual() != null
+                    ? previousShift.getTotalCashActual()
+                    : previousShift.getTotalCashExpected();
+            previousShiftEmployeeName = formatEmployeeDisplayName(previousShift.getEmployee());
+        }
+
+        BigDecimal initCash;
+        BigDecimal totalCashExpected;
+
         if (existingClosedShift != null) {
+            // Ca đã chốt: Giữ nguyên số liệu lịch sử đã lưu
             initCash = existingClosedShift.getInitialCash();
             cashRevenue = existingClosedShift.getCashRevenue();
             bankTransferRevenue = existingClosedShift.getBankTransferRevenue();
@@ -210,13 +240,24 @@ public class ShiftClosingServiceImpl implements ShiftClosingService {
             eWalletRevenue = existingClosedShift.getEWalletRevenue();
             totalSystemRevenue = existingClosedShift.getTotalSystemRevenue();
             totalCashExpected = existingClosedShift.getTotalCashExpected();
-        }
-
-        String branchId = null;
-        String branchName = null;
-        if (employee != null && employee.getBranch() != null) {
-            branchId = employee.getBranch().getBranchId();
-            branchName = employee.getBranch().getBranchName();
+        } else {
+            // Ca chưa chốt:
+            if (Boolean.TRUE.equals(customInitialCash) && initialCash != null) {
+                // Thu ngân chủ động nhập số tiền đầu ca theo thực tế kiểm đếm nhận bàn giao
+                initCash = initialCash;
+                inheritedFromPreviousShift = false;
+            } else if (previousShiftActualCash != null) {
+                // TỰ ĐỘNG KẾ THỪA: Số tiền mặt thực tế trong két bàn giao từ ca trước (totalCashActual)
+                initCash = previousShiftActualCash;
+                inheritedFromPreviousShift = true;
+            } else {
+                // Không tìm thấy ca trước nào đã chốt -> Dùng initialCash người dùng gửi lên hoặc quỹ định mức 2.000.000đ
+                initCash = (initialCash != null && initialCash.compareTo(BigDecimal.ZERO) > 0)
+                        ? initialCash
+                        : new BigDecimal("2000000");
+                inheritedFromPreviousShift = false;
+            }
+            totalCashExpected = initCash.add(cashRevenue);
         }
 
         String empDisplayName = employee != null && employee.getUser() != null && employee.getUser().getUsername() != null
@@ -242,8 +283,80 @@ public class ShiftClosingServiceImpl implements ShiftClosingService {
                 .transactions(itemDTOList)
                 .isClosed(existingClosedShift != null)
                 .closedShift(closedShiftResponse)
+                .inheritedFromPreviousShift(inheritedFromPreviousShift)
+                .previousShiftCode(previousShiftCode)
+                .previousShiftType(previousShiftType)
+                .previousShiftActualCash(previousShiftActualCash)
+                .previousShiftEmployeeName(previousShiftEmployeeName)
                 .build();
     }
+
+    /**
+     * Tìm ca đã chốt kết toán và bàn giao liền trước gần nhất để kế thừa số tiền mặt trong két.
+     * Quy tắc nghiệp vụ:
+     * - Ca Chiều (AFTERNOON) -> Kế thừa từ Ca Sáng (MORNING) cùng ngày.
+     * - Ca Tối (EVENING) -> Kế thừa từ Ca Chiều (AFTERNOON) cùng ngày (hoặc Ca Sáng nếu Chiều chưa chốt).
+     * - Ca Sáng (MORNING) hoặc Trọn Ngày -> Kế thừa từ ca chốt gần nhất trước ngày hôm nay (Ca Tối hôm trước).
+     */
+    private ShiftClosing findPreviousClosedShift(ShiftType currentShiftType, LocalDateTime currentStartTime, String branchId) {
+        LocalDate targetDate = currentStartTime.toLocalDate();
+        LocalDateTime dayStart = targetDate.atStartOfDay();
+        LocalDateTime dayEnd = dayStart.plusDays(1);
+
+        if (currentShiftType == ShiftType.AFTERNOON) {
+            // 1. Ca Chiều: Ưu tiên tìm Ca Sáng cùng ngày
+            if (branchId != null) {
+                List<ShiftClosing> morningShifts = shiftClosingRepository.findClosedShiftForDateAndBranch(ShiftType.MORNING, dayStart, dayEnd, branchId);
+                if (!morningShifts.isEmpty()) {
+                    return morningShifts.get(0);
+                }
+            }
+            List<ShiftClosing> morningShifts = shiftClosingRepository.findClosedShiftForDate(ShiftType.MORNING, dayStart, dayEnd);
+            if (!morningShifts.isEmpty()) {
+                return morningShifts.get(0);
+            }
+        } else if (currentShiftType == ShiftType.EVENING) {
+            // 2. Ca Tối: Ưu tiên tìm Ca Chiều cùng ngày
+            if (branchId != null) {
+                List<ShiftClosing> afternoonShifts = shiftClosingRepository.findClosedShiftForDateAndBranch(ShiftType.AFTERNOON, dayStart, dayEnd, branchId);
+                if (!afternoonShifts.isEmpty()) {
+                    return afternoonShifts.get(0);
+                }
+            }
+            List<ShiftClosing> afternoonShifts = shiftClosingRepository.findClosedShiftForDate(ShiftType.AFTERNOON, dayStart, dayEnd);
+            if (!afternoonShifts.isEmpty()) {
+                return afternoonShifts.get(0);
+            }
+
+            // Nếu ca chiều chưa chốt, thử tìm ca sáng cùng ngày
+            if (branchId != null) {
+                List<ShiftClosing> morningShifts = shiftClosingRepository.findClosedShiftForDateAndBranch(ShiftType.MORNING, dayStart, dayEnd, branchId);
+                if (!morningShifts.isEmpty()) {
+                    return morningShifts.get(0);
+                }
+            }
+            List<ShiftClosing> morningShifts = shiftClosingRepository.findClosedShiftForDate(ShiftType.MORNING, dayStart, dayEnd);
+            if (!morningShifts.isEmpty()) {
+                return morningShifts.get(0);
+            }
+        }
+
+        // 3. Với Ca Sáng, Ca Trọn Ngày hoặc trường hợp chưa có ca chốt trong ngày:
+        // Tìm ca chốt gần nhất trước thời điểm bắt đầu của ca hiện tại
+        if (branchId != null) {
+            List<ShiftClosing> latestList = shiftClosingRepository.findLatestClosedShiftBefore(currentStartTime, branchId);
+            if (!latestList.isEmpty()) {
+                return latestList.get(0);
+            }
+        }
+        List<ShiftClosing> latestList = shiftClosingRepository.findLatestClosedShiftBefore(currentStartTime, null);
+        if (!latestList.isEmpty()) {
+            return latestList.get(0);
+        }
+
+        return null;
+    }
+
 
     @Override
     @Transactional
@@ -282,7 +395,15 @@ public class ShiftClosingServiceImpl implements ShiftClosingService {
 
         String shiftCode = generateShiftCode();
 
-        BigDecimal initialCash = request.getInitialCash() != null ? request.getInitialCash() : BigDecimal.ZERO;
+        BigDecimal initialCash = request.getInitialCash();
+        if (initialCash == null) {
+            ShiftClosing prev = findPreviousClosedShift(shiftType, requestStartTime, branch != null ? branch.getBranchId() : null);
+            if (prev != null) {
+                initialCash = prev.getTotalCashActual() != null ? prev.getTotalCashActual() : prev.getTotalCashExpected();
+            } else {
+                initialCash = new BigDecimal("2000000");
+            }
+        }
         BigDecimal cashRevenue = request.getCashRevenue() != null ? request.getCashRevenue() : BigDecimal.ZERO;
         BigDecimal bankTransferRevenue = request.getBankTransferRevenue() != null ? request.getBankTransferRevenue() : BigDecimal.ZERO;
         BigDecimal cardRevenue = request.getCardRevenue() != null ? request.getCardRevenue() : BigDecimal.ZERO;
@@ -382,6 +503,9 @@ public class ShiftClosingServiceImpl implements ShiftClosingService {
     private ShiftClosingResponse mapToResponse(ShiftClosing s) {
         String empName = formatEmployeeDisplayName(s.getEmployee());
         String handoverName = formatEmployeeDisplayName(s.getHandoverEmployee());
+        if (handoverName == null && (s.getShiftType() == ShiftType.EVENING || s.getShiftType() == ShiftType.FULL_DAY)) {
+            handoverName = "Niêm phong két qua đêm";
+        }
 
         return ShiftClosingResponse.builder()
                 .id(s.getId())

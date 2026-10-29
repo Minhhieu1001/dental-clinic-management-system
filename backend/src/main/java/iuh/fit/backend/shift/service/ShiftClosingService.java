@@ -16,8 +16,20 @@ public interface ShiftClosingService {
             ShiftType shiftType,
             LocalDateTime startTime,
             LocalDateTime endTime,
-            java.math.BigDecimal initialCash
+            java.math.BigDecimal initialCash,
+            Boolean customInitialCash
     );
+
+    default ShiftCalculationResponse calculateShiftSettlement(
+            UUID employeeId,
+            ShiftType shiftType,
+            LocalDateTime startTime,
+            LocalDateTime endTime,
+            java.math.BigDecimal initialCash
+    ) {
+        return calculateShiftSettlement(employeeId, shiftType, startTime, endTime, initialCash, false);
+    }
+
 
     ShiftClosingResponse createShiftClosing(ShiftClosingRequest request);
 

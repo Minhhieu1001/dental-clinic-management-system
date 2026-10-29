@@ -36,6 +36,13 @@ public class ShiftCalculationResponse {
     private Boolean isClosed;
     private ShiftClosingResponse closedShift;
 
+    private Boolean inheritedFromPreviousShift;
+    private String previousShiftCode;
+    private ShiftType previousShiftType;
+    private BigDecimal previousShiftActualCash;
+    private String previousShiftEmployeeName;
+
     @Builder.Default
     private List<ShiftTransactionItemDTO> transactions = new ArrayList<>();
 }
+

@@ -10,6 +10,7 @@ import {
   Clock,
   ArrowRight,
   FileText,
+  Lock,
 } from 'lucide-react';
 
 export default function ShiftHistoryTable({
@@ -40,6 +41,23 @@ export default function ShiftHistoryTable({
       month: '2-digit',
       year: 'numeric',
     });
+  };
+
+  const formatShiftPeriod = (startTime, endTime, createdAt) => {
+    if (startTime) {
+      const d = new Date(startTime);
+      const dateStr = d.toLocaleDateString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      });
+      const sTime = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+      const eTime = endTime
+        ? new Date(endTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+        : '';
+      return `${dateStr} (${sTime}${eTime ? ' - ' + eTime : ''})`;
+    }
+    return formatDate(createdAt);
   };
 
   const getShiftBadge = (type) => {
@@ -113,21 +131,24 @@ export default function ShiftHistoryTable({
       }
 
       // 5. Lọc theo ngày
-      if (dateFilter !== 'ALL' && item.createdAt) {
-        const itemDate = new Date(item.createdAt);
-        const now = new Date();
-        if (dateFilter === 'TODAY') {
-          const isToday =
-            itemDate.getDate() === now.getDate() &&
-            itemDate.getMonth() === now.getMonth() &&
-            itemDate.getFullYear() === now.getFullYear();
-          if (!isToday) return false;
-        } else if (dateFilter === 'LAST_7_DAYS') {
-          const diffDays = (now - itemDate) / (1000 * 60 * 60 * 24);
-          if (diffDays > 7) return false;
-        } else if (dateFilter === 'LAST_30_DAYS') {
-          const diffDays = (now - itemDate) / (1000 * 60 * 60 * 24);
-          if (diffDays > 30) return false;
+      if (dateFilter !== 'ALL') {
+        const targetDate = item.startTime || item.createdAt;
+        if (targetDate) {
+          const itemDate = new Date(targetDate);
+          const now = new Date();
+          if (dateFilter === 'TODAY') {
+            const isToday =
+              itemDate.getDate() === now.getDate() &&
+              itemDate.getMonth() === now.getMonth() &&
+              itemDate.getFullYear() === now.getFullYear();
+            if (!isToday) return false;
+          } else if (dateFilter === 'LAST_7_DAYS') {
+            const diffDays = (now - itemDate) / (1000 * 60 * 60 * 24);
+            if (diffDays > 7 || diffDays < 0) return false;
+          } else if (dateFilter === 'LAST_30_DAYS') {
+            const diffDays = (now - itemDate) / (1000 * 60 * 60 * 24);
+            if (diffDays > 30 || diffDays < 0) return false;
+          }
         }
       }
 
@@ -309,7 +330,7 @@ export default function ShiftHistoryTable({
                     key={item.id || item.shiftCode}
                     className="hover:bg-slate-50/70 transition-colors"
                   >
-                    {/* Mã ca & Thời gian chốt */}
+                    {/* Mã ca & Thời gian ca */}
                     <td className="py-2.5 px-4 whitespace-nowrap">
                       <button
                         type="button"
@@ -318,8 +339,11 @@ export default function ShiftHistoryTable({
                       >
                         {item.shiftCode}
                       </button>
-                      <span className="text-[10px] text-slate-400 font-normal block mt-0.5">
-                        {formatDate(item.createdAt)}
+                      <span className="text-[11px] text-slate-700 font-semibold block mt-0.5">
+                        {formatShiftPeriod(item.startTime, item.endTime, item.createdAt)}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-normal block">
+                        Chốt lúc: {formatDate(item.createdAt)}
                       </span>
                     </td>
 
@@ -335,9 +359,16 @@ export default function ShiftHistoryTable({
                           {item.employeeName || 'Nhân viên'}
                         </span>
                         <ArrowRight className="h-3 w-3 text-slate-300 shrink-0" />
-                        <span className="text-slate-600 font-medium">
-                          {item.handoverEmployeeName || '---'}
-                        </span>
+                        {item.handoverEmployeeName && !item.handoverEmployeeName.includes('Niêm phong') ? (
+                          <span className="text-slate-700 font-semibold">
+                            {item.handoverEmployeeName}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                            <Lock className="h-2.5 w-2.5 text-amber-600" />
+                            Niêm phong két qua đêm
+                          </span>
+                        )}
                       </div>
                     </td>
 
@@ -356,7 +387,10 @@ export default function ShiftHistoryTable({
                       <span className="font-bold text-slate-800 block">
                         {formatMoney(item.totalCashActual)}
                       </span>
-                      <span className="text-[10px] text-slate-400 block mt-0.5">
+                      <span className="text-[10px] text-slate-500 block mt-0.5">
+                        {Number(item.cashRevenue || 0) > 0 ? (
+                          <span className="text-emerald-700 font-bold">+{formatMoney(item.cashRevenue)} • </span>
+                        ) : null}
                         Đầu ca: {formatMoney(item.initialCash)}
                       </span>
                     </td>

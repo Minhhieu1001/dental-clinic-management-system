@@ -117,7 +117,8 @@ export default function ShiftClosing() {
 
   // Ca config: Mặc định tự động chọn ca phù hợp với khung giờ hiện tại
   const [shiftType, setShiftType] = useState(getCurrentShiftType);
-  const [initialCash, setInitialCash] = useState(2000000); // 2 triệu tiền mặt ban đầu mặc định
+  const [initialCash, setInitialCash] = useState(2000000); // Tiền mặt đầu ca trong két
+  const [isCustomInitialCash, setIsCustomInitialCash] = useState(false); // Đánh dấu người dùng có tự sửa tiền két thủ công
 
   // Loading states
   const [calculating, setCalculating] = useState(false);
@@ -136,6 +137,11 @@ export default function ShiftClosing() {
     transactions: [],
     startTime: '',
     endTime: '',
+    inheritedFromPreviousShift: false,
+    previousShiftCode: null,
+    previousShiftType: null,
+    previousShiftActualCash: null,
+    previousShiftEmployeeName: null,
   });
 
   // Tiền mặt thực tế kiểm đếm
@@ -279,17 +285,27 @@ export default function ShiftClosing() {
   };
 
   // Tính toán số liệu ca hiện tại
-  const fetchShiftCalculation = async (date = selectedDate, type = shiftType, initCash = initialCash) => {
+  const fetchShiftCalculation = async (
+    date = selectedDate,
+    type = shiftType,
+    initCash = null,
+    isCustom = false
+  ) => {
     setCalculating(true);
     try {
       const { startIso, endIso } = getShiftTimeRange(date, type);
-      const res = await shiftClosingService.calculateShiftSettlement({
+      const params = {
         employeeId: user?.employeeId,
         shiftType: type,
         startTime: startIso,
         endTime: endIso,
-        initialCash: initCash,
-      });
+        customInitialCash: isCustom,
+      };
+      if (isCustom && initCash !== null && initCash !== undefined) {
+        params.initialCash = initCash;
+      }
+
+      const res = await shiftClosingService.calculateShiftSettlement(params);
 
       if (res && res.data) {
         const d = res.data;
@@ -305,6 +321,7 @@ export default function ShiftClosing() {
           setBankDifferenceReason(cs.bankTransferDifferenceReason || '');
           setHandoverEmployeeId(cs.handoverEmployeeId || '');
           setNote(cs.note || '');
+          setIsCustomInitialCash(false);
           try {
             if (cs.denominationsJson) {
               setDenominations(JSON.parse(cs.denominationsJson));
@@ -314,12 +331,17 @@ export default function ShiftClosing() {
           }
         } else {
           // Trường hợp 2: Ca làm việc CHƯA CHỐT -> Thu ngân kiểm đếm đối soát mới
-          setActualCash(d.totalCashExpected || initCash);
-          setActualBankTransfer(d.bankTransferRevenue || 0);
+          // Tự động nhận tiền đầu ca do hệ thống tính toán (đã kế thừa từ ca bàn giao trước)
+          setInitialCash(Number(d.initialCash) || 0);
+          setActualCash(Number(d.totalCashExpected) || Number(d.initialCash) || 0);
+          setActualBankTransfer(Number(d.bankTransferRevenue) || 0);
           setDifferenceReason('');
           setBankDifferenceReason('');
           setHandoverEmployeeId('');
           setNote('');
+          if (!isCustom) {
+            setIsCustomInitialCash(false);
+          }
         }
       }
     } catch (err) {
@@ -330,9 +352,10 @@ export default function ShiftClosing() {
     }
   };
 
-  // Tải số liệu ban đầu khi đổi ca hoặc ngày
+  // Tải số liệu ban đầu khi đổi ca hoặc ngày: Tự động kế thừa từ ca trước
   useEffect(() => {
-    fetchShiftCalculation(selectedDate, shiftType, initialCash);
+    setIsCustomInitialCash(false);
+    fetchShiftCalculation(selectedDate, shiftType, null, false);
   }, [selectedDate, shiftType]);
 
   // Tải danh sách lịch sử kết ca
@@ -393,6 +416,9 @@ export default function ShiftClosing() {
     toast.success(`Đã cập nhật tiền thực đếm: ${total.toLocaleString('vi-VN')} đ`);
   };
 
+  // Kiểm tra ca cuối ngày (Ca Tối hoặc Ca Trọn Ngày)
+  const isEndOfDay = shiftType === 'EVENING' || shiftType === 'FULL_DAY';
+
   // Xác nhận chốt ca
   const handleSubmitClosing = async () => {
     if (!user?.employeeId) {
@@ -400,7 +426,7 @@ export default function ShiftClosing() {
       return;
     }
 
-    if (!handoverEmployeeId) {
+    if (!handoverEmployeeId && !isEndOfDay) {
       toast.error('Vui lòng chọn nhân viên nhận bàn giao ca tiếp theo');
       return;
     }
@@ -418,9 +444,19 @@ export default function ShiftClosing() {
     setSubmitting(true);
     try {
       const { startIso, endIso } = getShiftTimeRange(selectedDate, shiftType);
+      const isOvernight = !handoverEmployeeId || handoverEmployeeId === 'OVERNIGHT';
+      const finalHandoverEmpId = isOvernight ? null : handoverEmployeeId;
+
+      let finalNote = (note || '').trim();
+      if (isEndOfDay && isOvernight && !finalNote.includes('Niêm phong')) {
+        finalNote = finalNote
+          ? `${finalNote} • [Niêm phong két lưu qua đêm]`
+          : '[Niêm phong két lưu qua đêm cho ca sáng mai]';
+      }
+
       const payload = {
         employeeId: user?.employeeId || currentEmployeeProfile?.id,
-        handoverEmployeeId: handoverEmployeeId || null,
+        handoverEmployeeId: finalHandoverEmpId,
         branchId: currentBranchId || settlementData.branchId || null,
         shiftType: shiftType,
         startTime: settlementData.startTime || startIso,
@@ -439,7 +475,7 @@ export default function ShiftClosing() {
         bankTransferDifference: bankDifference,
         bankTransferDifferenceReason: bankDifferenceReason,
         totalTransactions: settlementData.totalTransactions || 0,
-        note: note,
+        note: finalNote,
         denominationsJson: JSON.stringify(denominations),
       };
 
@@ -506,8 +542,8 @@ export default function ShiftClosing() {
             <button
               onClick={() => setActiveTab('current')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-all ${activeTab === 'current'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
                 }`}
             >
               <Calculator className="h-3.5 w-3.5 text-teal-700" />
@@ -516,8 +552,8 @@ export default function ShiftClosing() {
             <button
               onClick={() => setActiveTab('history')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-all ${activeTab === 'history'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
                 }`}
             >
               <History className="h-3.5 w-3.5 text-teal-700" />
@@ -595,8 +631,8 @@ export default function ShiftClosing() {
                         type="button"
                         onClick={() => setShiftType(opt.id)}
                         className={`h-9 flex items-center justify-center gap-2 px-3 rounded-lg text-xs font-semibold border transition-all ${isActive
-                            ? 'bg-teal-700 border-teal-700 text-white shadow-xs'
-                            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
+                          ? 'bg-teal-700 border-teal-700 text-white shadow-xs'
+                          : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
                           }`}
                       >
                         <IconComp className={`h-4 w-4 shrink-0 ${isActive ? 'text-teal-200' : 'text-slate-500'}`} />
@@ -617,7 +653,7 @@ export default function ShiftClosing() {
             {/* Hàng 2: Thiết lập tiền két (bên trái) & Thao tác nhanh (bên phải) */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
               {/* Bên trái: Tiền mặt đầu ca trong két */}
-              <div className="flex items-center gap-2.5">
+              <div className="flex flex-wrap items-center gap-2.5">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap flex items-center gap-1.5">
                   <Coins className="h-3.5 w-3.5 text-teal-700" />
                   Tiền mặt đầu ca (két):
@@ -631,19 +667,57 @@ export default function ShiftClosing() {
                     onChange={(e) => {
                       const val = Number(e.target.value) || 0;
                       setInitialCash(val);
+                      setIsCustomInitialCash(true);
                     }}
-                    onBlur={() => fetchShiftCalculation(selectedDate, shiftType, initialCash)}
-                    className={`h-full w-36 rounded-lg border px-2.5 pr-8 text-xs font-bold shadow-2xs transition-colors focus:outline-none ${
-                      settlementData.isClosed
-                        ? 'border-slate-200 bg-slate-100 text-slate-500 cursor-not-allowed'
-                        : 'border-slate-200 bg-white text-slate-800 hover:border-teal-600 focus:border-teal-700'
-                    }`}
+                    onBlur={() => fetchShiftCalculation(selectedDate, shiftType, initialCash, true)}
+                    className={`h-full w-36 rounded-lg border px-2.5 pr-8 text-xs font-bold shadow-2xs transition-colors focus:outline-none ${settlementData.isClosed
+                      ? 'border-slate-200 bg-slate-100 text-slate-500 cursor-not-allowed'
+                      : 'border-slate-200 bg-white text-slate-800 hover:border-teal-600 focus:border-teal-700'
+                      }`}
                   />
                   <span className="absolute right-2 text-[10px] font-bold text-slate-400 pointer-events-none">
                     VNĐ
                   </span>
                 </div>
 
+                {/* Huy hiệu thông tin nguồn gốc tiền két */}
+                {settlementData.inheritedFromPreviousShift && !isCustomInitialCash ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                    <span>
+                      Bàn giao từ {settlementData.previousShiftType === 'MORNING' ? 'Ca Sáng' : settlementData.previousShiftType === 'AFTERNOON' ? 'Ca Chiều' : settlementData.previousShiftType === 'EVENING' ? 'Ca Tối' : 'Ca trước'}
+                      {settlementData.previousShiftCode && <span className="text-emerald-600 font-normal"> ({settlementData.previousShiftCode})</span>}
+                      {settlementData.previousShiftActualCash !== null && settlementData.previousShiftActualCash !== undefined && (
+                        <strong className="text-emerald-900 ml-1">: {Number(settlementData.previousShiftActualCash).toLocaleString('vi-VN')} đ</strong>
+                      )}
+                    </span>
+                  </span>
+                ) : isCustomInitialCash ? (
+                  <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200 shadow-2xs">
+                    <span className="flex items-center gap-1">
+                      <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                      Đã điều chỉnh thủ công
+                    </span>
+                    {settlementData.previousShiftActualCash !== null && settlementData.previousShiftActualCash !== undefined && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCustomInitialCash(false);
+                          fetchShiftCalculation(selectedDate, shiftType, null, false);
+                          toast.success('Đã khôi phục tiền đầu ca theo số tiền bàn giao ca trước');
+                        }}
+                        className="text-teal-700 hover:text-teal-900 underline font-bold cursor-pointer"
+                        title="Khôi phục lại số tiền bàn giao từ ca trước"
+                      >
+                        Khôi phục ({Number(settlementData.previousShiftActualCash).toLocaleString('vi-VN')} đ)
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                    Quỹ tiền mặt định mức mặc định (2.000.000 đ)
+                  </span>
+                )}
               </div>
 
               {/* Bên phải: Nút tác vụ nhanh */}
@@ -659,7 +733,7 @@ export default function ShiftClosing() {
 
                 <button
                   type="button"
-                  onClick={() => fetchShiftCalculation(selectedDate, shiftType, initialCash)}
+                  onClick={() => fetchShiftCalculation(selectedDate, shiftType, isCustomInitialCash ? initialCash : null, isCustomInitialCash)}
                   disabled={calculating}
                   className="h-8 flex items-center gap-1.5 px-3.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 text-xs font-semibold whitespace-nowrap transition-colors disabled:opacity-50 shadow-2xs"
                 >
@@ -678,10 +752,10 @@ export default function ShiftClosing() {
               </span>
               <div>
                 <span className="font-bold text-slate-800">
-                  {shiftType === 'EVENING' && 'Nghiệp vụ Ca Tối (Ca cuối ngày):'}
-                  {shiftType === 'MORNING' && 'Nghiệp vụ Ca Sáng (Đầu ngày):'}
-                  {shiftType === 'AFTERNOON' && 'Nghiệp vụ Ca Chiều:'}
-                  {shiftType === 'FULL_DAY' && 'Nghiệp vụ Ca Cả Ngày:'}
+                  {shiftType === 'EVENING' && 'Ca Tối (Ca cuối ngày):'}
+                  {shiftType === 'MORNING' && 'Ca Sáng (Đầu ngày):'}
+                  {shiftType === 'AFTERNOON' && 'Ca Chiều:'}
+                  {shiftType === 'FULL_DAY' && 'Ca Cả Ngày:'}
                 </span>{' '}
                 <span className="text-slate-600">
                   {shiftType === 'EVENING' && 'Hệ thống tự động gom các hóa đơn thanh toán sau 21:00 (như 21:01, 21:15 do điều trị/tiểu phẫu muộn) vào Ca Tối để đối soát khớp chính xác 100% tiền két.'}
@@ -838,11 +912,10 @@ export default function ShiftClosing() {
                 <button
                   type="button"
                   onClick={() => setReconcileTab('cash')}
-                  className={`flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
-                    reconcileTab === 'cash'
-                      ? 'bg-white text-emerald-800 shadow-xs border border-slate-200/80 ring-1 ring-emerald-500/20'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-                  }`}
+                  className={`flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${reconcileTab === 'cash'
+                    ? 'bg-white text-emerald-800 shadow-xs border border-slate-200/80 ring-1 ring-emerald-500/20'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                    }`}
                 >
                   <Coins className={`h-4 w-4 ${reconcileTab === 'cash' ? 'text-emerald-600' : 'text-slate-400'}`} />
                   <span>Tiền mặt két</span>
@@ -864,11 +937,10 @@ export default function ShiftClosing() {
                 <button
                   type="button"
                   onClick={() => setReconcileTab('bank')}
-                  className={`flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
-                    reconcileTab === 'bank'
-                      ? 'bg-white text-blue-800 shadow-xs border border-slate-200/80 ring-1 ring-blue-500/20'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-                  }`}
+                  className={`flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${reconcileTab === 'bank'
+                    ? 'bg-white text-blue-800 shadow-xs border border-slate-200/80 ring-1 ring-blue-500/20'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                    }`}
                 >
                   <Building className={`h-4 w-4 ${reconcileTab === 'bank' ? 'text-blue-600' : 'text-slate-400'}`} />
                   <span>Chuyển khoản</span>
@@ -912,7 +984,13 @@ export default function ShiftClosing() {
                       <p className="text-sm font-bold text-slate-800 mt-0.5">
                         {formatMoney(initialCash)}
                       </p>
-                      <p className="text-[10px] text-slate-400">Tiền thối sẵn</p>
+                      <p className="text-[10px] text-slate-400">
+                        {settlementData.inheritedFromPreviousShift && !isCustomInitialCash
+                          ? 'Bàn giao từ ca trước'
+                          : isCustomInitialCash
+                            ? 'Điều chỉnh thủ công'
+                            : 'Tiền thối định mức'}
+                      </p>
                     </div>
 
                     <div className="p-2.5 rounded-md border border-slate-200 bg-emerald-50/50">
@@ -932,6 +1010,74 @@ export default function ShiftClosing() {
                     </div>
                   </div>
 
+                  {/* Trợ giúp xử lý quỹ tiền cuối ngày (Dành riêng cho Ca Tối & Ca Cả Ngày) */}
+                  {isEndOfDay && !settlementData.isClosed && (
+                    <div className="p-3 rounded-lg border border-teal-200 bg-teal-50/70 space-y-2 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-teal-900 flex items-center gap-1.5">
+                          <Sparkles className="h-3.5 w-3.5 text-teal-700" />
+                          Nghiệp vụ chốt quỹ cuối ngày (End-of-Day):
+                        </span>
+                        <span className="text-[10px] text-teal-700 font-semibold bg-white px-2 py-0.5 rounded border border-teal-200">
+                          Ca cuối ngày
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActualCash(totalExpectedCash);
+                            setDifferenceReason('');
+                            toast.success('Đã chọn: Giữ nguyên toàn bộ két qua đêm cho Ca Sáng mai');
+                          }}
+                          className={`p-2.5 text-left rounded-lg border transition-all ${
+                            actualCash === totalExpectedCash && !differenceReason
+                              ? 'border-teal-700 bg-white ring-1 ring-teal-700 shadow-2xs'
+                              : 'border-slate-200 bg-white hover:border-teal-400'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <p className="font-bold text-slate-800">1. Giữ trọn két qua đêm</p>
+                            {actualCash === totalExpectedCash && !differenceReason && (
+                              <CheckCircle2 className="h-3.5 w-3.5 text-teal-700" />
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            Niêm phong toàn bộ <strong>{formatMoney(totalExpectedCash)}</strong> trong két để Ca Sáng mai nhận tiếp.
+                          </p>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const defaultFloat = 2000000;
+                            setActualCash(defaultFloat);
+                            const dropAmount = Math.max(0, totalExpectedCash - defaultFloat);
+                            const dropMsg = `Nộp ${formatMoney(dropAmount)} doanh thu cho Quản lý/Thủ quỹ; Để lại ${formatMoney(defaultFloat)} tiền thối định mức cho sáng mai.`;
+                            setDifferenceReason(dropMsg);
+                            setNote(dropMsg);
+                            toast.success(`Đã chọn: Nộp ${formatMoney(dropAmount)}, lưu két 2.000.000 đ`);
+                          }}
+                          className={`p-2.5 text-left rounded-lg border transition-all ${
+                            actualCash === 2000000 && differenceReason.includes('Nộp')
+                              ? 'border-teal-700 bg-white ring-1 ring-teal-700 shadow-2xs'
+                              : 'border-slate-200 bg-white hover:border-teal-400'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <p className="font-bold text-teal-800">2. Nộp doanh thu, giữ quỹ 2tr</p>
+                            {actualCash === 2000000 && differenceReason.includes('Nộp') && (
+                              <CheckCircle2 className="h-3.5 w-3.5 text-teal-700" />
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            Rút nộp phần dư về két trung tâm, để lại đúng <strong>2.000.000 đ</strong> tiền thối cho Ca Sáng mai.
+                          </p>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Nhập kiểm đếm tiền mặt & chênh lệch */}
                   <div className="p-3 rounded-md border border-slate-200 bg-slate-50/60 space-y-2.5 text-xs">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -950,11 +1096,10 @@ export default function ShiftClosing() {
                           value={actualCash}
                           disabled={settlementData.isClosed}
                           onChange={(e) => setActualCash(Number(e.target.value) || 0)}
-                          className={`h-8 w-44 rounded-md border px-2.5 text-right font-bold text-sm focus:outline-none ${
-                            settlementData.isClosed
-                              ? 'border-slate-200 bg-slate-100 text-slate-600 cursor-not-allowed'
-                              : 'border-slate-300 bg-white text-slate-900 focus:border-teal-700'
-                          }`}
+                          className={`h-8 w-44 rounded-md border px-2.5 text-right font-bold text-sm focus:outline-none ${settlementData.isClosed
+                            ? 'border-slate-200 bg-slate-100 text-slate-600 cursor-not-allowed'
+                            : 'border-slate-300 bg-white text-slate-900 focus:border-teal-700'
+                            }`}
                         />
                         <span className="text-xs font-semibold text-slate-500">VNĐ</span>
                         {!settlementData.isClosed && (
@@ -1007,11 +1152,10 @@ export default function ShiftClosing() {
                           value={differenceReason}
                           disabled={settlementData.isClosed}
                           onChange={(e) => setDifferenceReason(e.target.value)}
-                          className={`w-full rounded-md border px-2.5 py-1.5 text-xs focus:outline-none ${
-                            settlementData.isClosed
-                              ? 'border-slate-200 bg-slate-100 text-slate-600 cursor-not-allowed'
-                              : 'border-rose-200 bg-white text-slate-800 focus:border-rose-500'
-                          }`}
+                          className={`w-full rounded-md border px-2.5 py-1.5 text-xs focus:outline-none ${settlementData.isClosed
+                            ? 'border-slate-200 bg-slate-100 text-slate-600 cursor-not-allowed'
+                            : 'border-rose-200 bg-white text-slate-800 focus:border-rose-500'
+                            }`}
                         />
                       </div>
                     )}
@@ -1082,11 +1226,10 @@ export default function ShiftClosing() {
                           value={actualBankTransfer}
                           disabled={settlementData.isClosed}
                           onChange={(e) => setActualBankTransfer(Number(e.target.value) || 0)}
-                          className={`h-8 w-44 rounded-md border px-2.5 text-right font-bold text-sm focus:outline-none ${
-                            settlementData.isClosed
-                              ? 'border-slate-200 bg-slate-100 text-slate-600 cursor-not-allowed'
-                              : 'border-slate-300 bg-white text-slate-900 focus:border-teal-700'
-                          }`}
+                          className={`h-8 w-44 rounded-md border px-2.5 text-right font-bold text-sm focus:outline-none ${settlementData.isClosed
+                            ? 'border-slate-200 bg-slate-100 text-slate-600 cursor-not-allowed'
+                            : 'border-slate-300 bg-white text-slate-900 focus:border-teal-700'
+                            }`}
                         />
                         <span className="text-xs font-semibold text-slate-500">VNĐ</span>
                         {!settlementData.isClosed && (
@@ -1139,11 +1282,10 @@ export default function ShiftClosing() {
                           value={bankDifferenceReason}
                           disabled={settlementData.isClosed}
                           onChange={(e) => setBankDifferenceReason(e.target.value)}
-                          className={`w-full rounded-md border px-2.5 py-1.5 text-xs focus:outline-none ${
-                            settlementData.isClosed
-                              ? 'border-slate-200 bg-slate-100 text-slate-600 cursor-not-allowed'
-                              : 'border-rose-200 bg-white text-slate-800 focus:border-rose-500'
-                          }`}
+                          className={`w-full rounded-md border px-2.5 py-1.5 text-xs focus:outline-none ${settlementData.isClosed
+                            ? 'border-slate-200 bg-slate-100 text-slate-600 cursor-not-allowed'
+                            : 'border-rose-200 bg-white text-slate-800 focus:border-rose-500'
+                            }`}
                         />
                       </div>
                     )}
@@ -1214,10 +1356,10 @@ export default function ShiftClosing() {
                 </div>
                 <div>
                   <h3 className="text-xs font-bold text-slate-900">
-                    Bàn giao ca trực
+                    {isEndOfDay ? 'Đóng sổ két & Niêm phong cuối ngày' : 'Bàn giao ca trực'}
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    Chuyển giao cho người nhận ca tiếp theo
+                    {isEndOfDay ? 'Ca cuối cùng: Chốt doanh thu ngày, niêm phong két lưu qua đêm' : 'Chuyển giao cho người nhận ca tiếp theo'}
                   </p>
                 </div>
               </div>
@@ -1249,7 +1391,8 @@ export default function ShiftClosing() {
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="font-medium text-slate-600">
-                      Người nhận bàn giao (Ca sau / Quản lý): <span className="text-rose-500">*</span>
+                      {isEndOfDay ? 'Bàn giao cho (Quản lý / Niêm phong két):' : 'Người nhận bàn giao (Ca sau / Quản lý):'}{' '}
+                      {!isEndOfDay && <span className="text-rose-500">*</span>}
                     </label>
                   </div>
                   {currentBranchName && (
@@ -1262,13 +1405,19 @@ export default function ShiftClosing() {
                     value={handoverEmployeeId}
                     disabled={settlementData.isClosed}
                     onChange={(e) => setHandoverEmployeeId(e.target.value)}
-                    className={`w-full rounded-md border p-2 text-xs font-medium focus:outline-none ${
-                      settlementData.isClosed
-                        ? 'border-slate-200 bg-slate-100 text-slate-600 cursor-not-allowed'
-                        : 'border-slate-200 bg-white text-slate-800 focus:border-teal-700'
-                    }`}
+                    className={`w-full rounded-md border p-2 text-xs font-medium focus:outline-none ${settlementData.isClosed
+                      ? 'border-slate-200 bg-slate-100 text-slate-600 cursor-not-allowed'
+                      : 'border-slate-200 bg-white text-slate-800 focus:border-teal-700'
+                      }`}
                   >
-                    <option value="">-- Chọn nhân viên nhận bàn giao ca --</option>
+                    {isEndOfDay ? (
+                      <>
+                        <option value="OVERNIGHT">🔒 Niêm phong két lưu qua đêm (Bàn giao cho Ca Sáng mai)</option>
+                        <option value="">-- Hoặc bàn giao trực tiếp cho nhân viên / Quản lý --</option>
+                      </>
+                    ) : (
+                      <option value="">-- Chọn nhân viên nhận bàn giao ca --</option>
+                    )}
                     {handoverCandidates.map((emp) => {
                       const empName = emp.fullName || emp.name || emp.full_name || emp.username || 'Nhân viên';
                       const pos = emp.positionLabel || (emp.position === 'RECEPTIONIST' ? 'Nhân viên Lễ tân / Thu ngân' : emp.position === 'WAREHOUSE' ? 'Nhân viên Quản lý kho' : emp.position || '');
@@ -1297,11 +1446,10 @@ export default function ShiftClosing() {
                     value={note}
                     disabled={settlementData.isClosed}
                     onChange={(e) => setNote(e.target.value)}
-                    className={`w-full rounded-md border p-2 text-xs placeholder-slate-400 focus:outline-none ${
-                      settlementData.isClosed
-                        ? 'border-slate-200 bg-slate-100 text-slate-600 cursor-not-allowed'
-                        : 'border-slate-200 bg-white text-slate-800 focus:border-teal-700'
-                    }`}
+                    className={`w-full rounded-md border p-2 text-xs placeholder-slate-400 focus:outline-none ${settlementData.isClosed
+                      ? 'border-slate-200 bg-slate-100 text-slate-600 cursor-not-allowed'
+                      : 'border-slate-200 bg-white text-slate-800 focus:border-teal-700'
+                      }`}
                   />
                 </div>
               </div>
@@ -1336,7 +1484,7 @@ export default function ShiftClosing() {
                       className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold text-xs cursor-not-allowed"
                     >
                       <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                      <span>✓ Ca trực này đã kết toán & bàn giao</span>
+                      <span>✓ {isEndOfDay ? 'Ca cuối ngày đã đóng sổ & niêm phong' : 'Ca trực này đã kết toán & bàn giao'}</span>
                     </button>
 
                     <button
@@ -1364,7 +1512,11 @@ export default function ShiftClosing() {
                       className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-md bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs transition-colors disabled:opacity-50 shadow-2xs cursor-pointer"
                     >
                       <ShieldCheck className="h-4 w-4 shrink-0" />
-                      {submitting ? 'Đang chốt ca...' : 'Xác nhận chốt ca & Bàn giao'}
+                      {submitting
+                        ? 'Đang chốt ca...'
+                        : isEndOfDay
+                        ? 'Xác nhận đóng sổ két cuối ngày'
+                        : 'Xác nhận chốt ca & Bàn giao'}
                     </button>
 
                     <p className="text-[10px] text-center text-slate-400">
@@ -1458,8 +1610,8 @@ export default function ShiftClosing() {
                         <td className="py-2 px-2.5">
                           <span
                             className={`inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold border ${tx.paymentMethod === 'CASH'
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                : 'bg-blue-50 text-blue-700 border-blue-200'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-blue-50 text-blue-700 border-blue-200'
                               }`}
                           >
                             {tx.paymentMethod === 'CASH'

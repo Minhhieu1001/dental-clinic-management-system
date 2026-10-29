@@ -248,7 +248,9 @@ export default function ShiftPrintReceipt({ isOpen, onClose, shiftData }) {
                   {shiftData.handoverEmployeeName || 'Quản lý / Thu ngân ca sau'}
                 </p>
                 <p className="text-[11px] text-slate-500 mt-0.5">
-                  Nhân viên nhận ca trực tiếp theo
+                  {shiftData.handoverEmployeeName?.includes('Niêm phong')
+                    ? 'Lưu két an toàn qua đêm tại cơ sở'
+                    : 'Nhân viên nhận ca trực tiếp theo'}
                 </p>
               </div>
             </div>
@@ -505,7 +507,9 @@ export default function ShiftPrintReceipt({ isOpen, onClose, shiftData }) {
 
                 <div>
                   <p className="text-xs font-black text-slate-900 uppercase tracking-wide">
-                    NGƯỜI NHẬN BÀN GIAO
+                    {shiftData.handoverEmployeeName?.includes('Niêm phong')
+                      ? 'XÁC NHẬN NIÊM PHONG / QUẢN LÝ'
+                      : 'NGƯỜI NHẬN BÀN GIAO'}
                   </p>
                   <p className="text-[10px] text-slate-400 italic mb-16">
                     (Ký, ghi rõ họ tên)
@@ -514,7 +518,11 @@ export default function ShiftPrintReceipt({ isOpen, onClose, shiftData }) {
                     <p className="font-bold text-slate-900 text-xs">
                       {shiftData.handoverEmployeeName || 'Quản lý / Thu ngân ca sau'}
                     </p>
-                    <p className="text-[10px] text-slate-400">Bên nhận ca</p>
+                    <p className="text-[10px] text-slate-400">
+                      {shiftData.handoverEmployeeName?.includes('Niêm phong')
+                        ? 'Xác nhận niêm phong'
+                        : 'Bên nhận ca'}
+                    </p>
                   </div>
                 </div>
               </div>

@@ -30,17 +30,20 @@ public class ShiftClosingController {
             @RequestParam(required = false) ShiftType shiftType,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime,
-            @RequestParam(required = false) BigDecimal initialCash
+            @RequestParam(required = false) BigDecimal initialCash,
+            @RequestParam(required = false, defaultValue = "false") Boolean customInitialCash
     ) {
         ShiftCalculationResponse result = shiftClosingService.calculateShiftSettlement(
                 employeeId,
                 shiftType,
                 startTime,
                 endTime,
-                initialCash
+                initialCash,
+                customInitialCash
         );
         return ResponseEntity.ok(ApiResponse.success("Tính toán số liệu kết toán ca thành công", result));
     }
+
 
     @PostMapping
     public ResponseEntity<ApiResponse<ShiftClosingResponse>> createShiftClosing(

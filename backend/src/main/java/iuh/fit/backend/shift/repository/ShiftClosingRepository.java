@@ -50,4 +50,32 @@ public interface ShiftClosingRepository extends JpaRepository<ShiftClosing, UUID
             @Param("dayStart") java.time.LocalDateTime dayStart,
             @Param("dayEnd") java.time.LocalDateTime dayEnd
     );
+
+    @Query("SELECT s FROM ShiftClosing s " +
+           "LEFT JOIN FETCH s.employee e " +
+           "LEFT JOIN FETCH s.handoverEmployee he " +
+           "LEFT JOIN FETCH s.branch b " +
+           "WHERE s.shiftType = :shiftType " +
+           "AND s.startTime >= :dayStart AND s.startTime < :dayEnd " +
+           "AND (:branchId IS NULL OR (b IS NOT NULL AND b.branchId = :branchId)) " +
+           "ORDER BY s.createdAt DESC")
+    List<ShiftClosing> findClosedShiftForDateAndBranch(
+            @Param("shiftType") iuh.fit.backend.shift.enums.ShiftType shiftType,
+            @Param("dayStart") java.time.LocalDateTime dayStart,
+            @Param("dayEnd") java.time.LocalDateTime dayEnd,
+            @Param("branchId") String branchId
+    );
+
+    @Query("SELECT s FROM ShiftClosing s " +
+           "LEFT JOIN FETCH s.employee e " +
+           "LEFT JOIN FETCH s.handoverEmployee he " +
+           "LEFT JOIN FETCH s.branch b " +
+           "WHERE s.startTime < :targetTime " +
+           "AND (:branchId IS NULL OR (b IS NOT NULL AND b.branchId = :branchId)) " +
+           "ORDER BY s.endTime DESC, s.createdAt DESC")
+    List<ShiftClosing> findLatestClosedShiftBefore(
+            @Param("targetTime") java.time.LocalDateTime targetTime,
+            @Param("branchId") String branchId
+    );
 }
+
