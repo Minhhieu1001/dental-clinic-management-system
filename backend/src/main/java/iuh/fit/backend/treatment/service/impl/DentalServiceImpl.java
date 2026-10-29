@@ -28,7 +28,7 @@ public class DentalServiceImpl implements DentalService {
 
     @Override
     public List<ServiceDTO> getAllServices(String search, ServiceCategory category, Boolean isActive, Boolean isFeatured) {
-        List<Service> services = serviceRepository.findAllByOrderBySortOrderAscServiceNameAsc();
+        List<Service> services = serviceRepository.findAllWithPromotion();
 
         boolean updatedAny = false;
         for (Service s : services) {
@@ -39,7 +39,7 @@ public class DentalServiceImpl implements DentalService {
             }
         }
         if (updatedAny) {
-            services = serviceRepository.findAllByOrderBySortOrderAscServiceNameAsc();
+            services = serviceRepository.findAllWithPromotion();
         }
 
         return services.stream()
@@ -144,12 +144,6 @@ public class DentalServiceImpl implements DentalService {
     public void cleanupDefaultSampleServices() {
         try {
             entityManager.createNativeQuery(
-                "DELETE FROM promotion_services WHERE service_id IN (SELECT id FROM services WHERE service_code LIKE 'DV-%' OR category IS NULL OR service_name IN ('Composite filling', 'General examination', 'Scaling and polishing', 'Teeth whitening', 'Root canal treatment'))"
-            ).executeUpdate();
-        } catch (Exception ignored) {}
-
-        try {
-            entityManager.createNativeQuery(
                 "DELETE FROM treatment_services WHERE service_id IN (SELECT id FROM services WHERE service_code LIKE 'DV-%' OR category IS NULL OR service_name IN ('Composite filling', 'General examination', 'Scaling and polishing', 'Teeth whitening', 'Root canal treatment'))"
             ).executeUpdate();
         } catch (Exception ignored) {}
@@ -174,7 +168,6 @@ public class DentalServiceImpl implements DentalService {
             throw new IllegalArgumentException("Không tìm thấy dịch vụ với ID: " + id);
         }
 
-        try { serviceRepository.deletePromotionServicesByServiceId(id); } catch (Exception ignored) {}
         try { serviceRepository.deleteTreatmentServicesByServiceId(id); } catch (Exception ignored) {}
 
         serviceRepository.deleteServiceByIdNative(id);
@@ -216,6 +209,8 @@ public class DentalServiceImpl implements DentalService {
                 .sortOrder(service.getSortOrder() != null ? service.getSortOrder() : 0)
                 .isFeatured(service.getIsFeatured() != null ? service.getIsFeatured() : false)
                 .isActive(service.getIsActive() != null ? service.getIsActive() : true)
+                .promotionId(service.getPromotion() != null ? service.getPromotion().getId() : null)
+                .promotionTitle(service.getPromotion() != null ? service.getPromotion().getTitle() : null)
                 .build();
     }
 

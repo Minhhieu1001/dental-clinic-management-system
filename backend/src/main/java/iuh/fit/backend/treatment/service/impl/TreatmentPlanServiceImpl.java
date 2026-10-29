@@ -189,7 +189,7 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
     public void deleteTreatmentPlan(UUID id) {
         TreatmentPlan plan = treatmentPlanRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy kế hoạch điều trị: " + id));
-        if (!plan.getTreatmentPhases().isEmpty() || !plan.getTreatmentHistorys().isEmpty() || plan.getInvoice() != null) {
+        if (!plan.getTreatmentPhases().isEmpty()  || plan.getInvoice() != null) {
             throw new AppException(ErrorCode.RESOURCE_IN_USE,
                     "Kế hoạch còn giai đoạn, lịch sử điều trị hoặc hóa đơn. Không thể xóa.");
         }

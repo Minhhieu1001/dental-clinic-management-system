@@ -1,7 +1,8 @@
 package iuh.fit.backend.treatment.entity;
 
 import iuh.fit.backend.billing.entity.InvoiceDetail;
-import iuh.fit.backend.promotion.entity.PromotionService;
+import iuh.fit.backend.promotion.entity.Promotion;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import iuh.fit.backend.treatment.enums.ServiceCategory;
 import jakarta.persistence.*;
 import lombok.*;
@@ -87,7 +88,8 @@ public class Service {
     @OneToMany(mappedBy = "service", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<TreatmentService> treatmentServices = new ArrayList<>();
 
-    @Builder.Default
-    @OneToMany(mappedBy = "service", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    private List<PromotionService> promotionServices = new ArrayList<>();
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "promotion_id", foreignKey = @ForeignKey(name = "fk_services_promotion"))
+    private Promotion promotion;
 }

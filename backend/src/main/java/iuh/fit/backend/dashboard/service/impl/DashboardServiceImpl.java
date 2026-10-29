@@ -865,10 +865,22 @@ public class DashboardServiceImpl implements DashboardService {
                 u.phone,
                 u.email,
                 d.experience_years,
-                (SELECT string_agg(s.name, ', ')
-                 FROM dentist_specializations ds
-                 JOIN specializations s ON ds.specialization_id = s.id
-                 WHERE ds.dentist_id = d.id) AS specialization,
+                (SELECT string_agg(spec.label, ', ' ORDER BY spec.label)
+                 FROM (
+                     SELECT DISTINCT CASE c.certificate_type
+                         WHEN 'GENERAL_DENTISTRY' THEN 'Nha khoa tổng quát'
+                         WHEN 'IMPLANT_DENTISTRY' THEN 'Nha sĩ Implant'
+                         WHEN 'ORTHODONTICS' THEN 'Chỉnh nha'
+                         WHEN 'TOOTH_EXTRACTION' THEN 'Nhổ răng'
+                         WHEN 'PERIODONTICS' THEN 'Nha chu'
+                         WHEN 'COSMETIC_DENTISTRY' THEN 'Thẩm mỹ nha khoa'
+                         ELSE c.certificate_type
+                     END AS label
+                     FROM certificates c
+                     WHERE c.dentist_id = d.id
+                       AND c.certificate_type IS NOT NULL
+                       AND c.certificate_type <> 'PRACTICE_LICENSE'
+                 ) spec) AS specialization,
                 (SELECT count(*)
                  FROM appointments a
                  WHERE a.dentist_id = d.id AND a.status = 'COMPLETED'
@@ -920,7 +932,7 @@ public class DashboardServiceImpl implements DashboardService {
                     .fullName(rs.getString("full_name"))
                     .phone(rs.getString("phone"))
                     .email(rs.getString("email"))
-                    .specialization(rs.getString("specialization") != null ? rs.getString("specialization") : "Nha khoa tổng quát")
+                    .specialization(rs.getString("specialization") != null ? rs.getString("specialization") : "Chưa cập nhật")
                     .experienceYears(rs.getInt("experience_years"))
                     .examCount(totalVisits)
                     .completedTreatments(rs.getLong("treatments_completed"))

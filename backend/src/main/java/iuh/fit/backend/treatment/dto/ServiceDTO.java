@@ -28,4 +28,6 @@ public class ServiceDTO {
     private Integer sortOrder;
     private Boolean isFeatured;
     private Boolean isActive;
+    private UUID promotionId;
+    private String promotionTitle;
 }

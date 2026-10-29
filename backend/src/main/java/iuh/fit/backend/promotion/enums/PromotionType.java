@@ -2,7 +2,7 @@ package iuh.fit.backend.promotion.enums;
 
 public enum PromotionType {
     VOUCHER,
-    CARD,
+    EVENT,
     DISCOUNT_PERCENT,
     FIXED_AMOUNT
 }

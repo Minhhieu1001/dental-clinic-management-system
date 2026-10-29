@@ -448,30 +448,8 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================================
 -- BẢNG 3: PROMOTION_SERVICES (Liên kết ưu đãi ↔ dịch vụ)
 -- ============================================================
-INSERT INTO promotion_services (id, promotion_id, service_id)
-VALUES
-  -- Ưu đãi 1 → Gói can thiệp sớm trẻ em
-  ('ff1111aa-1111-4c28-c917-bc9d9c100001', 'ee11111a-aaaa-4b17-b806-ab8c9c0da001', 'a982f674-e3c9-4b17-b806-ab8c9c0d11f1'),
-  -- Ưu đãi 2 → ClearCorrect trong suốt
-  ('ff2222bb-2222-4c28-c917-bc9d9c100002', 'ee22222b-bbbb-4b17-b806-ab8c9c0db002', 'e505f674-f2a9-4c28-c917-bc9d9c0e25e5'),
-  -- Ưu đãi 3 → Hàm duy trì sau niềng
-  ('ff3333cc-3333-4c28-c917-bc9d9c100003', 'ee33333c-cccc-4b17-b806-ab8c9c0dc003', 'f606f674-f2a9-4c28-c917-bc9d9c0e26f6'),
-  -- Ưu đãi 4 → Invisalign Comprehensive 5 năm
-  ('ff4444dd-4444-4c28-c917-bc9d9c100004', 'ee44444d-dddd-4b17-b806-ab8c9c0dd004', 'e606f674-f2a9-4c28-c917-bc9d9c0e26f8'),
-  -- Ưu đãi 5 → Invisalign Comprehensive 5 năm
-  ('ff5555ee-5555-4c28-c917-bc9d9c100005', 'ee55555e-eeee-4b17-b806-ab8c9c0de005', 'e606f674-f2a9-4c28-c917-bc9d9c0e26f8'),
-  -- Ưu đãi 6 → Veneer e.max siêu mỏng
-  ('ff6666ff-6666-4c28-c917-bc9d9c100006', 'ee66666f-ffff-4b17-b806-ab8c9c0df006', '7a07f674-4b9a-4c28-c917-bc9d9c0e37a7'),
-  -- Ưu đãi 7 → Implant Straumann SLA
-  ('ff7777aa-7777-4c28-c917-bc9d9c100007', 'ee77777a-aaab-4b17-b806-ab8c9c0d1007', '3c03f674-e3c9-4b17-b806-ab8c9c0d33c3'),
-  -- Ưu đãi 8 → Tẩy trắng Zoom 2
-  ('ff8888bb-8888-4c28-c917-bc9d9c100008', 'ee88888b-bbbc-4b17-b806-ab8c9c0d2008', '3c03f674-1234-4c28-c917-bc9d9c0e43c3'),
-  -- Ưu đãi 9 → Khám tổng quát & tư vấn
-  ('ff9999cc-9999-4c28-c917-bc9d9c100009', 'ee99999c-cccd-4b17-b806-ab8c9c0d3009', '1a01f674-5678-4c28-c917-bc9d9c0e51a1'),
-  -- Ưu đãi 10 → Nhổ răng khôn bằng Piezotome
-  ('ffaaaaaa-aaaa-4c28-c917-bc9d9c100010', 'eeaaaaa1-ddde-4b17-b806-ab8c9c0d4010', '8b08f674-5678-4c28-c917-bc9d9c0e58b8')
-
-ON CONFLICT (id) DO NOTHING;
+-- Promotion assignments are managed explicitly through the admin API.
+-- Do not restore removed assignments on every application startup.
 
 
 -- ============================================================

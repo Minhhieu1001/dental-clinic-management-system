@@ -2,10 +2,7 @@ package iuh.fit.backend.treatment.entity;
 
 import iuh.fit.backend.billing.entity.Invoice;
 import iuh.fit.backend.medicalrecord.entity.ExaminationResult;
-import iuh.fit.backend.medicalrecord.entity.TreatmentHistorys;
-import iuh.fit.backend.patient.entity.Patient;
 import iuh.fit.backend.treatment.enums.StatusPhase;
-import iuh.fit.backend.user.entity.Dentist;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -56,9 +53,6 @@ public class TreatmentPlan {
     @OneToMany(mappedBy = "treatmentPlan", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<TreatmentPhase> treatmentPhases = new ArrayList<>();
 
-    @Builder.Default
-    @OneToMany(mappedBy = "treatmentPlan", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    private List<TreatmentHistorys> treatmentHistorys = new ArrayList<>();
 
     @OneToOne(mappedBy = "treatmentPlan", fetch = FetchType.LAZY)
     private Invoice invoice;
