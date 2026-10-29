@@ -109,6 +109,7 @@ export default function CreateAppointmentModal({
   const [formData, setFormData] = useState({
     appointmentId: null,
     requestId: null,
+    patientId: null,
     branchId: '',
     branchName: '',
     branchAddress: '',
@@ -234,6 +235,7 @@ export default function CreateAppointmentModal({
         setFormData((prev) => ({
           ...prev,
           appointmentId: aptId,
+          patientId: targetData.patientId || null,
           requestId: null,
           branchId: targetData.branchId || '',
           branchName: targetData.branchName || '',
@@ -256,6 +258,7 @@ export default function CreateAppointmentModal({
           ...prev,
           appointmentId: null,
           requestId: targetData.id || targetData.requestId || null,
+          patientId: targetData.patientId || null,
           branchId: targetData.branchId || '',
           branchName: targetData.branchName || '',
           branchAddress: targetData.branchAddress || '',
@@ -275,6 +278,7 @@ export default function CreateAppointmentModal({
       setFormData({
         appointmentId: null,
         requestId: null,
+        patientId: null,
         branchId: '',
         branchName: '',
         branchAddress: '',
@@ -354,6 +358,9 @@ export default function CreateAppointmentModal({
     try {
       const payloadData = {
         requestId: isValidUUID(formData.requestId) ? formData.requestId : null,
+        patientId: user?.role === 'PATIENT'
+          ? (isValidUUID(user?.patientId) ? user.patientId : null)
+          : (isValidUUID(formData.patientId) ? formData.patientId : null),
         branchId: formData.branchId || null,
         branchName: formData.branchName || null,
         fullName: formData.fullName.trim(),

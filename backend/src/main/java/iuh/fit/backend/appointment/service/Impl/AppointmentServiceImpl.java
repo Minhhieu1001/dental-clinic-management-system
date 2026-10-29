@@ -69,6 +69,11 @@ public class AppointmentServiceImpl implements AppointmentService {
     private final notificationRepository notificationRepository;
     private final SimpMessagingTemplate simpMessagingTemplate;
 
+    private Patient resolveAppointmentPatient(UUID patientId) {
+        return patientId == null ? null : patientRepository.findById(patientId)
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy bệnh nhân."));
+    }
+
     @Override
     @Transactional(readOnly = true)
     public List<AppointmentDetailDTO> getAppointmentsByDay(LocalDate date) {
@@ -108,6 +113,7 @@ public class AppointmentServiceImpl implements AppointmentService {
     @Override
     @Transactional
     public AppointmentDetailDTO createAppointment(AppointmentCreateDTO dto) {
+        Patient patient = resolveAppointmentPatient(dto.getPatientId());
         log.info("Creating appointment for dentistId: {}, patientName: {}, phone: {}", dto.getDentistId(),
                 dto.getFullName(), dto.getPhone());
 
@@ -182,6 +188,7 @@ public class AppointmentServiceImpl implements AppointmentService {
 
         // 5. Build Appointment entity with direct patientName and phone
         Appointment appointment = Appointment.builder()
+                .patient(patient)
                 .patientName(patientName)
                 .phone(phone)
                 .dentist(dentist)
@@ -523,6 +530,17 @@ public class AppointmentServiceImpl implements AppointmentService {
                 .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND,
                         "Không tìm thấy lịch hẹn ID: " + appointmentId));
 
+        if (dto.getPatientId() != null) {
+            Patient patient = resolveAppointmentPatient(dto.getPatientId());
+            if (appointment.getPatient() != null && !appointment.getPatient().getId().equals(patient.getId())) {
+                throw new AppException(ErrorCode.VALIDATION_ERROR, "Không thể đổi bệnh nhân của lịch hẹn đã liên kết.");
+            }
+            if (appointment.getMedicalRecord() != null && appointment.getMedicalRecord().getPatient() != null
+                    && !appointment.getMedicalRecord().getPatient().getId().equals(patient.getId())) {
+                throw new AppException(ErrorCode.VALIDATION_ERROR, "Bệnh nhân không khớp hồ sơ bệnh án.");
+            }
+            appointment.setPatient(patient);
+        }
         StatusAppointment previousStatus = appointment.getStatus();
         boolean updatingSchedule = (dto.getAppointmentDate() != null && !dto.getAppointmentDate().isBlank())
                 || (dto.getAppointmentTime() != null && !dto.getAppointmentTime().isBlank())
@@ -627,9 +645,9 @@ public class AppointmentServiceImpl implements AppointmentService {
         Branch branch = apt.getBranch();
         return AppointmentDetailDTO.builder()
                 .id(apt.getId())
-                .patientId(null)
+                .patientId(apt.getPatient() != null ? apt.getPatient().getId() : null)
                 .patientName(apt.getPatientName() != null ? apt.getPatientName() : "N/A")
-                .patientCode("N/A")
+                .patientCode(apt.getPatient() != null ? apt.getPatient().getPatientCode() : "N/A")
                 .phone(apt.getPhone() != null ? apt.getPhone() : "")
                 .branchId(branch != null ? branch.getBranchId() : null)
                 .branchName(branch != null ? branch.getBranchName() : null)

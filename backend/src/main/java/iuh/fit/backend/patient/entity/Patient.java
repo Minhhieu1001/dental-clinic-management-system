@@ -1,5 +1,6 @@
 package iuh.fit.backend.patient.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import iuh.fit.backend.appointment.entity.AppointmentRequest;
 import iuh.fit.backend.appointment.entity.Appointment;
 import iuh.fit.backend.billing.entity.Invoice;
@@ -26,6 +27,11 @@ import java.util.UUID;
 @Entity
 @Table(name = "patients")
 public class Patient {
+    @JsonIgnore
+    @Builder.Default
+    @OneToMany(mappedBy = "patient", fetch = FetchType.LAZY)
+    private List<Appointment> appointments = new ArrayList<>();
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;

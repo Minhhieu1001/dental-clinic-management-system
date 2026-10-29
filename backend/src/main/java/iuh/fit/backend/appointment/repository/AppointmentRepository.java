@@ -13,6 +13,7 @@ import java.util.UUID;
 
 @Repository
 public interface AppointmentRepository extends JpaRepository<Appointment, UUID> {
+  List<Appointment> findByPatient_IdOrderByAppointmentDateDescAppointmentTimeDesc(UUID patientId);
 
   @Query("""
       SELECT COUNT(a) FROM Appointment a
