@@ -29,6 +29,7 @@ import { getInProgressTreatmentPlansByPatientId } from '../../../services/treatm
 import { getExaminationResultsByPatientId } from '../../../services/examinationResult.service';
 import { getCurrentMonthFollowUpAppointmentsByPatientId } from '../../../services/followUpAppointment.service';
 import Loading from '../../../components/ui/Loading';
+import PatientBookingModal from '../../appointment/patient/PatientBookingModal';
 
 export default function PatientDashboard() {
   const { user } = useAuth();
@@ -42,6 +43,7 @@ export default function PatientDashboard() {
   const [selectedHistory, setSelectedHistory] = useState(null);
   const [isRescheduleOpen, setIsRescheduleOpen] = useState(false);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [selectedPlanIndex, setSelectedPlanIndex] = useState(0);
   const [historyPage, setHistoryPage] = useState(1);
   const itemsPerPage = 4;
@@ -313,7 +315,7 @@ export default function PatientDashboard() {
       bgColor: 'bg-teal-50 border border-teal-100',
       textColor: 'text-teal-800',
       hoverColor: 'hover:bg-teal-100/70',
-      onClick: () => navigate('/patient/appointments'),
+      onClick: () => setIsBookingModalOpen(true),
     },
     {
       title: 'Xem lịch hẹn',
@@ -465,7 +467,7 @@ export default function PatientDashboard() {
                     <p className="text-xs text-slate-400 mt-0.5">Đặt lịch khám để được bác sĩ theo dõi định kỳ</p>
                     <button
                       type="button"
-                      onClick={() => navigate('/patient/appointments')}
+                      onClick={() => setIsBookingModalOpen(true)}
                       className="mt-3.5 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-700 text-white text-xs font-bold hover:bg-teal-800 transition-colors cursor-pointer shadow-xs"
                     >
                       <CalendarPlus className="h-3.5 w-3.5" />
@@ -490,7 +492,7 @@ export default function PatientDashboard() {
                 <div className="pt-2">
                   <button
                     type="button"
-                    onClick={() => navigate('/patient/appointments')}
+                    onClick={() => setIsBookingModalOpen(true)}
                     className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-xs sm:text-sm font-bold text-teal-900 shadow-md hover:bg-emerald-50 transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
                   >
                     Đặt lịch khám ngay
@@ -1258,6 +1260,19 @@ export default function PatientDashboard() {
           </div>
         </div>
       )}
+
+      {/* Patient Booking Appointment Multi-Step Modal */}
+      <PatientBookingModal
+        isOpen={isBookingModalOpen}
+        onClose={() => setIsBookingModalOpen(false)}
+        onSuccess={() => {
+          const patientId = user?.patientId || user?.id;
+          if (patientId) {
+            fetchPatientStatistics(patientId);
+            fetchCurrentMonthFollowUpAppointmentsByPatientId(patientId);
+          }
+        }}
+      />
 
     </div>
   );

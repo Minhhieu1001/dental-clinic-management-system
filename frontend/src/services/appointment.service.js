@@ -20,9 +20,15 @@ export const getAppointmentsByWeek = async (date) => {
   return response.data;
 };
 
-// Create new appointment for dentist
+// Create new appointment
 export const createAppointment = async (data) => {
   const response = await api.post('/appointments', data);
+  return response.data;
+};
+
+// Get appointments for a specific patient
+export const getAppointmentsByPatient = async (patientId) => {
+  const response = await api.get(`/appointments/patient/${patientId}`);
   return response.data;
 };
 

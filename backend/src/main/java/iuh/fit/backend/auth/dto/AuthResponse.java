@@ -10,7 +10,20 @@ public record AuthResponse(
         String avatarUrl,
         UUID employeeId,
         UUID dentistId,
-        UUID patientId) {
+        UUID patientId,
+        String phone) {
+
+    public AuthResponse(
+            UUID id,
+            String email,
+            String username,
+            String role,
+            String avatarUrl,
+            UUID employeeId,
+            UUID dentistId,
+            UUID patientId) {
+        this(id, email, username, role, avatarUrl, employeeId, dentistId, patientId, null);
+    }
 
     public AuthResponse(
             UUID id,
@@ -20,6 +33,7 @@ public record AuthResponse(
             String avatarUrl,
             UUID employeeId,
             UUID dentistId) {
-        this(id, email, username, role, avatarUrl, employeeId, dentistId, null);
+        this(id, email, username, role, avatarUrl, employeeId, dentistId, null, null);
     }
 }
+

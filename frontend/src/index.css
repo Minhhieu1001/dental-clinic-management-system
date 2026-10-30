@@ -19,6 +19,20 @@ body {
   overflow-x: hidden;
 }
 
+/* Hide scrollbar for Chrome, Safari, Opera and Edge/Firefox */
+.scrollbar-none::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.scrollbar-none,
+.no-scrollbar {
+  -ms-overflow-style: none !important; /* IE and Edge */
+  scrollbar-width: none !important; /* Firefox */
+}
+
 a {
   color: inherit;
   text-decoration: none;

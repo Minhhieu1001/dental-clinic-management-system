@@ -87,6 +87,8 @@ export default function PatientLogin() {
     setIsLoading(true);
 
     try {
+      localStorage.setItem('patient_phone', phone.trim());
+      localStorage.setItem('patient_code', patientCode.trim());
       await patientLogin({
         patientCode: patientCode.trim(),
         phone: phone.trim(),

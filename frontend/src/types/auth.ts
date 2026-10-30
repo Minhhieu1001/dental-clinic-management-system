@@ -29,6 +29,9 @@ export interface AuthResponse {
   employeeId: string | null;
   dentistId: string | null;
   patientId?: string | null;
+  phone?: string | null;
+  phoneNumber?: string | null;
+  fullName?: string | null;
 }
 
 // ==================== User Types ====================
@@ -44,6 +47,9 @@ export interface User {
   employeeId: string | null;
   dentistId: string | null;
   patientId?: string | null;
+  phone?: string | null;
+  phoneNumber?: string | null;
+  fullName?: string | null;
 }
 
 // ==================== Role Routing Map ====================

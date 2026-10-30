@@ -10,7 +10,7 @@ export default function PatientLayout() {
     <div className="min-h-screen bg-slate-50/70 text-slate-900 flex flex-col">
       <PatientHeader config={roleRoutes.patient} />
 
-      <main className={`flex-1 w-full ${isDashboard ? '' : 'mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6'}`}>
+      <main className={`flex-1 w-full ${isDashboard ? '' : 'mx-auto max-w-7xl px-2 sm:px-6 lg:px-8 py-3 sm:py-6'}`}>
         <Outlet />
       </main>
 
