@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { getServices } from '../services/api'
+import { getAdminServices } from '../services/service.service'
 
 // ── Fallback Static Data (Dữ liệu dự phòng khi API lỗi hoặc chưa nạp) ───────────────────────────
 const FALLBACK_PRICING_DATA = {
@@ -225,7 +225,7 @@ export default function Pricing() {
     const fetchServices = async () => {
       try {
         setLoading(true)
-        const data = await getServices()
+        const data = await getAdminServices({ isActive: true })
         const normalized = normalizeServices(data)
         setServices(normalized)
       } catch (error) {

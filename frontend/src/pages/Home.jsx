@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Award, Users, Sparkles, Star, Cpu, Stethoscope, ShieldCheck, CheckCircle2, ArrowRight, Shield, Zap, Check, Clock, Calendar, ChevronRight, GraduationCap, User, Phone, FileText, CalendarCheck, Tag } from 'lucide-react'
-import { getServices, getDentists, getReviews, createAppointment } from '../services/api'
+import { getDentists, getReviews, createAppointment } from '../services/api'
+import { getAdminServices } from '../services/service.service'
 import { getDentistsList } from '../services/dentist.service'
 import { createAppointmentRequest } from '../services/appointmentRequest.service'
 import { getBranches } from '../services/clinic.service'
@@ -251,7 +252,7 @@ export default function Home() {
     const fetchData = async () => {
       try {
         const [servicesData, dentistsData, reviewsData] = await Promise.all([
-          getServices().catch(() => []),
+          getAdminServices({ isActive: true }).catch(() => []),
           getDentistsList().catch(() => []),
           getReviews().catch(() => []),
         ])

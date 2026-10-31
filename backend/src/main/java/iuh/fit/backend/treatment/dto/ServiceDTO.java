@@ -17,6 +17,11 @@ public class ServiceDTO {
     private String serviceName;
     private String description;
     private BigDecimal price;
+    /** Whether a promotion is linked, including promotions not currently applicable. */
+    private boolean hasPromotion;
+    /** Discount preview for one service at its current price. */
+    private BigDecimal discountAmount;
+    private BigDecimal discountedPrice;
     private BigDecimal costPrice;
     private Integer estimatedDuration;
     private String sessionsCount;

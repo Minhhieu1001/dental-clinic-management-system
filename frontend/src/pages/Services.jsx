@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { getServices } from '../services/api'
+import { getAdminServices } from '../services/service.service'
 
 // Định nghĩa thông tin tĩnh hỗ trợ giới thiệu chi tiết cho từng danh mục (Brochure Content)
 const CATEGORY_INTRO_DATA = {
@@ -226,7 +226,7 @@ export default function Services() {
     const fetchServices = async () => {
       try {
         setLoading(true)
-        const data = await getServices()
+        const data = await getAdminServices({ isActive: true })
         const normalized = normalizeServices(data)
         setServices(normalized)
       } catch (error) {

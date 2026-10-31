@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { User, Phone, MapPin, Calendar, Clock, FileText, Sparkles, CheckCircle2, Tag, Mail, Headphones, ShieldCheck, ArrowRight } from 'lucide-react'
-import { createAppointment, getServices } from '../services/api'
+import { createAppointment } from '../services/api'
+import { getAdminServices } from '../services/service.service'
 import { createAppointmentRequest } from '../services/appointmentRequest.service'
 import toast from 'react-hot-toast'
 
@@ -32,7 +33,7 @@ export default function Contact() {
 
   // Load services for dropdown
   useEffect(() => {
-    getServices()
+    getAdminServices({ isActive: true })
       .then((data) => {
         setServices(data)
         if (serviceParam) {

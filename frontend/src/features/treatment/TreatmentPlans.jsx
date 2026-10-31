@@ -44,7 +44,8 @@ import toast from 'react-hot-toast';
 import { getPatients, getPatientsByPhone, getPatientByPatientCode } from '../../services/patient.service';
 import { getMedicalRecordsByPatientCode, getMedicalRecordsByPatientId } from '../../services/medicalRecord.service';
 import { getExaminationResultsByMedicalRecordId } from '../../services/examinationResult.service';
-import { getServices, getDentists } from '../../services/api';
+import { getDentists } from '../../services/api';
+import { getAdminServices } from '../../services/service.service';
 import { useAuth } from '../../hooks/useAuth';
 import {
   createTreatmentPlan,
@@ -1012,7 +1013,7 @@ export default function TreatmentPlans() {
       })
       .catch(() => { });
 
-    getServices()
+    getAdminServices({ isActive: true })
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
           const mapped = data.map((s) => ({
@@ -1020,7 +1021,8 @@ export default function TreatmentPlans() {
             service_name: s.serviceName,
             category: s.category || 'KHAM_DIEU_TRI',
             unit: s.unit || 'Răng',
-            price: Number(s.price) || 0,
+            originalPrice: Number(s.price) || 0,
+            price: Number(s.discountedPrice ?? s.price) || 0,
             description: s.description || '',
           }));
           setServicesCatalog(mapped);

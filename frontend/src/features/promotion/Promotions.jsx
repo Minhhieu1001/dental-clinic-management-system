@@ -23,7 +23,7 @@ import {
   LayoutGrid
 } from 'lucide-react'
 import api from '../../services/axios'
-import { getServices } from '../../services/api'
+import { getAdminServices } from '../../services/service.service'
 import { uploadImage } from '../../services/media.service'
 
 // Import Sub-Modals from action folder
@@ -73,10 +73,10 @@ const isVoucherPromo = (promo) => {
   if (!promo) return false
   return Boolean(
     promo.promotionType === 'VOUCHER' ||
-      (promo.couponCode && promo.couponCode.trim()) ||
-      (promo.discountAmount &&
-        Number(promo.discountAmount) > 0 &&
-        (!promo.discountPercent || Number(promo.discountPercent) === 0))
+    (promo.couponCode && promo.couponCode.trim()) ||
+    (promo.discountAmount &&
+      Number(promo.discountAmount) > 0 &&
+      (!promo.discountPercent || Number(promo.discountPercent) === 0))
   )
 }
 
@@ -175,7 +175,7 @@ export default function Promotions() {
     try {
       const [promotionRes, serviceList] = await Promise.all([
         api.get('/admin/promotions'),
-        getServices(),
+        getAdminServices({ isActive: true }),
       ])
       setPromotions(promotionRes.data || [])
       setServices(serviceList || [])
@@ -234,9 +234,6 @@ export default function Promotions() {
         serviceName: service.serviceName,
         promotionTitle: promoInfo.promotionTitle,
       })
-      toast.error(
-        `Dịch vụ "${service.serviceName}" đã được áp dụng cho chương trình: "${promoInfo.promotionTitle}"`
-      )
       return
     }
 
@@ -316,10 +313,10 @@ export default function Promotions() {
     setEditingId(promotion.id)
     const isVoucher = Boolean(
       promotion.promotionType === 'VOUCHER' ||
-        (promotion.couponCode && promotion.couponCode.trim()) ||
-        (promotion.discountAmount &&
-          Number(promotion.discountAmount) > 0 &&
-          (!promotion.discountPercent || Number(promotion.discountPercent) === 0))
+      (promotion.couponCode && promotion.couponCode.trim()) ||
+      (promotion.discountAmount &&
+        Number(promotion.discountAmount) > 0 &&
+        (!promotion.discountPercent || Number(promotion.discountPercent) === 0))
     )
     setPromoTab(isVoucher ? 'VOUCHER' : 'EVENT')
     setForm({
@@ -404,11 +401,11 @@ export default function Promotions() {
       category: isVoucher
         ? 'Voucher hóa đơn'
         : form.category?.trim() && form.category !== 'Tất cả danh mục'
-        ? form.category.trim()
-        : null,
+          ? form.category.trim()
+          : null,
       description: form.description?.trim() ? form.description.trim() : null,
       imageUrl: form.imageUrl?.trim() ? form.imageUrl.trim() : null,
-      promotionType: isVoucher ? 'VOUCHER' : 'DISCOUNT_PERCENT',
+      promotionType: isVoucher ? 'VOUCHER' : 'EVENT',
       discountPercent:
         !isVoucher && form.discountPercent !== '' && form.discountPercent != null
           ? Number(form.discountPercent)
@@ -418,7 +415,7 @@ export default function Promotions() {
           ? Number(form.discountAmount)
           : null,
       maxDiscountAmount:
-        !isVoucher && form.maxDiscountAmount !== '' && form.maxDiscountAmount != null
+        form.maxDiscountAmount !== '' && form.maxDiscountAmount != null
           ? Number(form.maxDiscountAmount)
           : null,
       minOrderAmount:
@@ -725,6 +722,14 @@ export default function Promotions() {
     })
   }, [promotions, searchQuery, statusFilter, typeFilter, categoryFilter, discountFilter])
 
+  const hasActiveFilters = Boolean(
+    searchQuery ||
+    statusFilter !== 'all' ||
+    typeFilter !== 'all' ||
+    categoryFilter !== 'all' ||
+    discountFilter !== 'all'
+  )
+
   return (
     <div className="space-y-5 pb-6 font-sans text-slate-800">
       {/* Header Bar */}
@@ -970,11 +975,10 @@ export default function Promotions() {
                 <button
                   onClick={() => setViewMode('list')}
                   title="Hiển thị dạng danh sách"
-                  className={`rounded-lg px-2.5 py-1 transition flex items-center gap-1.5 text-xs cursor-pointer ${
-                    viewMode === 'list'
-                      ? 'bg-white text-teal-700 shadow-sm font-bold'
-                      : 'hover:text-slate-900'
-                  }`}
+                  className={`rounded-lg px-2.5 py-1 transition flex items-center gap-1.5 text-xs cursor-pointer ${viewMode === 'list'
+                    ? 'bg-white text-teal-700 shadow-sm font-bold'
+                    : 'hover:text-slate-900'
+                    }`}
                 >
                   <TableIcon className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Bảng</span>
@@ -982,11 +986,10 @@ export default function Promotions() {
                 <button
                   onClick={() => setViewMode('grid')}
                   title="Hiển thị dạng thẻ"
-                  className={`rounded-lg px-2.5 py-1 transition flex items-center gap-1.5 text-xs cursor-pointer ${
-                    viewMode === 'grid'
-                      ? 'bg-white text-teal-700 shadow-sm font-bold'
-                      : 'hover:text-slate-900'
-                  }`}
+                  className={`rounded-lg px-2.5 py-1 transition flex items-center gap-1.5 text-xs cursor-pointer ${viewMode === 'grid'
+                    ? 'bg-white text-teal-700 shadow-sm font-bold'
+                    : 'hover:text-slate-900'
+                    }`}
                 >
                   <LayoutGrid className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Thẻ</span>
@@ -1008,11 +1011,10 @@ export default function Promotions() {
                 <button
                   key={tab.key}
                   onClick={() => setStatusFilter(tab.key)}
-                  className={`rounded-lg px-3 py-1 transition cursor-pointer ${
-                    statusFilter === tab.key
-                      ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-xs font-bold'
-                      : 'hover:text-teal-700'
-                  }`}
+                  className={`rounded-lg px-3 py-1 transition cursor-pointer ${statusFilter === tab.key
+                    ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-xs font-bold'
+                    : 'hover:text-teal-700'
+                    }`}
                 >
                   <span>{tab.label}</span>
                 </button>
@@ -1056,24 +1058,25 @@ export default function Promotions() {
                 <option value="low">Mức giảm nhỏ (&lt; 10%)</option>
               </select>
 
-              {(searchQuery ||
-                statusFilter !== 'all' ||
-                typeFilter !== 'all' ||
-                categoryFilter !== 'all' ||
-                discountFilter !== 'all') && (
-                <button
-                  onClick={() => {
-                    setSearchQuery('')
-                    setStatusFilter('all')
-                    setTypeFilter('all')
-                    setCategoryFilter('all')
-                    setDiscountFilter('all')
-                  }}
-                  className="rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 text-xs font-semibold transition border border-slate-200/80 cursor-pointer"
-                >
-                  Đặt lại
-                </button>
-              )}
+              <button
+                type="button"
+                disabled={!hasActiveFilters}
+                onClick={() => {
+                  if (!hasActiveFilters) return
+                  setSearchQuery('')
+                  setStatusFilter('all')
+                  setTypeFilter('all')
+                  setCategoryFilter('all')
+                  setDiscountFilter('all')
+                }}
+                className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition border select-none ${hasActiveFilters
+                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200/80 cursor-pointer shadow-2xs active:scale-95'
+                  : 'bg-slate-50/80 text-slate-300 border-slate-200/50 cursor-not-allowed opacity-60'
+                  }`}
+                title={hasActiveFilters ? 'Đặt lại tất cả bộ lọc' : 'Bộ lọc đang ở mặc định'}
+              >
+                Đặt lại
+              </button>
             </div>
           </div>
         </div>
@@ -1220,11 +1223,10 @@ export default function Promotions() {
                           disabled={!isPromoExpiringSoon(promo)}
                           onClick={() => openExtendModal(promo)}
                           title={getExtendTooltip(promo)}
-                          className={`rounded-xl px-3 py-1.5 text-xs font-bold transition flex items-center gap-1 ${
-                            isPromoExpiringSoon(promo)
-                              ? 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 shadow-2xs cursor-pointer active:scale-95'
-                              : 'bg-slate-100 text-slate-400 border border-slate-200/60 cursor-not-allowed opacity-60'
-                          }`}
+                          className={`rounded-xl px-3 py-1.5 text-xs font-bold transition flex items-center gap-1 ${isPromoExpiringSoon(promo)
+                            ? 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 shadow-2xs cursor-pointer active:scale-95'
+                            : 'bg-slate-100 text-slate-400 border border-slate-200/60 cursor-not-allowed opacity-60'
+                            }`}
                         >
                           <Clock className="w-3 h-3" />
                           <span>Gia hạn</span>
@@ -1359,11 +1361,10 @@ export default function Promotions() {
                               disabled={!isPromoExpiringSoon(promo)}
                               onClick={() => openExtendModal(promo)}
                               title={getExtendTooltip(promo)}
-                              className={`rounded-xl px-2.5 py-1 text-xs font-semibold transition ${
-                                isPromoExpiringSoon(promo)
-                                  ? 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 shadow-2xs cursor-pointer'
-                                  : 'bg-slate-100 text-slate-400 border border-slate-200/60 cursor-not-allowed opacity-60'
-                              }`}
+                              className={`rounded-xl px-2.5 py-1 text-xs font-semibold transition ${isPromoExpiringSoon(promo)
+                                ? 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 shadow-2xs cursor-pointer'
+                                : 'bg-slate-100 text-slate-400 border border-slate-200/60 cursor-not-allowed opacity-60'
+                                }`}
                             >
                               Gia hạn
                             </button>

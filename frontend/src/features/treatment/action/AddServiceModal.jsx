@@ -469,6 +469,16 @@ export function AddServiceModal({
                             </div>
 
                             <div className="text-right shrink-0">
+                              {Number(srv.originalPrice) > Number(srv.price) && (
+                                <div className="flex items-center justify-end gap-2 mb-0.5">
+                                  <span className="text-xs text-slate-400 line-through">
+                                    {Number(srv.originalPrice).toLocaleString('vi-VN')} đ
+                                  </span>
+                                  <span className="rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold text-rose-600">
+                                    Đang giảm giá
+                                  </span>
+                                </div>
+                              )}
                               <span className="text-base sm:text-lg font-bold text-teal-700 block">
                                 {Number(srv.price).toLocaleString('vi-VN')} đ
                               </span>
