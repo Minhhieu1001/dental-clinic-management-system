@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   User,
@@ -21,6 +21,9 @@ import {
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
 import { getPatientById, updatePatient } from '../../../services/patient.service';
+import { updateUser } from '../../../services/user.service';
+import { uploadImage } from '../../../services/media.service';
+import { useAuthStore } from '../../../store/authStore';
 import Loading from '../../../components/ui/Loading';
 
 // Cấu trúc dữ liệu mặc định chuẩn cho bệnh nhân (không chứa dữ liệu giả)
@@ -28,6 +31,7 @@ const EMPTY_PATIENT = {
   id: '',
   patientCode: '',
   fullName: '',
+  avatarUrl: '',
   gender: 'OTHER',
   dateOfBirth: null,
   phoneNumber: '',
@@ -63,6 +67,9 @@ export default function InforPatient() {
   const [showQrModal, setShowQrModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState(null);
+  const avatarInputRef = useRef(null);
 
   // Lấy patientId từ thông tin user đăng nhập
   const patientId = user?.patientId || user?.id;
@@ -90,6 +97,7 @@ export default function InforPatient() {
           phone: res.phone || res.phoneNumber || '',
           phoneNumber: res.phone || res.phoneNumber || '',
           email: res.email || user?.email || '',
+          avatarUrl: user?.avatarUrl || '',
           gender: res.gender || 'OTHER',
           dateOfBirth: res.dateOfBirth || null,
           cccd: res.cccd || '',
@@ -154,13 +162,32 @@ export default function InforPatient() {
   // Bắt đầu chỉnh sửa
   const handleStartEdit = () => {
     setFormData(patientData);
+    setAvatarFile(null);
+    setAvatarPreview(user?.avatarUrl || patientData?.avatarUrl || null);
     setIsEditing(true);
   };
 
   // Hủy chỉnh sửa
   const handleCancelEdit = () => {
     setFormData(patientData);
+    setAvatarFile(null);
+    setAvatarPreview(user?.avatarUrl || patientData?.avatarUrl || null);
     setIsEditing(false);
+  };
+
+  const handleAvatarChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Vui lòng chọn một tệp hình ảnh hợp lệ.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Ảnh đại diện không được vượt quá 5MB.');
+      return;
+    }
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
   };
 
   // Lưu chỉnh sửa (gọi API updatePatient thật)
@@ -178,6 +205,20 @@ export default function InforPatient() {
 
     setSaving(true);
     try {
+      let avatarUrl = user?.avatarUrl || patientData?.avatarUrl || null;
+      if (avatarFile) {
+        const uploadResult = await uploadImage(avatarFile);
+        avatarUrl = uploadResult?.url || uploadResult?.secure_url || uploadResult;
+        if (!avatarUrl) {
+          throw new Error('Không nhận được đường dẫn ảnh đại diện sau khi tải lên.');
+        }
+        const updatedUser = await updateUser(user.id, { avatarUrl });
+        useAuthStore.getState().setUser({
+          ...useAuthStore.getState().user,
+          avatarUrl: updatedUser?.avatarUrl || avatarUrl,
+        });
+      }
+
       if (patientId) {
         const payload = {
           fullName: formData.fullName.trim(),
@@ -205,6 +246,7 @@ export default function InforPatient() {
             ...updated,
             phone: updated.phone || updated.phoneNumber || phoneVal,
             phoneNumber: updated.phone || updated.phoneNumber || phoneVal,
+            avatarUrl,
             emergencyContact: formData.emergencyContact || patientData.emergencyContact
           };
           setPatientData(merged);
@@ -213,8 +255,10 @@ export default function InforPatient() {
           setPatientData(formData);
         }
       } else {
-        setPatientData(formData);
+        setPatientData({ ...formData, avatarUrl });
       }
+      setAvatarFile(null);
+      setAvatarPreview(avatarUrl);
       setIsEditing(false);
       toast.success('Cập nhật thông tin bệnh nhân thành công!');
     } catch (err) {
@@ -307,8 +351,18 @@ export default function InforPatient() {
 
             {/* Ảnh đại diện lớn & Badge trạng thái */}
             <div className="relative mb-4 mt-2">
-              <div className="flex h-28 w-28 items-center justify-center rounded-3xl bg-gradient-to-tr from-teal-700 via-teal-800 to-emerald-700 text-white font-black text-4xl shadow-lg ring-4 ring-teal-50 select-none">
-                {patientData?.fullName ? patientData.fullName.charAt(0).toUpperCase() : (user?.username?.charAt(0)?.toUpperCase() || 'P')}
+              <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-3xl bg-gradient-to-tr from-teal-700 via-teal-800 to-emerald-700 text-white font-black text-4xl shadow-lg ring-4 ring-teal-50 select-none">
+                {(avatarPreview || user?.avatarUrl || patientData?.avatarUrl) ? (
+                  <img
+                    src={avatarPreview || user?.avatarUrl || patientData.avatarUrl}
+                    alt="Ảnh đại diện"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  patientData?.fullName
+                    ? patientData.fullName.charAt(0).toUpperCase()
+                    : (user?.username?.charAt(0)?.toUpperCase() || 'P')
+                )}
               </div>
               <div
                 className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-white ring-2 ring-white shadow-sm"
@@ -317,6 +371,24 @@ export default function InforPatient() {
                 <CheckCircle2 size={18} />
               </div>
             </div>
+            {isEditing && (
+              <>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarChange}
+                />
+                <button
+                  type="button"
+                  onClick={() => avatarInputRef.current?.click()}
+                  className="mb-2 rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-bold text-teal-800 hover:bg-teal-100"
+                >
+                  {avatarPreview ? 'Đổi ảnh đại diện' : 'Chọn ảnh đại diện'}
+                </button>
+              </>
+            )}
 
             {/* Họ tên bệnh nhân */}
             <h2 className="text-xl font-black text-slate-900 tracking-tight">

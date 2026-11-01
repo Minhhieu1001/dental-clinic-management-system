@@ -45,6 +45,30 @@ public class PatientController {
         );
     }
 
+    @GetMapping("/registered")
+    public ResponseEntity<ApiResponse<List<PatientDTO>>> getRegisteredPatients() {
+        List<PatientDTO> patients = patientService.getRegisteredPatients();
+        return ResponseEntity.ok(
+                ApiResponse.<List<PatientDTO>>builder()
+                        .status(200)
+                        .message("Lấy danh sách bệnh nhân đã có tài khoản thành công")
+                        .data(patients)
+                        .build()
+        );
+    }
+
+    @GetMapping("/{id}/profile-completion")
+    public ResponseEntity<ApiResponse<Boolean>> hasMissingPatientInformation(@PathVariable UUID id) {
+        boolean incomplete = patientService.hasMissingPatientInformation(id);
+        return ResponseEntity.ok(
+                ApiResponse.<Boolean>builder()
+                        .status(200)
+                        .message("Kiểm tra thông tin cá nhân thành công")
+                        .data(incomplete)
+                        .build()
+        );
+    }
+
     @GetMapping("/phone/{phoneNumber}")
     public ResponseEntity<ApiResponse<List<PatientDTO>>> getPatientsByPhoneNumber(@PathVariable String phoneNumber) {
         List<PatientDTO> patients = patientService.getPatientsByPhoneNumber(phoneNumber);

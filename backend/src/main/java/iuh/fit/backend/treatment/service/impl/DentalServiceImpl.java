@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -192,12 +193,20 @@ public class DentalServiceImpl implements DentalService {
     }
 
     private ServiceDTO mapToDTO(Service service) {
+        var promotion = service.getPromotion();
+        BigDecimal discountAmount = promotion == null
+                ? BigDecimal.ZERO : promotion.calculateDiscount(service.getPrice());
+        BigDecimal discountedPrice = service.getPrice() == null
+                ? null : service.getPrice().subtract(discountAmount);
         return ServiceDTO.builder()
                 .id(service.getId())
                 .serviceCode(service.getServiceCode())
                 .serviceName(service.getServiceName())
                 .description(service.getDescription())
                 .price(service.getPrice())
+                .hasPromotion(promotion != null)
+                .discountAmount(discountAmount)
+                .discountedPrice(discountedPrice)
                 .costPrice(service.getCostPrice())
                 .estimatedDuration(service.getEstimatedDuration() != null ? service.getEstimatedDuration() : 30)
                 .sessionsCount(service.getSessionsCount() != null ? service.getSessionsCount() : "1 buổi")

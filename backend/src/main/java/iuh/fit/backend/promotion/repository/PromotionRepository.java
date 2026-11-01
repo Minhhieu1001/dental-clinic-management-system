@@ -19,7 +19,6 @@ public interface PromotionRepository extends JpaRepository<Promotion, UUID> {
             FROM Promotion p
             LEFT JOIN FETCH p.services
             WHERE p.promotionType = :promotionType
-              AND p.services IS NOT EMPTY
               AND p.status = :status
               AND (p.startDate IS NULL OR p.startDate <= :currentTime)
               AND (p.endDate IS NULL OR p.endDate >= :currentTime)
@@ -37,7 +36,6 @@ public interface PromotionRepository extends JpaRepository<Promotion, UUID> {
             FROM Promotion p
             LEFT JOIN FETCH p.services
             WHERE LOWER(p.couponCode) = LOWER(:couponCode)
-              AND p.services IS NOT EMPTY
               AND p.promotionType = :promotionType
               AND p.status = :status
               AND (p.startDate IS NULL OR p.startDate <= :currentTime)

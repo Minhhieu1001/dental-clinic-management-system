@@ -5,6 +5,11 @@ export const changeMyPassword = async (data) => {
     return response.data;
 };
 
+export const updateUser = async (id, data) => {
+    const response = await api.put(`/users/${encodeURIComponent(id)}`, data);
+    return response.data;
+};
+
 export const updateStatusUser = async (id, data) => {
     const response = await api.put(`/users/${id}/status`, data);
     return response.data;

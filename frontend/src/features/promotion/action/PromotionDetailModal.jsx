@@ -59,18 +59,18 @@ export default function PromotionDetailModal({
           >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 pb-3.5 shrink-0">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="rounded-lg bg-gradient-to-r from-teal-600 to-emerald-600 px-2.5 py-1 text-xs font-black text-white shadow-xs shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="rounded-lg bg-gradient-to-r from-teal-600 to-emerald-600 px-3 py-1 text-xs font-black text-white shadow-xs shrink-0">
               {formatDiscountBadge(promo)}
             </span>
-            <h3 className="text-sm sm:text-base font-bold text-slate-900 truncate">
+            <h3 className="text-base sm:text-lg font-bold text-slate-900 truncate">
               {promo.title}
             </h3>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 transition text-xs shrink-0 cursor-pointer"
+            className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 transition text-sm shrink-0 cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -97,74 +97,90 @@ export default function PromotionDetailModal({
           {/* Type Badge & Category */}
           <div className="flex items-center gap-2 flex-wrap">
             <span
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold ${
+              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-sm font-bold ${
                 isVoucher
-                  ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                  ? 'bg-violet-50 text-violet-700 border border-violet-200'
                   : 'bg-teal-50 text-teal-800 border border-teal-200'
               }`}
             >
-              {isVoucher ? <Ticket className="w-3.5 h-3.5" /> : <BadgePercent className="w-3.5 h-3.5" />}
+              {isVoucher ? <Ticket className="w-4 h-4" /> : <BadgePercent className="w-4 h-4" />}
               <span>{isVoucher ? 'Mã Voucher (Giảm tiền hóa đơn)' : 'Sự Kiện Ưu Đãi (Giảm %)'}</span>
             </span>
 
             {promo.category && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-                <Tag className="w-3 h-3 text-slate-400" />
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                <Tag className="w-3.5 h-3.5 text-slate-400" />
                 <span>{promo.category}</span>
               </span>
             )}
           </div>
 
           {/* Metrics Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200/70 text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-slate-50/80 p-4 rounded-2xl border border-slate-200/70 text-sm">
             {isVoucher ? (
               <>
                 <div>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase block">Mã Voucher</span>
-                  <span className="font-bold text-teal-800 font-mono text-sm">
+                  <span className="text-xs text-slate-400 font-semibold uppercase block">Mã Voucher</span>
+                  <span className="font-bold text-teal-800 font-mono text-sm sm:text-base">
                     {promo.couponCode || 'N/A'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase block">Số tiền giảm</span>
-                  <span className="font-bold text-teal-800 text-sm">
+                  <span className="text-xs text-slate-400 font-semibold uppercase block">Số tiền giảm</span>
+                  <span className="font-bold text-teal-800 text-sm sm:text-base">
                     {formatMoney(promo.discountAmount)}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase block">Đơn tối thiểu</span>
-                  <span className="font-bold text-slate-800">
+                  <span className="text-xs text-slate-400 font-semibold uppercase block">Giảm tối đa</span>
+                  <span className="font-bold text-slate-800 text-sm sm:text-base">
+                    {promo.maxDiscountAmount ? formatMoney(promo.maxDiscountAmount) : 'Không giới hạn'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-xs text-slate-400 font-semibold uppercase block">Đơn tối thiểu</span>
+                  <span className="font-bold text-slate-800 text-sm sm:text-base">
                     {promo.minOrderAmount ? formatMoney(promo.minOrderAmount) : '0đ'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase block">Đã dùng / Giới hạn</span>
-                  <span className="font-bold text-slate-800">
+                  <span className="text-xs text-slate-400 font-semibold uppercase block">Đã dùng / Giới hạn</span>
+                  <span className="font-bold text-slate-800 text-sm sm:text-base">
                     {promo.usedCount || 0} / {promo.usageLimit || '∞'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-xs text-slate-400 font-semibold uppercase block">Trạng thái</span>
+                  <span className="font-bold text-slate-800 text-sm sm:text-base">
+                    {promo.status === 'ACTIVE'
+                      ? 'Đang áp dụng'
+                      : promo.status === 'INACTIVE'
+                      ? 'Đã tắt'
+                      : 'Hết hạn'}
                   </span>
                 </div>
               </>
             ) : (
               <>
                 <div>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase block">Mức chiết khấu</span>
-                  <span className="font-bold text-teal-700 text-sm">-{promo.discountPercent}%</span>
+                  <span className="text-xs text-slate-400 font-semibold uppercase block">Mức chiết khấu</span>
+                  <span className="font-bold text-teal-700 text-sm sm:text-base">-{promo.discountPercent}%</span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase block">Giảm tối đa</span>
-                  <span className="font-bold text-slate-800">
+                  <span className="text-xs text-slate-400 font-semibold uppercase block">Giảm tối đa</span>
+                  <span className="font-bold text-slate-800 text-sm sm:text-base">
                     {promo.maxDiscountAmount ? formatMoney(promo.maxDiscountAmount) : 'Không giới hạn'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase block">Đơn tối thiểu</span>
-                  <span className="font-bold text-slate-800">
+                  <span className="text-xs text-slate-400 font-semibold uppercase block">Đơn tối thiểu</span>
+                  <span className="font-bold text-slate-800 text-sm sm:text-base">
                     {promo.minOrderAmount ? formatMoney(promo.minOrderAmount) : '0đ'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase block">Trạng thái</span>
-                  <span className="font-bold text-slate-800">
+                  <span className="text-xs text-slate-400 font-semibold uppercase block">Trạng thái</span>
+                  <span className="font-bold text-slate-800 text-sm sm:text-base">
                     {promo.status === 'ACTIVE'
                       ? 'Đang áp dụng'
                       : promo.status === 'INACTIVE'
@@ -178,41 +194,41 @@ export default function PromotionDetailModal({
 
           {/* Timeframe */}
           <div>
-            <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-slate-400" />
+            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Calendar className="w-4 h-4 text-slate-400" />
               <span>Thời gian diễn ra</span>
             </h4>
-            <p className="text-xs font-bold text-slate-800 mt-1">
+            <p className="text-sm font-bold text-slate-800 mt-1">
               {formatDate(promo.startDate)} – {formatDate(promo.endDate)}
             </p>
           </div>
 
           {/* Description */}
           <div>
-            <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5 text-slate-400" />
+            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <FileText className="w-4 h-4 text-slate-400" />
               <span>Mô tả chi tiết</span>
             </h4>
-            <p className="text-xs text-slate-600 mt-1 leading-relaxed whitespace-pre-line bg-slate-50/50 p-2.5 rounded-xl border border-slate-200/60">
+            <p className="text-sm text-slate-600 mt-1 leading-relaxed whitespace-pre-line bg-slate-50/50 p-3 rounded-xl border border-slate-200/60">
               {promo.description || 'Chưa có mô tả chi tiết cho chương trình này.'}
             </p>
           </div>
 
           {/* Scope of Application */}
           <div>
-            <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5 text-slate-400" />
+            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <Layers className="w-4 h-4 text-slate-400" />
               <span>Phạm vi áp dụng</span>
             </h4>
             {isVoucher ? (
-              <div className="p-3.5 bg-teal-50/70 rounded-xl border border-teal-200/80 text-xs font-medium text-teal-900 flex items-center gap-2">
+              <div className="p-3.5 bg-teal-50/70 rounded-xl border border-teal-200/80 text-sm font-medium text-teal-900 flex items-center gap-2">
                 <Ticket className="w-4 h-4 text-teal-700 shrink-0" />
                 <span>
                   Áp dụng giảm trừ trực tiếp trên <strong>toàn bộ hóa đơn thanh toán</strong> khi thỏa mãn giá trị đơn hàng tối thiểu {promo.minOrderAmount ? formatMoney(promo.minOrderAmount) : '0đ'}.
                 </span>
               </div>
             ) : promo.applyAllServices ? (
-              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200/80 text-xs font-medium text-emerald-800 flex items-center gap-2">
+              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200/80 text-sm font-medium text-emerald-800 flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                 <span>
                   Chương trình ưu đãi này áp dụng cho <strong>toàn bộ dịch vụ nha khoa</strong> tại Crown Dental.
@@ -231,11 +247,11 @@ export default function PromotionDetailModal({
                   return (
                     <div
                       key={svc.id}
-                      className="flex items-center justify-between border border-slate-200/70 rounded-xl p-2.5 bg-slate-50/60 text-xs hover:bg-slate-100/70 transition"
+                      className="flex items-center justify-between border border-slate-200/70 rounded-xl p-3 bg-slate-50/60 text-sm hover:bg-slate-100/70 transition"
                     >
                       <span className="font-semibold text-slate-800">{svc.serviceName}</span>
                       <div className="text-right">
-                        <span className="line-through text-slate-400 text-[11px] mr-2">
+                        <span className="line-through text-slate-400 text-xs mr-2">
                           {formatMoney(origPrice)}
                         </span>
                         <span className="font-bold text-teal-700">{formatMoney(finalPrice)}</span>
@@ -258,13 +274,13 @@ export default function PromotionDetailModal({
               onOpenExtend(promo)
             }}
             title={getExtendTooltip(promo)}
-            className={`rounded-xl px-4 py-2 text-xs font-bold transition-all duration-200 flex items-center gap-1.5 ${
+            className={`whitespace-nowrap shrink-0 rounded-xl px-4.5 py-2.5 text-sm font-bold transition-all duration-200 flex items-center gap-1.5 ${
               !canExtend
                 ? 'bg-slate-100 text-slate-400 border border-slate-200/60 cursor-not-allowed opacity-60'
                 : 'bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 active:scale-95 cursor-pointer shadow-2xs'
             }`}
           >
-            <Clock className="w-3.5 h-3.5" />
+            <Clock className="w-4 h-4 shrink-0" />
             <span>Gia Hạn</span>
           </button>
           <button
@@ -273,9 +289,9 @@ export default function PromotionDetailModal({
               onClose()
               onOpenEdit(promo)
             }}
-            className="rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 px-4.5 py-2 text-xs font-bold text-white shadow-md shadow-teal-600/20 transition-all duration-200 active:scale-95 flex items-center gap-1.5 cursor-pointer"
+            className="whitespace-nowrap shrink-0 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-teal-600/20 transition-all duration-200 active:scale-95 flex items-center gap-1.5 cursor-pointer"
           >
-            <Edit3 className="w-3.5 h-3.5" />
+            <Edit3 className="w-4 h-4 shrink-0" />
             <span>Chỉnh Sửa Ưu Đãi</span>
           </button>
         </div>

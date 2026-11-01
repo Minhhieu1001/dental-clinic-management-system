@@ -11,6 +11,8 @@ import java.util.UUID;
 public interface PatientService {
     PatientStatisticsResponse getPatientStatistics(UUID id);
     List<PatientDTO> getAllPatients();
+    List<PatientDTO> getRegisteredPatients();
+    boolean hasMissingPatientInformation(UUID id);
     PatientDTO getPatientById(UUID id);
     List<PatientDTO> getPatientsByPhoneNumber(String phoneNumber);
     PatientDTO searchPatient(String keyword);

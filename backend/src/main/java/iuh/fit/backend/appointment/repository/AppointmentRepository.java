@@ -17,7 +17,7 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
 
   @Query("""
       SELECT COUNT(a) FROM Appointment a
-      WHERE a.medicalRecord.patient.id = :patientId
+       WHERE a.patient.id = :patientId
         AND a.appointmentDate >= :start
         AND a.appointmentDate < :end
       """)

@@ -604,6 +604,11 @@ ALTER TABLE prescriptions ADD COLUMN IF NOT EXISTS dentist_id UUID;
 -- Keep statements compatible with Spring's semicolon-based SQL script parser.
 CREATE INDEX IF NOT EXISTS idx_prescriptions_dentist_id ON prescriptions(dentist_id);
 
+-- One active parent per related patient; inactive links remain as history.
+-- Existing duplicate active links must be resolved explicitly before startup.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_patient_relationships_active_target
+    ON patient_relationships (related_patient_id) WHERE status = true;
+
 UPDATE prescriptions p
 SET dentist_id = d.id
 FROM dentists d

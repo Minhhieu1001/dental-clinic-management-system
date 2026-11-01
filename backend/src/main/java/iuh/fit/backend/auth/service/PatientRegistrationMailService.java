@@ -37,6 +37,15 @@ public class PatientRegistrationMailService {
         }
     }
 
+    public void sendRelationshipOtp(String email, String code) {
+        try {
+            send(email, "Xác nhận liên kết hồ sơ bệnh nhân", "Mã OTP liên kết hồ sơ của bạn: " + code
+                    + "\nMã có hiệu lực 120 giây. Không chia sẻ mã này với người khác.");
+        } catch (MailException ex) {
+            throw new AppException(ErrorCode.RELATIONSHIP_MAIL_FAILED);
+        }
+    }
+
     public record Registered(String email, String patientCode) {}
 
     @TransactionalEventListener

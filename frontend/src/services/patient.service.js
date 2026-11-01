@@ -6,6 +6,20 @@ export const getPatients = async () => {
   return response.data?.data ?? response.data?.result ?? response.data ?? [];
 };
 
+// Get patients who already have a login account
+export const getRegisteredPatients = async () => {
+  const response = await api.get('/patients/registered');
+  return response.data?.data ?? response.data?.result ?? response.data ?? [];
+};
+
+// Check profile completeness directly against the database.
+export const hasMissingPatientInformation = async (patientId) => {
+  const response = await api.get(
+    `/patients/${encodeURIComponent(patientId)}/profile-completion`
+  );
+  return response.data?.data ?? response.data?.result ?? response.data;
+};
+
 // Get patient by ID
 export const getPatientById = async (id) => {
   const response = await api.get(`/patients/${id}`);
@@ -55,7 +69,7 @@ export const searchPatient = async (keyword) => {
     });
     return response.data?.data ?? response.data?.result ?? response.data ?? null;
   } catch (error) {
-    console.warn('Lỗi tìm kiếm bệnh nhân:', error);
+    console.warn('Lá»—i tÃ¬m kiáº¿m bá»‡nh nhÃ¢n:', error);
     return null;
   }
 };

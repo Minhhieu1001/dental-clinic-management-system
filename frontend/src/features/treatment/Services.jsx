@@ -314,6 +314,25 @@ export default function AdminServices() {
     return new Intl.NumberFormat('vi-VN').format(Math.round(val)) + 'đ';
   };
 
+  const renderDiscountedPrice = (service) => {
+    const price = service.discountedPrice ?? service.price;
+    const hasDiscount = price != null && service.price != null
+      && Number(price) < Number(service.price);
+
+    return (
+      <>
+        <span className={`block font-semibold ${hasDiscount ? 'text-emerald-600' : 'text-slate-900'}`}>
+          {price == null ? 'Chưa có giá' : formatPrice(price)}
+        </span>
+        {hasDiscount && service.promotionTitle && (
+          <span className="block text-[10px] text-emerald-600 font-normal max-w-48 truncate" title={service.promotionTitle}>
+            {service.promotionTitle}
+          </span>
+        )}
+      </>
+    );
+  };
+
   const getCategoryInfo = (catKey) => {
     return (
       CATEGORIES.find((c) => c.key === catKey) || {
@@ -437,8 +456,8 @@ export default function AdminServices() {
                 key={cat.key}
                 onClick={() => setSelectedCategory(cat.key === selectedCategory ? '' : cat.key)}
                 className={`p-3 rounded-lg border transition-all cursor-pointer ${selectedCategory === cat.key
-                    ? 'bg-teal-50/80 border-[#005f73] text-slate-900 shadow-xs ring-1 ring-[#005f73]/20'
-                    : 'bg-slate-50/50 border-slate-200/70 hover:bg-slate-100/70 text-slate-700'
+                  ? 'bg-teal-50/80 border-[#005f73] text-slate-900 shadow-xs ring-1 ring-[#005f73]/20'
+                  : 'bg-slate-50/50 border-slate-200/70 hover:bg-slate-100/70 text-slate-700'
                   }`}
               >
                 <div className="flex items-center justify-between">
@@ -583,8 +602,8 @@ export default function AdminServices() {
           <button
             onClick={() => setSelectedCategory('')}
             className={`px-3 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-all border ${selectedCategory === ''
-                ? 'bg-slate-800 text-white border-slate-800'
-                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+              ? 'bg-slate-800 text-white border-slate-800'
+              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
               }`}
           >
             Tất cả
@@ -594,8 +613,8 @@ export default function AdminServices() {
               key={cat.key}
               onClick={() => setSelectedCategory(cat.key === selectedCategory ? '' : cat.key)}
               className={`px-3 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-all border ${selectedCategory === cat.key
-                  ? 'bg-[#005f73] text-white border-[#005f73]'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                ? 'bg-[#005f73] text-white border-[#005f73]'
+                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                 }`}
             >
               {cat.label}
@@ -627,8 +646,8 @@ export default function AdminServices() {
                   <th className="py-3 px-4 sticky top-0 bg-slate-50 z-10 border-b border-slate-200">Dịch vụ & Nội dung</th>
                   <th className="py-3 px-4 sticky top-0 bg-slate-50 z-10 border-b border-slate-200">Nhóm dịch vụ</th>
                   <th className="py-3 px-4 text-right sticky top-0 bg-slate-50 z-10 border-b border-slate-200">Giá tham khảo</th>
+                  <th className="py-3 px-4 text-right sticky top-0 bg-slate-50 z-10 border-b border-slate-200 whitespace-nowrap">Giá ưu đãi</th>
                   <th className="py-3 px-4 text-center sticky top-0 bg-slate-50 z-10 border-b border-slate-200">Thời lượng & Buổi</th>
-                  <th className="py-3 px-4 sticky top-0 bg-slate-50 z-10 border-b border-slate-200">Bảo hành</th>
                   <th className="py-3 px-4 text-center sticky top-0 bg-slate-50 z-10 border-b border-slate-200">Nổi bật</th>
                   <th className="py-3 px-4 text-center sticky top-0 bg-slate-50 z-10 border-b border-slate-200">Trạng thái</th>
                   <th className="py-3 px-4 text-center sticky top-0 bg-slate-50 z-10 border-b border-slate-200">Thao tác</th>
@@ -688,6 +707,14 @@ export default function AdminServices() {
                         </span>
                       </td>
 
+                      {/* Discounted price */}
+                      <td className="py-3 px-4 text-right whitespace-nowrap" title="Giá tham khảo cho một dịch vụ sau khuyến mãi">
+                        {renderDiscountedPrice(service)}
+                        <span className="text-[10px] text-slate-400 font-normal">
+                          / {service.unit || 'Lần'}
+                        </span>
+                      </td>
+
                       {/* Duration & Sessions */}
                       <td className="py-3 px-4 text-center whitespace-nowrap">
                         <span className="inline-flex items-center gap-1 text-slate-700 font-medium">
@@ -699,25 +726,13 @@ export default function AdminServices() {
                         </span>
                       </td>
 
-                      {/* Warranty */}
-                      <td className="py-3 px-4 whitespace-nowrap">
-                        {service.warrantyPeriod && service.warrantyPeriod !== 'Không bảo hành' ? (
-                          <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded text-[11px] font-medium">
-                            <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
-                            <span>{service.warrantyPeriod}</span>
-                          </span>
-                        ) : (
-                          <span className="text-slate-400">—</span>
-                        )}
-                      </td>
-
                       {/* Featured Toggle */}
                       <td className="py-3 px-4 text-center whitespace-nowrap">
                         <button
                           onClick={() => handleToggleFeatured(service)}
                           className={`p-1.5 rounded-md border transition-all ${service.isFeatured
-                              ? 'bg-amber-50 border-amber-200 text-amber-600'
-                              : 'bg-slate-50 border-slate-200 text-slate-400 hover:text-slate-600'
+                            ? 'bg-amber-50 border-amber-200 text-amber-600'
+                            : 'bg-slate-50 border-slate-200 text-slate-400 hover:text-slate-600'
                             }`}
                           title="Tắt/Bật Nổi bật"
                         >
@@ -825,6 +840,10 @@ export default function AdminServices() {
                         {formatPrice(service.price)}
                       </span>
                       <span className="text-xs text-slate-500 ml-1">/ {service.unit || 'Lần'}</span>
+                      <div className="mt-2 text-sm" title="Giá tham khảo cho một dịch vụ sau khuyến mãi">
+                        <span className="text-[10px] text-slate-400 block font-medium">Giá sau giảm</span>
+                        {renderDiscountedPrice(service)}
+                      </div>
                     </div>
 
                     <div className="text-right">
