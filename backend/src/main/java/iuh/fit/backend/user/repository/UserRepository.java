@@ -37,5 +37,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByUsername(String username);
     Optional<User> findByCodeName(String codeName);
     boolean existsByCodeName(String codeName);
+    boolean existsByCodeNameIgnoreCase(String codeName);
     Optional<User> findByCodeNameAndRole(String codeName, Role role);
 }

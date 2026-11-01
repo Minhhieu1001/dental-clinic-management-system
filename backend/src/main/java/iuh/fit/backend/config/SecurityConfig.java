@@ -61,6 +61,13 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.POST, "/api/v1/patient-relationships/request-otp",
+                                "/api/v1/patient-relationships/verify").hasAnyRole("PATIENT", "EMPLOYEE")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/patient-relationships/patient/**")
+                                .hasAnyRole("PATIENT", "EMPLOYEE", "DENTIST")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/patient-relationships/linked")
+                                .hasAnyRole("EMPLOYEE", "DENTIST")
+                        .requestMatchers("/api/v1/patient-relationships/**").hasRole("PATIENT")
                         .requestMatchers(
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/patient/login",

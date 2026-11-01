@@ -11,6 +11,7 @@ import iuh.fit.backend.patient.dto.PatientCreateDTO;
 import iuh.fit.backend.patient.dto.PatientDTO;
 import iuh.fit.backend.patient.dto.PatientStatisticsResponse;
 import iuh.fit.backend.appointment.repository.AppointmentRepository;
+import iuh.fit.backend.appointment.repository.FollowUpAppointmentRepository;
 import iuh.fit.backend.prescription.repository.PrescriptionRepository;
 import iuh.fit.backend.treatment.repository.TreatmentPlanRepository;
 import iuh.fit.backend.billing.repository.InvoiceRepository;
@@ -58,6 +59,7 @@ public class PatientServiceImpl implements PatientService {
     private final MedicalRecordRepository medicalRecordRepository;
     private final BranchRepository branchRepository;
     private final AppointmentRepository appointmentRepository;
+    private final FollowUpAppointmentRepository followUpAppointmentRepository;
     private final PrescriptionRepository prescriptionRepository;
     private final TreatmentPlanRepository treatmentPlanRepository;
     private final InvoiceRepository invoiceRepository;
@@ -69,13 +71,15 @@ public class PatientServiceImpl implements PatientService {
             throw new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy hồ sơ bệnh nhân ID: " + id);
         }
 
-        // Include today and the preceding 29 calendar days in Vietnam.
+        // Include the entire current calendar month in Vietnam.
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
-        LocalDateTime start = today.minusDays(29).atStartOfDay();
-        LocalDateTime end = today.plusDays(1).atStartOfDay();
+        LocalDateTime start = today.withDayOfMonth(1).atStartOfDay();
+        LocalDateTime end = start.plusMonths(1);
+        long totalAppointments = appointmentRepository.countByPatientAndDateRange(id, start, end)
+                + followUpAppointmentRepository.countByPatientAndDateRange(id, start, end);
 
         return PatientStatisticsResponse.builder()
-                .totalAppointmentsLast30Days(appointmentRepository.countByPatientAndDateRange(id, start, end))
+                .totalAppointmentsLast30Days(totalAppointments)
                 .totalPrescriptions(prescriptionRepository.countByExaminationResultMedicalRecordPatientId(id))
                 .totalTreatmentPlans(treatmentPlanRepository.countByExaminationResultMedicalRecordPatientId(id))
                 .completedTreatmentPlans(treatmentPlanRepository
@@ -94,6 +98,40 @@ public class PatientServiceImpl implements PatientService {
                 .stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PatientDTO> getRegisteredPatients() {
+        return patientRepository.findByUserIsNotNullOrderByCreatedAtDesc()
+                .stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean hasMissingPatientInformation(UUID id) {
+        Patient patient = patientRepository.findById(id)
+                .orElseThrow(() -> new AppException(
+                        ErrorCode.RESOURCE_NOT_FOUND,
+                        "Không tìm thấy hồ sơ bệnh nhân ID: " + id
+                ));
+
+        return isBlank(patient.getFullName())
+                || isBlank(patient.getPhoneNumber())
+                || isBlank(patient.getEmail())
+                || isBlank(patient.getCccd())
+                || patient.getGender() == null
+                || patient.getDateOfBirth() == null
+                || isBlank(patient.getAddress())
+                || isBlank(patient.getNationality())
+                || isBlank(patient.getHometown())
+                || isBlank(patient.getJob());
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     @Override

@@ -83,7 +83,7 @@ export default function PatientLogin() {
       setError('Vui lòng nhập Mật khẩu');
       return;
     }
-
+    setIsLoading(true);
     setIsLoading(true);
 
     try {

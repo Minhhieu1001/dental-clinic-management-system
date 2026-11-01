@@ -12,6 +12,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
+  Link2,
+  Users,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -21,38 +23,16 @@ import {
   deletePatient,
 } from '../../services/patient.service';
 import PatientModal from '../../components/ui/PatientModal';
-import { toPatientPayload } from './patientFormMapper';
-
-// Fallback initial patient list
-const INITIAL_PATIENTS = [
-  {
-    id: 'p-101',
-    patientCode: 'PA-881459',
-    fullName: 'Nguyễn Văn An',
-    phone: '0901234567',
-    gender: 'MALE',
-    dateOfBirth: '1992-05-15',
-    address: '123 Nguyễn Văn Cừ, Quận 5, TP.HCM',
-    createdAt: '2026-08-10',
-    notes: 'Bệnh nhân khám tư vấn niềng răng Invisalign',
-  },
-  {
-    id: 'p-102',
-    patientCode: 'PA-881460',
-    fullName: 'Trần Thị Mai',
-    phone: '0918765432',
-    gender: 'FEMALE',
-    dateOfBirth: '1988-11-20',
-    address: '456 Lê Văn Sỹ, Quận 3, TP.HCM',
-    createdAt: '2026-08-12',
-    notes: 'Tiền sử răng nhạy cảm, cần nhẹ tay khi cạo vôi',
-  },
-];
+import EmployeeLinkedProfile from './components/EmployeeLinkedProfile';
+import { toPatientPayload } from '../../utils/patientFormMapper';
 
 const ROWS_PER_PAGE = 5;
 
 export default function EmployeePatients() {
-  const [patients, setPatients] = useState(INITIAL_PATIENTS);
+  // Quản lý Tab chính: 'PATIENTS' (Danh sách bệnh nhân) | 'LINKED_PROFILES' (Hồ sơ đã liên kết)
+  const [activeTab, setActiveTab] = useState('PATIENTS');
+
+  const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [genderFilter, setGenderFilter] = useState('ALL');
@@ -65,37 +45,36 @@ export default function EmployeePatients() {
     payload: null,
   });
 
-  // Fetch real backend data if available
+  // Fetch real backend data
   const fetchPatientData = async () => {
     setLoading(true);
     try {
       const data = await getPatients();
       const rawList = Array.isArray(data) ? data : data?.data || data?.result || [];
-      if (Array.isArray(rawList)) {
-        const formatted = rawList.map((p) => ({
-          id: p.id || `p-${Math.random()}`,
-          patientCode: p.patientCode || `PA-${Math.floor(100000 + Math.random() * 900000)}`,
-          fullName: p.fullName || p.user?.fullName || 'Bệnh nhân',
-          phone: p.phone || p.phoneNumber || p.user?.phone || 'N/A',
-          cccd: p.cccd || '',
-          email: p.email || p.user?.email || '',
-          nationality: p.nationality || 'Việt Nam',
-          hometown: p.hometown || '',
-          job: p.job || '',
-          gender: p.gender || 'MALE',
-          dateOfBirth: p.dateOfBirth ? p.dateOfBirth.split('T')[0] : '',
-          address: p.address || 'Chưa cập nhật',
-          createdAt: p.createdAt ? p.createdAt.split('T')[0] : new Date().toISOString().split('T')[0],
-          systemicDisease: p.systemicDisease || '',
-          allergies: p.allergies || '',
-          currentMedications: p.currentMedications || '',
-          surgicalHistory: p.surgicalHistory || '',
-          notes: p.notes || p.systemicDisease || p.allergies || '',
-        }));
-        setPatients(formatted);
-      }
+      const formatted = rawList.map((p) => ({
+        id: p.id,
+        patientCode: p.patientCode || '',
+        fullName: p.fullName || p.user?.fullName || 'Bệnh nhân',
+        phone: p.phone || p.phoneNumber || p.user?.phone || 'N/A',
+        cccd: p.cccd || '',
+        email: p.email || p.user?.email || '',
+        nationality: p.nationality || 'Việt Nam',
+        hometown: p.hometown || '',
+        job: p.job || '',
+        gender: p.gender || 'MALE',
+        dateOfBirth: p.dateOfBirth ? p.dateOfBirth.split('T')[0] : '',
+        address: p.address || 'Chưa cập nhật',
+        createdAt: p.createdAt ? p.createdAt.split('T')[0] : '',
+        systemicDisease: p.systemicDisease || '',
+        allergies: p.allergies || '',
+        currentMedications: p.currentMedications || '',
+        surgicalHistory: p.surgicalHistory || '',
+        notes: p.notes || p.systemicDisease || p.allergies || '',
+      }));
+      setPatients(formatted);
     } catch (e) {
-      console.warn('Using initial patient list', e);
+      console.error('Lỗi khi tải danh sách bệnh nhân:', e);
+      setPatients([]);
     } finally {
       setLoading(false);
     }
@@ -214,7 +193,7 @@ export default function EmployeePatients() {
             Quản Lý Hồ Sơ Bệnh Nhân
           </h1>
           <p className="mt-1 text-xs sm:text-sm text-slate-500">
-            Danh sách bệnh nhân, tra cứu thông tin hành chính, số điện thoại, ngày sinh và thao tác quản lý.
+            Danh sách bệnh nhân, tra cứu thông tin hành chính, số điện thoại, ngày sinh và quản lý hồ sơ liên kết.
           </p>
         </div>
 
@@ -240,162 +219,208 @@ export default function EmployeePatients() {
         </div>
       </div>
 
-      {/* 2. Filter & Search Controls */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 rounded-[4px] border border-slate-200 bg-white p-3 shadow-2xs">
-        {/* Search Input */}
-        <div className="relative w-full sm:max-w-md">
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setCurrentPage(1);
-            }}
-            placeholder="Tìm theo tên bệnh nhân, mã bệnh nhân (PA-...), số điện thoại..."
-            className="w-full rounded border border-slate-300 bg-slate-50/50 pl-9 pr-3 py-2 text-xs text-slate-800 focus:border-teal-600 focus:bg-white focus:outline-none transition-colors"
-          />
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        </div>
+      {/* 2. TAB NAVIGATION (Tab 1: Danh sách bệnh nhân | Tab 2: Hồ sơ đã liên kết) */}
+      <div className="flex items-center gap-2 border-b border-slate-200 bg-white rounded-t-sm px-1.5 pt-1 shadow-2xs">
+        <button
+          type="button"
+          onClick={() => setActiveTab('PATIENTS')}
+          className={`flex items-center gap-2 px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer ${activeTab === 'PATIENTS'
+            ? 'border-teal-700 text-teal-800 bg-teal-50/50 rounded-t-sm'
+            : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-t-sm'
+            }`}
+        >
+          <User size={16} className={activeTab === 'PATIENTS' ? 'text-teal-700' : 'text-slate-400'} />
+          <span>Danh sách bệnh nhân</span>
+        </button>
 
-        {/* Gender Filter Dropdown */}
-        <div className="flex items-center gap-2">
-          <Filter size={15} className="text-slate-400 shrink-0" />
-          <select
-            value={genderFilter}
-            onChange={(e) => {
-              setGenderFilter(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="rounded border border-slate-300 bg-slate-50/50 px-3 py-2 text-xs font-semibold text-slate-700 focus:border-teal-600 focus:bg-white focus:outline-none cursor-pointer"
-          >
-            <option value="ALL">Tất cả giới tính</option>
-            <option value="MALE">Nam (MALE)</option>
-            <option value="FEMALE">Nữ (FEMALE)</option>
-          </select>
-        </div>
+        <button
+          type="button"
+          onClick={() => setActiveTab('LINKED_PROFILES')}
+          className={`flex items-center gap-2 px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer ${activeTab === 'LINKED_PROFILES'
+            ? 'border-teal-700 text-teal-800 bg-teal-50/50 rounded-t-sm'
+            : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-t-sm'
+            }`}
+        >
+          <Link2 size={16} className={activeTab === 'LINKED_PROFILES' ? 'text-teal-700' : 'text-slate-400'} />
+          <span>Hồ sơ đã liên kết</span>
+        </button>
       </div>
 
-      {/* 3. Patient Data Table */}
-      <div className="rounded-[4px] border border-slate-200 bg-white shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-700 border-collapse">
-            <thead className="bg-slate-100/90 text-slate-700 uppercase font-bold border-b border-slate-200">
-              <tr>
-                <th className="px-4 py-3">Mã Bệnh Nhân</th>
-                <th className="px-4 py-3">Họ Và Tên</th>
-                <th className="px-4 py-3">Số Điện Thoại</th>
-                <th className="px-4 py-3">Giới Tính / Tuổi</th>
-                <th className="px-4 py-3">Địa Chỉ</th>
-                <th className="px-4 py-3 text-right">Thao Tác</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {paginatedPatients.map((p) => (
-                <tr key={p.id} className="hover:bg-teal-50/40 transition-colors">
-                  <td className="px-4 py-3 font-bold text-teal-800 whitespace-nowrap">
-                    {p.patientCode}
-                  </td>
+      {/* 3. NỘI DUNG TỪNG TAB */}
+      {activeTab === 'PATIENTS' && (
+        <div className="space-y-4">
+          {/* Filter & Search Controls */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 rounded-[4px] border border-slate-200 bg-white p-3 shadow-2xs">
+            {/* Search Input */}
+            <div className="relative w-full sm:max-w-md">
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+                placeholder="Tìm theo tên bệnh nhân, mã bệnh nhân (PA-...), số điện thoại..."
+                className="w-full rounded border border-slate-300 bg-slate-50/50 pl-9 pr-3 py-2 text-xs text-slate-800 focus:border-teal-600 focus:bg-white focus:outline-none transition-colors"
+              />
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            </div>
 
-                  <td className="px-4 py-3 font-bold text-slate-900">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-teal-700 text-white font-bold text-xs shrink-0">
-                        {p.fullName.charAt(0)}
-                      </div>
-                      <span>{p.fullName}</span>
-                    </div>
-                  </td>
+            {/* Gender Filter Dropdown */}
+            <div className="flex items-center gap-2">
+              <Filter size={15} className="text-slate-400 shrink-0" />
+              <select
+                value={genderFilter}
+                onChange={(e) => {
+                  setGenderFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="rounded border border-slate-300 bg-slate-50/50 px-3 py-2 text-xs font-semibold text-slate-700 focus:border-teal-600 focus:bg-white focus:outline-none cursor-pointer"
+              >
+                <option value="ALL">Tất cả giới tính</option>
+                <option value="MALE">Nam (MALE)</option>
+                <option value="FEMALE">Nữ (FEMALE)</option>
+              </select>
+            </div>
+          </div>
 
-                  <td className="px-4 py-3 font-semibold text-slate-700 whitespace-nowrap">
-                    <div className="flex items-center gap-1.5">
-                      <Phone size={13} className="text-slate-400" />
-                      <span>{p.phone}</span>
-                    </div>
-                  </td>
+          {/* Patient Data Table */}
+          <div className="rounded-[4px] border border-slate-200 bg-white shadow-2xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-700 border-collapse">
+                <thead className="bg-slate-100/90 text-slate-700 uppercase font-bold border-b border-slate-200">
+                  <tr>
+                    <th className="px-4 py-3">Mã Bệnh Nhân</th>
+                    <th className="px-4 py-3">Họ Và Tên</th>
+                    <th className="px-4 py-3">Số Điện Thoại</th>
+                    <th className="px-4 py-3">Giới Tính / Tuổi</th>
+                    <th className="px-4 py-3">Địa Chỉ</th>
+                    <th className="px-4 py-3 text-right">Thao Tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {loading ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <RefreshCw size={16} className="animate-spin text-teal-600" />
+                          <span>Đang tải danh sách hồ sơ bệnh nhân từ hệ thống...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : paginatedPatients.length > 0 ? (
+                    paginatedPatients.map((p) => (
+                      <tr key={p.id} className="hover:bg-teal-50/40 transition-colors">
+                        <td className="px-4 py-3 font-bold text-teal-800 whitespace-nowrap">
+                          {p.patientCode}
+                        </td>
 
-                  <td className="px-4 py-3 font-medium text-slate-600 whitespace-nowrap">
-                    <span>{p.gender === 'MALE' ? '♂ Nam' : '♀ Nữ'}</span>
-                    <span className="ml-1 text-slate-400">{calculateAge(p.dateOfBirth)}</span>
-                  </td>
+                        <td className="px-4 py-3 font-bold text-slate-900">
+                          <div className="flex items-center gap-2">
+                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-teal-700 text-white font-bold text-xs shrink-0">
+                              {(p.fullName || 'B').charAt(0)}
+                            </div>
+                            <span>{p.fullName}</span>
+                          </div>
+                        </td>
 
-                  <td className="px-4 py-3 text-slate-600 max-w-[200px] truncate">
-                    {p.address}
-                  </td>
+                        <td className="px-4 py-3 font-semibold text-slate-700 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            <Phone size={13} className="text-slate-400" />
+                            <span>{p.phone}</span>
+                          </div>
+                        </td>
 
-                  <td className="px-4 py-3 text-right whitespace-nowrap">
-                    <div className="flex items-center justify-end gap-1.5">
-                      {/* Xem chi tiết */}
-                      <button
-                        type="button"
-                        onClick={() => handleOpenView(p)}
-                        className="rounded border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-100 transition-colors shadow-2xs cursor-pointer"
-                        title="Xem chi tiết"
-                      >
-                        <Eye size={13} />
-                      </button>
+                        <td className="px-4 py-3 font-medium text-slate-600 whitespace-nowrap">
+                          <span>{p.gender === 'MALE' ? '♂ Nam' : '♀ Nữ'}</span>
+                          <span className="ml-1 text-slate-400">{calculateAge(p.dateOfBirth)}</span>
+                        </td>
 
-                      {/* Chỉnh sửa */}
-                      <button
-                        type="button"
-                        onClick={() => handleOpenEdit(p)}
-                        className="rounded border border-teal-200 bg-teal-50 px-2 py-1 text-[11px] font-bold text-teal-800 hover:bg-teal-100 transition-colors shadow-2xs cursor-pointer"
-                        title="Chỉnh sửa"
-                      >
-                        <Edit size={13} />
-                      </button>
+                        <td className="px-4 py-3 text-slate-600 max-w-[200px] truncate">
+                          {p.address}
+                        </td>
 
-                      {/* Xóa */}
-                      <button
-                        type="button"
-                        onClick={() => handleOpenDelete(p)}
-                        className="rounded border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-bold text-rose-700 hover:bg-rose-100 transition-colors shadow-2xs cursor-pointer"
-                        title="Xóa hồ sơ"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                        <td className="px-4 py-3 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {/* Xem chi tiết */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenView(p)}
+                              className="rounded border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-100 transition-colors shadow-2xs cursor-pointer"
+                              title="Xem chi tiết"
+                            >
+                              <Eye size={13} />
+                            </button>
 
-              {paginatedPatients.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
-                    Không tìm thấy hồ sơ bệnh nhân nào phù hợp.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                            {/* Chỉnh sửa */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEdit(p)}
+                              className="rounded border border-teal-200 bg-teal-50 px-2 py-1 text-[11px] font-bold text-teal-800 hover:bg-teal-100 transition-colors shadow-2xs cursor-pointer"
+                              title="Chỉnh sửa"
+                            >
+                              <Edit size={13} />
+                            </button>
 
-        {/* Pagination Controls */}
-        <div className="flex items-center justify-between border-t border-slate-200 px-4 py-2.5 bg-slate-50">
-          <p className="text-xs text-slate-500">
-            Hiển thị <span className="font-bold text-slate-700">{filteredPatients.length}</span> hồ sơ bệnh nhân
-          </p>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              className="flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-white text-slate-600 disabled:opacity-40 hover:bg-slate-100 cursor-pointer"
-            >
-              <ChevronLeft size={14} />
-            </button>
-            <span className="px-2.5 text-xs font-bold text-slate-700">
-              {currentPage} / {totalPages}
-            </span>
-            <button
-              type="button"
-              disabled={currentPage >= totalPages}
-              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-              className="flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-white text-slate-600 disabled:opacity-40 hover:bg-slate-100 cursor-pointer"
-            >
-              <ChevronRight size={14} />
-            </button>
+                            {/* Xóa */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenDelete(p)}
+                              className="rounded border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-bold text-rose-700 hover:bg-rose-100 transition-colors shadow-2xs cursor-pointer"
+                              title="Xóa hồ sơ"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                        Không tìm thấy hồ sơ bệnh nhân nào phù hợp.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            <div className="flex items-center justify-between border-t border-slate-200 px-4 py-2.5 bg-slate-50">
+              <p className="text-xs text-slate-500">
+                Hiển thị <span className="font-bold text-slate-700">{filteredPatients.length}</span> hồ sơ bệnh nhân
+              </p>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  className="flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-white text-slate-600 disabled:opacity-40 hover:bg-slate-100 cursor-pointer"
+                >
+                  <ChevronLeft size={14} />
+                </button>
+                <span className="px-2.5 text-xs font-bold text-slate-700">
+                  {currentPage} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  className="flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-white text-slate-600 disabled:opacity-40 hover:bg-slate-100 cursor-pointer"
+                >
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* TAB 2: HỒ SƠ ĐÃ LIÊN KẾT (DỮ LIỆU THẬT) */}
+      {activeTab === 'LINKED_PROFILES' && (
+        <EmployeeLinkedProfile />
+      )}
 
       {/* ========================================================================= */}
       {/* UNIFIED REUSABLE PATIENT MODAL (CREATE, EDIT, VIEW, DELETE) */}

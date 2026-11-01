@@ -31,6 +31,7 @@ public interface PatientRepository extends JpaRepository<Patient, UUID> {
     Optional<Patient> findFirstByCccdOrderByCreatedAtDesc(String cccd);
     Optional<Patient> findFirstByPatientCodeOrderByCreatedAtDesc(String patientCode);
     Optional<Patient> findByUserId(UUID userId);
+    List<Patient> findByUserIsNotNullOrderByCreatedAtDesc();
 
     @Query(value = """
         SELECT
