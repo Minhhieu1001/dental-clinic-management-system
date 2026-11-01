@@ -127,6 +127,12 @@ export default function NotificationDropdown({ role = 'DENTIST', buttonClassName
 
   useEffect(() => {
     fetchNotifications();
+
+    const handleUpdated = () => {
+      fetchNotifications();
+    };
+    window.addEventListener('notification_updated', handleUpdated);
+    return () => window.removeEventListener('notification_updated', handleUpdated);
   }, [fetchNotifications]);
 
   // Realtime notification handler with Toast popup

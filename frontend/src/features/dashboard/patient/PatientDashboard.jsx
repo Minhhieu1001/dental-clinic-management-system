@@ -24,12 +24,84 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../../hooks/useAuth';
 import toast from 'react-hot-toast';
-import { getPatientStatistics } from '../../../services/patient.service';
-import { getInProgressTreatmentPlansByPatientId } from '../../../services/treatmentPlan.service';
+import { getPatientStatistics, getPatientById, getPatientByPatientCode } from '../../../services/patient.service';
+import { getInProgressTreatmentPlansByPatientId, getTreatmentPlansByPatientId } from '../../../services/treatmentPlan.service';
 import { getExaminationResultsByPatientId } from '../../../services/examinationResult.service';
 import { getCurrentMonthFollowUpAppointmentsByPatientId } from '../../../services/followUpAppointment.service';
+import { getAppointmentsByPatient, getMyAppointments, updateAppointment } from '../../../services/appointment.service';
+import { createNotification } from '../../../services/notification.service';
+import { canModifyAppointment, checkAppointmentModifiable } from '../../../utils/appointmentTimeCheck';
 import Loading from '../../../components/ui/Loading';
 import PatientBookingModal from '../../appointment/patient/PatientBookingModal';
+
+const isValidUUID = (str) =>
+  typeof str === 'string' &&
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
+
+// Chuẩn hóa tên bác sĩ không bị lặp học hàm/học vị (tránh BS. ThS. BS.)
+const formatDoctorName = (name) => {
+  if (!name) return 'BS. Nguyễn Văn Anh';
+  const clean = name.trim();
+  if (/^(BS|ThS|TS|PGS|GS)\.?\s+/i.test(clean)) {
+    return clean;
+  }
+  return `BS. ${clean}`;
+};
+
+// Chuẩn hóa ngày giờ: tính timeMs chính xác và format thời gian đẹp HH:mm (loại bỏ chuỗi ISO)
+const parseAppointmentDateTime = (dateVal, timeVal) => {
+  const dayNames = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+  let y = 2026, m = 1, d = 1;
+  let hasValidDate = false;
+
+  if (dateVal) {
+    if (typeof dateVal === 'string') {
+      const cleanDate = dateVal.split('T')[0];
+      const parts = cleanDate.split('-');
+      if (parts.length === 3) {
+        y = parseInt(parts[0], 10);
+        m = parseInt(parts[1], 10);
+        d = parseInt(parts[2], 10);
+        hasValidDate = true;
+      }
+    } else if (dateVal instanceof Date && !isNaN(dateVal.getTime())) {
+      y = dateVal.getFullYear();
+      m = dateVal.getMonth() + 1;
+      d = dateVal.getDate();
+      hasValidDate = true;
+    }
+  }
+
+  let hh = 9, mm = 0;
+  let timeFormatted = '09:00';
+  if (timeVal) {
+    let tStr = String(timeVal).trim();
+    if (tStr.includes('T')) {
+      tStr = tStr.split('T')[1];
+    }
+    const tParts = tStr.split(':');
+    if (tParts.length >= 2) {
+      hh = parseInt(tParts[0], 10) || 0;
+      mm = parseInt(tParts[1], 10) || 0;
+      timeFormatted = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+    }
+  }
+
+  const dateObj = hasValidDate ? new Date(y, m - 1, d, hh, mm, 0) : null;
+  const rawTimeMs = dateObj && !isNaN(dateObj.getTime()) ? dateObj.getTime() : 0;
+  const isValid = rawTimeMs > 0;
+
+  return {
+    dateObj,
+    rawTimeMs,
+    timeFormatted,
+    dayOfWeek: isValid ? dayNames[dateObj.getDay()] : 'Chưa có',
+    dayNumber: isValid ? String(dateObj.getDate()).padStart(2, '0') : '--',
+    monthYear: isValid ? `Tháng ${dateObj.getMonth() + 1}` : 'Chưa có',
+    date: isValid ? dateObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }) : 'Chưa có',
+    fullDate: isValid ? dateObj.toLocaleDateString('vi-VN') : 'Chưa có',
+  };
+};
 
 export default function PatientDashboard() {
   const { user } = useAuth();
@@ -48,11 +120,104 @@ export default function PatientDashboard() {
   const [historyPage, setHistoryPage] = useState(1);
   const itemsPerPage = 4;
 
+  // Form states cho Modal Yêu cầu đổi lịch khám
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleTimeSlot, setRescheduleTimeSlot] = useState('MORNING');
+  const [rescheduleNotes, setRescheduleNotes] = useState('');
+  const [isSubmittingReschedule, setIsSubmittingReschedule] = useState(false);
+
+  // Mở modal đổi lịch và gán ngày mặc định là ngày mai
+  const handleOpenRescheduleModal = (apt) => {
+    if (!apt) return;
+    const check = checkAppointmentModifiable(apt);
+    if (!check.canModify) {
+      toast.error(check.reason);
+      return;
+    }
+    setSelectedAppointment(apt);
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const y = tomorrow.getFullYear();
+    const m = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const d = String(tomorrow.getDate()).padStart(2, '0');
+    setRescheduleDate(`${y}-${m}-${d}`);
+    setRescheduleTimeSlot('MORNING');
+    setRescheduleNotes('');
+    setIsRescheduleOpen(true);
+  };
+
+  // Xác nhận gửi yêu cầu đổi lịch kết nối API updateAppointment của Employee/Backend
+  const handleConfirmReschedule = async () => {
+    if (!selectedAppointment?.id) {
+      toast.error('Không tìm thấy thông tin lịch hẹn cần đổi!');
+      return;
+    }
+    if (!rescheduleDate) {
+      toast.error('Vui lòng chọn ngày mong muốn mới!');
+      return;
+    }
+
+    const slotConfig = {
+      MORNING: { time: '09:00:00', label: 'Buổi sáng (08:30 - 11:30)' },
+      AFTERNOON: { time: '14:30:00', label: 'Buổi chiều (14:00 - 17:00)' },
+      EVENING: { time: '18:00:00', label: 'Buổi tối (17:30 - 20:00)' },
+    };
+    const chosenSlot = slotConfig[rescheduleTimeSlot] || slotConfig.MORNING;
+
+    setIsSubmittingReschedule(true);
+    try {
+      const changeNote = `Bệnh nhân yêu cầu đổi lịch sang ngày ${rescheduleDate} (${chosenSlot.label}). ${rescheduleNotes ? 'Lý do: ' + rescheduleNotes.trim() : ''}`;
+
+      // 1. Gọi API cập nhật lịch hẹn: PUT /api/v1/appointments/{id}
+      await updateAppointment(selectedAppointment.id, {
+        appointmentDate: rescheduleDate,
+        appointmentTime: chosenSlot.time,
+        notes: changeNote,
+        status: 'PENDING', // Đặt trạng thái PENDING để Lễ tân tại quầy (Employee) duyệt xác nhận
+      });
+
+      // 2. Phát thông báo chuông cho tài khoản bệnh nhân
+      if (user?.id) {
+        try {
+          await createNotification({
+            userId: user.id,
+            title: 'Yêu cầu đổi lịch khám thành công',
+            content: `Bạn đã gửi yêu cầu đổi lịch (${selectedAppointment.title}) sang ngày ${rescheduleDate} (${chosenSlot.label}). Lễ tân sẽ liên hệ xác nhận sớm nhất.`,
+            type: 'STATUS_CHANGE',
+            targetUrl: '/patient/appointments',
+          });
+        } catch (notifErr) {
+          console.warn('Lỗi gửi thông báo cho bệnh nhân:', notifErr);
+        }
+      }
+
+      // 3. Kích hoạt CustomEvent để đồng bộ realtime với chuông và danh sách lịch hẹn
+      window.dispatchEvent(new CustomEvent('appointment_created'));
+      window.dispatchEvent(new CustomEvent('notification_updated'));
+
+      toast.success('Gửi yêu cầu đổi lịch thành công! Nhân viên lễ tân đã nhận được yêu cầu của bạn.');
+      setIsRescheduleOpen(false);
+      setSelectedAppointment(null);
+      setRescheduleNotes('');
+
+      const pid = user?.patientId || user?.id;
+      if (pid) {
+        loadAllDashboardData(pid);
+      }
+    } catch (err) {
+      console.error('Lỗi khi gửi yêu cầu đổi lịch:', err);
+      toast.error(err.response?.data?.message || 'Không thể gửi yêu cầu đổi lịch. Vui lòng thử lại!');
+    } finally {
+      setIsSubmittingReschedule(false);
+    }
+  };
+
   // States quản lý dữ liệu từ từng API
   const [patientStatistics, setPatientStatistics] = useState(null);
   const [inProgressPlans, setInProgressPlans] = useState([]);
   const [examinationResults, setExaminationResults] = useState([]);
   const [followUpAppointments, setFollowUpAppointments] = useState([]);
+  const [patientAppointments, setPatientAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // 1. Fetch Thống kê bệnh nhân
@@ -70,7 +235,15 @@ export default function PatientDashboard() {
   const fetchInProgressTreatmentPlansByPatientId = async (patientId) => {
     try {
       const res = await getInProgressTreatmentPlansByPatientId(patientId);
-      const list = Array.isArray(res) ? res : (res?.data || []);
+      let list = Array.isArray(res) ? res : (res?.data || []);
+      if (!list || list.length === 0) {
+        try {
+          const allRes = await getTreatmentPlansByPatientId(patientId);
+          list = Array.isArray(allRes) ? allRes : (allRes?.data || []);
+        } catch (e) {
+          // fallback ignore
+        }
+      }
       setInProgressPlans(list);
     } catch (error) {
       console.error("Lỗi lấy kế hoạch điều trị đang tiến hành:", error);
@@ -102,67 +275,208 @@ export default function PatientDashboard() {
     }
   };
 
+  // 5. Fetch Lịch hẹn khám (Appointments của bệnh nhân)
+  const fetchPatientAppointments = async (patientId) => {
+    try {
+      let actualPatientId = user?.patientId;
+      let actualPhone = user?.phone || user?.phoneNumber || (typeof localStorage !== 'undefined' ? localStorage.getItem('patient_phone') : null);
+
+      if (!actualPatientId || !isValidUUID(actualPatientId)) {
+        if (user?.patientCode) {
+          try {
+            const pRes = await getPatientByPatientCode(user.patientCode);
+            const pData = pRes?.data || pRes;
+            if (pData?.id) {
+              actualPatientId = pData.id;
+              if (pData.phoneNumber) actualPhone = pData.phoneNumber;
+            }
+          } catch (e) {
+            console.warn('Lookup by patientCode failed:', e);
+          }
+        }
+        if ((!actualPatientId || !isValidUUID(actualPatientId)) && user?.id) {
+          try {
+            const pRes = await getPatientById(user.id);
+            const pData = pRes?.data || pRes;
+            if (pData?.id) {
+              actualPatientId = pData.id;
+              if (pData.phoneNumber) actualPhone = pData.phoneNumber;
+            }
+          } catch (e) {
+            console.warn('Lookup by user.id failed:', e);
+          }
+        }
+      }
+
+      const pLookupId = actualPatientId || patientId || user?.patientId || user?.id;
+      let data = [];
+      if (pLookupId) {
+        try {
+          data = await getAppointmentsByPatient(pLookupId);
+        } catch (e) {
+          console.warn('getAppointmentsByPatient error:', e);
+        }
+      }
+
+      if ((!data || data.length === 0) && user) {
+        try {
+          const myAppts = await getMyAppointments();
+          if (Array.isArray(myAppts) && myAppts.length > 0) {
+            data = myAppts;
+          }
+        } catch (e) {
+          console.warn('getMyAppointments error:', e);
+        }
+      }
+
+      let list = Array.isArray(data) ? data : [];
+      if (list.length > 0) {
+        list = list.filter((apt) => {
+          if (actualPatientId && (apt.patientId === actualPatientId || apt.patientId === user?.id)) return true;
+          if (actualPhone && apt.phone && apt.phone.trim() === actualPhone.trim()) return true;
+          if (user?.patientCode && apt.patientCode && apt.patientCode === user.patientCode) return true;
+          if (user?.username && apt.patientName && apt.patientName.toLowerCase() === user.username.toLowerCase()) return true;
+          return !apt.patientId || apt.patientId === pLookupId;
+        });
+      }
+      setPatientAppointments(list);
+    } catch (err) {
+      console.warn('Lỗi khi lấy lịch hẹn khám của bệnh nhân:', err);
+      setPatientAppointments([]);
+    }
+  };
+
+  const loadAllDashboardData = (patientId) => {
+    if (!patientId) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    Promise.allSettled([
+      fetchPatientStatistics(patientId),
+      fetchInProgressTreatmentPlansByPatientId(patientId),
+      fetchExaminationResultsByPatientId(patientId),
+      fetchCurrentMonthFollowUpAppointmentsByPatientId(patientId),
+      fetchPatientAppointments(patientId),
+    ]).finally(() => {
+      setLoading(false);
+    });
+  };
+
   useEffect(() => {
     const patientId = user?.patientId || user?.id;
-    if (patientId) {
-      setLoading(true);
-      Promise.allSettled([
-        fetchPatientStatistics(patientId),
-        fetchInProgressTreatmentPlansByPatientId(patientId),
-        fetchExaminationResultsByPatientId(patientId),
-        fetchCurrentMonthFollowUpAppointmentsByPatientId(patientId),
-      ]).finally(() => {
-        setLoading(false);
-      });
-    } else {
-      setLoading(false);
-    }
+    loadAllDashboardData(patientId);
+
+    // Lắng nghe sự kiện khi tạo lịch hẹn mới để tự động đồng bộ tức thì
+    const handleRefreshAppointments = () => {
+      const pid = user?.patientId || user?.id;
+      if (pid) {
+        fetchPatientAppointments(pid);
+        fetchCurrentMonthFollowUpAppointmentsByPatientId(pid);
+        fetchPatientStatistics(pid);
+        fetchInProgressTreatmentPlansByPatientId(pid);
+      }
+    };
+
+    window.addEventListener('appointment_created', handleRefreshAppointments);
+    return () => {
+      window.removeEventListener('appointment_created', handleRefreshAppointments);
+    };
   }, [user]);
 
-  // Map dữ liệu thật từ danh sách lịch tái khám (followUpAppointments)
+  // Hợp nhất dữ liệu thật từ cả Lịch Hẹn Khám (patientAppointments) và Lịch Tái Khám (followUpAppointments)
   const upcomingAppointments = useMemo(() => {
-    if (!followUpAppointments || followUpAppointments.length === 0) return [];
+    const mergedList = [];
 
-    const sorted = [...followUpAppointments].sort((a, b) => {
-      const timeA = a.followUpDate ? new Date(a.followUpDate).getTime() : 0;
-      const timeB = b.followUpDate ? new Date(b.followUpDate).getTime() : 0;
-      return timeA - timeB;
+    // 1. Chuẩn hóa các lịch hẹn khám (Appointments)
+    if (patientAppointments && patientAppointments.length > 0) {
+      patientAppointments.forEach((apt) => {
+        const st = (apt.status || '').toUpperCase();
+        if (st === 'CANCELLED' || st.includes('HỦY')) return;
+
+        const dateParsed = parseAppointmentDateTime(apt.appointmentDate, apt.appointmentTime);
+
+        mergedList.push({
+          id: apt.id || Math.random().toString(),
+          type: 'APPOINTMENT',
+          typeLabel: 'Lịch hẹn khám',
+          dayOfWeek: dateParsed.dayOfWeek,
+          dayNumber: dateParsed.dayNumber,
+          monthYear: dateParsed.monthYear,
+          date: dateParsed.date,
+          fullDate: dateParsed.fullDate,
+          time: dateParsed.timeFormatted,
+          appointmentDate: apt.appointmentDate,
+          appointmentTime: dateParsed.timeFormatted,
+          title: apt.reason || apt.serviceName || 'Khám răng tổng quát',
+          status: apt.status === 'CONFIRMED' ? 'Đã xác nhận' : (apt.status === 'COMPLETED' ? 'Đã khám' : 'Đã lên lịch'),
+          statusColor: apt.status === 'CONFIRMED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-teal-50 text-teal-700 border-teal-200',
+          doctor: formatDoctorName(apt.dentistName),
+          branch: apt.branchName || 'Cơ sở 1 TPHCM',
+          address: apt.addressBranch || apt.branchAddress || '59C Nguyễn Đình Chiểu, phường Xuân Hòa, TP.HCM',
+          notes: apt.notes || 'Chưa có',
+          rawDateTime: dateParsed.dateObj,
+          rawTimeMs: dateParsed.rawTimeMs,
+          raw: apt,
+        });
+      });
+    }
+
+    // 2. Chuẩn hóa các lịch tái khám (FollowUpAppointments)
+    if (followUpAppointments && followUpAppointments.length > 0) {
+      followUpAppointments.forEach((apt) => {
+        const st = (apt.status || '').toUpperCase();
+        if (st === 'CANCELLED' || st.includes('HỦY')) return;
+
+        const dateParsed = parseAppointmentDateTime(apt.followUpDate, apt.followUpTime);
+
+        mergedList.push({
+          id: apt.id || Math.random().toString(),
+          type: 'FOLLOW_UP',
+          typeLabel: 'Lịch tái khám',
+          dayOfWeek: dateParsed.dayOfWeek,
+          dayNumber: dateParsed.dayNumber,
+          monthYear: dateParsed.monthYear,
+          date: dateParsed.date,
+          fullDate: dateParsed.fullDate,
+          time: dateParsed.timeFormatted,
+          appointmentDate: apt.followUpDate,
+          appointmentTime: dateParsed.timeFormatted,
+          title: apt.reason || apt.chiefComplaint || 'Tái khám định kỳ',
+          status: apt.status ? 'Đã xác nhận' : 'Sắp tới',
+          statusColor: apt.status ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-teal-50 text-teal-700 border-teal-200',
+          doctor: formatDoctorName(apt.dentistName),
+          branch: apt.branchName || 'Cơ sở 1 TPHCM',
+          address: apt.addressBranch || '59C Nguyễn Đình Chiểu, phường Xuân Hòa, TP.HCM',
+          notes: apt.note || 'Chưa có',
+          rawDateTime: dateParsed.dateObj,
+          rawTimeMs: dateParsed.rawTimeMs,
+          raw: apt,
+        });
+      });
+    }
+
+    // 3. Sắp xếp danh sách theo thời gian sớm nhất diễn ra trước (Ascending)
+    mergedList.sort((a, b) => {
+      if (a.rawTimeMs && b.rawTimeMs) {
+        return a.rawTimeMs - b.rawTimeMs;
+      }
+      return 0;
     });
 
-    const dayNames = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
-
-    return sorted.map((apt) => {
-      const d = apt.followUpDate ? new Date(apt.followUpDate) : null;
-      const isValidDate = d && !isNaN(d.getTime());
-
-      return {
-        id: apt.id || Math.random().toString(),
-        dayOfWeek: isValidDate ? dayNames[d.getDay()] : 'Chưa có',
-        dayNumber: isValidDate ? String(d.getDate()).padStart(2, '0') : '--',
-        monthYear: isValidDate ? `Tháng ${d.getMonth() + 1}` : 'Chưa có',
-        date: isValidDate ? d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }) : 'Chưa có',
-        fullDate: isValidDate ? d.toLocaleDateString('vi-VN') : 'Chưa có',
-        time: isValidDate ? d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : 'Chưa có',
-        title: apt.reason || apt.chiefComplaint || 'Tái khám định kỳ',
-        status: apt.status ? 'Đã xác nhận' : 'Sắp tới',
-        statusColor: apt.status ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-teal-50 text-teal-700 border-teal-200',
-        doctor: apt.dentistName ? (apt.dentistName.startsWith('BS.') ? apt.dentistName : `BS. ${apt.dentistName}`) : 'Chưa có',
-        branch: apt.branchName || 'Chưa có',
-        address: apt.addressBranch || 'Chưa có',
-        notes: apt.note || 'Chưa có',
-        raw: apt,
-      };
-    });
-  }, [followUpAppointments]);
+    return mergedList;
+  }, [patientAppointments, followUpAppointments]);
 
   const latestAppointment = upcomingAppointments[0] || null;
 
-  // 5 Thẻ tóm tắt chỉ số (Dữ liệu từ API fetchPatientStatistics)
+  // 5 Thẻ tóm tắt chỉ số (Dữ liệu từ API fetchPatientStatistics, tự động đồng bộ theo lịch hẹn thực tế)
   const stats = [
     {
       id: 'appointments',
       title: 'Lịch hẹn trong 30 ngày',
-      count: patientStatistics?.totalAppointmentsLast30Days ?? 0,
+      count: (patientStatistics?.totalAppointmentsLast30Days && Number(patientStatistics.totalAppointmentsLast30Days) > 0)
+        ? patientStatistics.totalAppointmentsLast30Days
+        : upcomingAppointments.length,
       icon: CalendarCheck,
       color: 'text-teal-700',
       bgColor: 'bg-teal-50 border border-teal-100',
@@ -392,12 +706,12 @@ export default function PatientDashboard() {
                 <span>Lịch hẹn sắp tới</span>
               </div>
 
-              <div className="rounded-2xl bg-white p-4 sm:p-5 shadow-xl shadow-teal-950/20 border border-white/80 text-slate-800">
+              <div className="rounded-xl bg-white p-4 sm:p-5 shadow-lg shadow-teal-950/15 border border-white/90 text-slate-800">
                 {latestAppointment ? (
                   <>
                     <div className="flex items-start gap-4">
                       {/* Date Badge in Emerald theme */}
-                      <div className="rounded-2xl bg-teal-50 border border-teal-100/90 px-3.5 py-3 text-center min-w-[76px] shrink-0 flex flex-col justify-center">
+                      <div className="rounded-lg bg-teal-50 border border-teal-100/90 px-3.5 py-3 text-center min-w-[76px] shrink-0 flex flex-col justify-center">
                         <span className="text-[11px] font-bold text-teal-700 uppercase tracking-tight">
                           {latestAppointment.dayOfWeek}
                         </span>
@@ -442,17 +756,24 @@ export default function PatientDashboard() {
                       <button
                         type="button"
                         onClick={() => setSelectedAppointment(latestAppointment)}
-                        className="flex-1 rounded-xl border border-slate-200 bg-white py-2 text-xs font-bold text-slate-700 hover:bg-teal-50 hover:text-teal-800 transition-colors shadow-2xs cursor-pointer"
+                        className="flex-1 rounded-lg border border-slate-200 bg-white py-2 text-xs font-bold text-slate-700 hover:bg-teal-50 hover:text-teal-800 transition-colors shadow-2xs cursor-pointer"
                       >
                         Xem chi tiết
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
-                          setSelectedAppointment(latestAppointment);
-                          setIsRescheduleOpen(true);
-                        }}
-                        className="flex-1 rounded-xl bg-teal-700 py-2 text-xs font-bold text-white hover:bg-teal-800 transition-colors shadow-xs cursor-pointer"
+                        onClick={() => handleOpenRescheduleModal(latestAppointment)}
+                        disabled={!canModifyAppointment(latestAppointment)}
+                        title={
+                          !canModifyAppointment(latestAppointment)
+                            ? checkAppointmentModifiable(latestAppointment).reason
+                            : 'Đổi ngày hoặc giờ hẹn'
+                        }
+                        className={`flex-1 rounded-lg py-2 text-xs font-bold transition-colors shadow-xs ${
+                          canModifyAppointment(latestAppointment)
+                            ? 'bg-teal-700 text-white hover:bg-teal-800 cursor-pointer'
+                            : 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-60 border border-slate-300/60'
+                        }`}
                       >
                         Đổi lịch
                       </button>
@@ -538,10 +859,10 @@ export default function PatientDashboard() {
               <Link
                 key={item.id}
                 to={item.to}
-                className="group flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 transition-all hover:-translate-y-0.5 hover:shadow-md hover:ring-teal-200"
+                className="group flex items-center justify-between rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-100 transition-all hover:-translate-y-0.5 hover:shadow-md hover:ring-teal-200"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${item.bgColor} ${item.color} shadow-xs`}>
+                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${item.bgColor} ${item.color} shadow-xs`}>
                     <Icon className="h-6 w-6" />
                   </div>
                   {item.id === 'treatment-plan' ? (
@@ -598,7 +919,7 @@ export default function PatientDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
 
           {/* Left Column: Lịch hẹn sắp tới */}
-          <div className="lg:col-span-6 rounded-2xl bg-white p-5 sm:p-6 shadow-sm ring-1 ring-slate-100 flex flex-col justify-between">
+          <div className="lg:col-span-6 rounded-xl bg-white p-5 sm:p-6 shadow-sm ring-1 ring-slate-100 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <h3 className="text-base font-extrabold text-slate-900">
@@ -618,10 +939,10 @@ export default function PatientDashboard() {
                     <div
                       key={apt.id}
                       onClick={() => setSelectedAppointment(apt)}
-                      className="group flex items-center justify-between gap-3 p-3 rounded-2xl border border-slate-100 hover:border-teal-200 hover:bg-teal-50/30 transition-all cursor-pointer"
+                      className="group flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-100 hover:border-teal-200 hover:bg-teal-50/30 transition-all cursor-pointer"
                     >
                       {/* Date badge in teal */}
-                      <div className="flex flex-col items-center justify-center rounded-xl bg-teal-50 border border-teal-100 px-3 py-2 min-w-[62px] shrink-0">
+                      <div className="flex flex-col items-center justify-center rounded-lg bg-teal-50 border border-teal-100 px-3 py-2 min-w-[62px] shrink-0">
                         <span className="text-[10px] font-bold text-teal-700">
                           {apt.dayOfWeek}
                         </span>
@@ -675,7 +996,7 @@ export default function PatientDashboard() {
           </div>
 
           {/* Right Column: Kế hoạch điều trị (Hỗ trợ nhiều bản ghi dạng Tabs) */}
-          <div className="lg:col-span-6 rounded-2xl bg-white p-5 sm:p-6 shadow-sm ring-1 ring-slate-100 flex flex-col justify-between">
+          <div className="lg:col-span-6 rounded-xl bg-white p-5 sm:p-6 shadow-sm ring-1 ring-slate-100 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2">
@@ -732,7 +1053,7 @@ export default function PatientDashboard() {
                       <img
                         src={activeTreatmentPlan.image || "/tooth-implant.jpg"}
                         alt={activeTreatmentPlan.title}
-                        className="h-14 w-14 rounded-2xl object-cover ring-1 ring-slate-100 shadow-sm shrink-0"
+                        className="h-14 w-14 rounded-xl object-cover ring-1 ring-slate-100 shadow-sm shrink-0"
                       />
                       <div>
                         <div className="flex items-center gap-2">
@@ -869,7 +1190,7 @@ export default function PatientDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
 
           {/* Left Column: Lịch sử điều trị (Table) */}
-          <div className="lg:col-span-8 rounded-2xl bg-white p-5 sm:p-6 shadow-sm ring-1 ring-slate-100 flex flex-col justify-between">
+          <div className="lg:col-span-8 rounded-xl bg-white p-5 sm:p-6 shadow-sm ring-1 ring-slate-100 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <h3 className="text-base font-extrabold text-slate-900">
@@ -981,7 +1302,7 @@ export default function PatientDashboard() {
           </div>
 
           {/* Right Column: Thao tác nhanh (6 Emerald / Teal Unified Tiles) */}
-          <div className="lg:col-span-4 rounded-2xl bg-white p-5 sm:p-6 shadow-sm ring-1 ring-slate-100 flex flex-col justify-between">
+          <div className="lg:col-span-4 rounded-xl bg-white p-5 sm:p-6 shadow-sm ring-1 ring-slate-100 flex flex-col justify-between">
             <div>
               <h3 className="text-base font-extrabold text-slate-900 border-b border-slate-100 pb-3">
                 Thao tác nhanh
@@ -995,7 +1316,7 @@ export default function PatientDashboard() {
                       key={index}
                       type="button"
                       onClick={action.onClick}
-                      className={`flex flex-col items-center justify-center rounded-2xl p-3.5 text-center transition-all duration-200 ${action.bgColor} ${action.textColor} ${action.hoverColor} hover:scale-[1.02] active:scale-95 shadow-2xs cursor-pointer min-h-[86px]`}
+                      className={`flex flex-col items-center justify-center rounded-xl p-3.5 text-center transition-all duration-200 ${action.bgColor} ${action.textColor} ${action.hoverColor} hover:scale-[1.02] active:scale-95 shadow-2xs cursor-pointer min-h-[86px]`}
                     >
                       <Icon className="h-5.5 w-5.5 mb-1.5 shrink-0" />
                       <span className="text-xs font-bold leading-tight">
@@ -1018,7 +1339,7 @@ export default function PatientDashboard() {
       {/* Appointment Detail Modal */}
       {selectedAppointment && !isRescheduleOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-scaleUp">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl animate-scaleUp">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-base font-bold text-slate-900">Chi tiết lịch hẹn</h3>
               <button
@@ -1057,20 +1378,42 @@ export default function PatientDashboard() {
                   {selectedAppointment.status}
                 </span>
               </div>
+              {!canModifyAppointment(selectedAppointment) && (
+                <div className="rounded-lg bg-amber-50 border border-amber-200 p-2.5 text-xs text-amber-800 font-medium">
+                  {checkAppointmentModifiable(selectedAppointment).reason}
+                </div>
+              )}
             </div>
 
             <div className="mt-6 flex gap-3">
               <button
                 type="button"
-                onClick={() => setIsRescheduleOpen(true)}
-                className="flex-1 rounded-xl bg-teal-700 py-2.5 text-xs font-bold text-white hover:bg-teal-800 transition-colors shadow-xs"
+                onClick={() => {
+                  const check = checkAppointmentModifiable(selectedAppointment);
+                  if (!check.canModify) {
+                    toast.error(check.reason);
+                    return;
+                  }
+                  handleOpenRescheduleModal(selectedAppointment);
+                }}
+                disabled={!canModifyAppointment(selectedAppointment)}
+                title={
+                  !canModifyAppointment(selectedAppointment)
+                    ? checkAppointmentModifiable(selectedAppointment).reason
+                    : 'Yêu cầu đổi lịch'
+                }
+                className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition-colors shadow-xs ${
+                  canModifyAppointment(selectedAppointment)
+                    ? 'bg-teal-700 text-white hover:bg-teal-800 cursor-pointer'
+                    : 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-60 border border-slate-300/60'
+                }`}
               >
                 Yêu cầu đổi lịch
               </button>
               <button
                 type="button"
                 onClick={() => setSelectedAppointment(null)}
-                className="flex-1 rounded-xl border border-slate-200 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                className="flex-1 rounded-lg border border-slate-200 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
               >
                 Đóng
               </button>
@@ -1082,7 +1425,7 @@ export default function PatientDashboard() {
       {/* Reschedule Confirmation Modal */}
       {isRescheduleOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-scaleUp">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl animate-scaleUp">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-base font-bold text-slate-900">Yêu cầu đổi lịch khám</h3>
               <button
@@ -1102,16 +1445,22 @@ export default function PatientDashboard() {
                 <label className="text-xs font-bold text-slate-700">Chọn ngày mong muốn mới:</label>
                 <input
                   type="date"
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  defaultValue="2025-10-20"
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  value={rescheduleDate}
+                  min={new Date().toISOString().split('T')[0]}
+                  onChange={(e) => setRescheduleDate(e.target.value)}
                 />
               </div>
               <div>
                 <label className="text-xs font-bold text-slate-700">Khung giờ mong muốn:</label>
-                <select className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal-500">
-                  <option>Buổi sáng (08:30 - 11:30)</option>
-                  <option>Buổi chiều (14:00 - 17:00)</option>
-                  <option>Buổi tối (17:30 - 20:00)</option>
+                <select
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  value={rescheduleTimeSlot}
+                  onChange={(e) => setRescheduleTimeSlot(e.target.value)}
+                >
+                  <option value="MORNING">Buổi sáng (08:30 - 11:30)</option>
+                  <option value="AFTERNOON">Buổi chiều (14:00 - 17:00)</option>
+                  <option value="EVENING">Buổi tối (17:30 - 20:00)</option>
                 </select>
               </div>
               <div>
@@ -1119,7 +1468,9 @@ export default function PatientDashboard() {
                 <textarea
                   rows={2}
                   placeholder="Lý do bận, yêu cầu bác sĩ..."
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  value={rescheduleNotes}
+                  onChange={(e) => setRescheduleNotes(e.target.value)}
                 />
               </div>
             </div>
@@ -1127,19 +1478,16 @@ export default function PatientDashboard() {
             <div className="mt-6 flex gap-3">
               <button
                 type="button"
-                onClick={() => {
-                  toast.success('Đã gửi yêu cầu đổi lịch! Lễ tân sẽ liên hệ xác nhận trong 15 phút.');
-                  setIsRescheduleOpen(false);
-                  setSelectedAppointment(null);
-                }}
-                className="flex-1 rounded-xl bg-teal-700 py-2.5 text-xs font-bold text-white hover:bg-teal-800 transition-colors shadow-xs"
+                onClick={handleConfirmReschedule}
+                disabled={isSubmittingReschedule}
+                className="flex-1 rounded-lg bg-teal-700 py-2.5 text-xs font-bold text-white hover:bg-teal-800 transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
               >
-                Gửi yêu cầu
+                {isSubmittingReschedule ? 'Đang gửi...' : 'Gửi yêu cầu'}
               </button>
               <button
                 type="button"
                 onClick={() => setIsRescheduleOpen(false)}
-                className="flex-1 rounded-xl border border-slate-200 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                className="flex-1 rounded-lg border border-slate-200 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
               >
                 Hủy
               </button>
@@ -1151,7 +1499,7 @@ export default function PatientDashboard() {
       {/* Treatment History Detail Modal */}
       {selectedHistory && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-scaleUp">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl animate-scaleUp">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-base font-bold text-slate-900">Chi tiết đợt điều trị</h3>
               <button
@@ -1182,7 +1530,7 @@ export default function PatientDashboard() {
               </div>
               <div className="pt-2 border-t border-slate-100">
                 <span className="text-slate-500 text-xs block mb-1">Ghi chú & kết quả bác sĩ:</span>
-                <p className="rounded-xl bg-slate-50 p-3 text-xs text-slate-700 leading-relaxed font-medium">
+                <p className="rounded-lg bg-slate-50 p-3 text-xs text-slate-700 leading-relaxed font-medium">
                   {selectedHistory.notes}
                 </p>
               </div>
@@ -1192,7 +1540,7 @@ export default function PatientDashboard() {
               <button
                 type="button"
                 onClick={() => setSelectedHistory(null)}
-                className="w-full rounded-xl bg-teal-700 py-2.5 text-xs font-bold text-white hover:bg-teal-800 transition-colors shadow-xs"
+                className="w-full rounded-lg bg-teal-700 py-2.5 text-xs font-bold text-white hover:bg-teal-800 transition-colors shadow-xs"
               >
                 Đóng
               </button>
@@ -1204,7 +1552,7 @@ export default function PatientDashboard() {
       {/* Support / Contact Hotline Modal */}
       {isSupportOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-scaleUp">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl animate-scaleUp">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2 text-slate-900">
                 <Headphones className="h-5 w-5 text-teal-700" />
@@ -1220,7 +1568,7 @@ export default function PatientDashboard() {
             </div>
 
             <div className="mt-4 space-y-4 text-xs text-slate-600">
-              <div className="rounded-xl bg-teal-50 p-4 border border-teal-100 text-center">
+              <div className="rounded-lg bg-teal-50 p-4 border border-teal-100 text-center">
                 <p className="font-bold text-teal-900">Tổng đài chăm sóc khách hàng 24/7</p>
                 <a
                   href="tel:19001234"
@@ -1233,15 +1581,15 @@ export default function PatientDashboard() {
 
               <div className="space-y-2">
                 <p className="font-bold text-slate-800">Hệ thống chi nhánh Crown Dental:</p>
-                <div className="rounded-xl border border-slate-100 p-2.5 space-y-1">
+                <div className="rounded-lg border border-slate-100 p-2.5 space-y-1">
                   <p className="font-bold text-slate-800">Chi nhánh 1 (Quận 1):</p>
                   <p className="text-slate-500">123 Nguyễn Thị Minh Khai, P. Bến Thành, Q.1 - ĐT: 028 3930 1111</p>
                 </div>
-                <div className="rounded-xl border border-slate-100 p-2.5 space-y-1">
+                <div className="rounded-lg border border-slate-100 p-2.5 space-y-1">
                   <p className="font-bold text-slate-800">Chi nhánh 2 (Tân Bình):</p>
                   <p className="text-slate-500">45 Hoàng Hoa Thám, P.13, Q. Tân Bình - ĐT: 028 3810 2222</p>
                 </div>
-                <div className="rounded-xl border border-slate-100 p-2.5 space-y-1">
+                <div className="rounded-lg border border-slate-100 p-2.5 space-y-1">
                   <p className="font-bold text-slate-800">Chi nhánh 3 (Thủ Đức):</p>
                   <p className="text-slate-500">88 Võ Văn Ngân, P. Linh Chiểu, TP. Thủ Đức - ĐT: 028 3720 3333</p>
                 </div>
@@ -1252,7 +1600,7 @@ export default function PatientDashboard() {
               <button
                 type="button"
                 onClick={() => setIsSupportOpen(false)}
-                className="w-full rounded-xl bg-teal-700 py-2.5 text-xs font-bold text-white hover:bg-teal-800 transition-colors shadow-xs"
+                className="w-full rounded-lg bg-teal-700 py-2.5 text-xs font-bold text-white hover:bg-teal-800 transition-colors shadow-xs"
               >
                 Đóng
               </button>

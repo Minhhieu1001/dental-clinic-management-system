@@ -11,6 +11,17 @@ export const getNotificationsByUser = async (userId) => {
   }
 };
 
+export const createNotification = async (payload) => {
+  if (!payload || !payload.userId) return null;
+  try {
+    const res = await api.post('/notifications', payload);
+    return res.data;
+  } catch (err) {
+    console.warn('Lỗi khi tạo thông báo mới:', err);
+    return null;
+  }
+};
+
 export const markNotificationAsRead = async (id) => {
   if (!id) return;
   try {

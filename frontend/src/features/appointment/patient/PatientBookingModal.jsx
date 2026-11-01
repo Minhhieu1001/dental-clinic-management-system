@@ -32,6 +32,7 @@ import {
   getPatientsByPhone,
   searchPatient,
 } from '../../../services/patient.service';
+import { createNotification } from '../../../services/notification.service';
 
 // Danh sách dịch vụ & lý do khám bệnh chuẩn y chang bên role nhân viên
 export const EMPLOYEE_COMMON_SERVICES = [
@@ -666,6 +667,25 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess }) {
       await createAppointment(payload);
       toast.success('Đặt lịch khám thành công! Chúng tôi đã ghi nhận lịch hẹn của bạn.', { duration: 4000 });
 
+      // Phát thông báo đến chuông (Notification Bell)
+      try {
+        if (user?.id) {
+          await createNotification({
+            userId: user.id,
+            title: 'Đặt lịch khám thành công',
+            content: `Bạn đã đặt lịch khám (${selectedService?.serviceName || 'Khám răng tổng quát'}) vào lúc ${selectedTime} ngày ${formatDateDisplay} tại ${selectedBranch?.branchName || 'Crown Dental'}.`,
+            type: 'PATIENT_CHECKIN',
+            targetUrl: '/patient/appointments',
+          });
+        }
+      } catch (notifErr) {
+        console.warn('Lỗi gửi thông báo cho bệnh nhân:', notifErr);
+      }
+
+      // Kích hoạt cập nhật chuông và làm mới dữ liệu realtime
+      window.dispatchEvent(new CustomEvent('notification_updated'));
+      window.dispatchEvent(new CustomEvent('appointment_created'));
+
       if (onSuccess) onSuccess();
       handleSmoothClose();
     } catch (err) {
@@ -687,8 +707,8 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess }) {
     >
       <div
         className={`relative w-full bg-white overflow-hidden flex flex-col font-sans transition-all duration-200 ease-out transform ${isMaximized
-            ? 'h-full w-full max-w-none max-h-none rounded-none border-0 shadow-none'
-            : 'h-full sm:h-auto sm:max-h-[90vh] sm:max-w-4xl rounded-none sm:rounded-lg shadow-xl border-0 sm:border sm:border-slate-200/90'
+          ? 'h-full w-full max-w-none max-h-none rounded-none border-0 shadow-none'
+          : 'h-full sm:h-auto sm:max-h-[90vh] sm:max-w-4xl rounded-none sm:rounded-lg shadow-xl border-0 sm:border sm:border-slate-200/90'
           } ${active ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-[0.98] translate-y-2'
           }`}
       >
@@ -709,7 +729,7 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess }) {
                 </span>
               </div>
               <p className="text-[11px] text-white/90 font-medium mt-0.5 truncate">
-                {step === 1 && 'Chọn dịch vụ / lý do khám bệnh phù hợp'}
+                {step === 1 && 'Chọn lý do khám bệnh phù hợp'}
                 {step === 2 && 'Chọn chi nhánh và bác sĩ phụ trách'}
                 {step === 3 && 'Chọn ngày khám và khung giờ thuận tiện'}
                 {step === 4 && 'Kiểm tra và xác nhận thông tin'}
@@ -750,7 +770,7 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess }) {
               <span className="h-4.5 w-4.5 rounded-full bg-[#009766] text-white flex items-center justify-center text-[10px] font-bold shrink-0">
                 {step}
               </span>
-              {step === 1 && '1. Chọn dịch vụ khám'}
+              {step === 1 && '1. Lý do khám bệnh'}
               {step === 2 && '2. Chi nhánh & Bác sĩ'}
               {step === 3 && '3. Thời gian khám'}
               {step === 4 && '4. Xác nhận thông tin'}
@@ -791,7 +811,7 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess }) {
                 {step > 1 ? <Check className="h-3 w-3 stroke-[3]" /> : '1'}
               </div>
               <span className={`text-xs font-semibold ${step === 1 ? 'text-[#009766] font-bold' : step > 1 ? 'text-slate-700' : 'text-slate-400'}`}>
-                Chọn dịch vụ
+                Lý do khám
               </span>
             </div>
 
@@ -867,7 +887,7 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess }) {
               <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-2xs space-y-2">
                 <label className="block text-xs font-bold text-slate-800">
                   <span className="flex items-center gap-1.5 text-[#009766]">
-                    <FileText size={14} className="text-[#009766]" /> Dịch vụ / Lý do khám bệnh <span className="text-rose-500">*</span>
+                    <FileText size={14} className="text-[#009766]" /> Lý do khám bệnh <span className="text-rose-500">*</span>
                   </span>
                 </label>
                 <div className="space-y-2">
@@ -880,7 +900,7 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess }) {
                         setSelectedService({
                           id: 'custom',
                           serviceName: customReasonText || 'Khám theo yêu cầu',
-                          price: 100000,
+                          price: 0,
                           estimatedDuration: 30,
                           description: customReasonText || 'Bệnh nhân tự nhập lý do khám',
                           category: 'OTHER',
@@ -898,7 +918,7 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess }) {
                         {srv.serviceName}
                       </option>
                     ))}
-                    <option value="OTHER">-- Khác (Tự nhập chi tiết dịch vụ / lý do khám) --</option>
+                    <option value="OTHER">-- Khác (Tự nhập chi tiết lý do khám) --</option>
                   </select>
 
                   {isCustomReason && (
@@ -913,7 +933,7 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess }) {
                           description: e.target.value || 'Bệnh nhân tự nhập lý do khám',
                         }));
                       }}
-                      placeholder="Nhập lý do hoặc dịch vụ nha khoa cụ thể..."
+                      placeholder="Nhập chi tiết lý do bạn muốn đến khám..."
                       className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-800 focus:border-[#009766] focus:outline-none focus:ring-1 focus:ring-[#009766]/30"
                     />
                   )}
@@ -923,7 +943,7 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess }) {
               {/* Title & Tabs with subtle border radius */}
               <div>
                 <div className="flex items-center justify-between pb-1">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">Danh sách dịch vụ khám chi tiết</h3>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">Gợi ý lý do khám phổ biến</h3>
                 </div>
 
                 {/* Filter Tabs in Green Theme */}
@@ -981,14 +1001,14 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess }) {
                         </p>
                       </div>
 
-                      {/* Meta: Duration & Price */}
+                      {/* Meta: Duration & Category Badge (No Price) */}
                       <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
                         <span className="inline-flex items-center gap-1 text-slate-500 text-[11px] font-medium">
                           <Clock className="h-3 w-3 text-slate-400" />
-                          {srv.estimatedDuration} phút
+                          Thời gian dự kiến: ~{srv.estimatedDuration} phút
                         </span>
-                        <span className="font-extrabold text-[#009766] text-xs">
-                          {formatVND(srv.price)}
+                        <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                          {srv.categoryLabel || 'Khám & Tư vấn'}
                         </span>
                       </div>
                     </div>
@@ -1450,16 +1470,18 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess }) {
                 </div>
 
                 <div className="space-y-2.5 text-xs">
-                  {/* Service item */}
+                  {/* Reason item */}
                   <div className="p-2.5 rounded-md bg-slate-50 border border-slate-100 flex items-center justify-between gap-2.5">
                     <div className="flex items-center gap-2">
                       <DentalToothIcon className="w-8 h-8 rounded-md" />
                       <div>
                         <p className="font-bold text-slate-800">{selectedService?.serviceName}</p>
-                        <p className="text-[11px] text-slate-500 mt-0.5">{selectedService?.estimatedDuration} phút</p>
+                        <p className="text-[11px] text-slate-500 mt-0.5">Thời gian dự kiến: ~{selectedService?.estimatedDuration} phút</p>
                       </div>
                     </div>
-                    <span className="font-bold text-[#009766] text-xs sm:text-sm">{formatVND(selectedService?.price)}</span>
+                    <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100">
+                      Lý do khám
+                    </span>
                   </div>
 
                   {/* Branch item */}
@@ -1685,8 +1707,8 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess }) {
                 <div
                   onClick={() => setAgreedTerms(!agreedTerms)}
                   className={`p-2.5 rounded-lg border transition-all cursor-pointer flex items-start gap-2.5 select-none ${agreedTerms
-                      ? 'border-emerald-300 bg-emerald-50/50 shadow-2xs'
-                      : 'border-slate-200 bg-white hover:border-slate-300'
+                    ? 'border-emerald-300 bg-emerald-50/50 shadow-2xs'
+                    : 'border-slate-200 bg-white hover:border-slate-300'
                     }`}
                 >
                   <div
