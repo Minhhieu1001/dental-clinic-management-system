@@ -17,11 +17,15 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
 
   @Query("""
       SELECT a FROM Appointment a
-      WHERE (a.patient IS NOT NULL AND (a.patient.id = :patientId OR (a.patient.user IS NOT NULL AND a.patient.user.id = :patientId)))
-         OR (:phone IS NOT NULL AND :phone <> '' AND a.phone = :phone)
+      WHERE a.patient.id = :patientId
+        AND a.appointmentDate >= :start
+        AND a.appointmentDate < :end
       ORDER BY a.appointmentDate DESC, a.appointmentTime DESC
       """)
-  List<Appointment> findByPatientIdOrPhone(@Param("patientId") UUID patientId, @Param("phone") String phone);
+  List<Appointment> findByPatientIdAndDateRange(
+      @Param("patientId") UUID patientId,
+      @Param("start") LocalDateTime start,
+      @Param("end") LocalDateTime end);
 
   @Query("""
       SELECT COUNT(a) FROM Appointment a

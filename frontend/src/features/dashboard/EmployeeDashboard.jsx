@@ -31,7 +31,7 @@ export default function EmployeeDashboard() {
   };
 
   return (
-    <div className="relative mx-auto max-w-[1400px] px-1" aria-busy={loading}>
+    <div className="relative w-full space-y-3 p-1" aria-busy={loading}>
       {loading && appointments.length === 0 && <Loading overlay title="Đang tải dữ liệu..." />}
       {/* Header */}
       <DashboardHeader
@@ -42,14 +42,14 @@ export default function EmployeeDashboard() {
       />
 
       {/* Stats row */}
-      <div className="mt-3">
+      <div>
         <StatsRow stats={stats} loading={loading} />
       </div>
 
       {/* Main content: 2 columns */}
-      <div className="mt-3 flex gap-3 items-start">
+      <div className="flex flex-col lg:flex-row gap-3 items-start w-full">
         {/* Left column — Appointment table */}
-        <div className="min-w-0 flex-[73]">
+        <div className="min-w-0 w-full lg:flex-[73]">
           <AppointmentTable
             appointments={appointments}
             onRefresh={refetch}
@@ -59,7 +59,7 @@ export default function EmployeeDashboard() {
         </div>
 
         {/* Right column — Requests + Quick actions */}
-        <div className="flex flex-[27] flex-col gap-3">
+        <div className="flex w-full lg:flex-[27] flex-col gap-3">
           <AppointmentRequests
             requests={requests}
             appointments={appointments}

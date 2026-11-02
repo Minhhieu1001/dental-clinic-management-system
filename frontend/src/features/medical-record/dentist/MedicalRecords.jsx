@@ -645,7 +645,7 @@ export default function MedicalRecords() {
   };
 
   return (
-    <div className="mx-auto max-w-[1500px] px-1 sm:px-2 space-y-4 py-1">
+    <div className="w-full p-1 space-y-3">
       {/* Top Header Toolbar Component with Dental Clinic Info & Global Search */}
       <MedicalRecordHeader
         patientName={patientData.fullName}

@@ -391,7 +391,7 @@ export default function Prescriptions() {
   };
 
   return (
-    <div className="mx-auto max-w-[1550px] px-2 sm:px-3 py-2 space-y-2 text-slate-800 text-xs">
+    <div className="w-full p-1 space-y-2 text-slate-800 text-xs">
       {/* 1. Header Toolbar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
         <div className="flex items-center gap-2">

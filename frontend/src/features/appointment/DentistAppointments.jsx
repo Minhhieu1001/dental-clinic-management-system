@@ -500,7 +500,7 @@ export default function DentistAppointments() {
   const now = new Date();
 
   return (
-    <div className="mx-auto max-w-[1550px] px-2 sm:px-4 py-3 space-y-3 text-slate-800 text-xs font-sans">
+    <div className="w-full p-1 space-y-3 text-slate-800 text-xs font-sans">
       {/* 0. Hero Doctor Dashboard Banner - Minimal & Clean */}
       <div className="rounded-sm bg-white p-4 text-slate-800 border border-slate-200 shadow-2xs">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">

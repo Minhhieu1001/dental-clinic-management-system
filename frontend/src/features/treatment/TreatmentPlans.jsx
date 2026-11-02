@@ -1454,7 +1454,7 @@ export default function TreatmentPlans() {
   };
 
   return (
-    <div className="mx-auto max-w-[1600px] px-2 sm:px-4 space-y-4 py-3 text-slate-800">
+    <div className="w-full p-1 space-y-3 text-slate-800">
       {/* ================= 1. HEADER TOOLBAR ================= */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-200">
         <div className="flex items-center gap-3">

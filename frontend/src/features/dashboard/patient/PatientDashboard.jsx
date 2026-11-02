@@ -543,8 +543,8 @@ export default function PatientDashboard() {
     {
       id: 'treatment-plan',
       title: 'Kế hoạch điều trị',
-      totalCount: patientStatistics?.totalTreatmentPlans ?? 0,
-      inProgressCount: patientStatistics?.inProgressTreatmentPlans ?? 0,
+      count: patientStatistics?.totalTreatmentPlans ?? 0,
+      badge: `Đang điều trị: ${patientStatistics?.inProgressTreatmentPlans ?? 0}`,
       icon: ClipboardList,
       color: 'text-teal-800',
       bgColor: 'bg-teal-50 border border-teal-100',
@@ -823,8 +823,8 @@ export default function PatientDashboard() {
                               disabled={!editCheck.canEdit}
                               title={editCheck.canEdit ? 'Chỉnh sửa thông tin đặt lịch (trong vòng 1h kể từ khi đặt)' : editCheck.reason}
                               className={`flex-1 rounded-lg py-2 text-xs font-bold transition-colors shadow-xs flex items-center justify-center gap-1.5 ${editCheck.canEdit
-                                  ? 'bg-teal-700 text-white hover:bg-teal-800 cursor-pointer'
-                                  : 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-60 border border-slate-300/60'
+                                ? 'bg-teal-700 text-white hover:bg-teal-800 cursor-pointer'
+                                : 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-60 border border-slate-300/60'
                                 }`}
                             >
                               <Edit3 className="h-3.5 w-3.5" />
@@ -915,18 +915,18 @@ export default function PatientDashboard() {
               <Link
                 key={item.id}
                 to={item.to}
-                className="group relative flex flex-col justify-between rounded-2xl bg-white p-4.5 border border-slate-100/90 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-md hover:border-slate-200/90 hover:-translate-y-0.5 transition-all duration-200"
+                className="group relative flex h-full min-h-[84px] flex-row items-center gap-3 rounded-2xl bg-white p-4.5 border border-slate-100/90 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-md hover:border-slate-200/90 hover:-translate-y-0.5 transition-all duration-200"
               >
-                <div className="flex items-center justify-between">
+                <div className="flex shrink-0">
                   <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${item.bgColor} ${item.color}`}>
                     <Icon className="h-5 w-5" />
                   </div>
-                  <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all" />
+                  <ChevronRight className="absolute right-4 top-4 h-4 w-4 text-slate-300 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all" />
                 </div>
 
-                <div className="mt-3.5 min-w-0">
-                  <div className="flex items-baseline gap-1.5 flex-wrap">
-                    <p className="text-2xl font-black text-slate-900 tracking-tight leading-none">
+                <div className="min-w-0 flex-1 pr-3 text-left">
+                  <div className="flex items-baseline justify-start gap-1.5 flex-wrap">
+                    <p className="text-xl font-black text-slate-900 tracking-tight leading-none">
                       {item.count}
                     </p>
                     {item.badge && (
@@ -977,22 +977,20 @@ export default function PatientDashboard() {
                 <button
                   type="button"
                   onClick={() => setAppointmentFilterTab('ALL')}
-                  className={`flex-1 py-1.5 px-2.5 rounded-lg text-center transition-all cursor-pointer ${
-                    appointmentFilterTab === 'ALL'
-                      ? 'bg-white text-slate-900 font-bold shadow-xs'
-                      : 'text-slate-500 hover:text-slate-800'
-                  }`}
+                  className={`flex-1 py-1.5 px-2.5 rounded-lg text-center transition-all cursor-pointer ${appointmentFilterTab === 'ALL'
+                    ? 'bg-white text-slate-900 font-bold shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                    }`}
                 >
                   Tất cả ({upcomingAppointments.length})
                 </button>
                 <button
                   type="button"
                   onClick={() => setAppointmentFilterTab('APPOINTMENT')}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg transition-all cursor-pointer ${
-                    appointmentFilterTab === 'APPOINTMENT'
-                      ? 'bg-white text-teal-700 font-bold shadow-xs'
-                      : 'text-slate-500 hover:text-slate-800'
-                  }`}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg transition-all cursor-pointer ${appointmentFilterTab === 'APPOINTMENT'
+                    ? 'bg-white text-teal-700 font-bold shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                    }`}
                 >
                   <Calendar className="h-3.5 w-3.5" />
                   <span>Lịch hẹn ({upcomingAppointments.filter((x) => x.type === 'APPOINTMENT').length})</span>
@@ -1000,11 +998,10 @@ export default function PatientDashboard() {
                 <button
                   type="button"
                   onClick={() => setAppointmentFilterTab('FOLLOW_UP')}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg transition-all cursor-pointer ${
-                    appointmentFilterTab === 'FOLLOW_UP'
-                      ? 'bg-white text-indigo-700 font-bold shadow-xs'
-                      : 'text-slate-500 hover:text-slate-800'
-                  }`}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg transition-all cursor-pointer ${appointmentFilterTab === 'FOLLOW_UP'
+                    ? 'bg-white text-indigo-700 font-bold shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                    }`}
                 >
                   <RefreshCw className="h-3.5 w-3.5" />
                   <span>Tái khám ({upcomingAppointments.filter((x) => x.type === 'FOLLOW_UP').length})</span>
@@ -1020,27 +1017,24 @@ export default function PatientDashboard() {
                       <div
                         key={apt.id}
                         onClick={() => handleOpenDetailModal(apt)}
-                        className={`group flex items-center justify-between gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
-                          isFollowUp
-                            ? 'border-slate-100/90 hover:border-indigo-200 hover:bg-indigo-50/20 bg-white'
-                            : 'border-slate-100/90 hover:border-teal-200 hover:bg-teal-50/20 bg-white'
-                        }`}
+                        className={`group flex items-center justify-between gap-3 p-3 rounded-xl border transition-all cursor-pointer ${isFollowUp
+                          ? 'border-slate-100/90 hover:border-indigo-200 hover:bg-indigo-50/20 bg-white'
+                          : 'border-slate-100/90 hover:border-teal-200 hover:bg-teal-50/20 bg-white'
+                          }`}
                       >
                         {/* Date badge: Cân đối, tinh tế, không bao giờ rớt dòng */}
                         <div
-                          className={`flex flex-col items-center justify-center rounded-xl min-w-[58px] w-[58px] h-[52px] shrink-0 border transition-all gap-1 ${
-                            isFollowUp
-                              ? 'bg-indigo-50/70 border-indigo-100/90 text-indigo-700'
-                              : 'bg-teal-50/70 border-teal-100/90 text-teal-700'
-                          }`}
+                          className={`flex flex-col items-center justify-center rounded-xl min-w-[58px] w-[58px] h-[52px] shrink-0 border transition-all gap-1 ${isFollowUp
+                            ? 'bg-indigo-50/70 border-indigo-100/90 text-indigo-700'
+                            : 'bg-teal-50/70 border-teal-100/90 text-teal-700'
+                            }`}
                         >
                           <span className="text-[10px] font-bold uppercase tracking-wide leading-none text-slate-500 whitespace-nowrap">
                             {apt.dayOfWeek}
                           </span>
                           <span
-                            className={`text-[13px] font-black leading-none whitespace-nowrap tracking-tight ${
-                              isFollowUp ? 'text-indigo-950' : 'text-teal-950'
-                            }`}
+                            className={`text-[13px] font-black leading-none whitespace-nowrap tracking-tight ${isFollowUp ? 'text-indigo-950' : 'text-teal-950'
+                              }`}
                           >
                             {apt.dayNumber}/{apt.monthNumber}
                           </span>
@@ -1055,11 +1049,10 @@ export default function PatientDashboard() {
 
                             <div className="flex items-center gap-1.5 shrink-0">
                               <span
-                                className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold border shrink-0 ${
-                                  isFollowUp
-                                    ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                                    : 'bg-teal-50 text-teal-700 border-teal-200'
-                                }`}
+                                className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold border shrink-0 ${isFollowUp
+                                  ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                  : 'bg-teal-50 text-teal-700 border-teal-200'
+                                  }`}
                               >
                                 {isFollowUp ? (
                                   <>
@@ -1116,8 +1109,8 @@ export default function PatientDashboard() {
                       {appointmentFilterTab === 'FOLLOW_UP'
                         ? 'Chưa có lịch tái khám nào'
                         : appointmentFilterTab === 'APPOINTMENT'
-                        ? 'Chưa có lịch hẹn khám nào'
-                        : 'Chưa có lịch hẹn nào sắp tới'}
+                          ? 'Chưa có lịch hẹn khám nào'
+                          : 'Chưa có lịch hẹn nào sắp tới'}
                     </p>
                     <p className="text-[11px] text-slate-400 mt-0.5">
                       {appointmentFilterTab === 'FOLLOW_UP'
@@ -1164,19 +1157,17 @@ export default function PatientDashboard() {
                             key={plan.id}
                             type="button"
                             onClick={() => setSelectedPlanIndex(index)}
-                            className={`flex-1 flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                              isActive
-                                ? 'bg-white text-teal-800 shadow-xs'
-                                : 'text-slate-500 hover:text-slate-800'
-                            }`}
+                            className={`flex-1 flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${isActive
+                              ? 'bg-white text-teal-800 shadow-xs'
+                              : 'text-slate-500 hover:text-slate-800'
+                              }`}
                           >
                             <span className="truncate">{plan.title}</span>
                             <span
-                              className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold shrink-0 ${
-                                isActive
-                                  ? 'bg-teal-50 text-teal-700'
-                                  : 'bg-slate-200/60 text-slate-500'
-                              }`}
+                              className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold shrink-0 ${isActive
+                                ? 'bg-teal-50 text-teal-700'
+                                : 'bg-slate-200/60 text-slate-500'
+                                }`}
                             >
                               {plan.progressPercent}%
                             </span>
@@ -1253,8 +1244,8 @@ export default function PatientDashboard() {
                               ((activeTreatmentPlan.steps.filter((s) => s.statusType === 'completed').length +
                                 (activeTreatmentPlan.steps.some((s) => s.statusType === 'in-progress') ? 0.5 : 0)) /
                                 (activeTreatmentPlan.steps.length - 1 || 1)) *
-                                100 *
-                                0.88
+                              100 *
+                              0.88
                             )
                           )}%`,
                         }}
@@ -1275,13 +1266,12 @@ export default function PatientDashboard() {
                             <div key={step.stepNum} className="flex flex-col items-center">
                               {/* Step Circle */}
                               <div
-                                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-black transition-all ${
-                                  isCompleted
-                                    ? 'bg-emerald-600 text-white shadow-xs'
-                                    : isInProgress
-                                      ? 'bg-teal-700 text-white ring-4 ring-teal-100 shadow-xs'
-                                      : 'bg-white text-slate-400 border-2 border-slate-200'
-                                }`}
+                                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-black transition-all ${isCompleted
+                                  ? 'bg-emerald-600 text-white shadow-xs'
+                                  : isInProgress
+                                    ? 'bg-teal-700 text-white ring-4 ring-teal-100 shadow-xs'
+                                    : 'bg-white text-slate-400 border-2 border-slate-200'
+                                  }`}
                               >
                                 {isCompleted ? <Check className="h-4 w-4 stroke-[3]" /> : step.stepNum}
                               </div>
@@ -1305,13 +1295,12 @@ export default function PatientDashboard() {
 
                               {/* Step Badge */}
                               <span
-                                className={`mt-2 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[9px] font-bold leading-normal ${
-                                  isCompleted
-                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                    : isInProgress
-                                      ? 'bg-teal-50 text-teal-800 border border-teal-200 ring-2 ring-teal-500/10'
-                                      : 'bg-slate-100 text-slate-400 border border-slate-200/60'
-                                }`}
+                                className={`mt-2 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[9px] font-bold leading-normal ${isCompleted
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : isInProgress
+                                    ? 'bg-teal-50 text-teal-800 border border-teal-200 ring-2 ring-teal-500/10'
+                                    : 'bg-slate-100 text-slate-400 border border-slate-200/60'
+                                  }`}
                               >
                                 {isInProgress && <span className="h-1.5 w-1.5 rounded-full bg-teal-600 animate-pulse" />}
                                 {step.status}
@@ -1437,8 +1426,8 @@ export default function PatientDashboard() {
                       type="button"
                       onClick={() => setHistoryPage(pageNum)}
                       className={`h-7 min-w-[28px] px-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${pageNum === historyPage
-                          ? 'bg-teal-700 text-white shadow-xs'
-                          : 'border border-slate-200 text-slate-600 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200'
+                        ? 'bg-teal-700 text-white shadow-xs'
+                        : 'border border-slate-200 text-slate-600 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200'
                         }`}
                     >
                       {pageNum}
@@ -1497,21 +1486,19 @@ export default function PatientDashboard() {
       {/* Appointment Detail Modal */}
       {selectedAppointment && (
         <div
-          className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-200 ease-out ${
-            isDetailActive
-              ? 'bg-slate-950/50 backdrop-blur-xs opacity-100'
-              : 'bg-slate-950/0 backdrop-blur-none opacity-0 pointer-events-none'
-          }`}
+          className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-200 ease-out ${isDetailActive
+            ? 'bg-slate-950/50 backdrop-blur-xs opacity-100'
+            : 'bg-slate-950/0 backdrop-blur-none opacity-0 pointer-events-none'
+            }`}
           onClick={(e) => {
             if (e.target === e.currentTarget) handleCloseDetailModal();
           }}
         >
           <div
-            className={`w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 transform transition-all duration-200 ease-out ${
-              isDetailActive
-                ? 'opacity-100 scale-100 translate-y-0'
-                : 'opacity-0 scale-95 translate-y-2'
-            }`}
+            className={`w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 transform transition-all duration-200 ease-out ${isDetailActive
+              ? 'opacity-100 scale-100 translate-y-0'
+              : 'opacity-0 scale-95 translate-y-2'
+              }`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -1529,11 +1516,10 @@ export default function PatientDashboard() {
               <div className="flex items-center justify-between">
                 <span className="text-slate-500 font-medium">Loại phiếu:</span>
                 <span
-                  className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold border ${
-                    selectedAppointment.type === 'FOLLOW_UP'
-                      ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                      : 'bg-teal-50 text-teal-700 border-teal-200'
-                  }`}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold border ${selectedAppointment.type === 'FOLLOW_UP'
+                    ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                    : 'bg-teal-50 text-teal-700 border-teal-200'
+                    }`}
                 >
                   {selectedAppointment.type === 'FOLLOW_UP' ? (
                     <>
@@ -1597,11 +1583,10 @@ export default function PatientDashboard() {
                   const editCheck = checkAppointmentCreationEditable(selectedAppointment);
                   return (
                     <div
-                      className={`rounded-xl border p-3.5 text-xs leading-relaxed font-medium ${
-                        editCheck.canEdit
-                          ? 'bg-teal-50 border-teal-200 text-teal-900'
-                          : 'bg-amber-50 border-amber-200 text-amber-900'
-                      }`}
+                      className={`rounded-xl border p-3.5 text-xs leading-relaxed font-medium ${editCheck.canEdit
+                        ? 'bg-teal-50 border-teal-200 text-teal-900'
+                        : 'bg-amber-50 border-amber-200 text-amber-900'
+                        }`}
                     >
                       <p className={`font-bold mb-0.5 ${editCheck.canEdit ? 'text-teal-950' : 'text-amber-950'}`}>
                         {editCheck.canEdit
@@ -1640,11 +1625,10 @@ export default function PatientDashboard() {
                           ? editCheck.reason
                           : 'Chỉnh sửa lại thông tin đặt lịch (trong vòng 1h kể từ khi đặt)'
                       }
-                      className={`flex-1 rounded-xl py-2.5 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 ${
-                        editCheck.canEdit
-                          ? 'bg-teal-700 text-white hover:bg-teal-800 cursor-pointer hover:shadow-sm'
-                          : 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-60 border border-slate-300/60'
-                      }`}
+                      className={`flex-1 rounded-xl py-2.5 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 ${editCheck.canEdit
+                        ? 'bg-teal-700 text-white hover:bg-teal-800 cursor-pointer hover:shadow-sm'
+                        : 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-60 border border-slate-300/60'
+                        }`}
                     >
                       <Edit3 className="h-3.5 w-3.5" />
                       Chỉnh sửa lịch hẹn
@@ -1667,21 +1651,19 @@ export default function PatientDashboard() {
       {/* Treatment History Detail Modal */}
       {selectedHistory && (
         <div
-          className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-200 ease-out ${
-            isHistoryActive
-              ? 'bg-slate-950/50 backdrop-blur-xs opacity-100'
-              : 'bg-slate-950/0 backdrop-blur-none opacity-0 pointer-events-none'
-          }`}
+          className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-200 ease-out ${isHistoryActive
+            ? 'bg-slate-950/50 backdrop-blur-xs opacity-100'
+            : 'bg-slate-950/0 backdrop-blur-none opacity-0 pointer-events-none'
+            }`}
           onClick={(e) => {
             if (e.target === e.currentTarget) handleCloseHistoryModal();
           }}
         >
           <div
-            className={`w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 transform transition-all duration-200 ease-out ${
-              isHistoryActive
-                ? 'opacity-100 scale-100 translate-y-0'
-                : 'opacity-0 scale-95 translate-y-2'
-            }`}
+            className={`w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 transform transition-all duration-200 ease-out ${isHistoryActive
+              ? 'opacity-100 scale-100 translate-y-0'
+              : 'opacity-0 scale-95 translate-y-2'
+              }`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -1736,21 +1718,19 @@ export default function PatientDashboard() {
       {/* Support / Contact Hotline Modal */}
       {isSupportOpen && (
         <div
-          className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-200 ease-out ${
-            isSupportActive
-              ? 'bg-slate-950/50 backdrop-blur-xs opacity-100'
-              : 'bg-slate-950/0 backdrop-blur-none opacity-0 pointer-events-none'
-          }`}
+          className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-200 ease-out ${isSupportActive
+            ? 'bg-slate-950/50 backdrop-blur-xs opacity-100'
+            : 'bg-slate-950/0 backdrop-blur-none opacity-0 pointer-events-none'
+            }`}
           onClick={(e) => {
             if (e.target === e.currentTarget) handleCloseSupportModal();
           }}
         >
           <div
-            className={`w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 transform transition-all duration-200 ease-out ${
-              isSupportActive
-                ? 'opacity-100 scale-100 translate-y-0'
-                : 'opacity-0 scale-95 translate-y-2'
-            }`}
+            className={`w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 transform transition-all duration-200 ease-out ${isSupportActive
+              ? 'opacity-100 scale-100 translate-y-0'
+              : 'opacity-0 scale-95 translate-y-2'
+              }`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">

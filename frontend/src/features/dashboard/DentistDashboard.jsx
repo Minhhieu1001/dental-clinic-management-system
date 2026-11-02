@@ -374,7 +374,7 @@ export default function DentistDashboard() {
     : formatDoctorTitle(user);
 
   return (
-    <div className="mx-auto max-w-[1440px] space-y-6 p-4 sm:p-6 bg-[#F4F7F6]/60 min-h-screen text-slate-800 font-sans">
+    <div className="w-full space-y-3 p-1 text-slate-800 font-sans">
       {/* 1. Header Greeting Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -473,7 +473,7 @@ export default function DentistDashboard() {
       </div>
 
       {/* 3. Middle Section: Danh sách Lịch hẹn (Tỉ lệ 7) + Chi tiết Thông tin Bệnh nhân (Tỉ lệ 3) */}
-      <div className="flex flex-col lg:flex-row gap-3 items-start">
+      <div className="flex flex-col lg:flex-row gap-3 items-start w-full">
         {/* Left Column: Bảng danh sách lịch hẹn (Tỉ lệ 7) */}
         <AppointmentTable
           appointments={appointments}
@@ -496,7 +496,7 @@ export default function DentistDashboard() {
       </div>
 
       {/* 4. Bottom Row (Dynamic 3 Columns: Điều trị phổ biến + Tình trạng điều trị + Kho vật tư) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {/* Column 1: Dynamic Điều trị phổ biến */}
         <div className="rounded-[4px] border border-slate-200 bg-white p-5 shadow-xs flex flex-col justify-between">
           <div>

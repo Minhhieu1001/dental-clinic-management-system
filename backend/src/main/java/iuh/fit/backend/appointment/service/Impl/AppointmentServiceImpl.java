@@ -564,7 +564,8 @@ public class AppointmentServiceImpl implements AppointmentService {
         StatusAppointment previousStatus = appointment.getStatus();
         boolean updatingSchedule = (dto.getAppointmentDate() != null && !dto.getAppointmentDate().isBlank())
                 || (dto.getAppointmentTime() != null && !dto.getAppointmentTime().isBlank())
-                || dto.getDentistId() != null || dto.getRoomId() != null;
+                || dto.getDentistId() != null || dto.getRoomId() != null
+                || (dto.getBranchId() != null && !dto.getBranchId().isBlank());
         if (updatingSchedule && previousStatus != StatusAppointment.CONFIRMED
                 && previousStatus != StatusAppointment.PENDING) {
             throw new AppException(ErrorCode.VALIDATION_ERROR,
@@ -589,6 +590,13 @@ public class AppointmentServiceImpl implements AppointmentService {
         if (dto.getRoomId() != null) {
             Room room = roomRepository.findById(dto.getRoomId()).orElse(null);
             appointment.setRoom(room);
+        }
+
+        if (dto.getBranchId() != null && !dto.getBranchId().isBlank()) {
+            Branch branch = branchRepository.findById(dto.getBranchId().trim())
+                    .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND,
+                            "Không tìm thấy chi nhánh ID: " + dto.getBranchId()));
+            appointment.setBranch(branch);
         }
 
         boolean hasDate = dto.getAppointmentDate() != null && !dto.getAppointmentDate().isBlank();
@@ -701,14 +709,16 @@ public class AppointmentServiceImpl implements AppointmentService {
                 .or(() -> patientRepository.findByUserId(patientId))
                 .orElse(null);
         UUID actualPatientId = p != null ? p.getId() : patientId;
-        String phone = p != null && p.getPhoneNumber() != null ? p.getPhoneNumber().trim() : null;
 
-        List<Appointment> list;
-        if (phone != null && !phone.isBlank()) {
-            list = appointmentRepository.findByPatientIdOrPhone(actualPatientId, phone);
-        } else {
-            list = appointmentRepository.findByPatient_IdOrderByAppointmentDateDescAppointmentTimeDesc(actualPatientId);
-        }
+        LocalDate firstDayOfCurrentMonth = LocalDate.now().withDayOfMonth(1);
+        LocalDate firstDayOfNextMonth = firstDayOfCurrentMonth.plusMonths(1);
+        LocalDateTime startOfMonth = firstDayOfCurrentMonth.atStartOfDay();
+        LocalDateTime startOfNextMonth = firstDayOfNextMonth.atStartOfDay();
+
+        List<Appointment> list = appointmentRepository.findByPatientIdAndDateRange(
+                actualPatientId,
+                startOfMonth,
+                startOfNextMonth);
         return list.stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 

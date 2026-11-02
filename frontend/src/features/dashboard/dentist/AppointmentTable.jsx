@@ -7,6 +7,35 @@ import {
   Stethoscope,
 } from 'lucide-react';
 
+const formatDisplayDate = (dateVal, timeVal) => {
+  const raw = dateVal || timeVal;
+  if (!raw) return '';
+  if (typeof raw === 'string') {
+    const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) {
+      return `${match[3]}/${match[2]}/${match[1]}`;
+    }
+  }
+  try {
+    const d = new Date(raw);
+    if (!isNaN(d.getTime())) {
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const yyyy = d.getFullYear();
+      return `${dd}/${mm}/${yyyy}`;
+    }
+  } catch (e) {}
+  return '';
+};
+
+const formatRoomDisplay = (room) => {
+  if (!room) return 'Chưa xếp phòng';
+  const str = String(room).trim();
+  if (!str) return 'Chưa xếp phòng';
+  if (/^phòng/i.test(str)) return str;
+  return `Phòng ${str}`;
+};
+
 export default function AppointmentTable({
   appointments = [],
   loading = false,
@@ -189,24 +218,25 @@ export default function AppointmentTable({
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-slate-100 text-[11px] font-bold text-slate-400">
-                <th className="pb-2.5 font-semibold pl-1">Giờ</th>
+                <th className="pb-2.5 font-semibold pl-1">Thời gian</th>
                 <th className="pb-2.5 font-semibold">Bệnh nhân</th>
                 <th className="pb-2.5 font-semibold">Lý do</th>
                 <th className="pb-2.5 font-semibold">Trạng thái</th>
+                <th className="pb-2.5 font-semibold">Phòng</th>
                 <th className="pb-2.5 font-semibold text-right pr-1">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-slate-400">
+                  <td colSpan={6} className="py-8 text-center text-slate-400">
                     <RefreshCw size={20} className="mx-auto mb-1 animate-spin text-teal-600" />
                     Đang tải danh sách...
                   </td>
                 </tr>
               ) : filteredAppointments.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-slate-400">
+                  <td colSpan={6} className="py-8 text-center text-slate-400">
                     <AlertCircle size={24} className="mx-auto mb-1 text-slate-300" />
                     Hiện chưa có lịch khám phù hợp.
                   </td>
@@ -222,6 +252,10 @@ export default function AppointmentTable({
                       timeStr = String(apt.appointmentTime).substring(11, 16) || '09:00';
                     }
                   }
+
+                  const now = new Date();
+                  const todayFormatted = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+                  const displayDate = formatDisplayDate(apt.appointmentDate || apt.appointmentTime || apt.date) || todayFormatted;
 
                   const isExecuting = actionLoadingId === apt.id;
                   const isConfirmed = apt.status === 'CONFIRMED' || apt.status === 'PENDING' || apt.status === 'not-arrived';
@@ -240,8 +274,13 @@ export default function AppointmentTable({
                         : 'hover:bg-slate-50/70'
                         }`}
                     >
-                      {/* Time */}
-                      <td className="py-2.5 font-semibold text-slate-600 whitespace-nowrap pl-1">{timeStr}</td>
+                      {/* Time & Date */}
+                      <td className="py-2.5 whitespace-nowrap pl-1">
+                        <div>
+                          <p className="font-bold text-slate-800 text-xs">{timeStr}</p>
+                          <p className="text-[10px] text-slate-400 font-medium">{displayDate}</p>
+                        </div>
+                      </td>
 
                       {/* Patient */}
                       <td className="py-2.5 whitespace-nowrap">
@@ -288,6 +327,13 @@ export default function AppointmentTable({
                             Đã hủy
                           </span>
                         )}
+                      </td>
+
+                      {/* Room */}
+                      <td className="py-2.5 whitespace-nowrap">
+                        <span className="inline-flex items-center rounded-[3px] bg-slate-100/90 px-2 py-0.5 text-[11px] font-medium text-slate-700 border border-slate-200/80">
+                          {formatRoomDisplay(apt.roomName || apt.room || apt.roomNumber || 'Phòng 101')}
+                        </span>
                       </td>
 
                       {/* Actions */}
