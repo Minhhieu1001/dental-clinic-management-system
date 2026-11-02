@@ -39,6 +39,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         employeeId: user.employeeId ?? null,
         dentistId: user.dentistId ?? null,
         patientId: user.patientId ?? null,
+        phone: user.phone || null,
+        phoneNumber: user.phone || null,
       },
       isAuthenticated: true,
       isLoading: false,
@@ -48,6 +50,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   patientLogin: async (data: PatientLoginRequest) => {
     const response = await patientLoginService(data);
     const user = response.data;
+    const phone = data.phone?.trim() || user.phone || null;
+    if (phone) {
+      try {
+        localStorage.setItem('patient_phone', phone);
+      } catch (e) {}
+    }
     set({
       user: {
         id: user.id,
@@ -58,6 +66,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         employeeId: user.employeeId ?? null,
         dentistId: user.dentistId ?? null,
         patientId: user.patientId ?? null,
+        phone: phone,
+        phoneNumber: phone,
       },
       isAuthenticated: true,
       isLoading: false,
@@ -83,6 +93,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ isLoading: true });
       const response = await getMeService();
       const user = response.data;
+      const phone = user.phone || (typeof localStorage !== 'undefined' ? localStorage.getItem('patient_phone') : null);
       set({
         user: {
           id: user.id,
@@ -93,6 +104,8 @@ export const useAuthStore = create<AuthState>((set) => ({
           employeeId: user.employeeId ?? null,
           dentistId: user.dentistId ?? null,
           patientId: user.patientId ?? null,
+          phone: phone,
+          phoneNumber: phone,
         },
         isAuthenticated: true,
         isLoading: false,

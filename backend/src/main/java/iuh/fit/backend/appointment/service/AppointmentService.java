@@ -28,5 +28,7 @@ public interface AppointmentService {
 
     AppointmentDetailDTO getAppointmentById(UUID id);
 
+    List<AppointmentDetailDTO> getAppointmentsByPatient(UUID patientId);
+
     List<Room> getAllRooms();
 }

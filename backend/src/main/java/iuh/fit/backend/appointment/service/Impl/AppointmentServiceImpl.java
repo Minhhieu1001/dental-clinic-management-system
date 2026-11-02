@@ -46,6 +46,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -70,8 +71,27 @@ public class AppointmentServiceImpl implements AppointmentService {
     private final SimpMessagingTemplate simpMessagingTemplate;
 
     private Patient resolveAppointmentPatient(UUID patientId) {
-        return patientId == null ? null : patientRepository.findById(patientId)
-                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy bệnh nhân."));
+        if (patientId != null) {
+            Optional<Patient> p = patientRepository.findById(patientId);
+            if (p.isPresent()) return p.get();
+            Optional<Patient> pByUser = patientRepository.findByUserId(patientId);
+            if (pByUser.isPresent()) return pByUser.get();
+        }
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getName() != null && !auth.getName().equalsIgnoreCase("anonymousUser")) {
+                String username = auth.getName();
+                User currentUser = userRepository.findByUsername(username)
+                        .orElseGet(() -> userRepository.findByEmail(username).orElse(null));
+                if (currentUser != null) {
+                    Optional<Patient> p = patientRepository.findByUserId(currentUser.getId());
+                    if (p.isPresent()) return p.get();
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not resolve patient from security context: {}", e.getMessage());
+        }
+        return null;
     }
 
     @Override
@@ -671,17 +691,39 @@ public class AppointmentServiceImpl implements AppointmentService {
                 .build();
     }
 
-    private Branch resolveBranch(AppointmentCreateDTO dto) {
-        if (dto.getBranchId() == null || dto.getBranchId().isBlank()) {
-            throw new AppException(
-                    ErrorCode.RESOURCE_NOT_FOUND,
-                    "Không tìm thấy chi nhánh trong yêu cầu tạo lịch hẹn.");
+    @Override
+    @Transactional(readOnly = true)
+    public List<AppointmentDetailDTO> getAppointmentsByPatient(UUID patientId) {
+        if (patientId == null) {
+            return Collections.emptyList();
         }
+        Patient p = patientRepository.findById(patientId)
+                .or(() -> patientRepository.findByUserId(patientId))
+                .orElse(null);
+        UUID actualPatientId = p != null ? p.getId() : patientId;
+        String phone = p != null && p.getPhoneNumber() != null ? p.getPhoneNumber().trim() : null;
 
-        return branchRepository.findById(dto.getBranchId().trim())
-                .orElseThrow(() -> new AppException(
-                        ErrorCode.RESOURCE_NOT_FOUND,
-                        "Không tìm thấy chi nhánh: " + dto.getBranchId()));
+        List<Appointment> list;
+        if (phone != null && !phone.isBlank()) {
+            list = appointmentRepository.findByPatientIdOrPhone(actualPatientId, phone);
+        } else {
+            list = appointmentRepository.findByPatient_IdOrderByAppointmentDateDescAppointmentTimeDesc(actualPatientId);
+        }
+        return list.stream().map(this::mapToDTO).collect(Collectors.toList());
+    }
+
+    private Branch resolveBranch(AppointmentCreateDTO dto) {
+        if (dto.getBranchId() != null && !dto.getBranchId().isBlank()) {
+            Optional<Branch> bOpt = branchRepository.findById(dto.getBranchId().trim());
+            if (bOpt.isPresent()) return bOpt.get();
+        }
+        if (dto.getDentistId() != null) {
+            Dentist d = dentistRepository.findById(dto.getDentistId()).orElse(null);
+            if (d != null && d.getBranch() != null) return d.getBranch();
+        }
+        List<Branch> allBranches = branchRepository.findAll();
+        if (!allBranches.isEmpty()) return allBranches.get(0);
+        return null;
     }
 
     private String resolveEmployeeName(Employee employee) {

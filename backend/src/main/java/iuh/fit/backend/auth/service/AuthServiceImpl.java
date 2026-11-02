@@ -146,6 +146,12 @@ public class AuthServiceImpl implements AuthService {
 
         log.info("Patient logged in successfully: {} (code: {})", user.getEmail(), code);
 
+        String phoneResult = user.getPhone() != null && !user.getPhone().trim().isEmpty()
+                ? user.getPhone().trim()
+                : (patient != null && patient.getPhoneNumber() != null && !patient.getPhoneNumber().trim().isEmpty()
+                        ? patient.getPhoneNumber().trim()
+                        : rawPhone);
+
         return new AuthResponse(
                 user.getId(),
                 user.getEmail(),
@@ -154,7 +160,8 @@ public class AuthServiceImpl implements AuthService {
                 user.getAvatarUrl(),
                 null,
                 null,
-                patientId);
+                patientId,
+                phoneResult);
     }
 
     private String normalizePhone(String p) {
@@ -236,20 +243,34 @@ public class AuthServiceImpl implements AuthService {
 
     private AuthResponse toAuthResponse(User user) {
         UUID patientId = null;
+        String displayName = user.getUsername();
+        String phoneResult = user.getPhone();
+
         if (user.getRole() == Role.PATIENT) {
-            patientId = java.util.Optional.ofNullable(user.getPatient())
-                    .map(Patient::getId)
-                    .or(() -> patientRepository.findByUserId(user.getId()).map(Patient::getId))
-                    .or(() -> (user.getCodeName() != null && !user.getCodeName().isEmpty())
-                            ? patientRepository.findByPatientCode(user.getCodeName()).map(Patient::getId)
-                            : java.util.Optional.empty())
-                    .orElse(null);
+            Patient patient = user.getPatient();
+            if (patient == null) {
+                patient = patientRepository.findByUserId(user.getId())
+                        .or(() -> (user.getCodeName() != null && !user.getCodeName().isEmpty())
+                                ? patientRepository.findByPatientCode(user.getCodeName())
+                                : java.util.Optional.empty())
+                        .orElse(null);
+            }
+
+            if (patient != null) {
+                patientId = patient.getId();
+                if (patient.getFullName() != null && !patient.getFullName().trim().isEmpty()) {
+                    displayName = patient.getFullName();
+                }
+                if (patient.getPhoneNumber() != null && !patient.getPhoneNumber().trim().isEmpty()) {
+                    phoneResult = patient.getPhoneNumber().trim();
+                }
+            }
         }
 
         return new AuthResponse(
                 user.getId(),
                 user.getEmail(),
-                user.getUsername(),
+                displayName,
                 user.getRole().name(),
                 user.getAvatarUrl(),
                 employeeRepository.findByUserId(user.getId())
@@ -258,7 +279,8 @@ public class AuthServiceImpl implements AuthService {
                 dentistRepository.findByUserId(user.getId())
                         .map(dentist -> dentist.getId())
                         .orElse(null),
-                patientId);
+                patientId,
+                phoneResult);
     }
 
     private void validateAccountStatus(User user) {

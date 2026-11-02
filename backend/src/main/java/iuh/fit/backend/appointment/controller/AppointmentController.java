@@ -5,6 +5,9 @@ import iuh.fit.backend.appointment.dto.AppointmentDetailDTO;
 import iuh.fit.backend.appointment.entity.Room;
 import iuh.fit.backend.appointment.enums.StatusAppointment;
 import iuh.fit.backend.appointment.service.AppointmentService;
+import iuh.fit.backend.patient.entity.Patient;
+import iuh.fit.backend.patient.repository.PatientRepository;
+import iuh.fit.backend.user.enums.Role;
 import iuh.fit.backend.user.entity.User;
 import iuh.fit.backend.user.repository.UserRepository;
 import lombok.Data;
@@ -27,6 +30,7 @@ public class AppointmentController {
 
     private final AppointmentService appointmentService;
     private final UserRepository userRepository;
+    private final PatientRepository patientRepository;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -64,6 +68,11 @@ public class AppointmentController {
         return appointmentService.getAppointmentsByDentist(dentistId);
     }
 
+    @GetMapping("/patient/{patientId}")
+    public List<AppointmentDetailDTO> getAppointmentsByPatient(@PathVariable UUID patientId) {
+        return appointmentService.getAppointmentsByPatient(patientId);
+    }
+
     @GetMapping("/my-appointments")
     public List<AppointmentDetailDTO> getMyAppointments(@RequestParam(required = false) UUID dentistId) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -72,6 +81,11 @@ public class AppointmentController {
             User user = userRepository.findByUsername(username)
                     .orElseGet(() -> userRepository.findByEmail(username).orElse(null));
             if (user != null) {
+                if (user.getRole() == Role.PATIENT) {
+                    Patient p = patientRepository.findByUserId(user.getId()).orElse(null);
+                    UUID pId = p != null ? p.getId() : user.getId();
+                    return appointmentService.getAppointmentsByPatient(pId);
+                }
                 return appointmentService.getAppointmentsByDentistUser(user.getId());
             }
         }
