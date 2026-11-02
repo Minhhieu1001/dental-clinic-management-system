@@ -25,7 +25,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
 import { getBranches } from '../../../services/clinic.service';
 import { getDentistsList } from '../../../services/dentist.service';
-import { createAppointment } from '../../../services/appointment.service';
+import { createAppointment, updateAppointment } from '../../../services/appointment.service';
 import {
   getPatientById,
   getPatientByPatientCode,
@@ -308,7 +308,7 @@ const DoctorAvatar = ({ src, name, className = 'h-11 w-11' }) => {
   );
 };
 
-export default function PatientBookingModal({ isOpen, onClose, onSuccess }) {
+export default function PatientBookingModal({ isOpen, onClose, onSuccess, initialAppointment = null }) {
   const { user } = useAuth();
 
   // Smooth modal transition state & Maximize state
@@ -403,6 +403,46 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess }) {
     setSelectedService(EMPLOYEE_COMMON_SERVICES[0]);
     setIsCustomReason(false);
     setCustomReasonText('');
+
+    // If editing existing appointment, populate fields from initialAppointment
+    if (initialAppointment) {
+      const targetReason = initialAppointment.title || initialAppointment.reason || '';
+      const foundSrv = EMPLOYEE_COMMON_SERVICES.find(
+        (s) => s.serviceName.toLowerCase() === targetReason.toLowerCase()
+      );
+      if (foundSrv) {
+        setSelectedService(foundSrv);
+        setIsCustomReason(false);
+      } else if (targetReason) {
+        setIsCustomReason(true);
+        setCustomReasonText(targetReason);
+        setSelectedService({
+          id: 'custom-reason',
+          serviceName: targetReason,
+          categoryLabel: 'Lý do khám',
+          category: 'OTHER',
+          price: 0,
+        });
+      }
+
+      if (initialAppointment.appointmentDate) {
+        const cleanDate = typeof initialAppointment.appointmentDate === 'string'
+          ? initialAppointment.appointmentDate.split('T')[0]
+          : formatYMD(initialAppointment.appointmentDate);
+        setSelectedDate(cleanDate);
+      }
+
+      if (initialAppointment.appointmentTime || initialAppointment.time) {
+        let t = String(initialAppointment.appointmentTime || initialAppointment.time).trim();
+        if (t.includes('T')) t = t.split('T')[1];
+        if (t.length > 5) t = t.substring(0, 5);
+        setSelectedTime(t);
+      }
+
+      if (initialAppointment.notes && initialAppointment.notes !== 'Chưa có') {
+        setReasonNotes(initialAppointment.notes);
+      }
+    }
 
     // Initialize patient info from auth / localStorage
     const savedPhone = user?.phone || user?.phoneNumber || (typeof localStorage !== 'undefined' ? localStorage.getItem('patient_phone') : '') || '';
@@ -503,14 +543,37 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess }) {
           });
         }
         setDentists(dList);
-        setSelectedDentist(dList[0]);
+
+        // Pre-select dentist and branch based on initialAppointment if present
+        if (initialAppointment) {
+          const matchDentist = dList.find(
+            (d) => d.id === initialAppointment.dentistId ||
+              (initialAppointment.doctor && (
+                d.fullName?.toLowerCase() === initialAppointment.doctor?.toLowerCase() ||
+                initialAppointment.doctor?.toLowerCase().includes(d.fullName?.toLowerCase())
+              ))
+          );
+          setSelectedDentist(matchDentist || dList[0]);
+
+          const matchBranch = bList.find(
+            (b) => b.branchId === initialAppointment.branchId ||
+              b.id === initialAppointment.branchId ||
+              (initialAppointment.branch && (
+                b.branchName?.toLowerCase() === initialAppointment.branch?.toLowerCase() ||
+                initialAppointment.branch?.toLowerCase().includes(b.branchName?.toLowerCase())
+              ))
+          );
+          setSelectedBranch(matchBranch || bList[0]);
+        } else {
+          setSelectedDentist(dList[0]);
+        }
       } catch (err) {
         console.warn('Lỗi khi tải dữ liệu modal:', err);
       }
     };
 
     loadData();
-  }, [isOpen, user]);
+  }, [isOpen, user, initialAppointment]);
 
   // Update default reason note when service changes
   useEffect(() => {
@@ -664,22 +727,44 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess }) {
         status: 'CONFIRMED',
       };
 
-      await createAppointment(payload);
-      toast.success('Đặt lịch khám thành công! Chúng tôi đã ghi nhận lịch hẹn của bạn.', { duration: 4000 });
+      if (initialAppointment?.id) {
+        // Mode: Chỉnh sửa lại thông tin đặt lịch (trong vòng 1h kể từ khi đặt)
+        await updateAppointment(initialAppointment.id, payload);
+        toast.success('Chỉnh sửa thông tin đặt lịch thành công!', { duration: 4000 });
 
-      // Phát thông báo đến chuông (Notification Bell)
-      try {
-        if (user?.id) {
-          await createNotification({
-            userId: user.id,
-            title: 'Đặt lịch khám thành công',
-            content: `Bạn đã đặt lịch khám (${selectedService?.serviceName || 'Khám răng tổng quát'}) vào lúc ${selectedTime} ngày ${formatDateDisplay} tại ${selectedBranch?.branchName || 'Crown Dental'}.`,
-            type: 'PATIENT_CHECKIN',
-            targetUrl: '/patient/appointments',
-          });
+        // Phát thông báo chuông
+        try {
+          if (user?.id) {
+            await createNotification({
+              userId: user.id,
+              title: 'Cập nhật lịch khám thành công',
+              content: `Bạn đã chỉnh sửa thông tin lịch khám (${selectedService?.serviceName || 'Khám răng'}) vào lúc ${selectedTime} ngày ${formattedSelectedDate} tại ${selectedBranch?.branchName || 'Crown Dental'}.`,
+              type: 'STATUS_CHANGE',
+              targetUrl: '/patient/appointments',
+            });
+          }
+        } catch (notifErr) {
+          console.warn('Lỗi gửi thông báo cho bệnh nhân:', notifErr);
         }
-      } catch (notifErr) {
-        console.warn('Lỗi gửi thông báo cho bệnh nhân:', notifErr);
+      } else {
+        // Mode: Đặt lịch khám mới
+        await createAppointment(payload);
+        toast.success('Đặt lịch khám thành công! Chúng tôi đã ghi nhận lịch hẹn của bạn.', { duration: 4000 });
+
+        // Phát thông báo đến chuông (Notification Bell)
+        try {
+          if (user?.id) {
+            await createNotification({
+              userId: user.id,
+              title: 'Đặt lịch khám thành công',
+              content: `Bạn đã đặt lịch khám (${selectedService?.serviceName || 'Khám răng tổng quát'}) vào lúc ${selectedTime} ngày ${formattedSelectedDate} tại ${selectedBranch?.branchName || 'Crown Dental'}.`,
+              type: 'PATIENT_CHECKIN',
+              targetUrl: '/patient/appointments',
+            });
+          }
+        } catch (notifErr) {
+          console.warn('Lỗi gửi thông báo cho bệnh nhân:', notifErr);
+        }
       }
 
       // Kích hoạt cập nhật chuông và làm mới dữ liệu realtime
@@ -723,7 +808,9 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess }) {
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <h2 className="text-sm sm:text-base font-bold tracking-tight text-white truncate">Đặt lịch khám</h2>
+                <h2 className="text-sm sm:text-base font-bold tracking-tight text-white truncate">
+                  {initialAppointment ? 'Chỉnh sửa thông tin đặt lịch' : 'Đặt lịch khám'}
+                </h2>
                 <span className="px-1.5 py-0.5 rounded-sm bg-white/20 text-white text-[9px] font-bold tracking-wider uppercase shrink-0">
                   Crown Dental
                 </span>
@@ -732,7 +819,7 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess }) {
                 {step === 1 && 'Chọn lý do khám bệnh phù hợp'}
                 {step === 2 && 'Chọn chi nhánh và bác sĩ phụ trách'}
                 {step === 3 && 'Chọn ngày khám và khung giờ thuận tiện'}
-                {step === 4 && 'Kiểm tra và xác nhận thông tin'}
+                {step === 4 && (initialAppointment ? 'Kiểm tra và cập nhật lại thông tin đặt lịch' : 'Kiểm tra và xác nhận thông tin')}
               </p>
             </div>
           </div>
@@ -1796,7 +1883,7 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess }) {
               ) : (
                 <>
                   <CalendarCheck className="h-3.5 w-3.5" />
-                  Xác nhận đặt lịch
+                  {initialAppointment ? 'Cập nhật lịch khám' : 'Xác nhận đặt lịch'}
                 </>
               )}
             </button>

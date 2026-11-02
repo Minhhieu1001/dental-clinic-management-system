@@ -32,6 +32,8 @@ import {
   CalendarClock,
   ArrowUpRight,
   Activity,
+  RefreshCw,
+  Edit3,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
@@ -40,8 +42,14 @@ import {
   getMyAppointments,
   updateAppointment,
 } from '../../services/appointment.service';
+import { getFollowUpAppointments } from '../../services/followUpAppointment.service';
 import { getPatientById, getPatientByPatientCode } from '../../services/patient.service';
-import { canModifyAppointment, checkAppointmentModifiable } from '../../utils/appointmentTimeCheck';
+import {
+  canModifyAppointment,
+  checkAppointmentModifiable,
+  canEditAppointment,
+  checkAppointmentCreationEditable,
+} from '../../utils/appointmentTimeCheck';
 import PatientBookingModal from './patient/PatientBookingModal';
 import Loading from '../../components/ui/Loading';
 
@@ -118,6 +126,28 @@ export default function PatientAppointments() {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [editingAppointment, setEditingAppointment] = useState(null);
+
+  // Mở modal đặt lịch khám mới
+  const handleOpenNewBookingModal = () => {
+    setEditingAppointment(null);
+    setIsBookingModalOpen(true);
+  };
+
+  // Mở modal chỉnh sửa thông tin đặt lịch (trong vòng 1h kể từ khi đặt lịch)
+  const handleOpenEditBookingModal = (apt) => {
+    if (!apt) return;
+    const check = checkAppointmentCreationEditable(apt);
+    if (!check.canEdit) {
+      toast.error(check.reason);
+      return;
+    }
+    setEditingAppointment(apt);
+    setIsBookingModalOpen(true);
+    if (isDetailOpen) {
+      handleCloseDetail();
+    }
+  };
 
   // View modes: 'GRID' (Card), 'CALENDAR' (Lịch), 'TIMELINE' (Dòng thời gian)
   const [viewMode, setViewMode] = useState('GRID');
@@ -286,7 +316,42 @@ export default function PatientAppointments() {
         });
       }
 
-      setAppointments(list);
+      // 4. Lấy danh sách Lịch tái khám (Follow-up) từ bác sĩ/lễ tân để hiển thị đầy đủ
+      let followUps = [];
+      try {
+        const fuData = await getFollowUpAppointments({
+          patientId: pLookupId,
+          patientCode: user?.patientCode,
+        });
+        if (Array.isArray(fuData) && fuData.length > 0) {
+          followUps = fuData.map((fu) => ({
+            id: fu.id,
+            type: 'FOLLOW_UP',
+            typeLabel: 'Lịch tái khám',
+            isFollowUp: true,
+            patientId: fu.patientId,
+            patientName: fu.patientName || user?.username,
+            dentistName: fu.dentistName,
+            appointmentDate: fu.followUpDate,
+            appointmentTime: fu.followUpDate ? fu.followUpDate.split('T')[1] : '09:00:00',
+            reason: fu.reason || fu.chiefComplaint || 'Tái khám định kỳ',
+            notes: fu.note,
+            status: fu.status ? 'CONFIRMED' : 'SCHEDULED',
+            branchName: 'Cơ sở 1 TPHCM',
+            branchAddress: '15 Pasteur, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
+            raw: fu,
+          }));
+        }
+      } catch (fuErr) {
+        console.warn('Lỗi khi tải lịch tái khám:', fuErr);
+      }
+
+      const mergedList = [
+        ...list.map((a) => ({ ...a, type: a.type || 'APPOINTMENT', typeLabel: a.typeLabel || 'Lịch hẹn' })),
+        ...followUps,
+      ];
+
+      setAppointments(mergedList);
     } catch (err) {
       console.warn('Lỗi khi tải danh sách lịch hẹn:', err);
       setAppointments([]);
@@ -542,7 +607,7 @@ export default function PatientAppointments() {
         <div className="relative z-10 flex items-center gap-3 shrink-0 self-stretch md:self-auto justify-end">
           <button
             type="button"
-            onClick={() => setIsBookingModalOpen(true)}
+            onClick={handleOpenNewBookingModal}
             className="group w-full md:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-lg bg-white text-[#009766] hover:bg-emerald-50 text-xs sm:text-sm font-extrabold shadow-md shadow-emerald-950/20 hover:shadow-xl transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 cursor-pointer"
           >
             <div className="h-5 w-5 rounded-md bg-emerald-500/10 flex items-center justify-center text-[#009766] group-hover:bg-[#009766] group-hover:text-white transition-colors duration-200">
@@ -749,7 +814,7 @@ export default function PatientAppointments() {
           </p>
           <button
             type="button"
-            onClick={() => setIsBookingModalOpen(true)}
+            onClick={handleOpenNewBookingModal}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#009766] hover:bg-[#028562] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
           >
             <CalendarPlus className="h-4 w-4" />
@@ -771,9 +836,22 @@ export default function PatientAppointments() {
                 {/* Card Top Header */}
                 <div className="p-3.5 sm:p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
-                    <span className="text-xs font-bold text-slate-900 line-clamp-1 group-hover:text-[#009766] transition-colors">
-                      {apt.reason || 'Khám răng tổng quát'}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs font-bold text-slate-900 line-clamp-1 group-hover:text-[#009766] transition-colors">
+                        {apt.reason || 'Khám răng tổng quát'}
+                      </span>
+                      {apt.type === 'FOLLOW_UP' ? (
+                        <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-bold border bg-indigo-50 text-indigo-700 border-indigo-200 shrink-0">
+                          <RefreshCw className="h-2.5 w-2.5" />
+                          Lịch tái khám
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-bold border bg-teal-50 text-teal-700 border-teal-200 shrink-0">
+                          <Calendar className="h-2.5 w-2.5" />
+                          Lịch hẹn
+                        </span>
+                      )}
+                    </div>
                     {getStatusBadge(apt.status)}
                   </div>
 
@@ -839,7 +917,7 @@ export default function PatientAppointments() {
                     #{String(apt.id || '').substring(0, 8)}
                   </span>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
                     {isUpcoming && (
                       <button
                         type="button"
@@ -861,6 +939,33 @@ export default function PatientAppointments() {
                       >
                         Hủy hẹn
                       </button>
+                    )}
+
+                    {/* Nút Chỉnh sửa (Áp dụng trong vòng 1h kể từ khi đặt lịch - Chỉ lịch hẹn, không áp dụng lịch tái khám) */}
+                    {apt.type !== 'FOLLOW_UP' && !apt.isFollowUp && isUpcoming && (
+                      (() => {
+                        const editCheck = checkAppointmentCreationEditable(apt);
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditBookingModal(apt)}
+                            disabled={!editCheck.canEdit}
+                            title={
+                              editCheck.canEdit
+                                ? 'Chỉnh sửa lại thông tin đặt lịch (trong vòng 1h kể từ khi đặt)'
+                                : editCheck.reason
+                            }
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold text-xs transition-colors shadow-2xs ${
+                              editCheck.canEdit
+                                ? 'bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 cursor-pointer'
+                                : 'bg-slate-100 text-slate-300 border border-slate-200 cursor-not-allowed opacity-50'
+                            }`}
+                          >
+                            <Edit3 className="h-3 w-3" />
+                            <span>Chỉnh sửa</span>
+                          </button>
+                        );
+                      })()
                     )}
 
                     <button
@@ -1031,7 +1136,7 @@ export default function PatientAppointments() {
                   </p>
                   <button
                     type="button"
-                    onClick={() => setIsBookingModalOpen(true)}
+                    onClick={handleOpenNewBookingModal}
                     className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-[#009766] bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors cursor-pointer mt-1"
                   >
                     <Plus className="h-3.5 w-3.5" />
@@ -1091,7 +1196,7 @@ export default function PatientAppointments() {
                             #{String(apt.id || '').substring(0, 8)}
                           </span>
 
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5 sm:gap-2">
                             {isUpcoming && (
                               <button
                                 type="button"
@@ -1113,6 +1218,33 @@ export default function PatientAppointments() {
                               >
                                 Hủy hẹn
                               </button>
+                            )}
+
+                            {/* Nút Chỉnh sửa (Áp dụng trong vòng 1h kể từ khi đặt lịch - Chỉ lịch hẹn, không áp dụng lịch tái khám) */}
+                            {apt.type !== 'FOLLOW_UP' && !apt.isFollowUp && isUpcoming && (
+                              (() => {
+                                const editCheck = checkAppointmentCreationEditable(apt);
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEditBookingModal(apt)}
+                                    disabled={!editCheck.canEdit}
+                                    title={
+                                      editCheck.canEdit
+                                        ? 'Chỉnh sửa lại thông tin đặt lịch (trong vòng 1h kể từ khi đặt)'
+                                        : editCheck.reason
+                                    }
+                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold text-xs transition-colors shadow-2xs ${
+                                      editCheck.canEdit
+                                        ? 'bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 cursor-pointer'
+                                        : 'bg-slate-100 text-slate-300 border border-slate-200 cursor-not-allowed opacity-50'
+                                    }`}
+                                  >
+                                    <Edit3 className="h-3 w-3" />
+                                    <span>Chỉnh sửa</span>
+                                  </button>
+                                );
+                              })()
                             )}
 
                             <button
@@ -1221,6 +1353,34 @@ export default function PatientAppointments() {
                           Hủy hẹn
                         </button>
                       )}
+
+                      {/* Nút Chỉnh sửa (Áp dụng trong vòng 1h kể từ khi đặt lịch - Chỉ lịch hẹn, không áp dụng lịch tái khám) */}
+                      {apt.type !== 'FOLLOW_UP' && !apt.isFollowUp && isUpcoming && (
+                        (() => {
+                          const editCheck = checkAppointmentCreationEditable(apt);
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditBookingModal(apt)}
+                              disabled={!editCheck.canEdit}
+                              title={
+                                editCheck.canEdit
+                                  ? 'Chỉnh sửa lại thông tin đặt lịch (trong vòng 1h kể từ khi đặt)'
+                                  : editCheck.reason
+                              }
+                              className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg font-bold text-xs transition-colors shadow-2xs ${
+                                editCheck.canEdit
+                                  ? 'bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 cursor-pointer'
+                                  : 'bg-slate-100 text-slate-300 border border-slate-200 cursor-not-allowed opacity-50'
+                              }`}
+                            >
+                              <Edit3 className="h-3.5 w-3.5" />
+                              <span>Chỉnh sửa</span>
+                            </button>
+                          );
+                        })()
+                      )}
+
                       <button
                         type="button"
                         onClick={() => handleOpenDetail(apt)}
@@ -1377,7 +1537,39 @@ export default function PatientAppointments() {
                 </div>
               )}
 
-              {/* Thẻ 6: Hướng dẫn khi đến khám */}
+              {/* Thẻ 6: Thông báo phân quyền chỉnh sửa lịch hẹn / tái khám */}
+              {selectedAppointment.type === 'FOLLOW_UP' || selectedAppointment.isFollowUp ? (
+                <div className="bg-indigo-50/80 border border-indigo-200/80 p-3 rounded-lg text-xs text-indigo-900 space-y-1 font-medium">
+                  <div className="flex items-center gap-1.5 font-bold text-indigo-950">
+                    <RefreshCw className="h-3.5 w-3.5 text-indigo-600" />
+                    Lịch tái khám do Bác sĩ chỉ định
+                  </div>
+                  <p className="text-indigo-900/90 leading-relaxed text-[11px]">
+                    Lịch tái khám được chỉ định trực tiếp theo phác đồ điều trị của Bác sĩ phụ trách và không áp dụng chỉnh sửa trực tuyến. Nếu cần điều chỉnh, quý khách vui lòng liên hệ trực tiếp hotline hoặc nhân viên tại quầy.
+                  </p>
+                </div>
+              ) : (
+                (() => {
+                  const editCheck = checkAppointmentCreationEditable(selectedAppointment);
+                  return (
+                    <div
+                      className={`p-3 rounded-lg border text-xs leading-relaxed font-medium space-y-0.5 ${
+                        editCheck.canEdit
+                          ? 'bg-teal-50 border-teal-200 text-teal-900'
+                          : 'bg-amber-50 border-amber-200 text-amber-900'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 font-bold">
+                        <Clock className={`h-3.5 w-3.5 ${editCheck.canEdit ? 'text-teal-600' : 'text-amber-600'}`} />
+                        <span>{editCheck.canEdit ? 'Thời gian chỉnh sửa trực tuyến hợp lệ' : 'Khóa chỉnh sửa trực tuyến'}</span>
+                      </div>
+                      <p className="text-[11px] leading-relaxed">{editCheck.reason}</p>
+                    </div>
+                  );
+                })()
+              )}
+
+              {/* Thẻ 7: Hướng dẫn khi đến khám */}
               <div className="bg-blue-50/80 border border-blue-200/80 p-3 rounded-lg text-[11px] text-blue-900 space-y-1">
                 <div className="flex items-center gap-1.5 font-bold text-blue-800">
                   <ShieldCheck className="h-4 w-4 shrink-0 text-blue-600" />
@@ -1427,13 +1619,42 @@ export default function PatientAppointments() {
                 <div />
               )}
 
-              <button
-                type="button"
-                onClick={handleCloseDetail}
-                className="px-5 py-2 rounded-lg bg-[#009766] hover:bg-[#028562] text-white text-xs font-bold transition-all shadow-xs cursor-pointer min-w-[90px] text-center"
-              >
-                Đóng
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Nút Chỉnh sửa (chỉ cho Lịch hẹn, Lịch tái khám không sửa được) */}
+                {selectedAppointment.type !== 'FOLLOW_UP' && !selectedAppointment.isFollowUp && (
+                  (() => {
+                    const editCheck = checkAppointmentCreationEditable(selectedAppointment);
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditBookingModal(selectedAppointment)}
+                        disabled={!editCheck.canEdit}
+                        title={
+                          editCheck.canEdit
+                            ? 'Chỉnh sửa lại thông tin đặt lịch (trong vòng 1h kể từ khi đặt)'
+                            : editCheck.reason
+                        }
+                        className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold transition-all shadow-xs ${
+                          editCheck.canEdit
+                            ? 'bg-[#009766] hover:bg-[#028562] text-white cursor-pointer'
+                            : 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-60'
+                        }`}
+                      >
+                        <Edit3 className="h-3.5 w-3.5" />
+                        <span>Chỉnh sửa</span>
+                      </button>
+                    );
+                  })()
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleCloseDetail}
+                  className="px-5 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all shadow-2xs cursor-pointer min-w-[80px] text-center"
+                >
+                  Đóng
+                </button>
+              </div>
             </div>
           </div>
         </div>,
@@ -1503,8 +1724,13 @@ export default function PatientAppointments() {
       {/* Patient Booking Modal */}
       <PatientBookingModal
         isOpen={isBookingModalOpen}
-        onClose={() => setIsBookingModalOpen(false)}
+        initialAppointment={editingAppointment}
+        onClose={() => {
+          setIsBookingModalOpen(false);
+          setEditingAppointment(null);
+        }}
         onSuccess={() => {
+          setEditingAppointment(null);
           fetchAppointments();
         }}
       />

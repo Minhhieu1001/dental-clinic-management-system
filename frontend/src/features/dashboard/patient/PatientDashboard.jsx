@@ -21,16 +21,27 @@ import {
   Activity,
   PhoneCall,
   Sparkles,
+  RefreshCw,
+  Edit3,
 } from 'lucide-react';
 import { useAuth } from '../../../hooks/useAuth';
 import toast from 'react-hot-toast';
 import { getPatientStatistics, getPatientById, getPatientByPatientCode } from '../../../services/patient.service';
 import { getInProgressTreatmentPlansByPatientId, getTreatmentPlansByPatientId } from '../../../services/treatmentPlan.service';
 import { getExaminationResultsByPatientId } from '../../../services/examinationResult.service';
-import { getCurrentMonthFollowUpAppointmentsByPatientId } from '../../../services/followUpAppointment.service';
+import {
+  getCurrentMonthFollowUpAppointmentsByPatientId,
+  getFollowUpAppointments,
+  updateFollowUpAppointment,
+} from '../../../services/followUpAppointment.service';
 import { getAppointmentsByPatient, getMyAppointments, updateAppointment } from '../../../services/appointment.service';
 import { createNotification } from '../../../services/notification.service';
-import { canModifyAppointment, checkAppointmentModifiable } from '../../../utils/appointmentTimeCheck';
+import {
+  canModifyAppointment,
+  checkAppointmentModifiable,
+  canEditAppointment,
+  checkAppointmentCreationEditable,
+} from '../../../utils/appointmentTimeCheck';
 import Loading from '../../../components/ui/Loading';
 import PatientBookingModal from '../../appointment/patient/PatientBookingModal';
 
@@ -40,12 +51,17 @@ const isValidUUID = (str) =>
 
 // Chuẩn hóa tên bác sĩ không bị lặp học hàm/học vị (tránh BS. ThS. BS.)
 const formatDoctorName = (name) => {
-  if (!name) return 'BS. Nguyễn Văn Anh';
-  const clean = name.trim();
-  if (/^(BS|ThS|TS|PGS|GS)\.?\s+/i.test(clean)) {
-    return clean;
+  if (!name || name === 'Chưa có') return 'BS. Nguyễn Văn Anh';
+  let clean = String(name).trim();
+  // Loại bỏ các trường hợp lặp prefix như: BS. ThS. BS., BS. BS., ThS. BS. BS.
+  clean = clean.replace(/^(BS\.?\s*)+(ThS|TS|PGS|GS)\.?\s*(BS\.?\s*)?/i, '$2. BS. ');
+  clean = clean.replace(/^(BS\.?\s*)+/i, 'BS. ');
+  clean = clean.replace(/^(ThS\.?\s*)+/i, 'ThS. ');
+  clean = clean.replace(/^(TS\.?\s*)+/i, 'TS. ');
+  if (!/^(BS|ThS|TS|PGS|GS)\.?\s+/i.test(clean)) {
+    clean = `BS. ${clean}`;
   }
-  return `BS. ${clean}`;
+  return clean.replace(/\s+/g, ' ');
 };
 
 // Chuẩn hóa ngày giờ: tính timeMs chính xác và format thời gian đẹp HH:mm (loại bỏ chuỗi ISO)
@@ -74,8 +90,9 @@ const parseAppointmentDateTime = (dateVal, timeVal) => {
 
   let hh = 9, mm = 0;
   let timeFormatted = '09:00';
-  if (timeVal) {
-    let tStr = String(timeVal).trim();
+  const effectiveTimeStr = timeVal || (typeof dateVal === 'string' && dateVal.includes('T') ? dateVal.split('T')[1] : null);
+  if (effectiveTimeStr) {
+    let tStr = String(effectiveTimeStr).trim();
     if (tStr.includes('T')) {
       tStr = tStr.split('T')[1];
     }
@@ -97,8 +114,10 @@ const parseAppointmentDateTime = (dateVal, timeVal) => {
     timeFormatted,
     dayOfWeek: isValid ? dayNames[dateObj.getDay()] : 'Chưa có',
     dayNumber: isValid ? String(dateObj.getDate()).padStart(2, '0') : '--',
+    monthNumber: isValid ? String(dateObj.getMonth() + 1).padStart(2, '0') : '--',
+    monthShort: isValid ? `Thg ${dateObj.getMonth() + 1}` : '',
     monthYear: isValid ? `Tháng ${dateObj.getMonth() + 1}` : 'Chưa có',
-    date: isValid ? dateObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }) : 'Chưa có',
+    date: isValid ? `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}` : 'Chưa có',
     fullDate: isValid ? dateObj.toLocaleDateString('vi-VN') : 'Chưa có',
   };
 };
@@ -110,106 +129,102 @@ export default function PatientDashboard() {
   // User display info (defaults to user name if set, otherwise fallback)
   const displayName = user?.fullName || user?.username || 'Khách hàng';
 
-  // State for interactive modals
+  // State for interactive modals with smooth open/close transitions
   const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [isDetailActive, setIsDetailActive] = useState(false);
+
   const [selectedHistory, setSelectedHistory] = useState(null);
-  const [isRescheduleOpen, setIsRescheduleOpen] = useState(false);
+  const [isHistoryActive, setIsHistoryActive] = useState(false);
+
   const [isSupportOpen, setIsSupportOpen] = useState(false);
+  const [isSupportActive, setIsSupportActive] = useState(false);
+
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [editingAppointment, setEditingAppointment] = useState(null);
   const [selectedPlanIndex, setSelectedPlanIndex] = useState(0);
   const [historyPage, setHistoryPage] = useState(1);
   const itemsPerPage = 4;
 
-  // Form states cho Modal Yêu cầu đổi lịch khám
-  const [rescheduleDate, setRescheduleDate] = useState('');
-  const [rescheduleTimeSlot, setRescheduleTimeSlot] = useState('MORNING');
-  const [rescheduleNotes, setRescheduleNotes] = useState('');
-  const [isSubmittingReschedule, setIsSubmittingReschedule] = useState(false);
-
-  // Mở modal đổi lịch và gán ngày mặc định là ngày mai
-  const handleOpenRescheduleModal = (apt) => {
+  // Smooth open/close handlers for Detail Modal
+  const handleOpenDetailModal = (apt) => {
     if (!apt) return;
-    const check = checkAppointmentModifiable(apt);
-    if (!check.canModify) {
+    setSelectedAppointment(apt);
+    setIsDetailActive(false);
+    setTimeout(() => {
+      setIsDetailActive(true);
+    }, 20);
+  };
+
+  const handleCloseDetailModal = () => {
+    setIsDetailActive(false);
+    setTimeout(() => {
+      setSelectedAppointment(null);
+    }, 200);
+  };
+
+  // Smooth open/close handlers for Treatment History Modal
+  const handleOpenHistoryModal = (item) => {
+    if (!item) return;
+    setSelectedHistory(item);
+    setIsHistoryActive(false);
+    setTimeout(() => {
+      setIsHistoryActive(true);
+    }, 20);
+  };
+
+  const handleCloseHistoryModal = () => {
+    setIsHistoryActive(false);
+    setTimeout(() => {
+      setSelectedHistory(null);
+    }, 200);
+  };
+
+  // Smooth open/close handlers for Support Hotline Modal
+  const handleOpenSupportModal = () => {
+    setIsSupportOpen(true);
+    setIsSupportActive(false);
+    setTimeout(() => {
+      setIsSupportActive(true);
+    }, 20);
+  };
+
+  const handleCloseSupportModal = () => {
+    setIsSupportActive(false);
+    setTimeout(() => {
+      setIsSupportOpen(false);
+    }, 200);
+  };
+
+  // Close modals on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (isDetailActive) handleCloseDetailModal();
+        if (isHistoryActive) handleCloseHistoryModal();
+        if (isSupportActive) handleCloseSupportModal();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isDetailActive, isHistoryActive, isSupportActive]);
+
+  // Mở modal đặt lịch khám mới (reset editing appointment)
+  const handleOpenNewBookingModal = () => {
+    setEditingAppointment(null);
+    setIsBookingModalOpen(true);
+  };
+
+  // Mở modal chỉnh sửa lại thông tin đặt lịch (áp dụng trong vòng 1h kể từ khi nhấn đặt lịch)
+  const handleOpenEditBookingModal = (apt) => {
+    if (!apt) return;
+    const check = checkAppointmentCreationEditable(apt);
+    if (!check.canEdit) {
       toast.error(check.reason);
       return;
     }
-    setSelectedAppointment(apt);
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const y = tomorrow.getFullYear();
-    const m = String(tomorrow.getMonth() + 1).padStart(2, '0');
-    const d = String(tomorrow.getDate()).padStart(2, '0');
-    setRescheduleDate(`${y}-${m}-${d}`);
-    setRescheduleTimeSlot('MORNING');
-    setRescheduleNotes('');
-    setIsRescheduleOpen(true);
-  };
-
-  // Xác nhận gửi yêu cầu đổi lịch kết nối API updateAppointment của Employee/Backend
-  const handleConfirmReschedule = async () => {
-    if (!selectedAppointment?.id) {
-      toast.error('Không tìm thấy thông tin lịch hẹn cần đổi!');
-      return;
-    }
-    if (!rescheduleDate) {
-      toast.error('Vui lòng chọn ngày mong muốn mới!');
-      return;
-    }
-
-    const slotConfig = {
-      MORNING: { time: '09:00:00', label: 'Buổi sáng (08:30 - 11:30)' },
-      AFTERNOON: { time: '14:30:00', label: 'Buổi chiều (14:00 - 17:00)' },
-      EVENING: { time: '18:00:00', label: 'Buổi tối (17:30 - 20:00)' },
-    };
-    const chosenSlot = slotConfig[rescheduleTimeSlot] || slotConfig.MORNING;
-
-    setIsSubmittingReschedule(true);
-    try {
-      const changeNote = `Bệnh nhân yêu cầu đổi lịch sang ngày ${rescheduleDate} (${chosenSlot.label}). ${rescheduleNotes ? 'Lý do: ' + rescheduleNotes.trim() : ''}`;
-
-      // 1. Gọi API cập nhật lịch hẹn: PUT /api/v1/appointments/{id}
-      await updateAppointment(selectedAppointment.id, {
-        appointmentDate: rescheduleDate,
-        appointmentTime: chosenSlot.time,
-        notes: changeNote,
-        status: 'PENDING', // Đặt trạng thái PENDING để Lễ tân tại quầy (Employee) duyệt xác nhận
-      });
-
-      // 2. Phát thông báo chuông cho tài khoản bệnh nhân
-      if (user?.id) {
-        try {
-          await createNotification({
-            userId: user.id,
-            title: 'Yêu cầu đổi lịch khám thành công',
-            content: `Bạn đã gửi yêu cầu đổi lịch (${selectedAppointment.title}) sang ngày ${rescheduleDate} (${chosenSlot.label}). Lễ tân sẽ liên hệ xác nhận sớm nhất.`,
-            type: 'STATUS_CHANGE',
-            targetUrl: '/patient/appointments',
-          });
-        } catch (notifErr) {
-          console.warn('Lỗi gửi thông báo cho bệnh nhân:', notifErr);
-        }
-      }
-
-      // 3. Kích hoạt CustomEvent để đồng bộ realtime với chuông và danh sách lịch hẹn
-      window.dispatchEvent(new CustomEvent('appointment_created'));
-      window.dispatchEvent(new CustomEvent('notification_updated'));
-
-      toast.success('Gửi yêu cầu đổi lịch thành công! Nhân viên lễ tân đã nhận được yêu cầu của bạn.');
-      setIsRescheduleOpen(false);
-      setSelectedAppointment(null);
-      setRescheduleNotes('');
-
-      const pid = user?.patientId || user?.id;
-      if (pid) {
-        loadAllDashboardData(pid);
-      }
-    } catch (err) {
-      console.error('Lỗi khi gửi yêu cầu đổi lịch:', err);
-      toast.error(err.response?.data?.message || 'Không thể gửi yêu cầu đổi lịch. Vui lòng thử lại!');
-    } finally {
-      setIsSubmittingReschedule(false);
-    }
+    handleCloseDetailModal();
+    setEditingAppointment(apt);
+    setIsBookingModalOpen(true);
   };
 
   // States quản lý dữ liệu từ từng API
@@ -218,6 +233,7 @@ export default function PatientDashboard() {
   const [examinationResults, setExaminationResults] = useState([]);
   const [followUpAppointments, setFollowUpAppointments] = useState([]);
   const [patientAppointments, setPatientAppointments] = useState([]);
+  const [appointmentFilterTab, setAppointmentFilterTab] = useState('ALL'); // 'ALL' | 'APPOINTMENT' | 'FOLLOW_UP'
   const [loading, setLoading] = useState(true);
 
   // 1. Fetch Thống kê bệnh nhân
@@ -263,14 +279,32 @@ export default function PatientDashboard() {
     }
   };
 
-  // 4. Fetch Lịch tái khám trong tháng hiện tại
+  // 4. Fetch Lịch tái khám (Đồng bộ với phân hệ Lịch tái khám của Employee/Dentist)
   const fetchCurrentMonthFollowUpAppointmentsByPatientId = async (patientId) => {
     try {
-      const res = await getCurrentMonthFollowUpAppointmentsByPatientId(patientId);
-      const list = Array.isArray(res) ? res : (res?.data || res?.result || []);
+      let list = [];
+      // 1. Thử lấy toàn bộ lịch tái khám theo patientId hoặc patientCode từ API
+      try {
+        const fullData = await getFollowUpAppointments({
+          patientId,
+          patientCode: user?.patientCode,
+        });
+        if (Array.isArray(fullData) && fullData.length > 0) {
+          list = fullData;
+        }
+      } catch (err) {
+        console.warn('getFollowUpAppointments error:', err);
+      }
+
+      // 2. Nếu chưa có, fallback sang API lịch tái khám trong tháng hiện tại
+      if (!list || list.length === 0) {
+        const res = await getCurrentMonthFollowUpAppointmentsByPatientId(patientId);
+        list = Array.isArray(res) ? res : (res?.data || res?.result || []);
+      }
+
       setFollowUpAppointments(list);
     } catch (error) {
-      console.error("Lỗi lấy lịch tái khám trong tháng:", error);
+      console.error("Lỗi lấy lịch tái khám của bệnh nhân:", error);
       setFollowUpAppointments([]);
     }
   };
@@ -391,7 +425,7 @@ export default function PatientDashboard() {
     // 1. Chuẩn hóa các lịch hẹn khám (Appointments)
     if (patientAppointments && patientAppointments.length > 0) {
       patientAppointments.forEach((apt) => {
-        const st = (apt.status || '').toUpperCase();
+        const st = typeof apt.status === 'string' ? apt.status.toUpperCase() : '';
         if (st === 'CANCELLED' || st.includes('HỦY')) return;
 
         const dateParsed = parseAppointmentDateTime(apt.appointmentDate, apt.appointmentTime);
@@ -402,6 +436,8 @@ export default function PatientDashboard() {
           typeLabel: 'Lịch hẹn khám',
           dayOfWeek: dateParsed.dayOfWeek,
           dayNumber: dateParsed.dayNumber,
+          monthNumber: dateParsed.monthNumber,
+          monthShort: dateParsed.monthShort,
           monthYear: dateParsed.monthYear,
           date: dateParsed.date,
           fullDate: dateParsed.fullDate,
@@ -425,8 +461,8 @@ export default function PatientDashboard() {
     // 2. Chuẩn hóa các lịch tái khám (FollowUpAppointments)
     if (followUpAppointments && followUpAppointments.length > 0) {
       followUpAppointments.forEach((apt) => {
-        const st = (apt.status || '').toUpperCase();
-        if (st === 'CANCELLED' || st.includes('HỦY')) return;
+        const st = typeof apt.status === 'string' ? apt.status.toUpperCase() : '';
+        if (st === 'CANCELLED' || st.includes('HỦY') || apt.status === false) return;
 
         const dateParsed = parseAppointmentDateTime(apt.followUpDate, apt.followUpTime);
 
@@ -436,6 +472,8 @@ export default function PatientDashboard() {
           typeLabel: 'Lịch tái khám',
           dayOfWeek: dateParsed.dayOfWeek,
           dayNumber: dateParsed.dayNumber,
+          monthNumber: dateParsed.monthNumber,
+          monthShort: dateParsed.monthShort,
           monthYear: dateParsed.monthYear,
           date: dateParsed.date,
           fullDate: dateParsed.fullDate,
@@ -466,6 +504,17 @@ export default function PatientDashboard() {
 
     return mergedList;
   }, [patientAppointments, followUpAppointments]);
+
+  // Danh sách lịch hẹn sau khi áp dụng bộ lọc tab ('ALL' | 'APPOINTMENT' | 'FOLLOW_UP')
+  const displayedUpcomingAppointments = useMemo(() => {
+    if (appointmentFilterTab === 'APPOINTMENT') {
+      return upcomingAppointments.filter((item) => item.type === 'APPOINTMENT');
+    }
+    if (appointmentFilterTab === 'FOLLOW_UP') {
+      return upcomingAppointments.filter((item) => item.type === 'FOLLOW_UP');
+    }
+    return upcomingAppointments;
+  }, [upcomingAppointments, appointmentFilterTab]);
 
   const latestAppointment = upcomingAppointments[0] || null;
 
@@ -548,13 +597,16 @@ export default function PatientDashboard() {
         const isCompleted = phase.status === 'COMPLETED';
         const isInProgress = phase.status === 'IN_PROGRESS';
         const expectedStartDate = phase.expectedStartDate ? new Date(phase.expectedStartDate) : null;
+        const rawTitle = phase.phaseName || `Giai đoạn ${pIdx + 1}`;
+        const cleanTitle = rawTitle.replace(/^Giai\s*đoạn\s*\d+\s*[:\-]\s*/i, '').trim();
 
         return {
           stepNum: pIdx + 1,
-          title: phase.phaseName || `Giai đoạn ${pIdx + 1}`,
+          title: cleanTitle || rawTitle,
+          fullTitle: rawTitle,
           date: expectedStartDate && !isNaN(expectedStartDate.getTime())
             ? expectedStartDate.toLocaleDateString('vi-VN')
-            : 'Chưa có',
+            : '',
           status: isCompleted ? 'Hoàn thành' : isInProgress ? 'Đang điều trị' : 'Chưa bắt đầu',
           statusType: isCompleted ? 'completed' : isInProgress ? 'in-progress' : 'pending',
         };
@@ -566,7 +618,7 @@ export default function PatientDashboard() {
       return {
         id: plan.id || `tp-${index}`,
         title: plan.planName || 'Chưa có',
-        doctor: plan.dentistName ? (plan.dentistName.startsWith('BS.') ? plan.dentistName : `BS. ${plan.dentistName}`) : 'Chưa có',
+        doctor: formatDoctorName(plan.dentistName),
         startDate: startDateObj && !isNaN(startDateObj.getTime()) ? startDateObj.toLocaleDateString('vi-VN') : 'Chưa có',
         expectedEndDate: endDateObj && !isNaN(endDateObj.getTime()) ? endDateObj.toLocaleDateString('vi-VN') : 'Chưa có',
         currentStage,
@@ -598,7 +650,7 @@ export default function PatientDashboard() {
         id: item.id || Math.random().toString(),
         date: d && !isNaN(d.getTime()) ? d.toLocaleDateString('vi-VN') : 'Chưa có',
         service: item.chiefComplaint || primaryDiag || 'Khám tổng quát',
-        doctor: item.dentistName ? (item.dentistName.startsWith('BS.') ? item.dentistName : `BS. ${item.dentistName}`) : 'Chưa có',
+        doctor: formatDoctorName(item.dentistName),
         branch: item.branchName || 'Chưa có',
         result: resultText || 'chưa có',
         notes: item.diagnosis?.description || diagList[0]?.description || item.chiefComplaint || 'Chưa có',
@@ -629,7 +681,7 @@ export default function PatientDashboard() {
       bgColor: 'bg-teal-50 border border-teal-100',
       textColor: 'text-teal-800',
       hoverColor: 'hover:bg-teal-100/70',
-      onClick: () => setIsBookingModalOpen(true),
+      onClick: handleOpenNewBookingModal,
     },
     {
       title: 'Xem lịch hẹn',
@@ -669,7 +721,7 @@ export default function PatientDashboard() {
       bgColor: 'bg-cyan-50 border border-cyan-100',
       textColor: 'text-cyan-800',
       hoverColor: 'hover:bg-cyan-100/70',
-      onClick: () => setIsSupportOpen(true),
+      onClick: handleOpenSupportModal,
     },
   ];
 
@@ -755,28 +807,32 @@ export default function PatientDashboard() {
                     <div className="mt-4 flex gap-2.5 pt-1">
                       <button
                         type="button"
-                        onClick={() => setSelectedAppointment(latestAppointment)}
-                        className="flex-1 rounded-lg border border-slate-200 bg-white py-2 text-xs font-bold text-slate-700 hover:bg-teal-50 hover:text-teal-800 transition-colors shadow-2xs cursor-pointer"
+                        onClick={() => handleOpenDetailModal(latestAppointment)}
+                        className={`${latestAppointment.type === 'FOLLOW_UP' ? 'w-full' : 'flex-1'
+                          } rounded-lg border border-slate-200 bg-white py-2 text-xs font-bold text-slate-700 hover:bg-teal-50 hover:text-teal-800 transition-colors shadow-2xs cursor-pointer`}
                       >
                         Xem chi tiết
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenRescheduleModal(latestAppointment)}
-                        disabled={!canModifyAppointment(latestAppointment)}
-                        title={
-                          !canModifyAppointment(latestAppointment)
-                            ? checkAppointmentModifiable(latestAppointment).reason
-                            : 'Đổi ngày hoặc giờ hẹn'
-                        }
-                        className={`flex-1 rounded-lg py-2 text-xs font-bold transition-colors shadow-xs ${
-                          canModifyAppointment(latestAppointment)
-                            ? 'bg-teal-700 text-white hover:bg-teal-800 cursor-pointer'
-                            : 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-60 border border-slate-300/60'
-                        }`}
-                      >
-                        Đổi lịch
-                      </button>
+                      {latestAppointment.type !== 'FOLLOW_UP' && (
+                        (() => {
+                          const editCheck = checkAppointmentCreationEditable(latestAppointment);
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditBookingModal(latestAppointment)}
+                              disabled={!editCheck.canEdit}
+                              title={editCheck.canEdit ? 'Chỉnh sửa thông tin đặt lịch (trong vòng 1h kể từ khi đặt)' : editCheck.reason}
+                              className={`flex-1 rounded-lg py-2 text-xs font-bold transition-colors shadow-xs flex items-center justify-center gap-1.5 ${editCheck.canEdit
+                                  ? 'bg-teal-700 text-white hover:bg-teal-800 cursor-pointer'
+                                  : 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-60 border border-slate-300/60'
+                                }`}
+                            >
+                              <Edit3 className="h-3.5 w-3.5" />
+                              Chỉnh sửa
+                            </button>
+                          );
+                        })()
+                      )}
                     </div>
                   </>
                 ) : (
@@ -788,7 +844,7 @@ export default function PatientDashboard() {
                     <p className="text-xs text-slate-400 mt-0.5">Đặt lịch khám để được bác sĩ theo dõi định kỳ</p>
                     <button
                       type="button"
-                      onClick={() => setIsBookingModalOpen(true)}
+                      onClick={handleOpenNewBookingModal}
                       className="mt-3.5 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-700 text-white text-xs font-bold hover:bg-teal-800 transition-colors cursor-pointer shadow-xs"
                     >
                       <CalendarPlus className="h-3.5 w-3.5" />
@@ -813,7 +869,7 @@ export default function PatientDashboard() {
                 <div className="pt-2">
                   <button
                     type="button"
-                    onClick={() => setIsBookingModalOpen(true)}
+                    onClick={handleOpenNewBookingModal}
                     className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-xs sm:text-sm font-bold text-teal-900 shadow-md hover:bg-emerald-50 transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
                   >
                     Đặt lịch khám ngay
@@ -851,63 +907,38 @@ export default function PatientDashboard() {
       {/* NỘI DUNG BÊN DƯỚI BANNER: Cách lề trái và phải cân đối  */}
       {/* ======================================================== */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 pb-12">
-        {/* 2. STATS SUMMARY ROW: 5 Cards (Emerald / Teal Unified)  */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+        {/* 2. STATS SUMMARY ROW: 5 Cards (Minimalist, modern, cohesive)  */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
           {stats.map((item) => {
             const Icon = item.icon;
             return (
               <Link
                 key={item.id}
                 to={item.to}
-                className="group flex items-center justify-between rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-100 transition-all hover:-translate-y-0.5 hover:shadow-md hover:ring-teal-200"
+                className="group relative flex flex-col justify-between rounded-2xl bg-white p-4.5 border border-slate-100/90 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-md hover:border-slate-200/90 hover:-translate-y-0.5 transition-all duration-200"
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${item.bgColor} ${item.color} shadow-xs`}>
-                    <Icon className="h-6 w-6" />
+                <div className="flex items-center justify-between">
+                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${item.bgColor} ${item.color}`}>
+                    <Icon className="h-5 w-5" />
                   </div>
-                  {item.id === 'treatment-plan' ? (
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      {/* Bên trái: Tổng kế hoạch */}
-                      <div>
-                        <p className="text-xl sm:text-2xl font-black text-slate-800 leading-none">
-                          {item.totalCount || item.count}
-                        </p>
-                        <p className="text-[10px] sm:text-[11px] text-slate-500 font-semibold mt-1 whitespace-nowrap">
-                          Tổng kế hoạch
-                        </p>
-                      </div>
-
-                      {/* Ngăn cách */}
-                      <div className="h-7 w-px bg-slate-200 shrink-0" />
-
-                      {/* Bên phải: Đang điều trị */}
-                      <div>
-                        <p className="text-xl sm:text-2xl font-black text-teal-700 leading-none">
-                          {item.inProgressCount || '1'}
-                        </p>
-                        <p className="text-[10px] sm:text-[11px] text-teal-700 font-bold mt-1 whitespace-nowrap">
-                          Điều trị
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="min-w-0">
-                      <p className="text-xl sm:text-2xl font-black text-slate-800 leading-none">
-                        {item.count}
-                      </p>
-                      <p className="text-xs text-slate-500 font-semibold mt-1 truncate">
-                        {item.title}
-                      </p>
-                      {item.subtext && (
-                        <p className="text-[10px] text-slate-400 mt-0.5 truncate leading-tight">
-                          {item.subtext}
-                        </p>
-                      )}
-                    </div>
-                  )}
+                  <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all" />
                 </div>
 
-                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-teal-600 group-hover:translate-x-0.5 transition-all shrink-0 ml-1" />
+                <div className="mt-3.5 min-w-0">
+                  <div className="flex items-baseline gap-1.5 flex-wrap">
+                    <p className="text-2xl font-black text-slate-900 tracking-tight leading-none">
+                      {item.count}
+                    </p>
+                    {item.badge && (
+                      <span className="text-[10px] font-bold text-teal-700 bg-teal-50 border border-teal-100/80 px-1.5 py-0.5 rounded-md leading-none">
+                        {item.badge}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 font-medium mt-1.5 truncate">
+                    {item.title}
+                  </p>
+                </div>
               </Link>
             );
           })}
@@ -919,76 +950,180 @@ export default function PatientDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
 
           {/* Left Column: Lịch hẹn sắp tới */}
-          <div className="lg:col-span-6 rounded-xl bg-white p-5 sm:p-6 shadow-sm ring-1 ring-slate-100 flex flex-col justify-between">
+          <div className="lg:col-span-6 rounded-2xl bg-white p-5 sm:p-6 border border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 className="text-base font-extrabold text-slate-900">
-                  Lịch hẹn sắp tới
-                </h3>
+              {/* Header: Title + Link to All */}
+              <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
+                    Lịch hẹn sắp tới
+                  </h3>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                    {upcomingAppointments.length}
+                  </span>
+                </div>
+
                 <Link
                   to="/patient/appointments"
-                  className="text-xs font-bold text-teal-700 hover:text-teal-800 flex items-center gap-1 transition-colors"
+                  className="text-xs font-bold text-teal-700 hover:text-teal-800 flex items-center gap-0.5 transition-colors group"
                 >
-                  Xem tất cả <ChevronRight className="h-3.5 w-3.5" />
+                  <span>Xem tất cả</span>
+                  <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
                 </Link>
               </div>
 
-              <div className="mt-4 space-y-3">
-                {upcomingAppointments.length > 0 ? (
-                  upcomingAppointments.map((apt) => (
-                    <div
-                      key={apt.id}
-                      onClick={() => setSelectedAppointment(apt)}
-                      className="group flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-100 hover:border-teal-200 hover:bg-teal-50/30 transition-all cursor-pointer"
-                    >
-                      {/* Date badge in teal */}
-                      <div className="flex flex-col items-center justify-center rounded-lg bg-teal-50 border border-teal-100 px-3 py-2 min-w-[62px] shrink-0">
-                        <span className="text-[10px] font-bold text-teal-700">
-                          {apt.dayOfWeek}
-                        </span>
-                        <span className="text-sm font-black text-teal-900 leading-tight">
-                          {apt.date}
-                        </span>
-                      </div>
+              {/* Filter Tabs Segmented Control */}
+              <div className="mt-3.5 flex items-center gap-1 p-1 bg-slate-100/80 rounded-xl text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setAppointmentFilterTab('ALL')}
+                  className={`flex-1 py-1.5 px-2.5 rounded-lg text-center transition-all cursor-pointer ${
+                    appointmentFilterTab === 'ALL'
+                      ? 'bg-white text-slate-900 font-bold shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  Tất cả ({upcomingAppointments.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAppointmentFilterTab('APPOINTMENT')}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg transition-all cursor-pointer ${
+                    appointmentFilterTab === 'APPOINTMENT'
+                      ? 'bg-white text-teal-700 font-bold shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <Calendar className="h-3.5 w-3.5" />
+                  <span>Lịch hẹn ({upcomingAppointments.filter((x) => x.type === 'APPOINTMENT').length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAppointmentFilterTab('FOLLOW_UP')}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg transition-all cursor-pointer ${
+                    appointmentFilterTab === 'FOLLOW_UP'
+                      ? 'bg-white text-indigo-700 font-bold shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  <span>Tái khám ({upcomingAppointments.filter((x) => x.type === 'FOLLOW_UP').length})</span>
+                </button>
+              </div>
 
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-sm font-bold text-slate-800 truncate group-hover:text-teal-700 transition-colors">
-                            {apt.title}
-                          </h4>
-                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold border ${apt.statusColor} shrink-0`}>
-                            {apt.status}
+              {/* Appointment List */}
+              <div className="mt-3.5 space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
+                {displayedUpcomingAppointments.length > 0 ? (
+                  displayedUpcomingAppointments.map((apt) => {
+                    const isFollowUp = apt.type === 'FOLLOW_UP';
+                    return (
+                      <div
+                        key={apt.id}
+                        onClick={() => handleOpenDetailModal(apt)}
+                        className={`group flex items-center justify-between gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
+                          isFollowUp
+                            ? 'border-slate-100/90 hover:border-indigo-200 hover:bg-indigo-50/20 bg-white'
+                            : 'border-slate-100/90 hover:border-teal-200 hover:bg-teal-50/20 bg-white'
+                        }`}
+                      >
+                        {/* Date badge: Cân đối, tinh tế, không bao giờ rớt dòng */}
+                        <div
+                          className={`flex flex-col items-center justify-center rounded-xl min-w-[58px] w-[58px] h-[52px] shrink-0 border transition-all gap-1 ${
+                            isFollowUp
+                              ? 'bg-indigo-50/70 border-indigo-100/90 text-indigo-700'
+                              : 'bg-teal-50/70 border-teal-100/90 text-teal-700'
+                          }`}
+                        >
+                          <span className="text-[10px] font-bold uppercase tracking-wide leading-none text-slate-500 whitespace-nowrap">
+                            {apt.dayOfWeek}
+                          </span>
+                          <span
+                            className={`text-[13px] font-black leading-none whitespace-nowrap tracking-tight ${
+                              isFollowUp ? 'text-indigo-950' : 'text-teal-950'
+                            }`}
+                          >
+                            {apt.dayNumber}/{apt.monthNumber}
                           </span>
                         </div>
-                        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-slate-500 font-medium">
-                          <span className="flex items-center gap-1">
-                            <User className="h-3 w-3 text-slate-400" />
-                            {apt.doctor}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3 text-slate-400" />
-                            {apt.branch}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3 text-slate-400" />
-                            {apt.time}
-                          </span>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <h4 className="text-[13px] font-bold text-slate-900 truncate group-hover:text-teal-700 transition-colors" title={apt.title}>
+                              {apt.title}
+                            </h4>
+
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span
+                                className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold border shrink-0 ${
+                                  isFollowUp
+                                    ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                    : 'bg-teal-50 text-teal-700 border-teal-200'
+                                }`}
+                              >
+                                {isFollowUp ? (
+                                  <>
+                                    <RefreshCw className="h-2.5 w-2.5 text-indigo-600" />
+                                    Tái khám
+                                  </>
+                                ) : (
+                                  <>
+                                    <Calendar className="h-2.5 w-2.5 text-teal-600" />
+                                    Lịch hẹn
+                                  </>
+                                )}
+                              </span>
+
+                              <span
+                                className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold border shrink-0 ${apt.statusColor}`}
+                              >
+                                {apt.status}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500 font-medium">
+                            <span className="inline-flex items-center gap-1 font-bold text-teal-800 bg-teal-50 px-1.5 py-0.5 rounded text-[11px] shrink-0 border border-teal-100/60">
+                              <Clock className="h-3 w-3 text-teal-600" />
+                              {apt.time}
+                            </span>
+                            <span className="flex items-center gap-1 text-slate-700 truncate max-w-[140px] sm:max-w-[180px]" title={apt.doctor}>
+                              <User className="h-3 w-3 text-slate-400 shrink-0" />
+                              <span className="truncate">{apt.doctor}</span>
+                            </span>
+                            <span className="flex items-center gap-1 text-slate-400 truncate max-w-[140px] sm:max-w-[200px]" title={apt.branch}>
+                              <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
+                              <span className="truncate">{apt.branch}</span>
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Chevron right button */}
+                        <div
+                          className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-50 text-slate-400 group-hover:text-teal-700 group-hover:bg-slate-100 transition-colors shrink-0"
+                        >
+                          <ChevronRight className="h-3.5 w-3.5" />
                         </div>
                       </div>
-
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-50 group-hover:bg-teal-100 text-slate-400 group-hover:text-teal-800 transition-colors shrink-0">
-                        <ChevronRight className="h-4 w-4" />
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
-                  <div className="py-8 text-center">
+                  <div className="py-10 text-center">
                     <div className="h-10 w-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2">
                       <Calendar className="h-5 w-5" />
                     </div>
-                    <p className="text-xs font-bold text-slate-700">Chưa có lịch hẹn nào sắp tới</p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">Đặt lịch khám để được bác sĩ theo dõi định kỳ</p>
+                    <p className="text-xs font-bold text-slate-700">
+                      {appointmentFilterTab === 'FOLLOW_UP'
+                        ? 'Chưa có lịch tái khám nào'
+                        : appointmentFilterTab === 'APPOINTMENT'
+                        ? 'Chưa có lịch hẹn khám nào'
+                        : 'Chưa có lịch hẹn nào sắp tới'}
+                    </p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      {appointmentFilterTab === 'FOLLOW_UP'
+                        ? 'Lịch tái khám do Bác sĩ chỉ định sau quá trình điều trị sẽ hiển thị tại đây.'
+                        : 'Đặt lịch khám để được bác sĩ theo dõi định kỳ.'}
+                    </p>
                   </div>
                 )}
               </div>
@@ -996,22 +1131,24 @@ export default function PatientDashboard() {
           </div>
 
           {/* Right Column: Kế hoạch điều trị (Hỗ trợ nhiều bản ghi dạng Tabs) */}
-          <div className="lg:col-span-6 rounded-xl bg-white p-5 sm:p-6 shadow-sm ring-1 ring-slate-100 flex flex-col justify-between">
+          <div className="lg:col-span-6 rounded-2xl bg-white p-5 sm:p-6 border border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-extrabold text-slate-900">
+                  <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
                     Kế hoạch điều trị
                   </h3>
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-100">
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-100">
                     {treatmentPlans.length} kế hoạch
                   </span>
                 </div>
                 <Link
                   to="/patient/medical-records"
-                  className="text-xs font-bold text-teal-700 hover:text-teal-800 flex items-center gap-1 transition-colors"
+                  className="text-xs font-bold text-teal-700 hover:text-teal-800 flex items-center gap-0.5 transition-colors group"
                 >
-                  Xem tất cả <ChevronRight className="h-3.5 w-3.5" />
+                  <span>Xem tất cả</span>
+                  <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
                 </Link>
               </div>
 
@@ -1019,7 +1156,7 @@ export default function PatientDashboard() {
                 <>
                   {/* Pill Tabs Switcher khi có từ 2 kế hoạch trở lên */}
                   {treatmentPlans.length > 1 && (
-                    <div className="mt-3.5 flex items-center gap-2 p-1 bg-slate-50 rounded-xl border border-slate-100">
+                    <div className="mt-3.5 flex items-center gap-1.5 p-1 bg-slate-100/80 rounded-xl">
                       {treatmentPlans.map((plan, index) => {
                         const isActive = index === selectedPlanIndex;
                         return (
@@ -1027,17 +1164,19 @@ export default function PatientDashboard() {
                             key={plan.id}
                             type="button"
                             onClick={() => setSelectedPlanIndex(index)}
-                            className={`flex-1 flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all ${isActive
-                              ? 'bg-white text-teal-800 shadow-sm ring-1 ring-slate-200/80'
-                              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/70'
-                              }`}
+                            className={`flex-1 flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                              isActive
+                                ? 'bg-white text-teal-800 shadow-xs'
+                                : 'text-slate-500 hover:text-slate-800'
+                            }`}
                           >
                             <span className="truncate">{plan.title}</span>
                             <span
-                              className={`text-[10px] px-1.5 py-0.5 rounded-md font-extrabold shrink-0 ${isActive
-                                ? 'bg-teal-50 text-teal-700 border border-teal-100'
-                                : 'bg-slate-200/60 text-slate-500'
-                                }`}
+                              className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold shrink-0 ${
+                                isActive
+                                  ? 'bg-teal-50 text-teal-700'
+                                  : 'bg-slate-200/60 text-slate-500'
+                              }`}
                             >
                               {plan.progressPercent}%
                             </span>
@@ -1047,72 +1186,82 @@ export default function PatientDashboard() {
                     </div>
                   )}
 
-                  {/* Plan Header */}
-                  <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={activeTreatmentPlan.image || "/tooth-implant.jpg"}
-                        alt={activeTreatmentPlan.title}
-                        className="h-14 w-14 rounded-xl object-cover ring-1 ring-slate-100 shadow-sm shrink-0"
-                      />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-base font-bold text-slate-900">
+                  {/* Plan Card Banner */}
+                  <div className="mt-4 p-4 rounded-xl bg-slate-50/70 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center text-white shadow-xs shrink-0">
+                        <Activity className="h-5 w-5 stroke-[2.2]" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="text-sm font-extrabold text-slate-900 truncate">
                             {activeTreatmentPlan.title}
                           </h4>
-                          <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold border ${activeTreatmentPlan.statusColor || 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold border ${activeTreatmentPlan.statusColor || 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
                             {activeTreatmentPlan.status}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-500 font-medium mt-0.5">
-                          Bác sĩ điều trị: <span className="font-semibold text-slate-700">{activeTreatmentPlan.doctor}</span>
+                        <p className="text-xs text-slate-600 font-medium mt-1 truncate">
+                          Bác sĩ phụ trách: <span className="font-bold text-slate-800">{activeTreatmentPlan.doctor}</span>
                         </p>
                       </div>
                     </div>
 
-                    <div className="text-right text-[11px] text-slate-500 font-medium space-y-0.5 sm:shrink-0">
-                      <p>Ngày bắt đầu: <span className="font-semibold text-slate-700">{activeTreatmentPlan.startDate}</span></p>
-                      <p>Dự kiến hoàn thành: <span className="font-semibold text-slate-700">{activeTreatmentPlan.expectedEndDate}</span></p>
+                    <div className="text-left sm:text-right text-[11px] text-slate-500 font-medium space-y-0.5 sm:shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/60">
+                      <p className="flex items-center sm:justify-end gap-1">
+                        <span className="text-slate-400">Bắt đầu:</span>
+                        <span className="font-bold text-slate-700">{activeTreatmentPlan.startDate}</span>
+                      </p>
+                      <p className="flex items-center sm:justify-end gap-1">
+                        <span className="text-slate-400">Dự kiến:</span>
+                        <span className="font-bold text-teal-800">{activeTreatmentPlan.expectedEndDate}</span>
+                      </p>
                     </div>
                   </div>
 
-                  {/* Progress Bar in Emerald / Teal */}
-                  <div className="mt-4">
-                    <div className="flex items-center justify-between text-xs font-bold text-slate-700 mb-1.5">
-                      <span>{activeTreatmentPlan.currentStage}</span>
-                      <span className="text-teal-700 font-black">{activeTreatmentPlan.progressPercent}%</span>
+                  {/* Progress Bar */}
+                  <div className="mt-4 p-3.5 rounded-xl bg-slate-50/50 border border-slate-100">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-700 mb-2">
+                      <span className="flex items-center gap-1.5 font-bold text-slate-800">
+                        <Activity className="h-3.5 w-3.5 text-teal-600" />
+                        {activeTreatmentPlan.currentStage}
+                      </span>
+                      <span className="text-xs font-black text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100">
+                        {activeTreatmentPlan.progressPercent}%
+                      </span>
                     </div>
-                    <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                    <div className="h-2 w-full rounded-full bg-slate-200/70 overflow-hidden">
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-teal-600 to-emerald-500 transition-all duration-500"
-                        style={{ width: `${activeTreatmentPlan.progressPercent}%` }}
+                        className="h-full rounded-full bg-gradient-to-r from-teal-500 to-emerald-500 transition-all duration-500"
+                        style={{ width: `${Math.max(5, activeTreatmentPlan.progressPercent)}%` }}
                       />
                     </div>
                   </div>
 
                   {/* Visual Stepper */}
                   {activeTreatmentPlan.steps && activeTreatmentPlan.steps.length > 0 ? (
-                    <div className="mt-6 relative">
-                      {/* Connecting line behind circles */}
-                      <div className="absolute top-4 left-6 right-6 h-0.5 bg-slate-200 -z-0" />
+                    <div className="mt-5 relative pt-1 pb-1">
+                      {/* Connecting Line: Centered behind the 32px (h-8) circle -> top is 16px */}
+                      <div className="absolute top-4 left-8 right-8 h-0.5 bg-slate-200 -z-0" />
                       <div
-                        className="absolute top-4 left-6 h-0.5 bg-teal-600 -z-0 transition-all duration-500"
+                        className="absolute top-4 left-8 h-0.5 bg-teal-600 -z-0 transition-all duration-500"
                         style={{
                           width: `${Math.max(
                             0,
                             Math.min(
                               100,
-                              (activeTreatmentPlan.steps.filter((s) => s.statusType === 'completed').length /
+                              ((activeTreatmentPlan.steps.filter((s) => s.statusType === 'completed').length +
+                                (activeTreatmentPlan.steps.some((s) => s.statusType === 'in-progress') ? 0.5 : 0)) /
                                 (activeTreatmentPlan.steps.length - 1 || 1)) *
-                              100 *
-                              0.9
+                                100 *
+                                0.88
                             )
                           )}%`,
                         }}
                       />
 
                       <div
-                        className="gap-2 text-center relative z-10"
+                        className="gap-2 sm:gap-3 text-center relative z-10"
                         style={{
                           display: 'grid',
                           gridTemplateColumns: `repeat(${activeTreatmentPlan.steps.length}, minmax(0, 1fr))`,
@@ -1126,35 +1275,45 @@ export default function PatientDashboard() {
                             <div key={step.stepNum} className="flex flex-col items-center">
                               {/* Step Circle */}
                               <div
-                                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-black shadow-xs transition-all ${isCompleted
-                                  ? 'bg-emerald-600 text-white'
-                                  : isInProgress
-                                    ? 'bg-teal-700 text-white ring-4 ring-teal-100'
-                                    : 'bg-slate-100 text-slate-400 border border-slate-200'
-                                  }`}
+                                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-black transition-all ${
+                                  isCompleted
+                                    ? 'bg-emerald-600 text-white shadow-xs'
+                                    : isInProgress
+                                      ? 'bg-teal-700 text-white ring-4 ring-teal-100 shadow-xs'
+                                      : 'bg-white text-slate-400 border-2 border-slate-200'
+                                }`}
                               >
                                 {isCompleted ? <Check className="h-4 w-4 stroke-[3]" /> : step.stepNum}
                               </div>
 
-                              {/* Step Title */}
-                              <p className="mt-2 text-[11px] font-bold text-slate-800 line-clamp-2 leading-tight">
+                              {/* Giai đoạn index */}
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-2 block leading-none">
+                                Giai đoạn {step.stepNum}
+                              </span>
+
+                              {/* Step Title (gọn gàng, thanh lịch, tooltip đầy đủ) */}
+                              <p className="mt-1 text-xs font-bold text-slate-800 line-clamp-2 leading-snug px-1 text-center" title={step.fullTitle}>
                                 {step.title}
                               </p>
 
-                              {/* Step Date */}
-                              <p className="text-[10px] text-slate-400 mt-0.5 font-medium">
-                                {step.date}
-                              </p>
+                              {/* Step Date (chỉ hiện nếu có ngày thực tế) */}
+                              {step.date && (
+                                <p className="text-[10px] text-slate-400 mt-0.5 font-medium">
+                                  {step.date}
+                                </p>
+                              )}
 
                               {/* Step Badge */}
                               <span
-                                className={`mt-1.5 inline-block rounded-md px-2 py-0.5 text-[9px] font-bold leading-normal ${isCompleted
-                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                  : isInProgress
-                                    ? 'bg-teal-50 text-teal-800 border border-teal-200'
-                                    : 'bg-slate-100 text-slate-500'
-                                  }`}
+                                className={`mt-2 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[9px] font-bold leading-normal ${
+                                  isCompleted
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : isInProgress
+                                      ? 'bg-teal-50 text-teal-800 border border-teal-200 ring-2 ring-teal-500/10'
+                                      : 'bg-slate-100 text-slate-400 border border-slate-200/60'
+                                }`}
                               >
+                                {isInProgress && <span className="h-1.5 w-1.5 rounded-full bg-teal-600 animate-pulse" />}
                                 {step.status}
                               </span>
                             </div>
@@ -1163,8 +1322,8 @@ export default function PatientDashboard() {
                       </div>
                     </div>
                   ) : (
-                    <div className="mt-6 py-4 text-center rounded-xl bg-slate-50 border border-slate-100">
-                      <p className="text-xs text-slate-500">Chưa có giai đoạn nào được ghi nhận cho kế hoạch này</p>
+                    <div className="mt-6 py-5 text-center rounded-xl bg-slate-50 border border-slate-100">
+                      <p className="text-xs text-slate-500 font-medium">Chưa có giai đoạn nào được ghi nhận cho kế hoạch này</p>
                     </div>
                   )}
                 </>
@@ -1220,7 +1379,7 @@ export default function PatientDashboard() {
                       paginatedHistory.map((item) => (
                         <tr
                           key={item.id}
-                          onClick={() => setSelectedHistory(item)}
+                          onClick={() => handleOpenHistoryModal(item)}
                           className="hover:bg-teal-50/40 transition-colors cursor-pointer"
                         >
                           <td className="py-3.5 px-3 font-medium text-slate-600 whitespace-nowrap">
@@ -1277,11 +1436,10 @@ export default function PatientDashboard() {
                       key={pageNum}
                       type="button"
                       onClick={() => setHistoryPage(pageNum)}
-                      className={`h-7 min-w-[28px] px-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                        pageNum === historyPage
+                      className={`h-7 min-w-[28px] px-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${pageNum === historyPage
                           ? 'bg-teal-700 text-white shadow-xs'
                           : 'border border-slate-200 text-slate-600 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200'
-                      }`}
+                        }`}
                     >
                       {pageNum}
                     </button>
@@ -1337,15 +1495,31 @@ export default function PatientDashboard() {
       {/* ======================================================== */}
 
       {/* Appointment Detail Modal */}
-      {selectedAppointment && !isRescheduleOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl animate-scaleUp">
+      {selectedAppointment && (
+        <div
+          className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-200 ease-out ${
+            isDetailActive
+              ? 'bg-slate-950/50 backdrop-blur-xs opacity-100'
+              : 'bg-slate-950/0 backdrop-blur-none opacity-0 pointer-events-none'
+          }`}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleCloseDetailModal();
+          }}
+        >
+          <div
+            className={`w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 transform transition-all duration-200 ease-out ${
+              isDetailActive
+                ? 'opacity-100 scale-100 translate-y-0'
+                : 'opacity-0 scale-95 translate-y-2'
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-base font-bold text-slate-900">Chi tiết lịch hẹn</h3>
               <button
                 type="button"
-                onClick={() => setSelectedAppointment(null)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                onClick={handleCloseDetailModal}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1353,11 +1527,33 @@ export default function PatientDashboard() {
 
             <div className="mt-4 space-y-3.5 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-slate-500 font-medium">Dịch vụ:</span>
+                <span className="text-slate-500 font-medium">Loại phiếu:</span>
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold border ${
+                    selectedAppointment.type === 'FOLLOW_UP'
+                      ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                      : 'bg-teal-50 text-teal-700 border-teal-200'
+                  }`}
+                >
+                  {selectedAppointment.type === 'FOLLOW_UP' ? (
+                    <>
+                      <RefreshCw className="h-3.5 w-3.5 text-indigo-600" />
+                      Lịch tái khám (Theo chỉ định Bác sĩ)
+                    </>
+                  ) : (
+                    <>
+                      <Calendar className="h-3.5 w-3.5 text-teal-600" />
+                      Lịch hẹn khám (Đăng ký dịch vụ)
+                    </>
+                  )}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-medium">Dịch vụ / Lý do:</span>
                 <span className="font-bold text-slate-900">{selectedAppointment.title}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-500 font-medium">Bác sĩ:</span>
+                <span className="text-slate-500 font-medium">Bác sĩ phụ trách:</span>
                 <span className="font-bold text-slate-900">{selectedAppointment.doctor}</span>
               </div>
               <div className="flex items-center justify-between">
@@ -1372,140 +1568,128 @@ export default function PatientDashboard() {
                 <span className="text-slate-500 font-medium">Địa chỉ:</span>
                 <span className="font-medium text-slate-700 text-right max-w-[240px]">{selectedAppointment.address}</span>
               </div>
+              {selectedAppointment.notes && selectedAppointment.notes !== 'Chưa có' && (
+                <div className="flex items-start justify-between pt-1">
+                  <span className="text-slate-500 font-medium">Ghi chú:</span>
+                  <span className="font-medium text-slate-700 text-right max-w-[240px] text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                    {selectedAppointment.notes}
+                  </span>
+                </div>
+              )}
               <div className="flex items-center justify-between pt-2 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Trạng thái:</span>
                 <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-200">
                   {selectedAppointment.status}
                 </span>
               </div>
-              {!canModifyAppointment(selectedAppointment) && (
-                <div className="rounded-lg bg-amber-50 border border-amber-200 p-2.5 text-xs text-amber-800 font-medium">
-                  {checkAppointmentModifiable(selectedAppointment).reason}
+
+              {/* Thông báo trạng thái và điều kiện chỉnh sửa */}
+              {selectedAppointment.type === 'FOLLOW_UP' ? (
+                <div className="rounded-xl bg-indigo-50/80 border border-indigo-200/80 p-3.5 text-xs text-indigo-900 leading-relaxed font-medium">
+                  <p className="font-bold flex items-center gap-1.5 mb-1 text-indigo-950">
+                    <RefreshCw className="h-3.5 w-3.5 text-indigo-600" />
+                    Lịch tái khám do Bác sĩ chỉ định
+                  </p>
+                  Lịch tái khám được chỉ định trực tiếp theo phác đồ điều trị của Bác sĩ phụ trách và không áp dụng chỉnh sửa trực tuyến. Nếu cần điều chỉnh, quý khách vui lòng liên hệ trực tiếp hotline hoặc nhân viên tại quầy.
                 </div>
+              ) : (
+                (() => {
+                  const editCheck = checkAppointmentCreationEditable(selectedAppointment);
+                  return (
+                    <div
+                      className={`rounded-xl border p-3.5 text-xs leading-relaxed font-medium ${
+                        editCheck.canEdit
+                          ? 'bg-teal-50 border-teal-200 text-teal-900'
+                          : 'bg-amber-50 border-amber-200 text-amber-900'
+                      }`}
+                    >
+                      <p className={`font-bold mb-0.5 ${editCheck.canEdit ? 'text-teal-950' : 'text-amber-950'}`}>
+                        {editCheck.canEdit
+                          ? 'Thời gian chỉnh sửa trực tuyến hợp lệ'
+                          : 'Khóa chỉnh sửa trực tuyến'}
+                      </p>
+                      {editCheck.reason}
+                    </div>
+                  );
+                })()
               )}
             </div>
 
-            <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  const check = checkAppointmentModifiable(selectedAppointment);
-                  if (!check.canModify) {
-                    toast.error(check.reason);
-                    return;
-                  }
-                  handleOpenRescheduleModal(selectedAppointment);
-                }}
-                disabled={!canModifyAppointment(selectedAppointment)}
-                title={
-                  !canModifyAppointment(selectedAppointment)
-                    ? checkAppointmentModifiable(selectedAppointment).reason
-                    : 'Yêu cầu đổi lịch'
-                }
-                className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition-colors shadow-xs ${
-                  canModifyAppointment(selectedAppointment)
-                    ? 'bg-teal-700 text-white hover:bg-teal-800 cursor-pointer'
-                    : 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-60 border border-slate-300/60'
-                }`}
-              >
-                Yêu cầu đổi lịch
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedAppointment(null)}
-                className="flex-1 rounded-lg border border-slate-200 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Reschedule Confirmation Modal */}
-      {isRescheduleOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl animate-scaleUp">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-slate-900">Yêu cầu đổi lịch khám</h3>
-              <button
-                type="button"
-                onClick={() => setIsRescheduleOpen(false)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-3">
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Bạn đang yêu cầu đổi lịch hẹn: <span className="font-bold text-slate-900">{selectedAppointment?.title}</span> ({selectedAppointment?.time}, {selectedAppointment?.date}).
-              </p>
-              <div>
-                <label className="text-xs font-bold text-slate-700">Chọn ngày mong muốn mới:</label>
-                <input
-                  type="date"
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  value={rescheduleDate}
-                  min={new Date().toISOString().split('T')[0]}
-                  onChange={(e) => setRescheduleDate(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-700">Khung giờ mong muốn:</label>
-                <select
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  value={rescheduleTimeSlot}
-                  onChange={(e) => setRescheduleTimeSlot(e.target.value)}
+            {/* Footer action buttons */}
+            {selectedAppointment.type === 'FOLLOW_UP' ? (
+              <div className="mt-6">
+                <button
+                  type="button"
+                  onClick={handleCloseDetailModal}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
                 >
-                  <option value="MORNING">Buổi sáng (08:30 - 11:30)</option>
-                  <option value="AFTERNOON">Buổi chiều (14:00 - 17:00)</option>
-                  <option value="EVENING">Buổi tối (17:30 - 20:00)</option>
-                </select>
+                  Đóng
+                </button>
               </div>
-              <div>
-                <label className="text-xs font-bold text-slate-700">Ghi chú thêm:</label>
-                <textarea
-                  rows={2}
-                  placeholder="Lý do bận, yêu cầu bác sĩ..."
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  value={rescheduleNotes}
-                  onChange={(e) => setRescheduleNotes(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={handleConfirmReschedule}
-                disabled={isSubmittingReschedule}
-                className="flex-1 rounded-lg bg-teal-700 py-2.5 text-xs font-bold text-white hover:bg-teal-800 transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
-              >
-                {isSubmittingReschedule ? 'Đang gửi...' : 'Gửi yêu cầu'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsRescheduleOpen(false)}
-                className="flex-1 rounded-lg border border-slate-200 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
-              >
-                Hủy
-              </button>
-            </div>
+            ) : (
+              (() => {
+                const editCheck = checkAppointmentCreationEditable(selectedAppointment);
+                return (
+                  <div className="mt-6 flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditBookingModal(selectedAppointment)}
+                      disabled={!editCheck.canEdit}
+                      title={
+                        !editCheck.canEdit
+                          ? editCheck.reason
+                          : 'Chỉnh sửa lại thông tin đặt lịch (trong vòng 1h kể từ khi đặt)'
+                      }
+                      className={`flex-1 rounded-xl py-2.5 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 ${
+                        editCheck.canEdit
+                          ? 'bg-teal-700 text-white hover:bg-teal-800 cursor-pointer hover:shadow-sm'
+                          : 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-60 border border-slate-300/60'
+                      }`}
+                    >
+                      <Edit3 className="h-3.5 w-3.5" />
+                      Chỉnh sửa lịch hẹn
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCloseDetailModal}
+                      className="flex-1 rounded-xl border border-slate-200 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer"
+                    >
+                      Đóng
+                    </button>
+                  </div>
+                );
+              })()
+            )}
           </div>
         </div>
       )}
 
       {/* Treatment History Detail Modal */}
       {selectedHistory && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl animate-scaleUp">
+        <div
+          className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-200 ease-out ${
+            isHistoryActive
+              ? 'bg-slate-950/50 backdrop-blur-xs opacity-100'
+              : 'bg-slate-950/0 backdrop-blur-none opacity-0 pointer-events-none'
+          }`}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleCloseHistoryModal();
+          }}
+        >
+          <div
+            className={`w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 transform transition-all duration-200 ease-out ${
+              isHistoryActive
+                ? 'opacity-100 scale-100 translate-y-0'
+                : 'opacity-0 scale-95 translate-y-2'
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-base font-bold text-slate-900">Chi tiết đợt điều trị</h3>
               <button
                 type="button"
-                onClick={() => setSelectedHistory(null)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                onClick={handleCloseHistoryModal}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1530,7 +1714,7 @@ export default function PatientDashboard() {
               </div>
               <div className="pt-2 border-t border-slate-100">
                 <span className="text-slate-500 text-xs block mb-1">Ghi chú & kết quả bác sĩ:</span>
-                <p className="rounded-lg bg-slate-50 p-3 text-xs text-slate-700 leading-relaxed font-medium">
+                <p className="rounded-xl bg-slate-50 p-3 text-xs text-slate-700 leading-relaxed font-medium border border-slate-100">
                   {selectedHistory.notes}
                 </p>
               </div>
@@ -1539,8 +1723,8 @@ export default function PatientDashboard() {
             <div className="mt-5">
               <button
                 type="button"
-                onClick={() => setSelectedHistory(null)}
-                className="w-full rounded-lg bg-teal-700 py-2.5 text-xs font-bold text-white hover:bg-teal-800 transition-colors shadow-xs"
+                onClick={handleCloseHistoryModal}
+                className="w-full rounded-xl bg-teal-700 py-2.5 text-xs font-bold text-white hover:bg-teal-800 transition-colors shadow-xs cursor-pointer"
               >
                 Đóng
               </button>
@@ -1551,8 +1735,24 @@ export default function PatientDashboard() {
 
       {/* Support / Contact Hotline Modal */}
       {isSupportOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl animate-scaleUp">
+        <div
+          className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-200 ease-out ${
+            isSupportActive
+              ? 'bg-slate-950/50 backdrop-blur-xs opacity-100'
+              : 'bg-slate-950/0 backdrop-blur-none opacity-0 pointer-events-none'
+          }`}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleCloseSupportModal();
+          }}
+        >
+          <div
+            className={`w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 transform transition-all duration-200 ease-out ${
+              isSupportActive
+                ? 'opacity-100 scale-100 translate-y-0'
+                : 'opacity-0 scale-95 translate-y-2'
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2 text-slate-900">
                 <Headphones className="h-5 w-5 text-teal-700" />
@@ -1560,15 +1760,15 @@ export default function PatientDashboard() {
               </div>
               <button
                 type="button"
-                onClick={() => setIsSupportOpen(false)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                onClick={handleCloseSupportModal}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <div className="mt-4 space-y-4 text-xs text-slate-600">
-              <div className="rounded-lg bg-teal-50 p-4 border border-teal-100 text-center">
+              <div className="rounded-xl bg-teal-50 p-4 border border-teal-100 text-center">
                 <p className="font-bold text-teal-900">Tổng đài chăm sóc khách hàng 24/7</p>
                 <a
                   href="tel:19001234"
@@ -1581,15 +1781,15 @@ export default function PatientDashboard() {
 
               <div className="space-y-2">
                 <p className="font-bold text-slate-800">Hệ thống chi nhánh Crown Dental:</p>
-                <div className="rounded-lg border border-slate-100 p-2.5 space-y-1">
+                <div className="rounded-xl border border-slate-100 p-2.5 space-y-1">
                   <p className="font-bold text-slate-800">Chi nhánh 1 (Quận 1):</p>
                   <p className="text-slate-500">123 Nguyễn Thị Minh Khai, P. Bến Thành, Q.1 - ĐT: 028 3930 1111</p>
                 </div>
-                <div className="rounded-lg border border-slate-100 p-2.5 space-y-1">
+                <div className="rounded-xl border border-slate-100 p-2.5 space-y-1">
                   <p className="font-bold text-slate-800">Chi nhánh 2 (Tân Bình):</p>
                   <p className="text-slate-500">45 Hoàng Hoa Thám, P.13, Q. Tân Bình - ĐT: 028 3810 2222</p>
                 </div>
-                <div className="rounded-lg border border-slate-100 p-2.5 space-y-1">
+                <div className="rounded-xl border border-slate-100 p-2.5 space-y-1">
                   <p className="font-bold text-slate-800">Chi nhánh 3 (Thủ Đức):</p>
                   <p className="text-slate-500">88 Võ Văn Ngân, P. Linh Chiểu, TP. Thủ Đức - ĐT: 028 3720 3333</p>
                 </div>
@@ -1599,8 +1799,8 @@ export default function PatientDashboard() {
             <div className="mt-5">
               <button
                 type="button"
-                onClick={() => setIsSupportOpen(false)}
-                className="w-full rounded-lg bg-teal-700 py-2.5 text-xs font-bold text-white hover:bg-teal-800 transition-colors shadow-xs"
+                onClick={handleCloseSupportModal}
+                className="w-full rounded-xl bg-teal-700 py-2.5 text-xs font-bold text-white hover:bg-teal-800 transition-colors shadow-xs cursor-pointer"
               >
                 Đóng
               </button>
@@ -1612,12 +1812,16 @@ export default function PatientDashboard() {
       {/* Patient Booking Appointment Multi-Step Modal */}
       <PatientBookingModal
         isOpen={isBookingModalOpen}
-        onClose={() => setIsBookingModalOpen(false)}
+        initialAppointment={editingAppointment}
+        onClose={() => {
+          setIsBookingModalOpen(false);
+          setEditingAppointment(null);
+        }}
         onSuccess={() => {
+          setEditingAppointment(null);
           const patientId = user?.patientId || user?.id;
           if (patientId) {
-            fetchPatientStatistics(patientId);
-            fetchCurrentMonthFollowUpAppointmentsByPatientId(patientId);
+            loadAllDashboardData(patientId);
           }
         }}
       />

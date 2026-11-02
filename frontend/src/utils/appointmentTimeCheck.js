@@ -107,3 +107,73 @@ export const checkAppointmentModifiable = (apt) => {
 export const canModifyAppointment = (apt) => {
   return checkAppointmentModifiable(apt).canModify;
 };
+
+/**
+ * Kiểm tra quy định chỉnh sửa thông tin đặt lịch:
+ * - Chỉ áp dụng cho LỊCH HẸN KHÁM (không áp dụng cho Lịch tái khám do Bác sĩ chỉ định).
+ * - Được phép chỉnh sửa lại thông tin đặt lịch TRONG VÒNG 1H kể từ khi nhấn đặt lịch (createdAt).
+ * - Sau 1h kể từ khi đặt: Khóa lại không cho chỉnh sửa.
+ */
+export const checkAppointmentCreationEditable = (apt) => {
+  if (!apt) {
+    return { canEdit: false, reason: 'Không tìm thấy thông tin lịch hẹn' };
+  }
+
+  // 1. Nếu là Lịch tái khám (FOLLOW_UP) -> Bác sĩ chỉ định, không cho chỉnh sửa trực tuyến
+  if (apt.type === 'FOLLOW_UP' || apt.isFollowUp) {
+    return {
+      canEdit: false,
+      isFollowUp: true,
+      reason: 'Lịch tái khám do Bác sĩ chỉ định theo phác đồ điều trị, không áp dụng chỉnh sửa trực tuyến. Vui lòng liên hệ hotline 1900 1234 nếu cần hỗ trợ.',
+    };
+  }
+
+  // 2. Trạng thái đã khám hoặc đã hủy
+  const st = (apt.status || apt.raw?.status || '').toString().toUpperCase();
+  if (st === 'CANCELLED' || st.includes('HỦY') || st.includes('DA HUY')) {
+    return { canEdit: false, reason: 'Lịch hẹn đã bị hủy, không thể chỉnh sửa thông tin.' };
+  }
+  if (st === 'COMPLETED' || st.includes('ĐÃ KHÁM') || st.includes('HOÀN THÀNH')) {
+    return { canEdit: false, reason: 'Lịch hẹn đã hoàn thành ca khám bệnh, không thể chỉnh sửa.' };
+  }
+
+  // 3. Kiểm tra thời gian tạo lịch hẹn (createdAt): Trong vòng 1h kể từ khi nhấn đặt lịch
+  const createdVal = apt.createdAt || apt.raw?.createdAt || apt.createAt || apt.raw?.createAt;
+  const now = Date.now();
+  const oneHourMs = 60 * 60 * 1000;
+
+  if (createdVal) {
+    const createdTime = new Date(createdVal).getTime();
+    if (!isNaN(createdTime)) {
+      const elapsedMs = now - createdTime;
+      // Quá 1 giờ kể từ khi nhấn đặt lịch
+      if (elapsedMs > oneHourMs) {
+        return {
+          canEdit: false,
+          isOverOneHour: true,
+          reason: 'Lịch hẹn đã đặt quá 1 giờ. Theo quy định, quý khách chỉ có thể chỉnh sửa lại thông tin đặt lịch trong vòng 1 giờ kể từ khi nhấn đặt lịch. Vui lòng liên hệ hotline để được hỗ trợ.',
+        };
+      }
+
+      // Trong vòng 1 giờ
+      const remainingMinutes = Math.max(1, Math.floor((oneHourMs - elapsedMs) / (60 * 1000)));
+      return {
+        canEdit: true,
+        remainingMinutes,
+        reason: `Bạn có thể chỉnh sửa lại thông tin đặt lịch trong vòng 1 giờ kể từ khi đặt (còn ${remainingMinutes} phút).`,
+      };
+    }
+  }
+
+  // Fallback nếu không có createdAt: kiểm tra giờ hẹn khám (chưa quá giờ và trước 1h)
+  const timeCheck = checkAppointmentModifiable(apt);
+  if (!timeCheck.canModify) {
+    return { canEdit: false, reason: timeCheck.reason };
+  }
+
+  return { canEdit: true, reason: '' };
+};
+
+export const canEditAppointment = (apt) => {
+  return checkAppointmentCreationEditable(apt).canEdit;
+};
