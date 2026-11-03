@@ -31,7 +31,6 @@ import { getInProgressTreatmentPlansByPatientId, getTreatmentPlansByPatientId } 
 import { getExaminationResultsByPatientId } from '../../../services/examinationResult.service';
 import {
   getCurrentMonthFollowUpAppointmentsByPatientId,
-  getFollowUpAppointments,
   updateFollowUpAppointment,
 } from '../../../services/followUpAppointment.service';
 import { getAppointmentsByPatient, getMyAppointments, updateAppointment } from '../../../services/appointment.service';
@@ -279,32 +278,47 @@ export default function PatientDashboard() {
     }
   };
 
-  // 4. Fetch Lịch tái khám (Đồng bộ với phân hệ Lịch tái khám của Employee/Dentist)
+  // 4. Fetch Lịch tái khám trong tháng của bệnh nhân (API: getCurrentMonthFollowUpAppointmentsByPatientId)
   const fetchCurrentMonthFollowUpAppointmentsByPatientId = async (patientId) => {
     try {
-      let list = [];
-      // 1. Thử lấy toàn bộ lịch tái khám theo patientId hoặc patientCode từ API
-      try {
-        const fullData = await getFollowUpAppointments({
-          patientId,
-          patientCode: user?.patientCode,
-        });
-        if (Array.isArray(fullData) && fullData.length > 0) {
-          list = fullData;
+      let actualPatientId = patientId || user?.patientId;
+      if (!actualPatientId || !isValidUUID(actualPatientId)) {
+        if (user?.patientCode) {
+          try {
+            const pRes = await getPatientByPatientCode(user.patientCode);
+            const pData = pRes?.data || pRes;
+            if (pData?.id) actualPatientId = pData.id;
+          } catch (e) {
+            console.warn('Lookup by patientCode failed:', e);
+          }
         }
-      } catch (err) {
-        console.warn('getFollowUpAppointments error:', err);
+        if ((!actualPatientId || !isValidUUID(actualPatientId)) && user?.id) {
+          try {
+            const pRes = await getPatientById(user.id);
+            const pData = pRes?.data || pRes;
+            if (pData?.id) actualPatientId = pData.id;
+          } catch (e) {
+            console.warn('Lookup by user.id failed:', e);
+          }
+        }
       }
 
-      // 2. Nếu chưa có, fallback sang API lịch tái khám trong tháng hiện tại
-      if (!list || list.length === 0) {
-        const res = await getCurrentMonthFollowUpAppointmentsByPatientId(patientId);
-        list = Array.isArray(res) ? res : (res?.data || res?.result || []);
+      if (!actualPatientId || !isValidUUID(actualPatientId)) {
+        setFollowUpAppointments([]);
+        return;
       }
 
+      const res = await getCurrentMonthFollowUpAppointmentsByPatientId(actualPatientId);
+      const list = Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res?.result)
+        ? res.result
+        : Array.isArray(res)
+        ? res
+        : [];
       setFollowUpAppointments(list);
     } catch (error) {
-      console.error("Lỗi lấy lịch tái khám của bệnh nhân:", error);
+      console.error("Lỗi lấy lịch tái khám trong tháng của bệnh nhân:", error);
       setFollowUpAppointments([]);
     }
   };
@@ -448,8 +462,8 @@ export default function PatientDashboard() {
           status: apt.status === 'CONFIRMED' ? 'Đã xác nhận' : (apt.status === 'COMPLETED' ? 'Đã khám' : 'Đã lên lịch'),
           statusColor: apt.status === 'CONFIRMED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-teal-50 text-teal-700 border-teal-200',
           doctor: formatDoctorName(apt.dentistName),
-          branch: apt.branchName || 'Cơ sở 1 TPHCM',
-          address: apt.addressBranch || apt.branchAddress || '59C Nguyễn Đình Chiểu, phường Xuân Hòa, TP.HCM',
+          branch: apt.branchName || '',
+          address: apt.addressBranch || apt.branchAddress || '',
           notes: apt.notes || 'Chưa có',
           rawDateTime: dateParsed.dateObj,
           rawTimeMs: dateParsed.rawTimeMs,
@@ -484,8 +498,8 @@ export default function PatientDashboard() {
           status: apt.status ? 'Đã xác nhận' : 'Sắp tới',
           statusColor: apt.status ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-teal-50 text-teal-700 border-teal-200',
           doctor: formatDoctorName(apt.dentistName),
-          branch: apt.branchName || 'Cơ sở 1 TPHCM',
-          address: apt.addressBranch || '59C Nguyễn Đình Chiểu, phường Xuân Hòa, TP.HCM',
+          branch: apt.branchName || '',
+          address: apt.addressBranch || apt.branchAddress || '',
           notes: apt.note || 'Chưa có',
           rawDateTime: dateParsed.dateObj,
           rawTimeMs: dateParsed.rawTimeMs,
@@ -791,10 +805,12 @@ export default function PatientDashboard() {
                             <User className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                             <span className="truncate">{latestAppointment.doctor}</span>
                           </div>
-                          <div className="flex items-center gap-1.5 truncate">
-                            <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                            <span className="truncate">{latestAppointment.branch}</span>
-                          </div>
+                          {latestAppointment.branch ? (
+                            <div className="flex items-center gap-1.5 truncate">
+                              <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                              <span className="truncate">{latestAppointment.branch}</span>
+                            </div>
+                          ) : null}
                           <div className="flex items-center gap-1.5">
                             <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                             <span>{latestAppointment.time}</span>
@@ -1084,10 +1100,12 @@ export default function PatientDashboard() {
                               <User className="h-3 w-3 text-slate-400 shrink-0" />
                               <span className="truncate">{apt.doctor}</span>
                             </span>
-                            <span className="flex items-center gap-1 text-slate-400 truncate max-w-[140px] sm:max-w-[200px]" title={apt.branch}>
-                              <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
-                              <span className="truncate">{apt.branch}</span>
-                            </span>
+                            {apt.branch ? (
+                              <span className="flex items-center gap-1 text-slate-400 truncate max-w-[140px] sm:max-w-[200px]" title={apt.branch}>
+                                <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
+                                <span className="truncate">{apt.branch}</span>
+                              </span>
+                            ) : null}
                           </div>
                         </div>
 
@@ -1546,14 +1564,18 @@ export default function PatientDashboard() {
                 <span className="text-slate-500 font-medium">Thời gian:</span>
                 <span className="font-bold text-slate-900">{selectedAppointment.time} - {selectedAppointment.dayOfWeek}, {selectedAppointment.date}</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500 font-medium">Chi nhánh:</span>
-                <span className="font-bold text-slate-900">{selectedAppointment.branch}</span>
-              </div>
-              <div className="flex items-start justify-between">
-                <span className="text-slate-500 font-medium">Địa chỉ:</span>
-                <span className="font-medium text-slate-700 text-right max-w-[240px]">{selectedAppointment.address}</span>
-              </div>
+              {selectedAppointment.branch ? (
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 font-medium">Chi nhánh:</span>
+                  <span className="font-bold text-slate-900">{selectedAppointment.branch}</span>
+                </div>
+              ) : null}
+              {selectedAppointment.address ? (
+                <div className="flex items-start justify-between">
+                  <span className="text-slate-500 font-medium">Địa chỉ:</span>
+                  <span className="font-medium text-slate-700 text-right max-w-[240px]">{selectedAppointment.address}</span>
+                </div>
+              ) : null}
               {selectedAppointment.notes && selectedAppointment.notes !== 'Chưa có' && (
                 <div className="flex items-start justify-between pt-1">
                   <span className="text-slate-500 font-medium">Ghi chú:</span>

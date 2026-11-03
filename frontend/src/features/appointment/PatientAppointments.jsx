@@ -337,8 +337,8 @@ export default function PatientAppointments() {
             reason: fu.reason || fu.chiefComplaint || 'Tái khám định kỳ',
             notes: fu.note,
             status: fu.status ? 'CONFIRMED' : 'SCHEDULED',
-            branchName: 'Cơ sở 1 TPHCM',
-            branchAddress: '15 Pasteur, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
+            branchName: fu.branchName || '',
+            branchAddress: fu.branchAddress || fu.addressBranch || '',
             raw: fu,
           }));
         }
