@@ -31,7 +31,6 @@ import { getInProgressTreatmentPlansByPatientId, getTreatmentPlansByPatientId } 
 import { getExaminationResultsByPatientId } from '../../../services/examinationResult.service';
 import {
   getCurrentMonthFollowUpAppointmentsByPatientId,
-  getFollowUpAppointments,
   updateFollowUpAppointment,
 } from '../../../services/followUpAppointment.service';
 import { getAppointmentsByPatient, getMyAppointments, updateAppointment } from '../../../services/appointment.service';
@@ -279,32 +278,47 @@ export default function PatientDashboard() {
     }
   };
 
-  // 4. Fetch Lịch tái khám (Đồng bộ với phân hệ Lịch tái khám của Employee/Dentist)
+  // 4. Fetch Lịch tái khám trong tháng của bệnh nhân (API: getCurrentMonthFollowUpAppointmentsByPatientId)
   const fetchCurrentMonthFollowUpAppointmentsByPatientId = async (patientId) => {
     try {
-      let list = [];
-      // 1. Thử lấy toàn bộ lịch tái khám theo patientId hoặc patientCode từ API
-      try {
-        const fullData = await getFollowUpAppointments({
-          patientId,
-          patientCode: user?.patientCode,
-        });
-        if (Array.isArray(fullData) && fullData.length > 0) {
-          list = fullData;
+      let actualPatientId = patientId || user?.patientId;
+      if (!actualPatientId || !isValidUUID(actualPatientId)) {
+        if (user?.patientCode) {
+          try {
+            const pRes = await getPatientByPatientCode(user.patientCode);
+            const pData = pRes?.data || pRes;
+            if (pData?.id) actualPatientId = pData.id;
+          } catch (e) {
+            console.warn('Lookup by patientCode failed:', e);
+          }
         }
-      } catch (err) {
-        console.warn('getFollowUpAppointments error:', err);
+        if ((!actualPatientId || !isValidUUID(actualPatientId)) && user?.id) {
+          try {
+            const pRes = await getPatientById(user.id);
+            const pData = pRes?.data || pRes;
+            if (pData?.id) actualPatientId = pData.id;
+          } catch (e) {
+            console.warn('Lookup by user.id failed:', e);
+          }
+        }
       }
 
-      // 2. Nếu chưa có, fallback sang API lịch tái khám trong tháng hiện tại
-      if (!list || list.length === 0) {
-        const res = await getCurrentMonthFollowUpAppointmentsByPatientId(patientId);
-        list = Array.isArray(res) ? res : (res?.data || res?.result || []);
+      if (!actualPatientId || !isValidUUID(actualPatientId)) {
+        setFollowUpAppointments([]);
+        return;
       }
 
+      const res = await getCurrentMonthFollowUpAppointmentsByPatientId(actualPatientId);
+      const list = Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res?.result)
+        ? res.result
+        : Array.isArray(res)
+        ? res
+        : [];
       setFollowUpAppointments(list);
     } catch (error) {
-      console.error("Lỗi lấy lịch tái khám của bệnh nhân:", error);
+      console.error("Lỗi lấy lịch tái khám trong tháng của bệnh nhân:", error);
       setFollowUpAppointments([]);
     }
   };
