@@ -70,6 +70,8 @@ export default function DoctorDiagnosisTab() {
   const {
     examinedTeeth,
     diagnosisList,
+    primaryDiagnoses,
+    toothConditions,
     handleRemoveDiagnosisItem,
     handleSaveDiagnosisFromModal,
     handleConfirmDiagnosis,
@@ -90,7 +92,10 @@ export default function DoctorDiagnosisTab() {
   // Danh sách các răng đã phát hiện bất thường từ Bước 1
   const abnormalTeethFromStep1 = useMemo(() => {
     return examinedTeeth.filter(
-      (t) => t.cariesStatus === 'YES' || t.hasCaries || t.toothStatus !== 'HEALTHY' || t.toothStatusLabel !== 'Bình thường'
+      (t) => {
+        const toothStatus = t.toothStatus || '';
+        return t.cariesStatus === 'YES' || t.hasCaries || toothStatus !== 'Bình thường';
+      }
     );
   }, [examinedTeeth]);
 
@@ -98,13 +103,14 @@ export default function DoctorDiagnosisTab() {
   const filteredExaminedTeeth = useMemo(() => {
     return examinedTeeth.filter((t) => {
       if (filterOnlyAbnormal) {
-        const isAbn = t.cariesStatus === 'YES' || t.hasCaries || t.toothStatus !== 'HEALTHY';
+        const toothStatus = t.toothStatus || '';
+        const isAbn = t.cariesStatus === 'YES' || t.hasCaries || toothStatus !== 'Bình thường';
         if (!isAbn) return false;
       }
       if (toothSearchQuery.trim()) {
         const q = toothSearchQuery.trim().toLowerCase();
         const tStr = String(t.toothNumber).toLowerCase();
-        const statusStr = (t.toothStatusLabel || '').toLowerCase();
+        const statusStr = (t.toothStatus || '').toLowerCase();
         const locStr = (t.cariesLocation || '').toLowerCase();
         return tStr.includes(q) || statusStr.includes(q) || locStr.includes(q);
       }
@@ -125,11 +131,15 @@ export default function DoctorDiagnosisTab() {
     if (isHistoricalSession) return;
     setModalMode('ADD');
     const isCaries = toothRecord.cariesStatus === 'YES' || toothRecord.hasCaries;
+    const defaultDiagnosis = isCaries
+      ? (primaryDiagnoses?.find((d) => d.label.toLowerCase().includes('sâu'))?.label || primaryDiagnoses?.[0]?.label || 'Sâu ngà răng')
+      : (primaryDiagnoses?.find((d) => d.label.toLowerCase().includes('viêm'))?.label || primaryDiagnoses?.[0]?.label || 'Bệnh lý răng miệng');
+
     setModalInitialData({
       scope: 'MULTI_TEETH',
       toothNumber: toothRecord.toothNumber,
       selectedTeeth: [Number(toothRecord.toothNumber)],
-      primaryDiagnosis: isCaries ? 'K02.1' : 'K05.1',
+      primaryDiagnosis: defaultDiagnosis,
       severity: 'Trung bình',
       notes: isCaries
         ? `Tổn thương sâu răng ${toothRecord.toothNumber}, vị trí: ${toothRecord.cariesLocation || 'Mặt nhai'}`
@@ -311,7 +321,8 @@ export default function DoctorDiagnosisTab() {
                 <tbody className="divide-y divide-slate-100">
                   {filteredExaminedTeeth.map((t, idx) => {
                     const hasCaries = t.cariesStatus === 'YES' || t.hasCaries;
-                    const isAbnormal = hasCaries || t.toothStatus !== 'HEALTHY';
+                    const toothStatus = t.toothStatus || '';
+                    const isAbnormal = hasCaries || toothStatus !== 'Bình thường';
 
                     return (
                       <tr key={t.toothNumber || idx} className="hover:bg-teal-50/30 transition-colors">
@@ -324,14 +335,31 @@ export default function DoctorDiagnosisTab() {
                           </span>
                         </td>
                         <td className="py-2 px-2.5">
-                          <span
-                            className={`inline-block px-2 py-0.5 rounded text-[10.5px] font-extrabold border ${isAbnormal
-                              ? 'bg-rose-50 text-rose-700 border-rose-200'
-                              : 'bg-slate-100 text-slate-700 border-slate-200'
-                              }`}
-                          >
-                            {t.toothStatusLabel || (hasCaries ? 'Sâu răng' : 'Bình thường')}
-                          </span>
+                          {(() => {
+                            const cond = toothConditions?.find(
+                              (c) => c.key === t.toothStatus || c.label === t.toothStatus || c.code === t.toothStatus
+                            );
+                            const color = cond?.fill || (hasCaries ? '#2563EB' : '#94A3B8');
+                            const statusText = t.toothStatus || (hasCaries ? 'Sâu răng' : 'Bình thường');
+                            const isNormal = !t.toothStatus || t.toothStatus === 'Bình thường';
+
+                            return (
+                              <span
+                                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[10.5px] font-bold border shadow-2xs"
+                                style={{
+                                  backgroundColor: isNormal ? '#F1F5F9' : `${color}18`,
+                                  borderColor: isNormal ? '#E2E8F0' : `${color}45`,
+                                  color: isNormal ? '#475569' : color,
+                                }}
+                              >
+                                <span
+                                  className="w-1.5 h-1.5 rounded-full shrink-0 border border-black/15"
+                                  style={{ backgroundColor: color }}
+                                />
+                                {statusText}
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td className="py-2 px-2.5 text-slate-700 text-[11px]">
                           {hasCaries ? (
@@ -536,25 +564,20 @@ export default function DoctorDiagnosisTab() {
                       </td>
 
                       <td className="py-2.5 px-3">
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded text-[10.5px] font-extrabold border ${isFullMouth
-                            ? 'bg-indigo-50 text-indigo-800 border-indigo-200'
-                            : isUpper || isLower
-                              ? 'bg-sky-50 text-sky-800 border-sky-200'
-                              : 'bg-teal-50 text-teal-800 border-teal-200 font-mono'
-                            }`}
-                        >
-                          {isFullMouth ? 'Toàn hàm' : item.toothPosition}
-                        </span>
+                        <div className="font-bold text-slate-900 text-xs">
+                          {isFullMouth
+                            ? 'Toàn hàm'
+                            : item.toothPosition || (isUpper ? 'Hàm trên' : isLower ? 'Hàm dưới' : 'Nhiều răng')}
+                        </div>
                       </td>
 
                       <td className="py-2.5 px-3">
-                        <div className="font-bold text-slate-900 group-hover:text-teal-700 transition-colors text-xs">
+                        <div className="font-bold text-slate-900 text-xs">
                           {item.label || item.primaryDiagnosis}
                         </div>
-                        {item.primaryDiagnosis && (
+                        {item.code && item.code !== item.label && !item.label?.startsWith(item.code) && (
                           <div className="text-[10px] font-mono font-bold text-teal-700 mt-0.5">
-                            Mã ICD: {item.primaryDiagnosis}
+                            Mã: {item.code}
                           </div>
                         )}
                       </td>
@@ -573,8 +596,8 @@ export default function DoctorDiagnosisTab() {
                       </td>
 
                       <td className="py-2.5 px-3 text-slate-700 text-[11px]">
-                        {item.notes ? (
-                          <span className="font-medium">&quot;{item.notes}&quot;</span>
+                        {item.indication || item.notes ? (
+                          <span className="font-medium">&quot;{item.indication || item.notes}&quot;</span>
                         ) : (
                           <span className="text-slate-300 not-italic">—</span>
                         )}

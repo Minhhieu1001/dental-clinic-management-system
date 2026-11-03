@@ -36,6 +36,7 @@ import Promotions from '../features/promotion/Promotions.jsx'
 import AdminNotifications from '../features/notification/AdminNotifications.jsx'
 import AdminSettings from '../features/setting/admin/AdminSettings.jsx'
 import GeneralSettings from '../features/setting/admin/GeneralSettings.jsx'
+import SystemDictionaryManagement from '../features/setting/admin/SystemDictionaryManagement.jsx'
 import ServicesAdmin from '../features/treatment/Services.jsx'
 
 // Feature Components - Dentist
@@ -59,7 +60,6 @@ import EmployeeBilling from '../features/billing/employee/EmployeeBilling.jsx'
 import InvoiceLookup from '../features/billing/employee/InvoiceLookup.jsx'
 import CustomerCare from '../features/customer-care/CustomerCare.jsx'
 import EmployeeInventory from '../features/prescriptions/EmployeeInventory.jsx'
-import ImportExport from '../features/prescriptions/ImportExport.jsx'
 import ShiftClosing from '../features/shift-closing/ShiftClosing.jsx'
 import EmployeeReport from '../features/report/EmployeeReport.jsx'
 import EmployeeNotifications from '../features/notification/EmployeeNotifications.jsx'
@@ -119,6 +119,7 @@ export default function AppRouter() {
             <Route path="notifications" element={<AdminNotifications />} />
             <Route path="clinic-branches" element={<AdminSettings />} />
             <Route path="general-settings" element={<GeneralSettings />} />
+            <Route path="system-dictionaries" element={<SystemDictionaryManagement />} />
             <Route path="settings" element={<Navigate to="clinic-branches" replace />} />
             <Route path="clinic-info" element={<Navigate to="clinic-branches" replace />} />
             <Route path="branches" element={<Navigate to="clinic-branches" replace />} />

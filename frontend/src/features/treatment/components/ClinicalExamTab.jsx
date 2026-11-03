@@ -15,7 +15,6 @@ import { useClinicalExam } from '../ClinicalExamContext';
 import {
   UPPER_TEETH,
   LOWER_TEETH,
-  TOOTH_CONDITIONS,
   TOOTH_TYPE_OPTIONS,
   CARIES_STATUS_OPTIONS,
   MOBILITY_OPTIONS,
@@ -27,19 +26,47 @@ import {
   getToothQuadrantLabel,
 } from '../clinicalExaminationHelpers';
 
+// Helper tính màu viền (stroke) đậm sắc nét cho từng răng trên sơ đồ Odontogram
+function getToothStroke(fillColor, isNormal) {
+  if (isNormal || !fillColor || fillColor === '#FFFFFF' || fillColor === '#F8FAFC' || fillColor === '#E2E8F0' || fillColor === '#CBD5E1' || fillColor === '#F1F5F9') {
+    return '#94A3B8';
+  }
+  if (/^#[0-9A-Fa-f]{6}$/.test(fillColor)) {
+    const num = parseInt(fillColor.slice(1), 16);
+    let r = Math.max(0, Math.floor((num >> 16) * 0.72));
+    let g = Math.max(0, Math.floor(((num >> 8) & 0x00ff) * 0.72));
+    let b = Math.max(0, Math.floor((num & 0x0000ff) * 0.72));
+    return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+  }
+  return '#64748B';
+}
+
 // Custom Anatomical SVG Tooth Component
-function AnatomicalToothSVG({ number, isUpper, conditionKey, isSelected, onClick, isHistoricalSession }) {
-  const cond = TOOTH_CONDITIONS.find((c) => c.key === conditionKey) || TOOTH_CONDITIONS[5]; // Normal
+function AnatomicalToothSVG({ number, isUpper, conditionKey, conditions, isSelected, onClick, isHistoricalSession }) {
+  const isNormal = !conditionKey || conditionKey === 'Bình thường' || conditionKey === 'NORMAL';
+
+  const cond = conditions?.find(
+    (c) => c.key === conditionKey || c.label === conditionKey || c.code === conditionKey
+  );
+
+  const fill = isNormal ? '#F8FAFC' : (cond?.fill || '#F8FAFC');
+  const stroke = isSelected
+    ? '#0D9488'
+    : isNormal
+      ? '#94A3B8'
+      : (cond?.stroke && cond.stroke !== cond.fill ? cond.stroke : getToothStroke(fill, isNormal));
+
+  const isMissing = conditionKey === 'Mất răng' || conditionKey === 'MISSING' || cond?.code === 'MISSING';
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`group relative flex flex-col items-center justify-center p-0.5 rounded transition-all select-none cursor-pointer ${isSelected
-        ? 'ring-2 ring-teal-600 bg-teal-50 shadow-sm scale-110 z-10'
-        : 'hover:bg-slate-100 hover:scale-105'
+      className={`group relative flex flex-col items-center justify-center p-1 rounded-lg transition-all select-none cursor-pointer ${isSelected
+        ? 'border-2 border-teal-600 bg-teal-50/60 shadow-sm scale-105 z-10'
+        : 'border border-transparent hover:border-slate-200 hover:bg-slate-100/60 hover:scale-105'
         }`}
-      title={`Răng ${number} - ${cond.label}${isHistoricalSession ? ' (Chế độ chỉ xem)' : ''}`}
+      title={`Răng ${number}${cond?.label ? ` - ${cond.label}` : ''}${isHistoricalSession ? ' (Chế độ chỉ xem)' : ''}`}
     >
       {/* Anatomical Tooth Crown & Root SVG */}
       <svg
@@ -48,33 +75,33 @@ function AnatomicalToothSVG({ number, isUpper, conditionKey, isSelected, onClick
       >
         <path
           d="M 6,2 C 4,2 2,5 2,10 C 2,16 5,20 7,24 C 8.5,27 10,30 12,30 C 14,30 15.5,27 17,24 C 19,20 22,16 22,10 C 22,5 20,2 18,2 C 15,2 14,5 12,5 C 10,5 9,2 6,2 Z"
-          fill={cond.fill}
-          stroke={isSelected ? '#0D9488' : cond.stroke}
+          fill={fill}
+          stroke={stroke}
           strokeWidth={isSelected ? '2' : '1.5'}
         />
 
-        {conditionKey === 'MISSING' && (
-          <path d="M 4,4 L 20,28 M 20,4 L 4,28" stroke="#64748B" strokeWidth="2" strokeLinecap="round" />
+        {isMissing && (
+          <path d="M 4,4 L 20,28 M 20,4 L 4,28" stroke="#475569" strokeWidth="2.5" strokeLinecap="round" />
         )}
 
-        {conditionKey !== 'MISSING' && (
+        {!isMissing && (
           <path
             d="M 8,6 C 10,9 12,12 12,14 M 16,6 C 14,9 12,12 12,14"
             fill="none"
-            stroke={conditionKey === 'NORMAL' ? '#94A3B8' : '#FFFFFF'}
-            strokeWidth="1"
+            stroke={isNormal ? '#94A3B8' : '#FFFFFF'}
+            strokeWidth="1.2"
             strokeLinecap="round"
-            opacity="0.6"
+            opacity={isNormal ? '0.7' : '0.8'}
           />
         )}
       </svg>
 
       <span
-        className={`text-[10px] font-extrabold mt-0.5 ${isSelected
-          ? 'bg-teal-700 text-white px-1 rounded'
-          : conditionKey !== 'NORMAL'
+        className={`text-[10px] font-extrabold mt-0.5 transition-colors ${isSelected
+          ? 'bg-teal-700 text-white px-1.5 py-0.5 rounded font-black'
+          : !isNormal
             ? 'text-slate-900 font-bold'
-            : 'text-slate-500'
+            : 'text-slate-600'
           }`}
       >
         {number}
@@ -113,6 +140,7 @@ export default function ClinicalExamTab() {
     examinationResultId,
     isSavingTooth,
     isLoadingTeeth,
+    toothConditions,
     treatmentSessions,
     selectedSessionId,
     isHistoricalSession,
@@ -218,7 +246,7 @@ export default function ClinicalExamTab() {
                   ? 'Chỉ xem (Đã khóa)'
                   : !activeMarkingTool
                     ? (isMultiToothMode ? 'Chọn nhiều răng' : 'Chọn & Xem răng')
-                    : `${isMultiToothMode ? 'Tô nhiều răng' : 'Tô'}: ${TOOTH_CONDITIONS.find((c) => c.key === activeMarkingTool)?.label}`}
+                    : `${isMultiToothMode ? 'Tô nhiều răng' : 'Tô'}: ${toothConditions.find((c) => c.key === activeMarkingTool)?.label}`}
               </span>
             </div>
           </div>
@@ -265,7 +293,7 @@ export default function ClinicalExamTab() {
               <MousePointer size={12} />
               <span>Chọn & Xem răng</span>
             </button>
-            {TOOTH_CONDITIONS.map((cond) => {
+            {toothConditions.map((cond) => {
               const isActive = activeMarkingTool === cond.key && !isHistoricalSession;
 
               return (
@@ -301,7 +329,7 @@ export default function ClinicalExamTab() {
           </div>
 
           {/* Teeth Graphic Grid */}
-          <div className="space-y-3 py-2 bg-slate-50/50 p-3 rounded-lg border border-slate-200">
+          <div className="space-y-4 py-3 bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
             {/* HÀM TRÊN (16 TEETH) */}
             <div>
               <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest text-center mb-1">
@@ -313,7 +341,8 @@ export default function ClinicalExamTab() {
                     key={t}
                     number={t}
                     isUpper={true}
-                    conditionKey={teethMap[t] || 'NORMAL'}
+                    conditionKey={teethMap[t] || 'Bình thường'}
+                    conditions={toothConditions}
                     isSelected={isMultiToothMode ? multiSelectedTeeth.includes(t) : selectedTooth === t}
                     onClick={() => handleToothClick(t)}
                     isHistoricalSession={isHistoricalSession}
@@ -330,7 +359,8 @@ export default function ClinicalExamTab() {
                     key={t}
                     number={t}
                     isUpper={false}
-                    conditionKey={teethMap[t] || 'NORMAL'}
+                    conditionKey={teethMap[t] || 'Bình thường'}
+                    conditions={toothConditions}
                     isSelected={isMultiToothMode ? multiSelectedTeeth.includes(t) : selectedTooth === t}
                     onClick={() => handleToothClick(t)}
                     isHistoricalSession={isHistoricalSession}
@@ -344,22 +374,7 @@ export default function ClinicalExamTab() {
           </div>
 
           {/* Controls */}
-          <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="text-slate-500 font-medium">Chọn loại răng</span>
-              <select
-                value={toothFilter}
-                onChange={(e) => setToothFilter(e.target.value)}
-                className="rounded border border-slate-300 px-3 py-1 bg-white font-semibold text-slate-700 outline-none cursor-pointer"
-              >
-                {TOOTH_TYPE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
+          <div className="flex items-end justify-end pt-2 border-t border-slate-100 text-xs">
             <button
               type="button"
               disabled={isHistoricalSession}
@@ -396,10 +411,10 @@ export default function ClinicalExamTab() {
               {isMultiToothMode ? `Đổi tình trạng ${multiSelectedTeeth.length} răng:` : `Đổi tình trạng R${selectedTooth}:`}
             </span>
             <div className="flex flex-wrap gap-1">
-              {TOOTH_CONDITIONS.map((c) => {
+              {toothConditions.map((c) => {
                 const currentCond = isMultiToothMode
-                  ? (activeMarkingTool || (multiSelectedTeeth.length > 0 ? teethMap[multiSelectedTeeth[0]] : 'NORMAL'))
-                  : (teethMap[selectedTooth] || 'NORMAL');
+                  ? (activeMarkingTool || (multiSelectedTeeth.length > 0 ? teethMap[multiSelectedTeeth[0]] : 'Bình thường'))
+                  : (teethMap[selectedTooth] || 'Bình thường');
                 const isSelected = currentCond === c.key;
                 return (
                   <button
@@ -407,12 +422,16 @@ export default function ClinicalExamTab() {
                     key={c.key}
                     disabled={isHistoricalSession}
                     onClick={() => handleChangeToothCondition(c.key)}
-                    className={`px-2 py-0.5 rounded text-[11px] font-bold border transition-all ${isSelected
+                    className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-bold border transition-all ${isSelected
                       ? 'bg-teal-700 text-white border-teal-800 shadow-xs'
-                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                       } ${isHistoricalSession ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
                   >
-                    {c.label}
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0 border border-black/15"
+                      style={{ backgroundColor: c.fill || '#94A3B8' }}
+                    />
+                    <span>{c.label}</span>
                   </button>
                 );
               })}
@@ -568,7 +587,11 @@ export default function ClinicalExamTab() {
               )}
 
               {!isLoadingTeeth && examinedTeeth.map((record, index) => {
-                const cond = TOOTH_CONDITIONS.find((c) => c.key === record.toothStatus) || TOOTH_CONDITIONS[5];
+                const cond = toothConditions.find(
+                  (c) => c.key === record.toothStatus || c.label === record.toothStatus || c.code === record.toothStatus
+                );
+                const color = cond?.fill || '#94A3B8';
+                const isNormal = !record.toothStatus || record.toothStatus === 'Bình thường';
                 const isCurrent = selectedTooth === record.toothNumber;
 
                 return (
@@ -585,8 +608,19 @@ export default function ClinicalExamTab() {
                       </span>
                     </td>
                     <td className="px-3 py-2.5">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold ${cond.badgeClass}`}>
-                        {cond.label}
+                      <span
+                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[11px] font-bold border transition-colors shadow-2xs"
+                        style={{
+                          backgroundColor: isNormal ? '#F1F5F9' : `${color}18`,
+                          borderColor: isNormal ? '#E2E8F0' : `${color}45`,
+                          color: isNormal ? '#475569' : color,
+                        }}
+                      >
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0 border border-black/15 shadow-2xs"
+                          style={{ backgroundColor: color }}
+                        />
+                        {record.toothStatus || cond?.label || 'Bình thường'}
                       </span>
                     </td>
                     <td className="px-3 py-2.5">

@@ -2,7 +2,6 @@ package iuh.fit.backend.medicalrecord.dto;
 
 import iuh.fit.backend.medicalrecord.enums.CariesLocation;
 import iuh.fit.backend.medicalrecord.enums.Level;
-import iuh.fit.backend.medicalrecord.enums.ToothStatus;
 import lombok.*;
 
 import java.util.UUID;
@@ -16,7 +15,7 @@ public class ToothRecordDTO {
     private UUID id;
     private UUID examinationResultId;
     private String toothNumber;
-    private ToothStatus toothStatus;
+    private String toothStatus;
     private Level severity;
     private Boolean hasCaries;
     private CariesLocation cariesLocation;

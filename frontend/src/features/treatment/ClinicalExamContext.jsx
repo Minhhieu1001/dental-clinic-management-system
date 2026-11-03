@@ -25,11 +25,8 @@ import {
   getToothRecordsByExaminationResultId,
   deleteToothRecord,
 } from '../../services/toothRecord.service';
+import { getPrimaryDiagnoses, getToothStatuses } from '../../services/systemDictionary.service';
 import {
-  TOOTH_CONDITIONS,
-  ICD10_DIAGNOSES,
-  mapFrontendToBackendToothStatus,
-  mapBackendToFrontendToothStatus,
   mapCariesDepthToLevel,
   mapLocationToBackendEnum,
   mapBackendEnumToLocation,
@@ -53,11 +50,9 @@ const mapBackendDiagnosesToFrontend = (examResult) => {
   };
 
   return rawList.map((d, index) => {
-    const icdObj = ICD10_DIAGNOSES.find(
-      (item) => item.code === d.primaryDiagnosis || item.label?.includes(d.primaryDiagnosis)
-    );
-    const label = icdObj ? icdObj.label : d.primaryDiagnosis;
-    const indication = icdObj ? icdObj.indication : '';
+    // Lấy trực tiếp nhãn chẩn đoán chính từ CSDL, không map từ key tĩnh
+    const label = d.label || d.primaryDiagnosis || 'Chẩn đoán nha khoa';
+    const indication = d.indication || d.diagnosticNotes || '';
     const severity = severityMap[d.level] || 'Trung bình';
     const sources = d.sourceOfInformation
       ? d.sourceOfInformation.split(',').map((s) => s.trim()).filter(Boolean)
@@ -76,7 +71,7 @@ const mapBackendDiagnosesToFrontend = (examResult) => {
       id: d.id ? String(d.id) : `diag-${d.toothPosition || 'pos'}-${index}-${Date.now()}`,
       scope: scope,
       toothPosition: d.toothPosition || 'Toàn hàm',
-      primaryDiagnosis: d.primaryDiagnosis,
+      primaryDiagnosis: d.primaryDiagnosis || label,
       label: label,
       severity: severity,
       level: d.level,
@@ -139,6 +134,7 @@ export function ClinicalExamProvider({ children }) {
   // 4. Tooth Map & Clinical Examination State
   const [activeMarkingTool, setActiveMarkingTool] = useState(null); // null: Chế độ chọn & xem chi tiết
   const [teethMap, setTeethMap] = useState({});
+  const [toothConditions, setToothConditions] = useState([]);
   const [selectedTooth, setSelectedTooth] = useState(46);
   const [toothFilter, setToothFilter] = useState('PERMANENT');
 
@@ -169,6 +165,7 @@ export function ClinicalExamProvider({ children }) {
   const [diagnosisScope, setDiagnosisScope] = useState('MULTI_TEETH'); // 'FULL_MOUTH' | 'UPPER_JAW' | 'LOWER_JAW' | 'MULTI_TEETH'
   const [selectedTeethList, setSelectedTeethList] = useState([]);
   const [mainDiagnosis, setMainDiagnosis] = useState('K02.1'); // Sâu ngà (K02.1)
+  const [primaryDiagnoses, setPrimaryDiagnoses] = useState([]);
   const [subDiagnosis, setSubDiagnosis] = useState('');
   const [severity, setSeverity] = useState('Trung bình');
   const [diagnosisNotes, setDiagnosisNotes] = useState('');
@@ -237,6 +234,61 @@ export function ClinicalExamProvider({ children }) {
   // Danh sách các kết luận chẩn đoán đã xác nhận trong đợt khám này
   const [diagnosisList, setDiagnosisList] = useState([]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    Promise.all([getToothStatuses(), getPrimaryDiagnoses()])
+      .then(([toothStatusResponse, diagnosisResponse]) => {
+        if (!isMounted) return;
+
+        const toothStatusItems = Array.isArray(toothStatusResponse?.data)
+          ? toothStatusResponse.data
+          : [];
+        const diagnosisItems = Array.isArray(diagnosisResponse?.data)
+          ? diagnosisResponse.data
+          : [];
+
+        if (toothStatusItems.length > 0) {
+          setToothConditions(toothStatusItems.map((item) => {
+            const isNormal = item.label === 'Bình thường' || item.toothCode === 'NORMAL';
+            return {
+              key: item.label,
+              label: item.label,
+              code: item.toothCode,
+              fill: isNormal ? '#F8FAFC' : item.color,
+              stroke: isNormal ? '#94A3B8' : item.color,
+              text: '#FFFFFF',
+              badgeClass: 'bg-slate-100 text-slate-700',
+            };
+          }));
+        }
+
+        if (diagnosisItems.length > 0) {
+          setPrimaryDiagnoses(diagnosisItems
+            .filter((item) => item.status !== false)
+            .map((item) => {
+              const name = item.primaryDiagnosisName || '';
+              const code = name.match(/^[A-Z][0-9]{2}(?:\.[0-9]+)?/)?.[0] || name;
+              return {
+                id: item.id,
+                code,
+                label: name,
+                category: 'Chẩn đoán nha khoa',
+                indication: '',
+                defaultScope: 'MULTI_TEETH',
+              };
+            }));
+        }
+      })
+      .catch((error) => {
+        console.warn('Không thể tải danh mục chẩn đoán và tình trạng răng:', error);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // ================= Tải danh sách răng theo ID kết quả khám =================
   const fetchToothRecords = useCallback(async (examResultId) => {
     if (!examResultId) {
@@ -249,15 +301,15 @@ export function ClinicalExamProvider({ children }) {
       const records = await getToothRecordsByExaminationResultId(examResultId);
 
       // Transform dữ liệu trả về từ Backend sang format hiển thị trên UI
+      // Lấy TRỰC TIẾP giá trị nhãn trạng thái từ label / toothStatus của ToothRecord, không cần map qua maCode
       const transformed = (records || []).map((r) => {
-        const feStatus = mapBackendToFrontendToothStatus(r.toothStatus);
-        const condObj = TOOTH_CONDITIONS.find((c) => c.key === feStatus) || TOOTH_CONDITIONS[5];
+        const statusLabel = r.toothStatus || '';
         return {
           id: r.id,
           examinationResultId: r.examinationResultId || examResultId,
           toothNumber: Number(r.toothNumber),
-          toothStatus: feStatus,
-          toothStatusLabel: condObj.label,
+          toothStatus: statusLabel,
+          toothStatusLabel: statusLabel,
           severity: r.severity || null,
           cariesStatus: r.hasCaries ? 'YES' : 'NO',
           cariesLocation: mapBackendEnumToLocation(r.cariesLocation),
@@ -272,7 +324,6 @@ export function ClinicalExamProvider({ children }) {
       setExaminedTeeth(transformed);
 
       // ĐỒNG BỘ TÔ MÀU TRÊN SƠ ĐỒ 32 RĂNG ODONTOGRAM:
-      // CHỈ ánh xạ đúng các răng của kết quả khám này, tuyệt đối không kế thừa răng từ đợt khám khác
       const newTeethMap = {};
       transformed.forEach((item) => {
         newTeethMap[item.toothNumber] = item.toothStatus;
@@ -855,7 +906,7 @@ export function ClinicalExamProvider({ children }) {
       });
 
       if (activeMarkingTool) {
-        const toolObj = TOOTH_CONDITIONS.find((c) => c.key === activeMarkingTool);
+        const toolObj = toothConditions.find((c) => c.key === activeMarkingTool);
         toast.success(`Đã đánh dấu Răng ${toothNumber}: ${toolObj?.label || activeMarkingTool}`, {
           duration: 1200,
         });
@@ -898,13 +949,13 @@ export function ClinicalExamProvider({ children }) {
         setMultiSelectedTeeth(nextList);
 
         // Gán trạng thái đang chọn (ưu tiên activeMarkingTool hoặc trạng thái hiện tại)
-        const condToApply = activeMarkingTool || teethMap[selectedTooth] || 'CARIES';
+        const condToApply = activeMarkingTool || teethMap[selectedTooth] || 'Sâu răng';
         setTeethMap((prevMap) => ({
           ...prevMap,
           [toothNumber]: condToApply,
         }));
 
-        const toolObj = TOOTH_CONDITIONS.find((c) => c.key === condToApply);
+        const toolObj = toothConditions.find((c) => c.key === condToApply);
         toast.success(`Đã chọn thêm Răng ${toothNumber} (${toolObj?.label || condToApply})`, {
           duration: 1200,
         });
@@ -957,7 +1008,7 @@ export function ClinicalExamProvider({ children }) {
         });
         return next;
       });
-      const condObj = TOOTH_CONDITIONS.find((c) => c.key === condKey);
+      const condObj = toothConditions.find((c) => c.key === condKey);
       toast.success(`Đã cập nhật ${multiSelectedTeeth.length} răng sang: ${condObj?.label || condKey}`, {
         duration: 1200,
       });
@@ -966,7 +1017,7 @@ export function ClinicalExamProvider({ children }) {
         ...prev,
         [selectedTooth]: condKey,
       }));
-      const condObj = TOOTH_CONDITIONS.find((c) => c.key === condKey);
+      const condObj = toothConditions.find((c) => c.key === condKey);
       toast.success(`Đã đổi tình trạng Răng ${selectedTooth}: ${condObj?.label || condKey}`, {
         duration: 1200,
       });
@@ -1048,11 +1099,14 @@ export function ClinicalExamProvider({ children }) {
 
       // Bước 2: Chuẩn bị dữ liệu cho tất cả các răng được chọn
       const requests = targetTeeth.map((toothNo) => {
-        const currentConditionKey = teethMap[toothNo] || activeMarkingTool || 'NORMAL';
+        const currentConditionKey = teethMap[toothNo] || activeMarkingTool || 'Bình thường';
+        const currentCondition = toothConditions.find(
+          (condition) => condition.key === currentConditionKey
+        );
         return {
           examinationResultId: currentExamResultId,
           toothNumber: String(toothNo),
-          toothStatus: mapFrontendToBackendToothStatus(currentConditionKey),
+          toothStatus: currentCondition?.label || currentConditionKey || 'Bình thường',
           severity: mapCariesDepthToLevel(cariesDepth),
           hasCaries: cariesStatus === 'YES',
           cariesLocation: mapLocationToBackendEnum(cariesLocation),
@@ -1288,7 +1342,7 @@ export function ClinicalExamProvider({ children }) {
   const resetDiagnosisForm = () => {
     setDiagnosisScope('MULTI_TEETH');
     setSelectedTeethList([]);
-    setMainDiagnosis('K02.1');
+    setMainDiagnosis(primaryDiagnoses[0]?.label || '');
     setSeverity('Trung bình');
     setDiagnosisNotes('');
     setSources({
@@ -1352,7 +1406,7 @@ export function ClinicalExamProvider({ children }) {
         return {
           id: validId,
           toothPosition: item.toothPosition || 'Toàn hàm',
-          primaryDiagnosis: item.primaryDiagnosis || item.code || 'K02.1',
+          primaryDiagnosis: item.primaryDiagnosis || item.label || item.code || 'Chẩn đoán xác định',
           level: mapSeverityToLevelEnum(item.severity || item.level || severity),
           sourceOfInformation: srcStr,
           diagnosticNotes: item.notes || item.diagnosticNotes || diagnosisNotes || '',
@@ -1361,7 +1415,7 @@ export function ClinicalExamProvider({ children }) {
 
       const singlePayload = allDiagnosesPayload[0] || {
         toothPosition: 'Toàn hàm',
-        primaryDiagnosis: mainDiagnosis || 'K02.1',
+        primaryDiagnosis: mainDiagnosis || primaryDiagnoses[0]?.label || 'Chẩn đoán xác định',
         level: mapSeverityToLevelEnum(severity),
         sourceOfInformation: 'Khám lâm sàng',
         diagnosticNotes: diagnosisNotes || '',
@@ -1566,6 +1620,7 @@ export function ClinicalExamProvider({ children }) {
     setActiveMarkingTool,
     teethMap,
     setTeethMap,
+    toothConditions,
     selectedTooth,
     setSelectedTooth,
     toothFilter,
@@ -1625,6 +1680,7 @@ export function ClinicalExamProvider({ children }) {
     handleUpdateDiagnosisItem,
     mainDiagnosis,
     setMainDiagnosis,
+    primaryDiagnoses,
     subDiagnosis,
     setSubDiagnosis,
     severity,

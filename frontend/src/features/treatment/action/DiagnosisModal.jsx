@@ -14,11 +14,11 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
-  ICD10_DIAGNOSES,
   SEVERITY_OPTIONS,
   DIAGNOSIS_SCOPE_OPTIONS,
   COMMON_INDICATION_TAGS,
 } from '../clinicalExaminationHelpers';
+import { useClinicalExam } from '../ClinicalExamContext';
 
 // 4 Cung răng theo chuẩn quốc tế FDI
 const QUADRANT_1 = [18, 17, 16, 15, 14, 13, 12, 11]; // Hàm trên Phải
@@ -48,10 +48,11 @@ export function DiagnosisModal({
   abnormalTeethFromStep1 = [],
 }) {
   const isEdit = mode === 'EDIT';
+  const { primaryDiagnoses } = useClinicalExam();
 
   const [scope, setScope] = useState('MULTI_TEETH');
   const [selectedTeeth, setSelectedTeeth] = useState([]);
-  const [primaryDiagnosis, setPrimaryDiagnosis] = useState('K02.1');
+  const [primaryDiagnosis, setPrimaryDiagnosis] = useState('');
   const [icdSearchQuery, setIcdSearchQuery] = useState('');
   const [severity, setSeverity] = useState('Trung bình');
   const [notes, setNotes] = useState('');
@@ -87,10 +88,12 @@ export function DiagnosisModal({
         setScope(initialScope);
         setSelectedTeeth(initialTeeth);
 
-        // 2. Chẩn đoán ICD-10
-        const codeToFind = initialData.primaryDiagnosis || initialData.code || 'K02.1';
-        const matched = ICD10_DIAGNOSES.find((d) => d.code === codeToFind);
-        setPrimaryDiagnosis(matched ? matched.code : codeToFind);
+        // 2. Chẩn đoán chính từ CSDL
+        const diagToFind = initialData.primaryDiagnosis || initialData.label || initialData.code || '';
+        const matched = primaryDiagnoses.find(
+          (d) => d.label === diagToFind || d.code === diagToFind || d.label?.includes(diagToFind)
+        );
+        setPrimaryDiagnosis(matched ? matched.label : (diagToFind || primaryDiagnoses[0]?.label || ''));
 
         // 3. Mức độ
         setSeverity(initialData.severity || 'Trung bình');
@@ -112,32 +115,37 @@ export function DiagnosisModal({
         const initialToothNo = initialData?.toothNumber ? [Number(initialData.toothNumber)] : [];
         setScope(initialData?.scope || 'MULTI_TEETH');
         setSelectedTeeth(initialToothNo);
-        setPrimaryDiagnosis(initialData?.primaryDiagnosis || initialData?.code || 'K02.1');
+        setPrimaryDiagnosis(
+          initialData?.primaryDiagnosis ||
+          initialData?.label ||
+          primaryDiagnoses[0]?.label ||
+          ''
+        );
         setSeverity(initialData?.severity || 'Trung bình');
         setNotes(initialData?.notes || initialData?.indication || '');
         setSources(initialData?.sources || ['Khám lâm sàng', 'Phim X-quang']);
       }
       setIsSubmitting(false);
     }
-  }, [isOpen, mode, isEdit, initialData]);
+  }, [isOpen, mode, isEdit, initialData, primaryDiagnoses]);
 
   // Lọc danh mục ICD-10 theo từ khóa tìm kiếm
   const filteredIcdList = useMemo(() => {
-    if (!icdSearchQuery.trim()) return ICD10_DIAGNOSES;
+    if (!icdSearchQuery.trim()) return primaryDiagnoses;
     const q = icdSearchQuery.toLowerCase().trim();
-    return ICD10_DIAGNOSES.filter(
+    return primaryDiagnoses.filter(
       (d) =>
         d.code.toLowerCase().includes(q) ||
         d.label.toLowerCase().includes(q) ||
         d.category?.toLowerCase().includes(q)
     );
-  }, [icdSearchQuery]);
+  }, [icdSearchQuery, primaryDiagnoses]);
 
   if (!isOpen) return null;
 
   // ICD object đang chọn
   const selectedIcdObj =
-    ICD10_DIAGNOSES.find((d) => d.code === primaryDiagnosis) || ICD10_DIAGNOSES[0];
+    primaryDiagnoses.find((d) => d.label === primaryDiagnosis || d.code === primaryDiagnosis) || primaryDiagnoses[0];
 
   // Toggle chọn răng
   const handleToggleTooth = (toothNo) => {
@@ -216,8 +224,8 @@ export function DiagnosisModal({
         scope,
         toothPosition: positionText,
         selectedTeeth: scope === 'MULTI_TEETH' ? selectedTeeth : [],
-        primaryDiagnosis,
-        code: primaryDiagnosis,
+        primaryDiagnosis: selectedIcdObj?.label || primaryDiagnosis,
+        code: selectedIcdObj?.code || '',
         label: selectedIcdObj?.label || primaryDiagnosis,
         indication: selectedIcdObj?.indication || '',
         severity,
@@ -541,18 +549,28 @@ export function DiagnosisModal({
                     value={primaryDiagnosis}
                     onChange={(e) => {
                       setPrimaryDiagnosis(e.target.value);
-                      const found = ICD10_DIAGNOSES.find((d) => d.code === e.target.value);
-                      if (found && !notes) {
+                      const found = primaryDiagnoses.find(
+                        (d) => d.label === e.target.value || d.code === e.target.value
+                      );
+                      if (found && !notes && found.indication) {
                         setNotes(found.indication);
                       }
                     }}
                     className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800 focus:border-teal-600 outline-none cursor-pointer"
                   >
-                    {filteredIcdList.map((icd) => (
-                      <option key={icd.code} value={icd.code}>
-                        [{icd.code}] {icd.label} — {icd.category}
-                      </option>
-                    ))}
+                    {filteredIcdList.map((icd) => {
+                      const displayText = icd.label?.startsWith(icd.code)
+                        ? icd.label
+                        : icd.code && icd.code !== icd.label
+                          ? `[${icd.code}] ${icd.label}`
+                          : icd.label;
+
+                      return (
+                        <option key={icd.id || icd.label || icd.code} value={icd.label}>
+                          {displayText}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
               </div>
@@ -678,7 +696,7 @@ export function DiagnosisModal({
             <div className="text-[11px] text-slate-500 hidden sm:block">
               Vị trí: <strong className="text-slate-800">{getPositionSummary()}</strong>
               {' · '}
-              Mã: <strong className="text-slate-800 font-mono">{primaryDiagnosis}</strong>
+              Mã: <strong className="text-slate-800 font-mono">{selectedIcdObj?.code || primaryDiagnosis}</strong>
             </div>
 
             <div className="flex items-center gap-2 ml-auto">

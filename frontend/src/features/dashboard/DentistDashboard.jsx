@@ -32,11 +32,12 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { getDentistsList } from '../../services/dentist.service';
-import { getMyAppointments, getAppointments, updateAppointment } from '../../services/appointment.service';
+import { getMyAppointments, getAppointments, getRooms, updateAppointment } from '../../services/appointment.service';
 import { getInventory } from '../../services/inventory.service';
 import ClinicalExamModal from '../../components/ui/ClinicalExamModal';
 import AppointmentTable from './dentist/AppointmentTable';
 import PatientInfoCard from './dentist/PatientInfoCard';
+import RoomNoteForm from './dentist/action/RoomNoteForm';
 
 export default function DentistDashboard() {
   const navigate = useNavigate();
@@ -46,6 +47,11 @@ export default function DentistDashboard() {
   const [inventoryList, setInventoryList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [callInAppointment, setCallInAppointment] = useState(null);
+  const [rooms, setRooms] = useState([]);
+  const [callInForm, setCallInForm] = useState({ roomId: '', notes: '' });
+  const [isCallInModalOpen, setIsCallInModalOpen] = useState(false);
+  const [isCallInSaving, setIsCallInSaving] = useState(false);
 
   // Modal exam state
   const [selectedExamAppt, setSelectedExamAppt] = useState(null);
@@ -185,20 +191,64 @@ export default function DentistDashboard() {
 
   // 1. Call patient into examination room (WAITING -> CALLED)
   const handleCallIn = async (apt) => {
-    setActionLoadingId(apt.id);
     try {
-      if (apt.id && !String(apt.id).startsWith('mock-')) {
-        await updateAppointment(apt.id, { status: 'CALLED' }).catch((err) =>
-          console.warn('Lỗi API cập nhật trạng thái:', err)
-        );
-      }
-      setAppointments((prev) =>
-        prev.map((item) => (item.id === apt.id ? { ...item, status: 'CALLED' } : item))
-      );
+      const roomResponse = await getRooms();
+      const roomList = Array.isArray(roomResponse?.data)
+        ? roomResponse.data
+        : Array.isArray(roomResponse)
+          ? roomResponse
+          : [];
+      setRooms(roomList);
+      setCallInAppointment(apt);
+      setCallInForm({
+        roomId: apt.roomId ? String(apt.roomId) : '',
+        notes: apt.notes || '',
+      });
+      setIsCallInModalOpen(true);
     } catch (err) {
-      console.warn('Lỗi khi gọi bệnh nhân:', err);
+      console.error('Lỗi khi tải danh sách phòng khám:', err);
+      toast.error('Không thể tải danh sách phòng khám.');
+    }
+  };
+
+  const handleConfirmCallIn = async (callData) => {
+    if (!callInAppointment) return;
+
+    setIsCallInSaving(true);
+    try {
+      const roomId = (callData?.roomId !== undefined ? callData.roomId : callInForm.roomId) || null;
+      const notes = (callData?.notes !== undefined ? callData.notes : callInForm.notes).trim();
+      let updatedAppointment = {
+        ...callInAppointment,
+        status: 'CALLED',
+        roomId,
+        notes: notes || callInAppointment.notes,
+      };
+
+      if (callInAppointment.id && !String(callInAppointment.id).startsWith('mock-')) {
+        const statusResponse = await updateAppointment(callInAppointment.id, {
+          status: 'CALLED',
+          roomId,
+        });
+        updatedAppointment = { ...updatedAppointment, ...(statusResponse || {}) };
+
+        if (notes) {
+          const notesResponse = await updateAppointment(callInAppointment.id, { notes });
+          updatedAppointment = { ...updatedAppointment, ...(notesResponse || {}), notes };
+        }
+      }
+
+      setAppointments((prev) =>
+        prev.map((item) => (item.id === callInAppointment.id ? updatedAppointment : item))
+      );
+      setIsCallInModalOpen(false);
+      setCallInAppointment(null);
+      toast.success(`Đã gọi bệnh nhân ${callInAppointment.patientName} vào khám.`);
+    } catch (err) {
+      console.error('Lỗi khi gọi bệnh nhân:', err);
+      toast.error('Không thể cập nhật trạng thái lịch hẹn.');
     } finally {
-      setActionLoadingId(null);
+      setIsCallInSaving(false);
     }
   };
 
@@ -610,6 +660,21 @@ export default function DentistDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Modal chọn phòng khám & ghi chú khi gọi bệnh nhân vào khám */}
+      <RoomNoteForm
+        isOpen={isCallInModalOpen}
+        onClose={() => {
+          setIsCallInModalOpen(false);
+          setCallInAppointment(null);
+        }}
+        appointment={callInAppointment}
+        rooms={rooms}
+        initialRoomId={callInForm.roomId}
+        initialNotes={callInForm.notes}
+        isSaving={isCallInSaving}
+        onConfirm={handleConfirmCallIn}
+      />
 
       {/* Clinical Exam Modal */}
       <ClinicalExamModal

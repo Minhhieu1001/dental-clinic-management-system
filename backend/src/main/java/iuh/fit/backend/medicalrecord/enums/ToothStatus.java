@@ -7,5 +7,9 @@ public enum ToothStatus {
     MISSING,
     GINGIVITIS,
     ATTENTION_REQUIRE,
-    ROOT_CANAL
+    ROOT_CANAL,
+    BROKEN,
+    CROOKED,
+    CROWDED,
+    SUPERNUMERARY
 }

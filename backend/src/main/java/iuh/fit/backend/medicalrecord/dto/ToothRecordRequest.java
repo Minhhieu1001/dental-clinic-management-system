@@ -2,7 +2,6 @@ package iuh.fit.backend.medicalrecord.dto;
 
 import iuh.fit.backend.medicalrecord.enums.CariesLocation;
 import iuh.fit.backend.medicalrecord.enums.Level;
-import iuh.fit.backend.medicalrecord.enums.ToothStatus;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
@@ -19,7 +18,7 @@ public class ToothRecordRequest {
     @NotBlank(message = "Số răng không được để trống")
     private String toothNumber;
 
-    private ToothStatus toothStatus;
+    private String toothStatus;
     private Level severity;
     private Boolean hasCaries;
     private CariesLocation cariesLocation;

@@ -3,6 +3,7 @@ import { X, Calendar, Clock, User, FileText, Send, CheckCircle2, AlertCircle, Ma
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../../hooks/useAuth';
 import { getDentistsList } from '../../../../services/dentist.service';
+import { getBranches } from '../../../../services/clinic.service';
 
 const QUICK_REASONS = [
   'Tái khám kiểm tra định kỳ',
@@ -27,11 +28,13 @@ export default function CreateFollowUpModal({
 }) {
   const { user } = useAuth();
   const [dentists, setDentists] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [loadingDentists, setLoadingDentists] = useState(false);
 
   // Form states
   const [examinationResultId, setExaminationResultId] = useState('');
   const [dentistId, setDentistId] = useState('');
+  const [branchId, setBranchId] = useState('');
   const [followUpDate, setFollowUpDate] = useState('');
   const [reason, setReason] = useState('');
   const [note, setNote] = useState('');
@@ -60,6 +63,7 @@ export default function CreateFollowUpModal({
   useEffect(() => {
     if (isOpen) {
       loadDentists();
+      loadBranches();
     }
   }, [isOpen]);
 
@@ -73,6 +77,16 @@ export default function CreateFollowUpModal({
       console.warn('Cannot load dentists:', err);
     } finally {
       setLoadingDentists(false);
+    }
+  };
+
+  const loadBranches = async () => {
+    try {
+      const list = await getBranches();
+      setBranches(Array.isArray(list) ? list : []);
+    } catch (err) {
+      console.warn('Cannot load branches:', err);
+      toast.error('Không thể tải danh sách chi nhánh');
     }
   };
 
@@ -103,6 +117,7 @@ export default function CreateFollowUpModal({
     if (type === 'edit' && followUpData) {
       setExaminationResultId(followUpData.examinationResultId || '');
       setDentistId(followUpData.dentistId || '');
+      setBranchId(followUpData.branchId || patient?.branchId || '');
 
       if (followUpData.followUpDate) {
         const d = new Date(followUpData.followUpDate);
@@ -133,6 +148,7 @@ export default function CreateFollowUpModal({
       }
 
       setDentistId('');
+      setBranchId(patient?.branchId || '');
 
       // Default follow-up date: presetDate or 7 days from now at 09:00 AM
       const targetDate = presetDate ? new Date(presetDate) : new Date();
@@ -152,7 +168,7 @@ export default function CreateFollowUpModal({
       setSendEmail(true);
       setSendSms(true);
     }
-  }, [isOpen, type, followUpData, selectedSessionId, treatmentSessions, presetDate]);
+  }, [isOpen, type, followUpData, selectedSessionId, treatmentSessions, presetDate, patient]);
 
   if (!isOpen) return null;
 
@@ -180,6 +196,7 @@ export default function CreateFollowUpModal({
         examinationResultId: examinationResultId || null,
         patientId: patient?.id,
         patientCode: patient?.patientCode,
+        branchId: branchId || null,
         dentistId: dentistId || null,
         followUpDate: new Date(followUpDate).toISOString(),
         reason: reason.trim(),
@@ -282,6 +299,25 @@ export default function CreateFollowUpModal({
                 <UserCheck size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-teal-700 pointer-events-none" />
               </div>
             </div>
+
+          </div>
+
+          <div>
+            <label className="block text-slate-800 font-bold mb-1">
+              Chi nhánh tái khám:
+            </label>
+            <select
+              value={branchId}
+              onChange={(e) => setBranchId(e.target.value)}
+              className="w-full rounded-sm border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-teal-600 focus:ring-1 focus:ring-teal-600 outline-hidden cursor-pointer shadow-2xs font-semibold"
+            >
+              <option value="">-- Chọn chi nhánh --</option>
+              {branches.map((branch) => (
+                <option key={branch.branchId} value={branch.branchId}>
+                  {branch.branchName}{branch.branchCode ? ` (${branch.branchCode})` : ''}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* 2. Ngày & Giờ tái khám + Fast Date Presets */}
@@ -473,4 +509,3 @@ export default function CreateFollowUpModal({
     </div>
   );
 }
-

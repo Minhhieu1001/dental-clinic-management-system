@@ -119,7 +119,11 @@ public class SecurityConfig {
                                 "/ws/**",
                                 "/ws"
                         ).permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/clinics/**", "/api/v1/branches/**")
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/clinics/**",
+                                "/api/v1/branches/**",
+                                "/api/v1/primary-diagnoses/**",
+                                "/api/v1/tooth-statuses/**")
                         .permitAll()
                         .requestMatchers("/api/v1/payment-transactions/**")
                         .hasAnyRole("ADMIN", "EMPLOYEE")

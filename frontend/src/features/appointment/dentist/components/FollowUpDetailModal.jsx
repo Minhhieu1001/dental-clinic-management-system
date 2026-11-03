@@ -112,6 +112,14 @@ export default function FollowUpDetailModal({
                 <span className="text-slate-500 font-medium">Ngày lập phiếu:</span>{' '}
                 <strong className="text-slate-800 font-semibold">{formatDateDisplay(followUp.createAt || followUp.createdAt)}</strong>
               </div>
+              <div>
+                <span className="text-slate-500 font-medium">Cơ sở:</span>{' '}
+                <strong className="text-slate-900 font-bold">{followUp.branchName || 'Chưa xác định chi nhánh'}</strong>
+              </div>
+              <div>
+                <span className="text-slate-500 font-medium">Địa chỉ:</span>{' '}
+                <strong className="text-slate-900 font-medium">{followUp.branchAddress || 'Chưa có địa chỉ chi nhánh'}</strong>
+              </div>
             </div>
 
             <div>
@@ -160,4 +168,3 @@ export default function FollowUpDetailModal({
     </div>
   );
 }
-

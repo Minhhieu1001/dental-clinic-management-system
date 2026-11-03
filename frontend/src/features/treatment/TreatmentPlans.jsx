@@ -72,7 +72,6 @@ import {
   deleteTreatmentService,
 } from '../../services/treatmentService.service';
 import {
-  ICD10_DIAGNOSES,
   DEFAULT_SERVICE_CATALOG,
   PRESET_PACKAGES,
   STATUS_PHASE_CONFIG,
@@ -181,17 +180,16 @@ export default function TreatmentPlans() {
     }
     if (stateData.diagnosis || stateData.selectedTooth) {
       const toothNo = stateData.selectedTooth || 46;
-      const diagCode = stateData.diagnosis || 'K02.1';
-      const foundIcd = ICD10_DIAGNOSES.find((d) => d.code === diagCode);
+      const diagVal = stateData.diagnosis || '';
       return [
         {
           id: 'diag-1',
           toothPosition: typeof toothNo === 'number' ? `Răng ${toothNo}` : String(toothNo),
-          primaryDiagnosis: diagCode,
-          label: foundIcd?.label || `Sâu ngà răng (${diagCode})`,
+          primaryDiagnosis: diagVal,
+          label: stateData.diagnosisLabel || diagVal || 'Chẩn đoán lâm sàng',
           severity: 'Trung bình',
-          indication: foundIcd?.indication || 'Trám răng Composite quang trùng hợp / Điều trị tủy nếu sát tủy',
-          notes: stateData.diagnosisNotes || 'Sâu ngà mặt nhai và mặt gần, chưa thủng tủy. Bệnh nhân đau buốt khi ăn nhai.',
+          indication: 'Điều trị theo chỉ định bác sĩ',
+          notes: stateData.diagnosisNotes || '',
         },
       ];
     }
@@ -810,9 +808,7 @@ export default function TreatmentPlans() {
                 : [];
 
           const examDiags = rawList.map((d, idx) => {
-            const icdObj = ICD10_DIAGNOSES.find(
-              (item) => item.code === d.primaryDiagnosis || item.label?.includes(d.primaryDiagnosis)
-            );
+            const diagLabel = d.label || d.primaryDiagnosis || 'Chẩn đoán lâm sàng';
             const toothPos = d.toothPosition
               ? typeof d.toothPosition === 'number'
                 ? `Răng ${d.toothPosition}`
@@ -823,10 +819,10 @@ export default function TreatmentPlans() {
               id: d.id ? String(d.id) : `diag-${exam.id}-${idx}`,
               sessionId: String(exam.id),
               toothPosition: toothPos,
-              primaryDiagnosis: d.primaryDiagnosis,
-              label: icdObj ? icdObj.label : (d.primaryDiagnosis || 'Chẩn đoán lâm sàng'),
+              primaryDiagnosis: d.primaryDiagnosis || diagLabel,
+              label: diagLabel,
               severity: severityMap[d.level] || 'Trung bình',
-              indication: icdObj ? icdObj.indication : 'Điều trị theo chỉ định bác sĩ',
+              indication: d.indication || d.diagnosticNotes || 'Điều trị theo chỉ định bác sĩ',
               notes: d.diagnosticNotes || d.notes || exam.chiefComplaint || '',
             };
           });

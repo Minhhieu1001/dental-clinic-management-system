@@ -32,6 +32,12 @@ export const getAppointmentsByPatient = async (patientId) => {
   return response.data;
 };
 
+// Get all examination rooms
+export const getRooms = async () => {
+  const response = await api.get('/appointments/rooms');
+  return response.data;
+};
+
 // Get appointments for a specific dentist
 export const getDentistAppointments = async (dentistId) => {
   const response = await api.get(`/appointments/dentist/${dentistId}`);
@@ -61,4 +67,3 @@ export const getAppointmentById = async (id) => {
   const response = await api.get(`/appointments/${id}`);
   return response.data;
 };
-

@@ -16,6 +16,7 @@ public class FollowUpAppointmentRequestDTO {
     private UUID patientId;
     private String patientCode;
     private UUID dentistId;
+    private String branchId;
 
     @NotNull(message = "Thời gian tái khám không được để trống")
     private LocalDateTime followUpDate;

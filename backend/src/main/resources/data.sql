@@ -19,8 +19,6 @@ ALTER TABLE tooth_records ADD CONSTRAINT tooth_records_caries_location_check
     CHECK (caries_location IS NULL OR caries_location IN ('OCCLUSAL', 'MESIAL', 'DISTAL', 'BUCCAL', 'LINGUAL', 'PALATAL', 'CERVICAL', 'WHOLE_CROWN'));
 
 ALTER TABLE tooth_records DROP CONSTRAINT IF EXISTS tooth_records_tooth_status_check;
-ALTER TABLE tooth_records ADD CONSTRAINT tooth_records_tooth_status_check
-    CHECK (tooth_status IS NULL OR tooth_status IN ('HEALTHY', 'CARIES', 'FILLED', 'MISSING', 'GINGIVITIS', 'ATTENTION_REQUIRE', 'ROOT_CANAL', 'MARROW'));
 
 ALTER TABLE diagnoses DROP CONSTRAINT IF EXISTS diagnoses_level_check;
 ALTER TABLE diagnoses ADD CONSTRAINT diagnoses_level_check
@@ -623,5 +621,3 @@ UPDATE employees e
 SET position = 'RECEPTIONIST', full_name = u.username
 FROM users u
 WHERE e.user_id = u.id AND u.username = 'employee02';
-
-

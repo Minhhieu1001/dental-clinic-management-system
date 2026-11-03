@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import AppointmentDetail from '../receptionist/action/AppointmentDetail';
 import {
   Search,
   RefreshCw,
@@ -50,6 +51,30 @@ export default function AppointmentTable({
   const [dateScope, setDateScope] = useState('today'); // 'today' | 'week'
   const [activeTab, setActiveTab] = useState('ALL'); // ALL, WAITING, CALLED, IN_PROGRESS, COMPLETED
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Detail Modal state
+  const [detailApt, setDetailApt] = useState(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  const handleOpenDetail = (apt) => {
+    let timeStr = '09:00';
+    if (apt.appointmentTime) {
+      try {
+        const d = new Date(apt.appointmentTime);
+        timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      } catch (e) {
+        timeStr = String(apt.appointmentTime).substring(11, 16) || '09:00';
+      }
+    }
+    setDetailApt({
+      ...apt,
+      time: timeStr,
+      service: apt.service || apt.reason || 'Tư vấn nha khoa',
+      dentist: apt.dentist || apt.dentistName || 'Bác sĩ điều trị',
+      roomName: formatRoomDisplay(apt.roomName || apt.room || apt.roomNumber || 'Phòng 101'),
+    });
+    setIsDetailOpen(true);
+  };
 
   // Lọc lịch hẹn theo dateScope ('today' | 'week')
   const dateScopedAppointments = useMemo(() => {
@@ -218,12 +243,12 @@ export default function AppointmentTable({
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-slate-100 text-[11px] font-bold text-slate-400">
-                <th className="pb-2.5 font-semibold pl-1">Thời gian</th>
-                <th className="pb-2.5 font-semibold">Bệnh nhân</th>
-                <th className="pb-2.5 font-semibold">Lý do</th>
-                <th className="pb-2.5 font-semibold">Trạng thái</th>
-                <th className="pb-2.5 font-semibold">Phòng</th>
-                <th className="pb-2.5 font-semibold text-right pr-1">Thao tác</th>
+                <th className="w-[85px] pb-2.5 font-semibold pl-1 whitespace-nowrap">Thời gian</th>
+                <th className="w-[125px] pb-2.5 font-semibold whitespace-nowrap">Bệnh nhân</th>
+                <th className="pb-2.5 font-semibold min-w-[160px]">Lý do</th>
+                <th className="w-[105px] pb-2.5 font-semibold text-center whitespace-nowrap">Trạng thái</th>
+                <th className="w-[105px] pb-2.5 font-semibold text-center whitespace-nowrap">Phòng</th>
+                <th className="w-[120px] pb-2.5 font-semibold text-right pr-1 whitespace-nowrap">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -269,13 +294,15 @@ export default function AppointmentTable({
                     <tr
                       key={apt.id}
                       onClick={() => onSelectPatient(apt)}
+                      onDoubleClick={() => handleOpenDetail(apt)}
+                      title="Click để chọn dòng. Nhấp đúp (2 lần) để xem chi tiết lịch hẹn"
                       className={`cursor-pointer transition-colors ${isSelected
                         ? 'bg-teal-50/70 border-l-2 border-l-teal-600 font-semibold'
                         : 'hover:bg-slate-50/70'
                         }`}
                     >
                       {/* Time & Date */}
-                      <td className="py-2.5 whitespace-nowrap pl-1">
+                      <td className="w-[85px] py-2.5 whitespace-nowrap pl-1">
                         <div>
                           <p className="font-bold text-slate-800 text-xs">{timeStr}</p>
                           <p className="text-[10px] text-slate-400 font-medium">{displayDate}</p>
@@ -283,22 +310,22 @@ export default function AppointmentTable({
                       </td>
 
                       {/* Patient */}
-                      <td className="py-2.5 whitespace-nowrap">
+                      <td className="w-[125px] py-2.5 whitespace-nowrap pr-2">
                         <div>
-                          <p className="font-bold text-slate-800">{apt.patientName}</p>
+                          <p className="font-bold text-slate-800 truncate" title={apt.patientName}>{apt.patientName}</p>
                           <p className="text-[10px] text-slate-400">{apt.phone}</p>
                         </div>
                       </td>
 
-                      {/* Service */}
-                      <td className="py-2.5 text-slate-600 font-medium max-w-[140px] truncate">
+                      {/* Service / Reason */}
+                      <td className="py-2.5 text-slate-700 font-medium break-words leading-relaxed pr-3">
                         {apt.reason || 'Tư vấn nha khoa'}
                       </td>
 
                       {/* Status */}
-                      <td className="py-2.5 whitespace-nowrap">
+                      <td className="w-[105px] py-2.5 whitespace-nowrap text-center">
                         {isConfirmed && (
-                          <span className="inline-flex items-center justify-center whitespace-nowrap rounded-[4px] bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-200">
+                          <span className="inline-flex items-center justify-center whitespace-nowrap rounded-[4px] bg-orange-50 px-2 py-0.5 text-[10px] font-bold text-orange-700 border border-orange-200">
                             Chưa đến
                           </span>
                         )}
@@ -318,7 +345,7 @@ export default function AppointmentTable({
                           </span>
                         )}
                         {isCompleted && (
-                          <span className="inline-flex items-center justify-center whitespace-nowrap rounded-[4px] bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700 border border-slate-200">
+                          <span className="inline-flex items-center justify-center whitespace-nowrap rounded-[4px] bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-200">
                             Hoàn thành
                           </span>
                         )}
@@ -330,19 +357,19 @@ export default function AppointmentTable({
                       </td>
 
                       {/* Room */}
-                      <td className="py-2.5 whitespace-nowrap">
-                        <span className="inline-flex items-center rounded-[3px] bg-slate-100/90 px-2 py-0.5 text-[11px] font-medium text-slate-700 border border-slate-200/80">
+                      <td className="w-[105px] py-2.5 whitespace-nowrap text-center">
+                        <span className="inline-flex items-center justify-center rounded-[3px] bg-slate-100/90 px-2 py-0.5 text-[11px] font-medium text-slate-700 border border-slate-200/80">
                           {formatRoomDisplay(apt.roomName || apt.room || apt.roomNumber || 'Phòng 101')}
                         </span>
                       </td>
 
                       {/* Actions */}
-                      <td className="py-2.5 text-right whitespace-nowrap pr-1" onClick={(e) => e.stopPropagation()}>
+                      <td className="w-[120px] py-2.5 text-right whitespace-nowrap pr-1" onClick={(e) => e.stopPropagation()}>
                         {isConfirmed && (
                           <button
                             type="button"
                             disabled
-                            className="inline-flex items-center gap-1 rounded-[3px] bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-400 cursor-not-allowed"
+                            className="inline-flex items-center justify-center rounded-[3px] bg-orange-50/80 px-2.5 py-0.5 text-[11px] font-bold text-orange-600 border border-orange-200/80 cursor-default opacity-85 select-none"
                           >
                             Chưa đến
                           </button>
@@ -353,7 +380,7 @@ export default function AppointmentTable({
                             type="button"
                             onClick={() => onCallIn(apt)}
                             disabled={isExecuting}
-                            className="inline-flex items-center gap-1 rounded-[3px] bg-purple-600 px-2 py-0.5 text-[11px] font-bold text-white shadow-2xs hover:bg-purple-700 transition-colors"
+                            className="inline-flex items-center gap-1 rounded-[3px] bg-purple-50 px-2.5 py-0.5 text-[11px] font-bold text-purple-700 border border-purple-200 hover:bg-purple-100 hover:text-purple-800 transition-colors shadow-2xs"
                           >
                             <PhoneCall size={11} /> Gọi vào
                           </button>
@@ -364,7 +391,7 @@ export default function AppointmentTable({
                             type="button"
                             onClick={() => onStartTreatment(apt)}
                             disabled={isExecuting}
-                            className="inline-flex items-center gap-1 rounded-[3px] bg-teal-600 px-2 py-0.5 text-[11px] font-bold text-white shadow-2xs hover:bg-teal-700 transition-colors animate-pulse"
+                            className="inline-flex items-center gap-1 rounded-[3px] bg-teal-50 px-2.5 py-0.5 text-[11px] font-bold text-teal-700 border border-teal-200 hover:bg-teal-100 hover:text-teal-800 transition-colors shadow-2xs"
                           >
                             <Stethoscope size={11} /> Điều trị
                           </button>
@@ -376,20 +403,20 @@ export default function AppointmentTable({
                               type="button"
                               onClick={() => onStatusChange(apt.id, 'COMPLETED')}
                               disabled={isExecuting}
-                              className="rounded-[3px] bg-emerald-600 px-2 py-1 text-[11px] font-bold text-white hover:bg-emerald-700"
+                              className="rounded-[3px] bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 border border-emerald-200 hover:bg-emerald-100 hover:text-emerald-800 transition-colors shadow-2xs"
                             >
-                              Chưa xử lý nút này
+                              Hoàn tất điều trị
                             </button>
                           </div>
                         )}
 
-                        {apt.status === 'COMPLETED' && (
+                        {isCompleted && (
                           <button
                             type="button"
-                            onClick={() => onOpenExamModal(apt)}
-                            className="rounded-[3px] border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 hover:bg-slate-50"
+                            disabled
+                            className="inline-flex items-center justify-center rounded-[3px] bg-amber-50/80 px-2.5 py-0.5 text-[11px] font-bold text-amber-700 border border-amber-200/80 cursor-default opacity-85 select-none"
                           >
-                            Xem
+                            Đã hoàn thành
                           </button>
                         )}
                       </td>
@@ -410,6 +437,16 @@ export default function AppointmentTable({
           Xem tất cả lịch hẹn &rarr;
         </button>
       </div>
+
+      {/* Appointment Detail Modal (ERP Design) khi double click */}
+      <AppointmentDetail
+        isOpen={isDetailOpen}
+        onClose={() => {
+          setIsDetailOpen(false);
+          setDetailApt(null);
+        }}
+        appointment={detailApt}
+      />
     </div>
   );
 }
