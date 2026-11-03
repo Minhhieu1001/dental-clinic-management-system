@@ -7,6 +7,8 @@ import iuh.fit.backend.appointment.repository.FollowUpAppointmentRepository;
 import iuh.fit.backend.appointment.service.FollowUpAppointmentService;
 import iuh.fit.backend.common.exception.AppException;
 import iuh.fit.backend.common.exception.ErrorCode;
+import iuh.fit.backend.inforclinic.entity.Branch;
+import iuh.fit.backend.inforclinic.repository.BranchRepository;
 import iuh.fit.backend.medicalrecord.entity.ExaminationResult;
 import iuh.fit.backend.medicalrecord.repository.ExaminationResultRepository;
 import iuh.fit.backend.notification.service.NotificationService;
@@ -36,6 +38,7 @@ public class FollowUpAppointmentServiceImpl implements FollowUpAppointmentServic
     private final ExaminationResultRepository examinationResultRepository;
     private final DentistRepository dentistRepository;
     private final PatientRepository patientRepository;
+    private final BranchRepository branchRepository;
     private final NotificationService notificationService;
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm - dd/MM/yyyy");
@@ -92,9 +95,12 @@ public class FollowUpAppointmentServiceImpl implements FollowUpAppointmentServic
             dentist = examinationResult.getDentist();
         }
 
+        Branch branch = resolveBranch(request.getBranchId(), examinationResult, dentist);
+
         FollowUpAppointment followUp = FollowUpAppointment.builder()
                 .examinationResult(examinationResult)
                 .dentist(dentist)
+                .branch(branch)
                 .followUpDate(request.getFollowUpDate())
                 .reason(request.getReason())
                 .note(request.getNote())
@@ -124,6 +130,13 @@ public class FollowUpAppointmentServiceImpl implements FollowUpAppointmentServic
         if (request.getDentistId() != null) {
             Dentist dentist = dentistRepository.findById(request.getDentistId()).orElse(null);
             followUp.setDentist(dentist);
+        }
+
+        if (request.getBranchId() != null && !request.getBranchId().isBlank()) {
+            Branch branch = branchRepository.findById(request.getBranchId().trim())
+                    .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND,
+                            "Không tìm thấy chi nhánh ID: " + request.getBranchId()));
+            followUp.setBranch(branch);
         }
 
         if (request.getFollowUpDate() != null) {
@@ -219,6 +232,13 @@ public class FollowUpAppointmentServiceImpl implements FollowUpAppointmentServic
 
         ExaminationResult exam = entity.getExaminationResult();
         Dentist dentist = entity.getDentist();
+        Branch branch = entity.getBranch();
+        if (branch == null && exam != null && exam.getBranch() != null) {
+            branch = exam.getBranch();
+        }
+        if (branch == null && dentist != null) {
+            branch = dentist.getBranch();
+        }
         Patient patient = null;
 
         if (exam != null && exam.getMedicalRecord() != null) {
@@ -244,6 +264,21 @@ public class FollowUpAppointmentServiceImpl implements FollowUpAppointmentServic
                 .patientEmail(patient != null ? patient.getEmail() : null)
                 .dentistId(dentist != null ? dentist.getId() : null)
                 .dentistName(dentist != null ? dentist.getFullName() : null)
+                .branchId(branch != null ? branch.getBranchId() : null)
+                .branchName(branch != null ? branch.getBranchName() : null)
+                .branchAddress(branch != null ? branch.getAddress() : null)
                 .build();
+    }
+
+    private Branch resolveBranch(String branchId, ExaminationResult examinationResult, Dentist dentist) {
+        if (branchId != null && !branchId.isBlank()) {
+            return branchRepository.findById(branchId.trim())
+                    .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND,
+                            "Không tìm thấy chi nhánh ID: " + branchId));
+        }
+        if (examinationResult != null && examinationResult.getBranch() != null) {
+            return examinationResult.getBranch();
+        }
+        return dentist != null ? dentist.getBranch() : null;
     }
 }

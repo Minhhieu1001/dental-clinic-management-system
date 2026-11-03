@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Activity,
     Stethoscope,
@@ -9,15 +9,28 @@ import {
 } from 'lucide-react';
 import {
     formatDateDisplay,
-    formatDiagnosis,
-    ICD10_LABELS,
     CARIES_DEPTH_MAP,
     CARIES_LOCATION_MAP,
-    getToothStatusInfo,
     getDiagnosisLevelInfo,
 } from '../medicalRecordDictionaries';
+import { getToothStatuses } from '../../../../../services/systemDictionary.service';
 
 export default function ClinicalHistoryTab({ detailExams = [], selectedRecord }) {
+    const [toothStatuses, setToothStatuses] = useState([]);
+
+    useEffect(() => {
+        let isMounted = true;
+        getToothStatuses()
+            .then((response) => {
+                if (isMounted) setToothStatuses(Array.isArray(response?.data) ? response.data : []);
+            })
+            .catch((error) => console.warn('Không thể tải màu tình trạng răng:', error));
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
+
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-slate-200">
@@ -134,8 +147,15 @@ export default function ClinicalHistoryTab({ detailExams = [], selectedRecord })
                                                 <tbody className="divide-y divide-slate-200">
                                                     {toothRecords.length > 0 ? (
                                                         toothRecords.map((t, tIdx) => {
-                                                            const toothStatusKey = t.toothStatus || t.status || t.condition || t.diagnosis || t.symptom;
-                                                            const statusInfo = getToothStatusInfo(toothStatusKey);
+                                                            const toothStatus = t.toothStatus || t.status || t.condition || t.diagnosis || t.symptom || '-';
+                                                            const apiStatus = toothStatuses.find((item) => item.label === toothStatus);
+                                                            const statusStyle = apiStatus?.color
+                                                                ? {
+                                                                    backgroundColor: `${apiStatus.color}20`,
+                                                                    borderColor: apiStatus.color,
+                                                                    color: apiStatus.color,
+                                                                }
+                                                                : undefined;
                                                             const depthLabel = CARIES_DEPTH_MAP[String(t.cariesDepth || '').toUpperCase()] || t.cariesDepth;
                                                             const locLabel = CARIES_LOCATION_MAP[String(t.cariesLocation || t.surface || '').toUpperCase()] || t.cariesLocation || t.surface;
                                                             const mobilityLabel = t.shake || t.mobility || t.mobilityLevel || '-';
@@ -156,8 +176,11 @@ export default function ClinicalHistoryTab({ detailExams = [], selectedRecord })
                                                                         {toothDisplay}
                                                                     </td>
                                                                     <td className="py-2 px-2.5 border-r border-slate-200">
-                                                                        <span className={`inline-block px-2 py-0.5 rounded-sm text-[11px] border ${statusInfo.badge}`}>
-                                                                            {statusInfo.label}
+                                                                        <span
+                                                                            className="inline-block px-2 py-0.5 rounded-sm text-[11px] border bg-slate-100 text-slate-700 border-slate-200"
+                                                                            style={statusStyle}
+                                                                        >
+                                                                            {toothStatus}
                                                                         </span>
                                                                     </td>
                                                                     <td className="py-2 px-2.5 border-r border-slate-200 font-medium text-slate-700">
@@ -214,7 +237,6 @@ export default function ClinicalHistoryTab({ detailExams = [], selectedRecord })
                                                 <thead>
                                                     <tr className="bg-slate-100 text-slate-700 border-b border-slate-200 font-bold text-[11px]">
                                                         <th className="py-2 px-2.5 border-r border-slate-200 w-10 text-center">STT</th>
-                                                        <th className="py-2 px-2.5 border-r border-slate-200 w-28">Mã ICD-10</th>
                                                         <th className="py-2 px-2.5 border-r border-slate-200">Tên chẩn đoán</th>
                                                         <th className="py-2 px-2.5 border-r border-slate-200 w-28 text-center">Vị trí răng</th>
                                                         <th className="py-2 px-2.5 border-r border-slate-200 w-28 text-center">Mức độ</th>
@@ -225,8 +247,8 @@ export default function ClinicalHistoryTab({ detailExams = [], selectedRecord })
                                                     {rawDiagnoses.length > 0 ? (
                                                         rawDiagnoses.map((diag, dIdx) => {
                                                             const diagObj = typeof diag === 'string' ? { primaryDiagnosis: diag } : diag;
-                                                            const code = diagObj.primaryDiagnosis || diagObj.diagnosisCode || diagObj.code || '';
-                                                            const diseaseName = ICD10_LABELS[code] || diagObj.name || diagObj.label || diagObj.diagnosis || formatDiagnosis(diag) || 'Chẩn đoán nha khoa';
+                                                            const code = diagObj.diagnosisCode || diagObj.code || '';
+                                                            const diagnosisName = diagObj.primaryDiagnosis || diagObj.name || diagObj.label || diagObj.diagnosis || 'Chẩn đoán nha khoa';
                                                             const levelInfo = getDiagnosisLevelInfo(diagObj.level);
                                                             const tooth = diagObj.toothPosition || diagObj.toothNumber ? `Răng ${diagObj.toothPosition || diagObj.toothNumber}` : 'Toàn hàm';
 
@@ -235,11 +257,8 @@ export default function ClinicalHistoryTab({ detailExams = [], selectedRecord })
                                                                     <td className="py-2 px-2.5 border-r border-slate-200 text-center font-medium text-slate-500">
                                                                         {dIdx + 1}
                                                                     </td>
-                                                                    <td className="py-2 px-2.5 border-r border-slate-200 font-bold text-indigo-700">
-                                                                        {code ? `[${code}]` : '-'}
-                                                                    </td>
                                                                     <td className="py-2 px-2.5 border-r border-slate-200 font-semibold text-slate-900">
-                                                                        {diseaseName}
+                                                                        <span className="whitespace-nowrap">{diagnosisName}</span>
                                                                     </td>
                                                                     <td className="py-2 px-2.5 border-r border-slate-200 text-center font-medium text-slate-800">
                                                                         {tooth}
@@ -254,7 +273,7 @@ export default function ClinicalHistoryTab({ detailExams = [], selectedRecord })
                                                                         )}
                                                                     </td>
                                                                     <td className="py-2 px-2.5 text-slate-600 text-[11px]">
-                                                                        {diagObj.diagnosticNotes || diagObj.notes || '-'}
+                                                                        <span className="whitespace-nowrap">{diagObj.diagnosticNotes || diagObj.notes || '-'}</span>
                                                                     </td>
                                                                 </tr>
                                                             );

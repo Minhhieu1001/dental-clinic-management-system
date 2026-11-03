@@ -35,4 +35,9 @@ public class FollowUpAppointmentDTO {
     // Dentist Context
     private UUID dentistId;
     private String dentistName;
+
+    // Branch Context
+    private String branchId;
+    private String branchName;
+    private String branchAddress;
 }

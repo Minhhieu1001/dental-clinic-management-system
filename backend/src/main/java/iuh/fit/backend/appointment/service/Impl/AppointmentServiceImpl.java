@@ -562,9 +562,12 @@ public class AppointmentServiceImpl implements AppointmentService {
             appointment.setPatient(patient);
         }
         StatusAppointment previousStatus = appointment.getStatus();
+        boolean assigningRoomForCallIn = dto.getRoomId() != null
+                && dto.getStatus() == StatusAppointment.CALLED;
         boolean updatingSchedule = (dto.getAppointmentDate() != null && !dto.getAppointmentDate().isBlank())
                 || (dto.getAppointmentTime() != null && !dto.getAppointmentTime().isBlank())
-                || dto.getDentistId() != null || dto.getRoomId() != null
+                || dto.getDentistId() != null
+                || (dto.getRoomId() != null && !assigningRoomForCallIn)
                 || (dto.getBranchId() != null && !dto.getBranchId().isBlank());
         if (updatingSchedule && previousStatus != StatusAppointment.CONFIRMED
                 && previousStatus != StatusAppointment.PENDING) {

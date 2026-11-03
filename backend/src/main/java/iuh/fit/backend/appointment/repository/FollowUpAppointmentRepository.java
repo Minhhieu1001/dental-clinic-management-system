@@ -43,7 +43,7 @@ public interface FollowUpAppointmentRepository extends JpaRepository<FollowUpApp
            "LEFT JOIN e.medicalRecord m " +
            "LEFT JOIN m.patient p " +
            "WHERE (:patientId IS NULL OR p.id = :patientId) " +
-           "AND (:patientCode IS NULL OR LOWER(p.patientCode) = LOWER(:patientCode)) " +
+           "AND (:patientCode IS NULL OR LOWER(p.patientCode) = LOWER(CAST(:patientCode AS String))) " +
            "AND (:examinationResultId IS NULL OR e.id = :examinationResultId) " +
            "ORDER BY f.followUpDate DESC")
     List<FollowUpAppointment> findFollowUpAppointments(

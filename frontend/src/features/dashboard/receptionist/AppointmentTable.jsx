@@ -64,6 +64,18 @@ const isReschedulableStatus = (status) => {
   return s === 'CONFIRMED' || s === 'PENDING' || status === 'not-arrived';
 };
 
+const isWithinOneHourOfCreation = (createdAt) => {
+  if (!createdAt) return true;
+  try {
+    const createdTime = new Date(createdAt).getTime();
+    if (isNaN(createdTime)) return true;
+    const now = Date.now();
+    return (now - createdTime) <= 60 * 60 * 1000;
+  } catch (e) {
+    return true;
+  }
+};
+
 export default function AppointmentTable({ appointments, onRefresh, onUpdateAppointment, onOpenEditModal, onOpenCreateModal }) {
   const [dateScope, setDateScope] = useState('today'); // 'today' | 'week'
   const [activeFilter, setActiveFilter] = useState('all');
@@ -207,6 +219,11 @@ export default function AppointmentTable({ appointments, onRefresh, onUpdateAppo
         toast.error('Lịch hẹn này đã check-in (Đang chờ khám / Đã khám), không thể đổi lịch nữa!');
         return;
       }
+
+      if (aptData.createdAt && !isWithinOneHourOfCreation(aptData.createdAt)) {
+        toast.error('Lịch hẹn chỉ được phép sửa trong vòng 1 giờ kể từ thời điểm tạo (createdAt). Đã quá 1 giờ, không thể sửa!');
+        return;
+      }
     }
 
     try {
@@ -215,6 +232,10 @@ export default function AppointmentTable({ appointments, onRefresh, onUpdateAppo
         const fetched = await getAppointmentById(targetId).catch(() => null);
         if (fetched) {
           fullAptData = { ...fullAptData, ...fetched };
+          if (fullAptData.createdAt && !isWithinOneHourOfCreation(fullAptData.createdAt)) {
+            toast.error('Lịch hẹn chỉ được phép sửa trong vòng 1 giờ kể từ thời điểm tạo (createdAt). Đã quá 1 giờ, không thể sửa!');
+            return;
+          }
         }
       }
 
@@ -393,6 +414,10 @@ export default function AppointmentTable({ appointments, onRefresh, onUpdateAppo
   const isSelectedCancelled = selectedApt && (
     selectedApt.status === 'CANCELLED' || selectedApt.status === 'cancelled' || selectedApt.rawStatus === 'CANCELLED'
   );
+  const isSelectedOverOneHour = Boolean(
+    selectedApt && selectedApt.createdAt && !isWithinOneHourOfCreation(selectedApt.createdAt)
+  );
+  const isRescheduleDisabled = isSelectedCheckedIn || isSelectedCancelled || isSelectedOverOneHour;
 
   return (
     <div className="rounded-[4px] border border-slate-200 bg-white">
@@ -450,14 +475,26 @@ export default function AppointmentTable({ appointments, onRefresh, onUpdateAppo
           {/* Header Action: Reschedule */}
           <button
             type="button"
+            disabled={isRescheduleDisabled}
             onClick={handleHeaderRescheduleClick}
-            className={`flex items-center gap-1 rounded-[4px] border px-3 py-1 text-[11px] font-bold transition-all shadow-2xs ${isSelectedCheckedIn
-              ? 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
-              : selectedAptId
-                ? 'border-amber-500 bg-amber-500 text-white hover:bg-amber-600 cursor-pointer'
-                : 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 cursor-pointer'
-              }`}
-            title={isSelectedCheckedIn ? 'Lịch hẹn đã check-in (Đang chờ khám), không thể đổi lịch' : 'Chọn 1 dòng và bấm Đổi lịch để chỉnh sửa'}
+            className={`flex items-center gap-1 rounded-[4px] border px-3 py-1 text-[11px] font-bold transition-all shadow-2xs ${
+              isRescheduleDisabled
+                ? 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
+                : selectedAptId
+                  ? 'border-amber-500 bg-amber-500 text-white hover:bg-amber-600 cursor-pointer'
+                  : 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 cursor-pointer'
+            }`}
+            title={
+              isSelectedCheckedIn
+                ? 'Lịch hẹn đã check-in (Đang chờ khám), không thể đổi lịch'
+                : isSelectedCancelled
+                  ? 'Lịch hẹn đã bị hủy, không thể đổi lịch'
+                  : isSelectedOverOneHour
+                    ? 'Lịch hẹn đã quá 1 giờ kể từ thời điểm tạo (createdAt), không được phép chỉnh sửa'
+                    : selectedAptId
+                      ? 'Bấm Đổi lịch để chỉnh sửa ca khám này'
+                      : 'Chọn 1 dòng và bấm Đổi lịch để chỉnh sửa'
+            }
           >
             <Calendar size={13} />
             <span>Đổi lịch</span>

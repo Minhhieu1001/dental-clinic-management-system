@@ -2,6 +2,7 @@ package iuh.fit.backend.inforclinic.entity;
 
 import iuh.fit.backend.appointment.entity.Appointment;
 import iuh.fit.backend.appointment.entity.AppointmentRequest;
+import iuh.fit.backend.appointment.entity.FollowUpAppointment;
 import iuh.fit.backend.billing.entity.Invoice;
 import iuh.fit.backend.billing.entity.PaymentTransactions;
 import iuh.fit.backend.inforclinic.enums.BranchStatus;
@@ -80,6 +81,10 @@ public class Branch {
     @Builder.Default
     @OneToMany(mappedBy = "branch", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<Appointment> appointments = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "branch", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    private List<FollowUpAppointment> followUpAppointments = new ArrayList<>();
 
     @Builder.Default
     @OneToMany(mappedBy = "branch", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})

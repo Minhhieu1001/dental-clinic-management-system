@@ -25,28 +25,6 @@ import TreatmentHistoryDetailModal, {
   DIAGNOSIS_LEVEL_MAP,
 } from '../action/TreatmentHistoryDetailModal.jsx';
 
-// Bảng tra cứu tên bệnh theo mã ICD-10 nha khoa thông dụng
-const ICD10_LABELS = {
-  'K02': 'Sâu răng',
-  'K02.0': 'Sâu men răng',
-  'K02.1': 'Sâu ngà răng',
-  'K02.2': 'Sâu xê-măng răng',
-  'K02.9': 'Sâu răng không xác định',
-  'K04': 'Bệnh tủy và mô quanh chóp',
-  'K04.0': 'Viêm tủy răng',
-  'K04.1': 'Hoại tử tủy răng',
-  'K04.4': 'Viêm quanh chóp cấp',
-  'K04.5': 'Viêm quanh chóp mãn tính',
-  'K05': 'Viêm nướu và bệnh nha chu',
-  'K05.0': 'Viêm nướu cấp tính',
-  'K05.1': 'Viêm nướu mãn tính',
-  'K05.3': 'Viêm nha chu mãn tính',
-  'K07': 'Sai lệch vị trí răng & khớp cắn',
-  'K07.2': 'Sai khớp cắn',
-  'K07.3': 'Bất thường vị trí răng (lệch, mọc ngầm)',
-  'K08.1': 'Mất răng do tai nạn, nhổ răng',
-};
-
 // Hàm định dạng tiền tệ VNĐ
 const formatVND = (value) => {
   if (value === null || value === undefined || value === '' || isNaN(value)) return null;
@@ -347,8 +325,8 @@ export default function TreatmentHistoryTimeline({
                       {Array.isArray(rec.diagnoses) && rec.diagnoses.length > 0 ? (
                         <div className="flex flex-wrap gap-1.5">
                           {rec.diagnoses.map((diag, dIdx) => {
-                            const code = diag.primaryDiagnosis || '';
-                            const friendlyName = ICD10_LABELS[code] || diag.primaryDiagnosis || 'Chẩn đoán nha khoa';
+                            const code = diag.diagnosisCode || diag.code || '';
+                            const diagnosisName = diag.primaryDiagnosis || diag.name || diag.label || diag.diagnosis || 'Chẩn đoán nha khoa';
                             const tooth = diag.toothPosition ? `${diag.toothPosition}` : '';
 
                             return (
@@ -357,7 +335,7 @@ export default function TreatmentHistoryTimeline({
                                 className="inline-flex items-center gap-1 rounded-md bg-indigo-50/70 border border-indigo-200/80 px-2 py-0.5 text-[11px] font-medium text-indigo-900"
                               >
                                 <span className="font-bold text-indigo-700">{tooth}</span>
-                                <span>{code ? `${code} - ` : ''}{friendlyName}</span>
+                                <span>{code ? `${code} - ` : ''}{diagnosisName}</span>
                               </span>
                             );
                           })}

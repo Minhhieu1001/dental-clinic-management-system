@@ -2,7 +2,6 @@ package iuh.fit.backend.medicalrecord.entity;
 
 import iuh.fit.backend.medicalrecord.enums.CariesLocation;
 import iuh.fit.backend.medicalrecord.enums.Level;
-import iuh.fit.backend.medicalrecord.enums.ToothStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -27,8 +26,8 @@ public class ToothRecord {
     @Column(length = 10)
     private String toothNumber;
 
-    @Enumerated(EnumType.STRING)
-    private ToothStatus toothStatus;
+    @Column(length = 50)
+    private String toothStatus;
 
     @Enumerated(EnumType.STRING)
     private Level severity;

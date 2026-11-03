@@ -1,6 +1,7 @@
 package iuh.fit.backend.appointment.entity;
 
 import iuh.fit.backend.medicalrecord.entity.ExaminationResult;
+import iuh.fit.backend.inforclinic.entity.Branch;
 import iuh.fit.backend.user.entity.Dentist;
 import jakarta.persistence.*;
 import lombok.*;
@@ -49,6 +50,10 @@ public class FollowUpAppointment {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dentist_id", nullable = true)
     private Dentist dentist;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "branch_id", nullable = true)
+    private Branch branch;
 
     @PrePersist
     protected void onCreate() {

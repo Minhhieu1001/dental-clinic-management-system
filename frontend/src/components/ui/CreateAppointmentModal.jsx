@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   X,
   Calendar,
@@ -104,6 +104,19 @@ export default function CreateAppointmentModal({
 
   const isEditMode = type === 'edit';
   const targetData = payload || initialData;
+
+  const isCreatedOverOneHour = useMemo(() => {
+    if (!isEditMode) return false;
+    const cVal = targetData?.createdAt || targetData?.createAt;
+    if (!cVal) return false;
+    try {
+      const cTime = new Date(cVal).getTime();
+      if (isNaN(cTime)) return false;
+      return (Date.now() - cTime) > 60 * 60 * 1000;
+    } catch (e) {
+      return false;
+    }
+  }, [isEditMode, targetData]);
 
   // Form states
   const [formData, setFormData] = useState({
@@ -349,6 +362,10 @@ export default function CreateAppointmentModal({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isEditMode && isCreatedOverOneHour) {
+      toast.error('Lịch hẹn chỉ được phép sửa trong vòng 1 giờ kể từ thời điểm tạo (createdAt). Đã quá 1 giờ, không thể sửa!');
+      return;
+    }
     if (!formData.fullName.trim() || !formData.phone.trim()) {
       toast.error('Vui lòng nhập họ tên và số điện thoại bệnh nhân!');
       return;
@@ -428,6 +445,15 @@ export default function CreateAppointmentModal({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-3.5 overflow-y-auto flex-1 text-slate-800">
+          {isCreatedOverOneHour && (
+            <div className="flex items-center gap-2 p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold rounded-sm shadow-2xs">
+              <AlertCircle size={16} className="shrink-0 text-rose-600" />
+              <span>
+                Lịch hẹn này đã quá 1 giờ kể từ thời điểm tạo (createdAt). Theo quy định, không được phép chỉnh sửa sau 1 giờ!
+              </span>
+            </div>
+          )}
+
           {/* Section 1: Patient Information */}
           <div className="rounded-sm border border-slate-200 bg-slate-50/70 p-3.5 space-y-2.5">
             <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-teal-800 flex items-center gap-1.5">
@@ -768,8 +794,12 @@ export default function CreateAppointmentModal({
             </button>
             <button
               type="submit"
-              disabled={submitting}
-              className="flex items-center gap-1.5 rounded-sm bg-teal-700 px-5 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-teal-800 transition-colors disabled:opacity-50 cursor-pointer"
+              disabled={submitting || isCreatedOverOneHour}
+              title={isCreatedOverOneHour ? 'Đã quá 1 giờ kể từ khi tạo lịch hẹn (createdAt), không thể cập nhật' : undefined}
+              className={`flex items-center gap-1.5 rounded-sm px-5 py-1.5 text-xs font-bold text-white shadow-2xs transition-colors ${isCreatedOverOneHour
+                ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                : 'bg-teal-700 hover:bg-teal-800 disabled:opacity-50 cursor-pointer'
+                }`}
             >
               {submitting ? (
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />

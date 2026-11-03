@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   CalendarCheck,
   Stethoscope,
@@ -23,103 +23,11 @@ import {
   Building2,
   MapPin,
 } from 'lucide-react';
+import { getToothStatuses } from '../../../../services/systemDictionary.service';
 
 // =========================================================================
 // 1. MAPPING DICTIONARIES ĐỔI TRẠNG THÁI DB SANG TIẾNG VIỆT THÂN THIỆN (ERP STYLE)
 // =========================================================================
-
-// Bảng tra cứu tên bệnh theo mã ICD-10 nha khoa
-export const ICD10_LABELS = {
-  'K02': 'Sâu răng',
-  'K02.0': 'Sâu men răng',
-  'K02.1': 'Sâu ngà răng',
-  'K02.2': 'Sâu xê-măng răng',
-  'K02.9': 'Sâu răng không xác định',
-  'K03': 'Các bệnh khác của mô cứng răng',
-  'K03.0': 'Mòn răng do ma sát',
-  'K03.1': 'Mòn răng do chải răng',
-  'K03.2': 'Xói mòn răng do axit',
-  'K04': 'Bệnh tủy và mô quanh chóp',
-  'K04.0': 'Viêm tủy răng',
-  'K04.1': 'Hoại tử tủy răng',
-  'K04.2': 'Thoái hóa tủy',
-  'K04.4': 'Viêm quanh chóp răng cấp',
-  'K04.5': 'Viêm quanh chóp răng mãn tính',
-  'K04.6': 'Áp-xe quanh chóp có lỗ rò',
-  'K04.7': 'Áp-xe quanh chóp không có lỗ rò',
-  'K05': 'Viêm nướu và bệnh nha chu',
-  'K05.0': 'Viêm nướu cấp tính',
-  'K05.1': 'Viêm nướu mãn tính',
-  'K05.2': 'Viêm nha chu cấp tính',
-  'K05.3': 'Viêm nha chu mãn tính',
-  'K07': 'Sai lệch vị trí răng & khớp cắn',
-  'K07.1': 'Bất thường tương quan xương hàm',
-  'K07.2': 'Sai khớp cắn',
-  'K07.3': 'Bất thường vị trí răng (lệch, mọc ngầm)',
-  'K07.4': 'Sai khớp cắn không xác định',
-  'K08.1': 'Mất răng do tai nạn, nhổ răng',
-  'K08.2': 'Teo sống hàm không răng',
-};
-
-// Map trạng thái răng (Tooth Status) sang định dạng ERP sắc nét
-export const TOOTH_STATUS_MAP = {
-  HEALTHY: {
-    label: 'Bình thường',
-    badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-300',
-  },
-  ATTENTION_REQUIRE: {
-    label: 'Cần theo dõi',
-    badgeClass: 'bg-amber-50 text-amber-800 border-amber-300 font-semibold',
-  },
-  WARNING: {
-    label: 'Cần theo dõi',
-    badgeClass: 'bg-amber-50 text-amber-800 border-amber-300 font-semibold',
-  },
-  FILLED: {
-    label: 'Đã trám',
-    badgeClass: 'bg-teal-50 text-teal-800 border-teal-300',
-  },
-  CARIES: {
-    label: 'Sâu răng',
-    badgeClass: 'bg-rose-50 text-rose-800 border-rose-300 font-semibold',
-  },
-  DECAY: {
-    label: 'Sâu răng',
-    badgeClass: 'bg-rose-50 text-rose-800 border-rose-300 font-semibold',
-  },
-  MISSING: {
-    label: 'Mất răng',
-    badgeClass: 'bg-slate-100 text-slate-700 border-slate-300',
-  },
-  GINGIVITIS: {
-    label: 'Viêm nướu',
-    badgeClass: 'bg-orange-50 text-orange-800 border-orange-300',
-  },
-  ROOT_CANAL: {
-    label: 'Đã chữa tủy',
-    badgeClass: 'bg-purple-50 text-purple-800 border-purple-300',
-  },
-  MARROW: {
-    label: 'Tổn thương tủy',
-    badgeClass: 'bg-rose-50 text-rose-800 border-rose-300',
-  },
-  CROWN: {
-    label: 'Bọc răng sứ',
-    badgeClass: 'bg-indigo-50 text-indigo-800 border-indigo-300',
-  },
-  IMPLANT: {
-    label: 'Trồng Implant',
-    badgeClass: 'bg-cyan-50 text-cyan-800 border-cyan-300',
-  },
-  IMPACTED: {
-    label: 'Mọc ngầm / Lệch',
-    badgeClass: 'bg-red-50 text-red-800 border-red-300 font-semibold',
-  },
-  FRACTURED: {
-    label: 'Mẻ / Gãy vỡ',
-    badgeClass: 'bg-yellow-50 text-yellow-800 border-yellow-300',
-  },
-};
 
 // Map mức độ nghiêm trọng chẩn đoán
 export const DIAGNOSIS_LEVEL_MAP = {
@@ -313,16 +221,6 @@ export const formatTimeDisplay = (dateStr) => {
   }
 };
 
-export const getToothStatusInfo = (status) => {
-  const s = String(status || '').toUpperCase();
-  return (
-    TOOTH_STATUS_MAP[s] || {
-      label: status || 'Khám',
-      badgeClass: 'bg-slate-100 text-slate-700 border-slate-300',
-    }
-  );
-};
-
 export const getDiagnosisLevelInfo = (level) => {
   const l = String(level || '').toUpperCase();
   return (
@@ -381,6 +279,21 @@ export const TreatmentHistoryDetailModal = ({
   patient,
   onOpenPlan,
 }) => {
+  const [toothStatuses, setToothStatuses] = useState([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    getToothStatuses()
+      .then((response) => {
+        if (isMounted) setToothStatuses(Array.isArray(response?.data) ? response.data : []);
+      })
+      .catch((error) => console.warn('Không thể tải màu tình trạng răng:', error));
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Đóng bằng phím ESC
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -608,15 +521,15 @@ export const TreatmentHistoryDetailModal = ({
                       <tr className="bg-slate-100 text-slate-700 border-b border-slate-300 font-bold text-[11px]">
                         <th className="py-1.5 px-2.5 border-r border-slate-200 w-24">Vị trí</th>
                         <th className="py-1.5 px-2.5 border-r border-slate-200">Mã & Tên chẩn đoán</th>
-                        <th className="py-1.5 px-2.5 border-r border-slate-200 w-24">Mức độ</th>
+                        <th className="py-1.5 px-2.5 border-r border-slate-200 w-30">Mức độ</th>
                         <th className="py-1.5 px-2.5">Ghi chú</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
                       {Array.isArray(record.diagnoses) && record.diagnoses.length > 0 ? (
                         record.diagnoses.map((diag, idx) => {
-                          const code = diag.primaryDiagnosis || '';
-                          const diseaseName = ICD10_LABELS[code] || diag.primaryDiagnosis || 'Chẩn đoán xác định';
+                          const code = diag.diagnosisCode || diag.code || '';
+                          const diagnosisName = diag.primaryDiagnosis || diag.name || diag.label || diag.diagnosis || 'Chẩn đoán xác định';
                           const levelInfo = getDiagnosisLevelInfo(diag.level);
 
                           return (
@@ -626,7 +539,7 @@ export const TreatmentHistoryDetailModal = ({
                               </td>
                               <td className="py-2 px-2.5 border-r border-slate-200 font-semibold text-slate-900">
                                 {code && <span className="font-mono text-indigo-700 mr-1">[{code}]</span>}
-                                <span>{diseaseName}</span>
+                                <span className="whitespace-nowrap">{diagnosisName}</span>
                               </td>
                               <td className="py-2 px-2.5 border-r border-slate-200">
                                 {diag.level ? (
@@ -638,7 +551,7 @@ export const TreatmentHistoryDetailModal = ({
                                 )}
                               </td>
                               <td className="py-2 px-2.5 text-slate-600 text-[11px]">
-                                {diag.diagnosticNotes || '-'}
+                                <span className="whitespace-nowrap">{diag.diagnosticNotes || '-'}</span>
                               </td>
                             </tr>
                           );
@@ -680,7 +593,15 @@ export const TreatmentHistoryDetailModal = ({
                     <tbody className="divide-y divide-slate-200">
                       {Array.isArray(record.toothRecords) && record.toothRecords.length > 0 ? (
                         record.toothRecords.map((tr, idx) => {
-                          const statusInfo = getToothStatusInfo(tr.toothStatus);
+                          const toothStatus = tr.toothStatus || '-';
+                          const apiStatus = toothStatuses.find((item) => item.label === toothStatus);
+                          const statusStyle = apiStatus?.color
+                            ? {
+                              backgroundColor: `${apiStatus.color}20`,
+                              borderColor: apiStatus.color,
+                              color: apiStatus.color,
+                            }
+                            : undefined;
                           const locLabel = CARIES_LOCATION_MAP[String(tr.cariesLocation || '').toUpperCase()] || tr.cariesLocation;
 
                           return (
@@ -689,8 +610,11 @@ export const TreatmentHistoryDetailModal = ({
                                 {tr.toothNumber}
                               </td>
                               <td className="py-2 px-2.5 border-r border-slate-200">
-                                <span className={`px-2 py-0.5 border text-[11px] ${statusInfo.badgeClass}`}>
-                                  {statusInfo.label}
+                                <span
+                                  className="px-2 py-0.5 border text-[11px] bg-slate-100 text-slate-700 border-slate-300"
+                                  style={statusStyle}
+                                >
+                                  {toothStatus}
                                 </span>
                               </td>
                               <td className="py-2 px-2.5 border-r border-slate-200 text-slate-700">

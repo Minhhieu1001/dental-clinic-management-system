@@ -337,8 +337,9 @@ export default function PatientAppointments() {
             reason: fu.reason || fu.chiefComplaint || 'Tái khám định kỳ',
             notes: fu.note,
             status: fu.status ? 'CONFIRMED' : 'SCHEDULED',
-            branchName: 'Cơ sở 1 TPHCM',
-            branchAddress: '15 Pasteur, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
+            branchId: fu.branchId,
+            branchName: fu.branchName || '',
+            branchAddress: fu.branchAddress || '',
             raw: fu,
           }));
         }
@@ -891,8 +892,12 @@ export default function PatientAppointments() {
                     <div className="flex items-start gap-2 pt-1">
                       <MapPin className="h-3.5 w-3.5 text-[#009766] shrink-0 mt-0.5" />
                       <div className="min-w-0">
-                        <span className="text-slate-700 font-medium block truncate">{apt.branchName || 'Crown Dental TP.HCM'}</span>
-                        <span className="text-[10px] text-slate-400 block line-clamp-1">{apt.branchAddress || apt.addressBranch || '15 Pasteur, Q1, TP.HCM'}</span>
+                        {apt.branchName && (
+                          <span className="text-slate-700 font-medium block truncate">{apt.branchName}</span>
+                        )}
+                        {Boolean(apt.branchAddress || apt.addressBranch) && (
+                          <span className="text-[10px] text-slate-400 block line-clamp-1">{apt.branchAddress || apt.addressBranch}</span>
+                        )}
                       </div>
                     </div>
 
@@ -1517,15 +1522,21 @@ export default function PatientAppointments() {
               </div>
 
               {/* Thẻ 4: Địa chỉ tiếp đón */}
-              <div className="bg-white p-3 rounded-lg border border-slate-200/90 shadow-2xs text-xs space-y-0.5">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
-                  <MapPin className="h-3.5 w-3.5 text-[#009766]" /> Địa chỉ tiếp đón
-                </span>
-                <p className="font-bold text-slate-800 text-xs">{selectedAppointment.branchName}</p>
-                <p className="text-[11px] text-slate-500 leading-relaxed">
-                  {selectedAppointment.branchAddress || selectedAppointment.addressBranch || '15 Pasteur, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh'}
-                </p>
-              </div>
+              {(selectedAppointment.branchName || selectedAppointment.branchAddress || selectedAppointment.addressBranch) && (
+                <div className="bg-white p-3 rounded-lg border border-slate-200/90 shadow-2xs text-xs space-y-0.5">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5 text-[#009766]" /> Địa chỉ tiếp đón
+                  </span>
+                  {selectedAppointment.branchName && (
+                    <p className="font-bold text-slate-800 text-xs">{selectedAppointment.branchName}</p>
+                  )}
+                  {Boolean(selectedAppointment.branchAddress || selectedAppointment.addressBranch) && (
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      {selectedAppointment.branchAddress || selectedAppointment.addressBranch}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Thẻ 5: Ghi chú lịch hẹn */}
               {selectedAppointment.notes && (

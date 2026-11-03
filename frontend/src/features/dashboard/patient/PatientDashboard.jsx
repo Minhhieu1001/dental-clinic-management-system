@@ -448,8 +448,8 @@ export default function PatientDashboard() {
           status: apt.status === 'CONFIRMED' ? 'Đã xác nhận' : (apt.status === 'COMPLETED' ? 'Đã khám' : 'Đã lên lịch'),
           statusColor: apt.status === 'CONFIRMED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-teal-50 text-teal-700 border-teal-200',
           doctor: formatDoctorName(apt.dentistName),
-          branch: apt.branchName || 'Cơ sở 1 TPHCM',
-          address: apt.addressBranch || apt.branchAddress || '59C Nguyễn Đình Chiểu, phường Xuân Hòa, TP.HCM',
+          branch: apt.branchName || '',
+          address: apt.branchAddress || apt.addressBranch || '',
           notes: apt.notes || 'Chưa có',
           rawDateTime: dateParsed.dateObj,
           rawTimeMs: dateParsed.rawTimeMs,
@@ -484,8 +484,8 @@ export default function PatientDashboard() {
           status: apt.status ? 'Đã xác nhận' : 'Sắp tới',
           statusColor: apt.status ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-teal-50 text-teal-700 border-teal-200',
           doctor: formatDoctorName(apt.dentistName),
-          branch: apt.branchName || 'Cơ sở 1 TPHCM',
-          address: apt.addressBranch || '59C Nguyễn Đình Chiểu, phường Xuân Hòa, TP.HCM',
+          branch: apt.branchName || '',
+          address: apt.branchAddress || apt.addressBranch || '',
           notes: apt.note || 'Chưa có',
           rawDateTime: dateParsed.dateObj,
           rawTimeMs: dateParsed.rawTimeMs,
@@ -708,7 +708,7 @@ export default function PatientDashboard() {
       onClick: () => navigate('/patient/medical-records'),
     },
     {
-      title: 'Thanh toán hóa đơn',
+      title: 'Hóa đơn',
       icon: CreditCard,
       bgColor: 'bg-rose-50 border border-rose-100',
       textColor: 'text-rose-700',
@@ -791,10 +791,12 @@ export default function PatientDashboard() {
                             <User className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                             <span className="truncate">{latestAppointment.doctor}</span>
                           </div>
-                          <div className="flex items-center gap-1.5 truncate">
-                            <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                            <span className="truncate">{latestAppointment.branch}</span>
-                          </div>
+                          {latestAppointment.branch ? (
+                            <div className="flex items-center gap-1.5 truncate">
+                              <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                              <span className="truncate">{latestAppointment.branch}</span>
+                            </div>
+                          ) : null}
                           <div className="flex items-center gap-1.5">
                             <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                             <span>{latestAppointment.time}</span>
@@ -1084,10 +1086,12 @@ export default function PatientDashboard() {
                               <User className="h-3 w-3 text-slate-400 shrink-0" />
                               <span className="truncate">{apt.doctor}</span>
                             </span>
-                            <span className="flex items-center gap-1 text-slate-400 truncate max-w-[140px] sm:max-w-[200px]" title={apt.branch}>
-                              <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
-                              <span className="truncate">{apt.branch}</span>
-                            </span>
+                            {apt.branch ? (
+                              <span className="flex items-center gap-1 text-slate-400 truncate max-w-[140px] sm:max-w-[200px]" title={apt.branch}>
+                                <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
+                                <span className="truncate">{apt.branch}</span>
+                              </span>
+                            ) : null}
                           </div>
                         </div>
 
@@ -1546,14 +1550,18 @@ export default function PatientDashboard() {
                 <span className="text-slate-500 font-medium">Thời gian:</span>
                 <span className="font-bold text-slate-900">{selectedAppointment.time} - {selectedAppointment.dayOfWeek}, {selectedAppointment.date}</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500 font-medium">Chi nhánh:</span>
-                <span className="font-bold text-slate-900">{selectedAppointment.branch}</span>
-              </div>
-              <div className="flex items-start justify-between">
-                <span className="text-slate-500 font-medium">Địa chỉ:</span>
-                <span className="font-medium text-slate-700 text-right max-w-[240px]">{selectedAppointment.address}</span>
-              </div>
+              {selectedAppointment.branch ? (
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 font-medium">Chi nhánh:</span>
+                  <span className="font-bold text-slate-900">{selectedAppointment.branch}</span>
+                </div>
+              ) : null}
+              {selectedAppointment.address ? (
+                <div className="flex items-start justify-between">
+                  <span className="text-slate-500 font-medium">Địa chỉ:</span>
+                  <span className="font-medium text-slate-700 text-right max-w-[240px]">{selectedAppointment.address}</span>
+                </div>
+              ) : null}
               {selectedAppointment.notes && selectedAppointment.notes !== 'Chưa có' && (
                 <div className="flex items-start justify-between pt-1">
                   <span className="text-slate-500 font-medium">Ghi chú:</span>
