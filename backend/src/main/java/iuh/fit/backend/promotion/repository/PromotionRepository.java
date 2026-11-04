@@ -35,6 +35,21 @@ public interface PromotionRepository extends JpaRepository<Promotion, UUID> {
             SELECT DISTINCT p
             FROM Promotion p
             LEFT JOIN FETCH p.services
+            WHERE p.status = :status
+              AND (p.startDate IS NULL OR p.startDate <= :currentTime)
+              AND (p.endDate IS NULL OR p.endDate >= :currentTime)
+              AND (p.usageLimit IS NULL OR COALESCE(p.usedCount, 0) < p.usageLimit)
+            ORDER BY p.startDate DESC
+            """)
+    List<Promotion> findCurrentPromotions(
+            @Param("status") PromotionStatus status,
+            @Param("currentTime") LocalDateTime currentTime
+    );
+
+    @Query("""
+            SELECT DISTINCT p
+            FROM Promotion p
+            LEFT JOIN FETCH p.services
             WHERE LOWER(p.couponCode) = LOWER(:couponCode)
               AND p.promotionType = :promotionType
               AND p.status = :status

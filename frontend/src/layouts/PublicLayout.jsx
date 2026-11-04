@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { NavLink, Outlet, Link } from 'react-router-dom'
+import { Bot, CalendarCheck, Sparkles } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import AppointmentRequestModal from '../components/ui/AppointmentRequestModal'
+import Chatbot from '../features/ai/Chatbot'
 
 const topLinks = [
   { label: 'Ưu đãi', to: '/promotions' },
@@ -23,6 +26,7 @@ const navItems = [
 
 export default function PublicLayout() {
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
+  const [isChatOpen, setIsChatOpen] = useState(false)
 
   return (
     <div className="min-h-screen bg-white text-slate-900 flex flex-col" style={{ fontFamily: "'Be Vietnam Pro', 'Inter', sans-serif" }}>
@@ -228,7 +232,13 @@ export default function PublicLayout() {
 
       {/* Main Content Component */}
       <main className="flex-grow">
-        <Outlet context={{ openAppointmentModal: () => setIsRequestModalOpen(true) }} />
+        <Outlet
+          context={{
+            openAppointmentModal: () => setIsRequestModalOpen(true),
+            openRequestModal: () => setIsRequestModalOpen(true),
+            openChat: () => setIsChatOpen(true),
+          }}
+        />
       </main>
 
       {/* Footer */}
@@ -292,6 +302,80 @@ export default function PublicLayout() {
         isOpen={isRequestModalOpen}
         onClose={() => setIsRequestModalOpen(false)}
       />
+
+      {/* AI Chatbot Assistant */}
+      <Chatbot
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+      />
+
+      {/* Floating Circular Action Buttons (Hiện ở mọi trang công khai khi chưa đăng nhập, tự ẩn khi mở modal/chat) */}
+      <AnimatePresence>
+        {!isChatOpen && !isRequestModalOpen && (
+          <motion.div
+            key="public-floating-actions"
+            initial={{ opacity: 0, scale: 0.6, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ 
+              opacity: 0, 
+              scale: 0.6, 
+              y: 20, 
+              transition: { duration: 0.18, ease: 'easeOut' } 
+            }}
+            transition={{ 
+              type: 'spring', 
+              damping: 20, 
+              stiffness: 300 
+            }}
+            className="fixed bottom-6 right-6 z-40 flex flex-col items-center gap-3"
+          >
+            {/* Nút 1: Trợ lý AI (Nút tròn) */}
+            <div className="relative group">
+              <button
+                type="button"
+                onClick={() => setIsChatOpen(true)}
+                className="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-[#1f4fb2] to-[#00a859] text-white shadow-xl shadow-blue-500/30 transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer"
+                title="Trợ lý ảo AI tư vấn"
+              >
+                <Bot className="w-7 h-7" />
+                {/* Chấm xanh trạng thái trực tuyến */}
+                <span className="absolute top-0.5 right-0.5 flex h-3.5 w-3.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-400 border-2 border-white"></span>
+                </span>
+              </button>
+
+              {/* Tooltip khi hover */}
+              <div className="absolute right-full top-1/2 -translate-y-1/2 mr-3 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                <div className="rounded-lg bg-slate-900/90 text-white text-xs font-semibold px-3 py-1.5 shadow-lg backdrop-blur-sm flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Trợ lý AI tư vấn 24/7</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Nút 2: Tạo yêu cầu lịch hẹn (Nút tròn) */}
+            <div className="relative group">
+              <button
+                type="button"
+                onClick={() => setIsRequestModalOpen(true)}
+                className="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-[#1f4fb2] to-[#00a859] text-white shadow-xl shadow-blue-500/30 transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer"
+                title="Tạo yêu cầu lịch hẹn"
+              >
+                <CalendarCheck className="w-7 h-7" />
+              </button>
+
+              {/* Tooltip khi hover */}
+              <div className="absolute right-full top-1/2 -translate-y-1/2 mr-3 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                <div className="rounded-lg bg-slate-900/90 text-white text-xs font-semibold px-3 py-1.5 shadow-lg backdrop-blur-sm flex items-center gap-1.5">
+                  <CalendarCheck className="w-3.5 h-3.5 text-emerald-300" />
+                  <span>Tạo yêu cầu lịch hẹn</span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

@@ -11,6 +11,9 @@ import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -65,6 +68,31 @@ public class DentalServiceImpl implements DentalService {
                 })
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ServiceDTO> getTopFiveServices() {
+        return serviceRepository
+                .findByIsActiveTrueOrderByIsFeaturedDescSortOrderAscServiceNameAsc(PageRequest.of(0, 5))
+                .stream()
+                .map(this::mapToDTO)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ServiceDTO> getServicesByBudget(BigDecimal maxPrice) {
+        if (maxPrice == null || maxPrice.compareTo(BigDecimal.ZERO) < 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Ngân sách không hợp lệ");
+        }
+
+        return serviceRepository.findActiveServicesByMaxPrice(maxPrice)
+                .stream()
+                .map(this::mapToDTO)
+                .toList();
     }
 
     @Override

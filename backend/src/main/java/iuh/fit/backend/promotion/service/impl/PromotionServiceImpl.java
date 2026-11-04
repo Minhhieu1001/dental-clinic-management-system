@@ -153,6 +153,17 @@ public class PromotionServiceImpl implements PromotionService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<PromotionResponse> getTodayPromotions() {
+        return promotionRepository.findCurrentPromotions(
+                        PromotionStatus.ACTIVE,
+                        LocalDateTime.now())
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PromotionResponse getPublicPromotion(@PathVariable UUID id) {
         return toResponse(findPromotion(id));
     }

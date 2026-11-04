@@ -22,6 +22,11 @@ public class PromotionController {
         return promotionQueryService.getPublicPromotions();
     }
 
+    @GetMapping("/api/promotions/today")
+    public List<PromotionResponse> getTodayPromotions() {
+        return promotionQueryService.getTodayPromotions();
+    }
+
     @GetMapping("/api/v1/promotions/vouchers")
     public List<PromotionResponse> getAvailableVouchers() {
         return promotionQueryService.getAvailableVouchers();

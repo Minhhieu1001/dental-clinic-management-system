@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react'
-import { Award, Users, Sparkles, Star, Cpu, Stethoscope, ShieldCheck, CheckCircle2, ArrowRight, Shield, Zap, Check, Clock, Calendar, ChevronRight, GraduationCap, User, Phone, FileText, CalendarCheck, Tag } from 'lucide-react'
+import { useOutletContext } from 'react-router-dom'
+import { Bot, Award, Users, Sparkles, Star, Cpu, Stethoscope, ShieldCheck, CheckCircle2, ArrowRight, Shield, Zap, Check, Clock, Calendar, ChevronRight, GraduationCap, User, Phone, FileText, CalendarCheck, Tag } from 'lucide-react'
 import { getDentists, getReviews, createAppointment } from '../services/api'
 import { getAdminServices } from '../services/service.service'
 import { getDentistsList } from '../services/dentist.service'
 import { createAppointmentRequest } from '../services/appointmentRequest.service'
 import { getBranches } from '../services/clinic.service'
 import toast from 'react-hot-toast'
-import AppointmentRequestModal from '../components/ui/AppointmentRequestModal'
+
+
+import { motion, AnimatePresence } from 'framer-motion'
 
 const QUICK_TAGS = [
   'Khám răng tổng quát',
@@ -221,12 +224,14 @@ const HERO_SLIDES = [
 ]
 
 export default function Home() {
+  const { openAppointmentModal } = useOutletContext() || {}
   const [services, setServices] = useState([])
   const [dentists, setDentists] = useState([])
   const [reviews, setReviews] = useState([])
   const [activeDentist, setActiveDentist] = useState(null)
   const [activeSlide, setActiveSlide] = useState(0)
-  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
+
+
 
   // Booking Form State — Matching AppointmentRequestModal
   const [bookingForm, setBookingForm] = useState({
@@ -257,7 +262,7 @@ export default function Home() {
           getReviews().catch(() => []),
         ])
         setServices(servicesData)
-        
+
         let normalizedDentists = []
         if (Array.isArray(dentistsData) && dentistsData.length > 0) {
           normalizedDentists = dentistsData.map((d) => ({
@@ -437,7 +442,7 @@ export default function Home() {
                   onClick={(e) => {
                     if (item.name === 'Đặt lịch hẹn') {
                       e.preventDefault()
-                      setIsRequestModalOpen(true)
+                      if (openAppointmentModal) openAppointmentModal()
                     }
                   }}
                   className="group flex flex-col items-center rounded-2xl px-2 py-2 text-center transition hover:-translate-y-0.5 cursor-pointer"
@@ -708,7 +713,7 @@ export default function Home() {
               <div className="shrink-0 text-center">
                 <button
                   type="button"
-                  onClick={() => setIsRequestModalOpen(true)}
+                  onClick={() => openAppointmentModal && openAppointmentModal()}
                   className="group relative inline-flex items-center gap-3 bg-gradient-to-r from-[#00a859] via-[#059669] to-[#047857] hover:from-[#059669] hover:to-[#047857] text-white font-extrabold px-9 py-4.5 rounded-2xl shadow-[0_10px_25px_rgba(0,168,89,0.3)] hover:shadow-[0_15px_35px_rgba(0,168,89,0.45)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 text-base cursor-pointer overflow-hidden"
                 >
                   {/* Subtle shimmer effect */}
@@ -1467,25 +1472,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Floating Appointment Request Button */}
-      <div className="fixed bottom-6 right-6 z-40">
-        <button
-          type="button"
-          onClick={() => setIsRequestModalOpen(true)}
-          className="group flex items-center gap-2.5 rounded-full bg-gradient-to-r from-[#1f4fb2] to-[#00a859] px-5 py-3.5 text-white shadow-xl shadow-blue-500/25 transition-all duration-300 hover:scale-105 active:scale-95"
-        >
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm">
-            📅
-          </span>
-          <span className="text-xs font-bold uppercase tracking-wider">Tạo Yêu Cầu Lịch Hẹn</span>
-        </button>
-      </div>
-
-      {/* Appointment Request Modal */}
-      <AppointmentRequestModal
-        isOpen={isRequestModalOpen}
-        onClose={() => setIsRequestModalOpen(false)}
-      />
     </div>
   )
 }

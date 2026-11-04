@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,6 +29,21 @@ public class ServiceController {
             @RequestParam(required = false) Boolean isFeatured) {
         List<ServiceDTO> services = dentalService.getAllServices(search, category, isActive, isFeatured);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách dịch vụ thành công", services));
+    }
+
+    @GetMapping("/top-5")
+    public ResponseEntity<ApiResponse<List<ServiceDTO>>> getTopFiveServices() {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Lấy 5 gói dịch vụ thành công",
+                dentalService.getTopFiveServices()));
+    }
+
+    @GetMapping("/by-budget")
+    public ResponseEntity<ApiResponse<List<ServiceDTO>>> getServicesByBudget(
+            @RequestParam BigDecimal maxPrice) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Lấy danh sách dịch vụ phù hợp với ngân sách thành công",
+                dentalService.getServicesByBudget(maxPrice)));
     }
 
     @GetMapping("/{id}")
