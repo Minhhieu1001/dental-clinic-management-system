@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Calendar,
@@ -34,9 +34,11 @@ import {
   Activity,
   RefreshCw,
   Edit3,
+  UserCheck,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
+import { useWebSocket } from '../../hooks/useWebSocket';
 import {
   getAppointmentsByPatient,
   getMyAppointments,
@@ -336,7 +338,7 @@ export default function PatientAppointments() {
             appointmentTime: fu.followUpDate ? fu.followUpDate.split('T')[1] : '09:00:00',
             reason: fu.reason || fu.chiefComplaint || 'Tái khám định kỳ',
             notes: fu.note,
-            status: fu.status ? 'CONFIRMED' : 'SCHEDULED',
+            status: fu.status !== false ? 'DOCTOR_ORDERED' : 'CANCELLED',
             branchId: fu.branchId,
             branchName: fu.branchName || '',
             branchAddress: fu.branchAddress || '',
@@ -361,15 +363,68 @@ export default function PatientAppointments() {
     }
   };
 
+  // Lắng nghe sự kiện khi tạo hoặc cập nhật lịch hẹn để tự động đồng bộ tức thì
+  const handleRefreshAppointments = useCallback(() => {
+    fetchAppointments();
+  }, []);
+
+  // WebSocket Realtime handler cho Lịch hẹn (Nhận sự kiện từ STOMP topic/appointments)
+  const handleRealtimeAppointment = useCallback((payload) => {
+    if (!payload) return;
+    const pid = user?.patientId || user?.id;
+
+    const isRelated =
+      !pid ||
+      !payload.patientId ||
+      payload.patientId === pid ||
+      payload.patientId === user?.id ||
+      (user?.phone && payload.phone && payload.phone.trim() === user.phone.trim());
+
+    if (isRelated) {
+      handleRefreshAppointments();
+    }
+  }, [user?.patientId, user?.id, user?.phone, handleRefreshAppointments]);
+
+  // WebSocket Realtime handler cho Thông báo cập nhật lịch khám
+  const handleRealtimeNotification = useCallback((notif) => {
+    if (!notif) return;
+    const notifType = notif.type || '';
+    const content = (notif.content || '').toLowerCase();
+    const title = (notif.title || '').toLowerCase();
+
+    if (
+      notifType === 'APPOINTMENT' ||
+      notifType === 'STATUS_CHANGE' ||
+      notifType === 'FOLLOW_UP' ||
+      content.includes('lịch') ||
+      title.includes('lịch')
+    ) {
+      handleRefreshAppointments();
+    }
+  }, [handleRefreshAppointments]);
+
+  // Kích hoạt STOMP WebSocket Realtime
+  useWebSocket(handleRealtimeAppointment, handleRealtimeNotification);
+
   useEffect(() => {
     fetchAppointments();
 
-    const handleCreated = () => {
+    window.addEventListener('appointment_created', handleRefreshAppointments);
+    window.addEventListener('appointment_updated', handleRefreshAppointments);
+    window.addEventListener('notification_updated', handleRefreshAppointments);
+
+    const handleWindowFocus = () => {
       fetchAppointments();
     };
-    window.addEventListener('appointment_created', handleCreated);
-    return () => window.removeEventListener('appointment_created', handleCreated);
-  }, [user]);
+    window.addEventListener('focus', handleWindowFocus);
+
+    return () => {
+      window.removeEventListener('appointment_created', handleRefreshAppointments);
+      window.removeEventListener('appointment_updated', handleRefreshAppointments);
+      window.removeEventListener('notification_updated', handleRefreshAppointments);
+      window.removeEventListener('focus', handleWindowFocus);
+    };
+  }, [user, handleRefreshAppointments]);
 
   // Handle Cancel Appointment
   const handleConfirmCancelAppointment = async () => {
@@ -391,49 +446,78 @@ export default function PatientAppointments() {
     }
   };
 
-  // Status Badge Helper
-  const getStatusBadge = (status) => {
-    switch (status) {
+  // Status Badge Helper - Đồng bộ 100% với Employee (appointmentStatusConfig)
+  const getStatusBadge = (status, item = null) => {
+    // 1. Đối với Lịch tái khám (Do Bác sĩ chỉ định)
+    if (item?.type === 'FOLLOW_UP' || item?.isFollowUp || status === 'DOCTOR_ORDERED') {
+      if (status === 'CANCELLED' || item?.status === false || item?.raw?.status === false) {
+        return (
+          <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200/80 text-[11px] font-bold inline-flex items-center gap-1 shrink-0">
+            <AlertCircle className="h-3 w-3" />
+            Đã hủy
+          </span>
+        );
+      }
+      return null;
+    }
+
+    // 2. Đối với Lịch hẹn khám (APPOINTMENT từ API)
+    const st = typeof status === 'string' ? status.toUpperCase().trim() : '';
+    switch (st) {
       case 'CONFIRMED':
         return (
-          <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-[#009766] border border-emerald-200 text-[11px] font-bold inline-flex items-center gap-1 shrink-0">
-            <CheckCircle2 className="h-3 w-3" />
-            Đã xác nhận
+          <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200/80 text-[11px] font-bold inline-flex items-center gap-1 shrink-0">
+            <Clock className="h-3 w-3" />
+            Chưa đến
+          </span>
+        );
+      case 'PENDING':
+        return (
+          <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200/80 text-[11px] font-bold inline-flex items-center gap-1 shrink-0">
+            <Clock className="h-3 w-3" />
+            Chờ xác nhận
           </span>
         );
       case 'WAITING':
         return (
-          <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold inline-flex items-center gap-1 shrink-0">
+          <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/80 text-[11px] font-bold inline-flex items-center gap-1 shrink-0">
             <Clock className="h-3 w-3" />
-            Chờ khám
+            Đang chờ khám
+          </span>
+        );
+      case 'CALLED':
+        return (
+          <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200/80 text-[11px] font-bold inline-flex items-center gap-1 shrink-0">
+            <Clock className="h-3 w-3" />
+            Gọi vào
           </span>
         );
       case 'IN_PROGRESS':
         return (
-          <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-bold inline-flex items-center gap-1 shrink-0">
-            <Clock className="h-3 w-3" />
-            Đang khám
+          <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-[11px] font-bold inline-flex items-center gap-1 shrink-0">
+            <Activity className="h-3 w-3" />
+            Đang điều trị
           </span>
         );
       case 'COMPLETED':
         return (
           <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-bold inline-flex items-center gap-1 shrink-0">
             <Check className="h-3 w-3" />
-            Đã hoàn thành
+            Hoàn thành
           </span>
         );
       case 'CANCELLED':
         return (
-          <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 text-[11px] font-bold inline-flex items-center gap-1 shrink-0">
+          <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200/80 text-[11px] font-bold inline-flex items-center gap-1 shrink-0">
             <AlertCircle className="h-3 w-3" />
             Đã hủy
           </span>
         );
       default:
         return (
-          <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-[#009766] border border-emerald-200 text-[11px] font-bold inline-flex items-center gap-1 shrink-0">
+          <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200/80 text-[11px] font-bold inline-flex items-center gap-1 shrink-0">
             <Clock className="h-3 w-3" />
-            Sắp tới
+            Chưa đến
           </span>
         );
     }
@@ -853,7 +937,7 @@ export default function PatientAppointments() {
                         </span>
                       )}
                     </div>
-                    {getStatusBadge(apt.status)}
+                    {getStatusBadge(apt.status, apt)}
                   </div>
 
                   {/* Date & Time Highlight Box */}
@@ -1164,7 +1248,7 @@ export default function PatientAppointments() {
                           <span className="text-xs sm:text-[13px] font-bold text-slate-900 group-hover:text-[#009766] transition-colors leading-snug">
                             {apt.reason || apt.serviceName || 'Khám răng tổng quát'}
                           </span>
-                          {getStatusBadge(apt.status)}
+                          {getStatusBadge(apt.status, apt)}
                         </div>
 
                         {/* Time & Room chip */}
@@ -1315,7 +1399,7 @@ export default function PatientAppointments() {
                         <h4 className="text-sm font-bold text-slate-900 mt-1.5">{apt.reason || 'Khám răng tổng quát'}</h4>
                       </div>
 
-                      {getStatusBadge(apt.status)}
+                      {getStatusBadge(apt.status, apt)}
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600 pt-1">
@@ -1455,8 +1539,19 @@ export default function PatientAppointments() {
               {/* Thẻ 1: Header Phiếu & Trạng thái */}
               <div className="bg-white p-3 rounded-lg border border-slate-200/90 shadow-2xs flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Trạng thái phiếu</p>
-                  <div className="mt-0.5">{getStatusBadge(selectedAppointment.status)}</div>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                    {selectedAppointment.type === 'FOLLOW_UP' || selectedAppointment.isFollowUp ? 'Loại phiếu' : 'Trạng thái phiếu'}
+                  </p>
+                  <div className="mt-0.5">
+                    {selectedAppointment.type === 'FOLLOW_UP' || selectedAppointment.isFollowUp ? (
+                      <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 text-[11px] font-bold inline-flex items-center gap-1 shrink-0">
+                        <RefreshCw className="h-3 w-3" />
+                        Lịch tái khám
+                      </span>
+                    ) : (
+                      getStatusBadge(selectedAppointment.status, selectedAppointment)
+                    )}
+                  </div>
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Thời gian tạo phiếu</p>
@@ -1741,6 +1836,7 @@ export default function PatientAppointments() {
           setEditingAppointment(null);
         }}
         onSuccess={() => {
+          setIsBookingModalOpen(false);
           setEditingAppointment(null);
           fetchAppointments();
         }}

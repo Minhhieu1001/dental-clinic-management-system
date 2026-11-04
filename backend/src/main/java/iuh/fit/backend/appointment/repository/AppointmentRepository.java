@@ -32,6 +32,7 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
        WHERE a.patient.id = :patientId
         AND a.appointmentDate >= :start
         AND a.appointmentDate < :end
+        AND a.status != iuh.fit.backend.appointment.enums.StatusAppointment.CANCELLED
       """)
   long countByPatientAndDateRange(@Param("patientId") UUID patientId,
       @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);

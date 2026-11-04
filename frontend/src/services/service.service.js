@@ -6,6 +6,8 @@ export const getAdminServices = async (params = {}) => {
   return response.data?.data ?? response.data?.result ?? response.data ?? [];
 };
 
+export const getServices = getAdminServices;
+
 // Get single service by ID
 export const getServiceById = async (id) => {
   const response = await api.get(`/services/${id}`);

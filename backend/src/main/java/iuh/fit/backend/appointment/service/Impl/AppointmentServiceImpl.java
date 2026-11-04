@@ -300,6 +300,48 @@ public class AppointmentServiceImpl implements AppointmentService {
                         notifDto);
                 simpMessagingTemplate.convertAndSend("/topic/notifications", notifDto);
             }
+
+            // 3. Gửi thông báo cho Bệnh nhân nếu có tài khoản
+            User patientUser = null;
+            if (appointment.getPatient() != null && appointment.getPatient().getUser() != null) {
+                patientUser = appointment.getPatient().getUser();
+            } else if (dto.getPatientId() != null) {
+                User userById = userRepository.findById(dto.getPatientId()).orElse(null);
+                if (userById != null && userById.getRole() == Role.PATIENT) {
+                    patientUser = userById;
+                }
+            }
+
+            if (patientUser != null && patientUser.getStatus() == StatusUser.ACTIVE) {
+                String branchStr = appointment.getBranch() != null ? appointment.getBranch().getBranchName() : "Crown Dental";
+                String timeStr = appointment.getAppointmentTime() != null ? appointment.getAppointmentTime().toLocalTime().toString().substring(0, 5) : "";
+                String dateStr = appointment.getAppointmentDate() != null ? appointment.getAppointmentDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "";
+                String serviceStr = appointment.getReason() != null ? appointment.getReason() : "Khám răng tổng quát";
+
+                Notification pNotif = Notification.builder()
+                        .user(patientUser)
+                        .title("Đặt lịch khám thành công")
+                        .content("Bạn đã đặt lịch khám (" + serviceStr + ") vào lúc " + timeStr + " ngày " + dateStr + " tại " + branchStr + ".")
+                        .type(NotificationType.PATIENT_CHECKIN)
+                        .targetUrl("/patient/appointments")
+                        .isRead(false)
+                        .build();
+                pNotif = notificationRepository.save(pNotif);
+
+                NotificationResponseDTO pNotifDto = NotificationResponseDTO.builder()
+                        .id(pNotif.getId())
+                        .userId(patientUser.getId())
+                        .title(pNotif.getTitle())
+                        .content(pNotif.getContent())
+                        .type(pNotif.getType())
+                        .targetUrl(pNotif.getTargetUrl())
+                        .isRead(false)
+                        .createdAt(pNotif.getCreatedAt() != null ? pNotif.getCreatedAt() : LocalDateTime.now())
+                        .build();
+
+                simpMessagingTemplate.convertAndSendToUser(patientUser.getId().toString(), "/queue/notifications", pNotifDto);
+                simpMessagingTemplate.convertAndSend("/topic/notifications", pNotifDto);
+            }
         } catch (Exception e) {
             log.warn("Failed to create notifications for new appointment: {}", e.getMessage());
         }

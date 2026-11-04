@@ -18,6 +18,7 @@ public interface FollowUpAppointmentRepository extends JpaRepository<FollowUpApp
             WHERE f.examinationResult.medicalRecord.patient.id = :patientId
               AND f.followUpDate >= :start
               AND f.followUpDate < :end
+              AND (f.status IS NULL OR f.status = true)
             """)
     long countByPatientAndDateRange(
             @Param("patientId") UUID patientId,
@@ -29,6 +30,7 @@ public interface FollowUpAppointmentRepository extends JpaRepository<FollowUpApp
             WHERE f.examinationResult.medicalRecord.patient.id = :patientId
               AND f.followUpDate >= :start
               AND f.followUpDate < :end
+              AND (f.status IS NULL OR f.status = true)
             ORDER BY f.followUpDate ASC, f.id ASC
             """)
     List<FollowUpAppointment> findByPatientAndDateRange(
