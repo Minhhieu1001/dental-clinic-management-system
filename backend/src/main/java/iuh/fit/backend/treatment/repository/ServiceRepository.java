@@ -12,12 +12,27 @@ import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.math.BigDecimal;
+import org.springframework.data.domain.Pageable;
 
 @Repository
 public interface ServiceRepository extends JpaRepository<Service, UUID> {
     Optional<Service> findByServiceCode(String serviceCode);
     boolean existsByServiceCode(String serviceCode);
     List<Service> findAllByOrderBySortOrderAscServiceNameAsc();
+
+    List<Service> findByIsActiveTrueOrderByIsFeaturedDescSortOrderAscServiceNameAsc(Pageable pageable);
+
+    @Query("""
+            SELECT s
+            FROM Service s
+            LEFT JOIN FETCH s.promotion
+            WHERE s.isActive = true
+              AND s.price IS NOT NULL
+              AND s.price <= :maxPrice
+            ORDER BY s.isFeatured DESC, s.sortOrder ASC, s.serviceName ASC
+            """)
+    List<Service> findActiveServicesByMaxPrice(@Param("maxPrice") BigDecimal maxPrice);
 
     @Query("SELECT s FROM Service s LEFT JOIN FETCH s.promotion ORDER BY s.sortOrder ASC, s.serviceName ASC")
     List<Service> findAllWithPromotion();

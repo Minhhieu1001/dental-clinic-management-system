@@ -9,6 +9,7 @@ import java.util.Optional;
 
 public interface PromotionService {
     List<PromotionResponse> getPublicPromotions();
+    List<PromotionResponse> getTodayPromotions();
     List<PromotionResponse> getAdminPromotions();
     PromotionResponse getPublicPromotion(UUID id);
     PromotionResponse createPromotion(PromotionRequest request);
