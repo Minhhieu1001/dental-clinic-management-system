@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Calendar,
@@ -32,6 +32,7 @@ import {
   Filter,
 } from 'lucide-react';
 import { useAuth } from '../../../hooks/useAuth';
+import { useWebSocket } from '../../../hooks/useWebSocket';
 import toast from 'react-hot-toast';
 import { getPatientStatistics, getPatientById, getPatientByPatientCode } from '../../../services/patient.service';
 import { getInProgressTreatmentPlansByPatientId, getTreatmentPlansByPatientId } from '../../../services/treatmentPlan.service';
@@ -458,26 +459,93 @@ export default function PatientDashboard() {
     });
   };
 
+  // Lắng nghe sự kiện khi tạo hoặc cập nhật lịch hẹn để tự động đồng bộ tức thì
+  const handleRefreshAppointments = useCallback(() => {
+    const pid = user?.patientId || user?.id;
+    if (pid) {
+      fetchPatientAppointments(pid);
+      fetchCurrentMonthFollowUpAppointmentsByPatientId(pid);
+      fetchPatientStatistics(pid);
+      fetchInProgressTreatmentPlansByPatientId(pid);
+    }
+  }, [user?.patientId, user?.id]);
+
+  // WebSocket Realtime handler cho Lịch hẹn (Nhận sự kiện từ STOMP topic/appointments)
+  const handleRealtimeAppointment = useCallback((payload) => {
+    if (!payload) return;
+    const pid = user?.patientId || user?.id;
+    if (!pid) return;
+
+    // Kiểm tra xem payload có liên quan đến bệnh nhân hiện tại không:
+    const isRelated =
+      !payload.patientId ||
+      payload.patientId === pid ||
+      payload.patientId === user?.id ||
+      (user?.phone && payload.phone && payload.phone.trim() === user.phone.trim());
+
+    if (isRelated) {
+      handleRefreshAppointments();
+    }
+  }, [user?.patientId, user?.id, user?.phone, handleRefreshAppointments]);
+
+  // WebSocket Realtime handler cho Thông báo cập nhật lịch khám
+  const handleRealtimeNotification = useCallback((notif) => {
+    if (!notif) return;
+    const pid = user?.patientId || user?.id;
+    if (!pid) return;
+
+    const notifType = notif.type || '';
+    const content = (notif.content || '').toLowerCase();
+    const title = (notif.title || '').toLowerCase();
+
+    if (
+      notifType === 'APPOINTMENT' ||
+      notifType === 'STATUS_CHANGE' ||
+      notifType === 'FOLLOW_UP' ||
+      content.includes('lịch') ||
+      title.includes('lịch')
+    ) {
+      handleRefreshAppointments();
+    }
+  }, [user?.patientId, user?.id, handleRefreshAppointments]);
+
+  // Kích hoạt STOMP WebSocket Realtime kết nối trực tiếp
+  useWebSocket(handleRealtimeAppointment, handleRealtimeNotification);
+
   useEffect(() => {
     const patientId = user?.patientId || user?.id;
     loadAllDashboardData(patientId);
 
-    // Lắng nghe sự kiện khi tạo lịch hẹn mới để tự động đồng bộ tức thì
-    const handleRefreshAppointments = () => {
-      const pid = user?.patientId || user?.id;
-      if (pid) {
-        fetchPatientAppointments(pid);
-        fetchCurrentMonthFollowUpAppointmentsByPatientId(pid);
-        fetchPatientStatistics(pid);
-        fetchInProgressTreatmentPlansByPatientId(pid);
-      }
-    };
-
+    // Lắng nghe các sự kiện cập nhật lịch trong ứng dụng
     window.addEventListener('appointment_created', handleRefreshAppointments);
+    window.addEventListener('appointment_updated', handleRefreshAppointments);
+    window.addEventListener('notification_updated', handleRefreshAppointments);
+
+    // Tự động kiểm tra làm mới khi người dùng quay lại tab trình duyệt
+    const handleWindowFocus = () => {
+      handleRefreshAppointments();
+    };
+    window.addEventListener('focus', handleWindowFocus);
+
+    // Polling định kỳ nền mỗi 30s khi tab đang active (dự phòng trường hợp mạng yếu hoặc rớt STOMP)
+    const intervalId = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        const pid = user?.patientId || user?.id;
+        if (pid) {
+          fetchPatientAppointments(pid);
+          fetchCurrentMonthFollowUpAppointmentsByPatientId(pid);
+        }
+      }
+    }, 30000);
+
     return () => {
       window.removeEventListener('appointment_created', handleRefreshAppointments);
+      window.removeEventListener('appointment_updated', handleRefreshAppointments);
+      window.removeEventListener('notification_updated', handleRefreshAppointments);
+      window.removeEventListener('focus', handleWindowFocus);
+      clearInterval(intervalId);
     };
-  }, [user]);
+  }, [user, handleRefreshAppointments]);
 
   // Hợp nhất dữ liệu thật từ cả Lịch Hẹn Khám (patientAppointments) và Lịch Tái Khám (followUpAppointments)
   const upcomingAppointments = useMemo(() => {

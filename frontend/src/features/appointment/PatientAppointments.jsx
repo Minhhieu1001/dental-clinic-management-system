@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Calendar,
@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
+import { useWebSocket } from '../../hooks/useWebSocket';
 import {
   getAppointmentsByPatient,
   getMyAppointments,
@@ -362,15 +363,68 @@ export default function PatientAppointments() {
     }
   };
 
+  // Lắng nghe sự kiện khi tạo hoặc cập nhật lịch hẹn để tự động đồng bộ tức thì
+  const handleRefreshAppointments = useCallback(() => {
+    fetchAppointments();
+  }, []);
+
+  // WebSocket Realtime handler cho Lịch hẹn (Nhận sự kiện từ STOMP topic/appointments)
+  const handleRealtimeAppointment = useCallback((payload) => {
+    if (!payload) return;
+    const pid = user?.patientId || user?.id;
+
+    const isRelated =
+      !pid ||
+      !payload.patientId ||
+      payload.patientId === pid ||
+      payload.patientId === user?.id ||
+      (user?.phone && payload.phone && payload.phone.trim() === user.phone.trim());
+
+    if (isRelated) {
+      handleRefreshAppointments();
+    }
+  }, [user?.patientId, user?.id, user?.phone, handleRefreshAppointments]);
+
+  // WebSocket Realtime handler cho Thông báo cập nhật lịch khám
+  const handleRealtimeNotification = useCallback((notif) => {
+    if (!notif) return;
+    const notifType = notif.type || '';
+    const content = (notif.content || '').toLowerCase();
+    const title = (notif.title || '').toLowerCase();
+
+    if (
+      notifType === 'APPOINTMENT' ||
+      notifType === 'STATUS_CHANGE' ||
+      notifType === 'FOLLOW_UP' ||
+      content.includes('lịch') ||
+      title.includes('lịch')
+    ) {
+      handleRefreshAppointments();
+    }
+  }, [handleRefreshAppointments]);
+
+  // Kích hoạt STOMP WebSocket Realtime
+  useWebSocket(handleRealtimeAppointment, handleRealtimeNotification);
+
   useEffect(() => {
     fetchAppointments();
 
-    const handleCreated = () => {
+    window.addEventListener('appointment_created', handleRefreshAppointments);
+    window.addEventListener('appointment_updated', handleRefreshAppointments);
+    window.addEventListener('notification_updated', handleRefreshAppointments);
+
+    const handleWindowFocus = () => {
       fetchAppointments();
     };
-    window.addEventListener('appointment_created', handleCreated);
-    return () => window.removeEventListener('appointment_created', handleCreated);
-  }, [user]);
+    window.addEventListener('focus', handleWindowFocus);
+
+    return () => {
+      window.removeEventListener('appointment_created', handleRefreshAppointments);
+      window.removeEventListener('appointment_updated', handleRefreshAppointments);
+      window.removeEventListener('notification_updated', handleRefreshAppointments);
+      window.removeEventListener('focus', handleWindowFocus);
+    };
+  }, [user, handleRefreshAppointments]);
 
   // Handle Cancel Appointment
   const handleConfirmCancelAppointment = async () => {

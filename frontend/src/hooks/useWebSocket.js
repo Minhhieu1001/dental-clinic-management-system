@@ -10,6 +10,22 @@ export function useWebSocket(
     onPaymentRealtime
 ) {
     const clientRef = useRef(null);
+    const callbacksRef = useRef({
+        onAppointmentRealtime,
+        onNotificationRealtime,
+        onRequestRealtime,
+        onPaymentRealtime,
+    });
+
+    // Keep callbacks up-to-date without triggering STOMP reconnects
+    useEffect(() => {
+        callbacksRef.current = {
+            onAppointmentRealtime,
+            onNotificationRealtime,
+            onRequestRealtime,
+            onPaymentRealtime,
+        };
+    });
 
     useEffect(() => {
         const currentUser = useAuthStore.getState().user;
@@ -19,42 +35,76 @@ export function useWebSocket(
             webSocketFactory: () => new SockJS('http://localhost:8080/ws'),
             reconnectDelay: 5000,
             onConnect: () => {
-                console.log('WebSocket STOMP Connected!');
-
                 // 1. Subscribe nhận thông báo cập nhật lịch hẹn chung
                 client.subscribe('/topic/appointments', (message) => {
-                    const payload = JSON.parse(message.body);
-                    if (onAppointmentRealtime) onAppointmentRealtime(payload);
+                    try {
+                        const payload = JSON.parse(message.body);
+                        if (callbacksRef.current.onAppointmentRealtime) {
+                            callbacksRef.current.onAppointmentRealtime(payload);
+                        }
+                    } catch (e) {
+                        console.warn('Error parsing /topic/appointments payload:', e);
+                    }
                 });
 
                 // 2. Subscribe nhận thông báo riêng của User hiện tại (Unicast)
                 client.subscribe('/user/queue/notifications', (message) => {
-                    const payload = JSON.parse(message.body);
-                    if (onNotificationRealtime) onNotificationRealtime(payload);
+                    try {
+                        const payload = JSON.parse(message.body);
+                        if (callbacksRef.current.onNotificationRealtime) {
+                            callbacksRef.current.onNotificationRealtime(payload);
+                        }
+                    } catch (e) {
+                        console.warn('Error parsing /user/queue/notifications payload:', e);
+                    }
                 });
 
                 // 3. Subscribe nhận thông báo chung (Broadcast topic)
                 client.subscribe('/topic/notifications', (message) => {
-                    const payload = JSON.parse(message.body);
-                    if (onNotificationRealtime) onNotificationRealtime(payload);
+                    try {
+                        const payload = JSON.parse(message.body);
+                        if (callbacksRef.current.onNotificationRealtime) {
+                            callbacksRef.current.onNotificationRealtime(payload);
+                        }
+                    } catch (e) {
+                        console.warn('Error parsing /topic/notifications payload:', e);
+                    }
                 });
 
                 // 4. Subscribe nhận yêu cầu đặt lịch hẹn mới từ Web (Online Requests)
                 client.subscribe('/user/queue/appointment-requests', (message) => {
-                    const payload = JSON.parse(message.body);
-                    if (onRequestRealtime) onRequestRealtime(payload);
+                    try {
+                        const payload = JSON.parse(message.body);
+                        if (callbacksRef.current.onRequestRealtime) {
+                            callbacksRef.current.onRequestRealtime(payload);
+                        }
+                    } catch (e) {
+                        console.warn('Error parsing /user/queue/appointment-requests payload:', e);
+                    }
                 });
 
                 // 5. Subscribe nhận thông báo thanh toán thành công RIÊNG (Unicast Private)
                 client.subscribe('/user/queue/payments', (message) => {
-                    const payload = JSON.parse(message.body);
-                    if (onPaymentRealtime) onPaymentRealtime(payload);
+                    try {
+                        const payload = JSON.parse(message.body);
+                        if (callbacksRef.current.onPaymentRealtime) {
+                            callbacksRef.current.onPaymentRealtime(payload);
+                        }
+                    } catch (e) {
+                        console.warn('Error parsing /user/queue/payments payload:', e);
+                    }
                 });
 
                 if (employeeId) {
                     client.subscribe(`/topic/payments/${employeeId}`, (message) => {
-                        const payload = JSON.parse(message.body);
-                        if (onPaymentRealtime) onPaymentRealtime(payload);
+                        try {
+                            const payload = JSON.parse(message.body);
+                            if (callbacksRef.current.onPaymentRealtime) {
+                                callbacksRef.current.onPaymentRealtime(payload);
+                            }
+                        } catch (e) {
+                            console.warn(`Error parsing /topic/payments/${employeeId} payload:`, e);
+                        }
                     });
                 }
             },
@@ -66,5 +116,5 @@ export function useWebSocket(
         return () => {
             if (clientRef.current) clientRef.current.deactivate();
         };
-    }, [onAppointmentRealtime, onNotificationRealtime, onRequestRealtime, onPaymentRealtime]);
+    }, []);
 }
