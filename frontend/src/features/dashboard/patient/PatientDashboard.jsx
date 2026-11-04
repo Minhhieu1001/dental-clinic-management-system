@@ -23,6 +23,13 @@ import {
   Sparkles,
   RefreshCw,
   Edit3,
+  UserCheck,
+  Plus,
+  Search,
+  CalendarDays,
+  ChevronDown,
+  RotateCcw,
+  Filter,
 } from 'lucide-react';
 import { useAuth } from '../../../hooks/useAuth';
 import toast from 'react-hot-toast';
@@ -43,6 +50,7 @@ import {
 } from '../../../utils/appointmentTimeCheck';
 import Loading from '../../../components/ui/Loading';
 import PatientBookingModal from '../../appointment/patient/PatientBookingModal';
+import { appointmentStatusConfig } from '../receptionist/receptionistData';
 
 const isValidUUID = (str) =>
   typeof str === 'string' &&
@@ -118,6 +126,43 @@ const parseAppointmentDateTime = (dateVal, timeVal) => {
     monthYear: isValid ? `Tháng ${dateObj.getMonth() + 1}` : 'Chưa có',
     date: isValid ? `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}` : 'Chưa có',
     fullDate: isValid ? dateObj.toLocaleDateString('vi-VN') : 'Chưa có',
+  };
+};
+
+// Map trạng thái chuẩn từ API cho Lịch hẹn khám (APPOINTMENT) - Đồng bộ 100% với Employee
+export const getAppointmentStatusInfo = (rawStatus) => {
+  const st = typeof rawStatus === 'string' ? rawStatus.toUpperCase().trim() : '';
+  const conf = appointmentStatusConfig[st];
+  if (conf) {
+    return {
+      label: conf.label,
+      color: conf.className,
+    };
+  }
+  return {
+    label: 'Chưa đến',
+    color: 'bg-amber-50 text-amber-700 border border-amber-200/80',
+  };
+};
+
+// Map trạng thái chuẩn theo nghiệp vụ Bác sĩ chỉ định cho Lịch tái khám (FOLLOW_UP)
+export const getFollowUpStatusInfo = (rawStatus) => {
+  if (rawStatus === false || rawStatus === 'CANCELLED') {
+    return {
+      label: 'Đã hủy',
+      color: 'bg-rose-50 text-rose-700 border border-rose-200/80',
+    };
+  }
+  const st = typeof rawStatus === 'string' ? rawStatus.toUpperCase().trim() : '';
+  if (st && appointmentStatusConfig[st]) {
+    return {
+      label: appointmentStatusConfig[st].label,
+      color: appointmentStatusConfig[st].className,
+    };
+  }
+  return {
+    label: '',
+    color: '',
   };
 };
 
@@ -233,6 +278,8 @@ export default function PatientDashboard() {
   const [followUpAppointments, setFollowUpAppointments] = useState([]);
   const [patientAppointments, setPatientAppointments] = useState([]);
   const [appointmentFilterTab, setAppointmentFilterTab] = useState('ALL'); // 'ALL' | 'APPOINTMENT' | 'FOLLOW_UP'
+  const [appointmentSearchQuery, setAppointmentSearchQuery] = useState('');
+  const [appointmentTimeRange, setAppointmentTimeRange] = useState('ALL'); // 'ALL' | 'TODAY' | 'WEEK' | 'MONTH'
   const [loading, setLoading] = useState(true);
 
   // 1. Fetch Thống kê bệnh nhân
@@ -439,10 +486,8 @@ export default function PatientDashboard() {
     // 1. Chuẩn hóa các lịch hẹn khám (Appointments)
     if (patientAppointments && patientAppointments.length > 0) {
       patientAppointments.forEach((apt) => {
-        const st = typeof apt.status === 'string' ? apt.status.toUpperCase() : '';
-        if (st === 'CANCELLED' || st.includes('HỦY')) return;
-
         const dateParsed = parseAppointmentDateTime(apt.appointmentDate, apt.appointmentTime);
+        const statusInfo = getAppointmentStatusInfo(apt.status);
 
         mergedList.push({
           id: apt.id || Math.random().toString(),
@@ -459,8 +504,9 @@ export default function PatientDashboard() {
           appointmentDate: apt.appointmentDate,
           appointmentTime: dateParsed.timeFormatted,
           title: apt.reason || apt.serviceName || 'Khám răng tổng quát',
-          status: apt.status === 'CONFIRMED' ? 'Đã xác nhận' : (apt.status === 'COMPLETED' ? 'Đã khám' : 'Đã lên lịch'),
-          statusColor: apt.status === 'CONFIRMED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-teal-50 text-teal-700 border-teal-200',
+          status: statusInfo.label,
+          statusColor: statusInfo.color,
+          rawStatus: apt.status,
           doctor: formatDoctorName(apt.dentistName),
           branch: apt.branchName || '',
           address: apt.branchAddress || apt.addressBranch || '',
@@ -472,13 +518,11 @@ export default function PatientDashboard() {
       });
     }
 
-    // 2. Chuẩn hóa các lịch tái khám (FollowUpAppointments)
+    // 2. Chuẩn hóa các lịch tái khám (FollowUpAppointments do Bác sĩ chỉ định)
     if (followUpAppointments && followUpAppointments.length > 0) {
       followUpAppointments.forEach((apt) => {
-        const st = typeof apt.status === 'string' ? apt.status.toUpperCase() : '';
-        if (st === 'CANCELLED' || st.includes('HỦY') || apt.status === false) return;
-
         const dateParsed = parseAppointmentDateTime(apt.followUpDate, apt.followUpTime);
+        const statusInfo = getFollowUpStatusInfo(apt.status);
 
         mergedList.push({
           id: apt.id || Math.random().toString(),
@@ -495,8 +539,9 @@ export default function PatientDashboard() {
           appointmentDate: apt.followUpDate,
           appointmentTime: dateParsed.timeFormatted,
           title: apt.reason || apt.chiefComplaint || 'Tái khám định kỳ',
-          status: apt.status ? 'Đã xác nhận' : 'Sắp tới',
-          statusColor: apt.status ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-teal-50 text-teal-700 border-teal-200',
+          status: statusInfo.label,
+          statusColor: statusInfo.color,
+          rawStatus: apt.status,
           doctor: formatDoctorName(apt.dentistName),
           branch: apt.branchName || '',
           address: apt.branchAddress || apt.addressBranch || '',
@@ -519,16 +564,59 @@ export default function PatientDashboard() {
     return mergedList;
   }, [patientAppointments, followUpAppointments]);
 
-  // Danh sách lịch hẹn sau khi áp dụng bộ lọc tab ('ALL' | 'APPOINTMENT' | 'FOLLOW_UP')
+  // Danh sách lịch hẹn sau khi áp dụng bộ lọc nâng cao (Tab + Search + Time Range)
   const displayedUpcomingAppointments = useMemo(() => {
+    let list = upcomingAppointments;
+
+    // 1. Lọc theo Tab loại lịch
     if (appointmentFilterTab === 'APPOINTMENT') {
-      return upcomingAppointments.filter((item) => item.type === 'APPOINTMENT');
+      list = list.filter((item) => item.type === 'APPOINTMENT');
+    } else if (appointmentFilterTab === 'FOLLOW_UP') {
+      list = list.filter((item) => item.type === 'FOLLOW_UP');
     }
-    if (appointmentFilterTab === 'FOLLOW_UP') {
-      return upcomingAppointments.filter((item) => item.type === 'FOLLOW_UP');
+
+    // 2. Lọc theo Mốc thời gian
+    if (appointmentTimeRange !== 'ALL') {
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+
+      list = list.filter((item) => {
+        if (!item.rawDateTime) return true;
+        const itemDate = new Date(item.rawDateTime);
+        itemDate.setHours(0, 0, 0, 0);
+        const diffTime = itemDate.getTime() - now.getTime();
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+        if (appointmentTimeRange === 'TODAY') {
+          return diffDays === 0;
+        }
+        if (appointmentTimeRange === 'WEEK') {
+          return diffDays >= 0 && diffDays <= 7;
+        }
+        if (appointmentTimeRange === 'MONTH') {
+          return (
+            itemDate.getFullYear() === now.getFullYear() &&
+            itemDate.getMonth() === now.getMonth()
+          );
+        }
+        return true;
+      });
     }
-    return upcomingAppointments;
-  }, [upcomingAppointments, appointmentFilterTab]);
+
+    // 3. Lọc theo Từ khóa tìm kiếm (bác sĩ, dịch vụ, chi nhánh, địa chỉ)
+    if (appointmentSearchQuery.trim()) {
+      const q = appointmentSearchQuery.toLowerCase().trim();
+      list = list.filter((item) => {
+        const titleMatch = (item.title || '').toLowerCase().includes(q);
+        const doctorMatch = (item.doctor || '').toLowerCase().includes(q);
+        const branchMatch = (item.branch || '').toLowerCase().includes(q);
+        const addressMatch = (item.address || '').toLowerCase().includes(q);
+        return titleMatch || doctorMatch || branchMatch || addressMatch;
+      });
+    }
+
+    return list;
+  }, [upcomingAppointments, appointmentFilterTab, appointmentTimeRange, appointmentSearchQuery]);
 
   const latestAppointment = upcomingAppointments[0] || null;
 
@@ -795,7 +883,7 @@ export default function PatientDashboard() {
                           <h3 className="text-base font-bold text-slate-900 truncate">
                             {latestAppointment.title}
                           </h3>
-                          <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 border border-emerald-200 shrink-0">
+                          <span className={`inline-flex rounded-md px-2.5 py-0.5 text-[11px] font-bold border shrink-0 ${latestAppointment.statusColor}`}>
                             {latestAppointment.status}
                           </span>
                         </div>
@@ -966,26 +1054,42 @@ export default function PatientDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
 
           {/* Left Column: Lịch hẹn sắp tới */}
-          <div className="lg:col-span-6 rounded-2xl bg-white p-5 sm:p-6 border border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between">
-            <div>
-              {/* Header: Title + Link to All */}
+          <div className="lg:col-span-6 rounded-2xl bg-white p-5 sm:p-6 border border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col">
+            {/* Header: Title + Link to All + Đặt lịch mới */}
               <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
                 <div className="flex items-center gap-2">
                   <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
                     Lịch hẹn sắp tới
                   </h3>
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
-                    {upcomingAppointments.length}
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                    appointmentSearchQuery || appointmentTimeRange !== 'ALL'
+                      ? 'bg-teal-50 text-teal-700 border border-teal-200'
+                      : 'bg-slate-100 text-slate-700'
+                  }`}>
+                    {appointmentSearchQuery || appointmentTimeRange !== 'ALL'
+                      ? `${displayedUpcomingAppointments.length} / ${upcomingAppointments.length}`
+                      : upcomingAppointments.length}
                   </span>
                 </div>
 
-                <Link
-                  to="/patient/appointments"
-                  className="text-xs font-bold text-teal-700 hover:text-teal-800 flex items-center gap-0.5 transition-colors group"
-                >
-                  <span>Xem tất cả</span>
-                  <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                </Link>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsBookingModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 shadow-xs hover:shadow transition-all cursor-pointer shrink-0"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Đặt lịch mới</span>
+                  </button>
+
+                  <Link
+                    to="/patient/appointments"
+                    className="text-xs font-bold text-teal-700 hover:text-teal-800 flex items-center gap-0.5 transition-colors group shrink-0"
+                  >
+                    <span>Xem tất cả</span>
+                    <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                  </Link>
+                </div>
               </div>
 
               {/* Filter Tabs Segmented Control */}
@@ -1024,8 +1128,65 @@ export default function PatientDashboard() {
                 </button>
               </div>
 
-              {/* Appointment List */}
-              <div className="mt-3.5 space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
+              {/* Modern Secondary Filter Toolbar: Search + Time Horizon Selector */}
+              <div className="mt-2.5 flex items-center gap-2">
+                {/* Search Box */}
+                <div className="relative flex-1 min-w-0">
+                  <Search className="h-3.5 w-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={appointmentSearchQuery}
+                    onChange={(e) => setAppointmentSearchQuery(e.target.value)}
+                    placeholder="Tìm theo bác sĩ, dịch vụ, cơ sở..."
+                    className="w-full pl-8 pr-7 py-1.5 rounded-xl border border-slate-200/80 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all bg-slate-50/60 focus:bg-white shadow-2xs"
+                  />
+                  {appointmentSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setAppointmentSearchQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer transition-colors"
+                      title="Xóa tìm kiếm"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Time Range Selector */}
+                <div className="relative shrink-0">
+                  <select
+                    value={appointmentTimeRange}
+                    onChange={(e) => setAppointmentTimeRange(e.target.value)}
+                    className="appearance-none pl-7.5 pr-7 py-1.5 rounded-xl border border-slate-200/80 text-xs font-semibold text-slate-700 bg-slate-50/60 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all cursor-pointer shadow-2xs"
+                  >
+                    <option value="ALL">Tất cả thời gian</option>
+                    <option value="TODAY">Hôm nay</option>
+                    <option value="WEEK">7 ngày tới</option>
+                    <option value="MONTH">Tháng này</option>
+                  </select>
+                  <CalendarDays className="h-3.5 w-3.5 text-teal-600 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <ChevronDown className="h-3 w-3 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+
+                {/* Reset Filter Button */}
+                {(appointmentSearchQuery.trim() !== '' || appointmentTimeRange !== 'ALL') && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAppointmentSearchQuery('');
+                      setAppointmentTimeRange('ALL');
+                    }}
+                    className="h-7 px-2 rounded-xl border border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer shrink-0 shadow-2xs"
+                    title="Đặt lại bộ lọc"
+                  >
+                    <RotateCcw className="h-3 w-3 text-teal-600" />
+                    <span className="hidden sm:inline text-[11px]">Đặt lại</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Appointment List (Hiển thị trọn vẹn đúng 3 card không lòi card 4, các card còn lại cuộn scroll) */}
+              <div className="mt-3 space-y-2.5 max-h-[308px] overflow-y-auto pr-1.5 custom-scrollbar">
                 {displayedUpcomingAppointments.length > 0 ? (
                   displayedUpcomingAppointments.map((apt) => {
                     const isFollowUp = apt.type === 'FOLLOW_UP';
@@ -1034,13 +1195,13 @@ export default function PatientDashboard() {
                         key={apt.id}
                         onClick={() => handleOpenDetailModal(apt)}
                         className={`group flex items-center justify-between gap-3 p-3 rounded-xl border transition-all cursor-pointer ${isFollowUp
-                          ? 'border-slate-100/90 hover:border-indigo-200 hover:bg-indigo-50/20 bg-white'
-                          : 'border-slate-100/90 hover:border-teal-200 hover:bg-teal-50/20 bg-white'
+                          ? 'border-slate-200/80 hover:border-indigo-300 hover:bg-indigo-50/20 bg-white hover:shadow-xs'
+                          : 'border-slate-200/80 hover:border-teal-300 hover:bg-teal-50/20 bg-white hover:shadow-xs'
                           }`}
                       >
                         {/* Date badge: Cân đối, tinh tế, không bao giờ rớt dòng */}
                         <div
-                          className={`flex flex-col items-center justify-center rounded-xl min-w-[58px] w-[58px] h-[52px] shrink-0 border transition-all gap-1 ${isFollowUp
+                          className={`flex flex-col items-center justify-center rounded-xl min-w-[56px] w-[56px] h-[52px] shrink-0 border transition-all gap-1 ${isFollowUp
                             ? 'bg-indigo-50/70 border-indigo-100/90 text-indigo-700'
                             : 'bg-teal-50/70 border-teal-100/90 text-teal-700'
                             }`}
@@ -1083,11 +1244,14 @@ export default function PatientDashboard() {
                                 )}
                               </span>
 
-                              <span
-                                className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold border shrink-0 ${apt.statusColor}`}
-                              >
-                                {apt.status}
-                              </span>
+                              {/* Trạng thái từ API hiển thị chuẩn theo Employee cho cả Lịch hẹn và Tái khám */}
+                              {apt.status ? (
+                                <span
+                                  className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-bold border shrink-0 ${apt.statusColor}`}
+                                >
+                                  {apt.status}
+                                </span>
+                              ) : null}
                             </div>
                           </div>
 
@@ -1121,24 +1285,30 @@ export default function PatientDashboard() {
                 ) : (
                   <div className="py-10 text-center">
                     <div className="h-10 w-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2">
-                      <Calendar className="h-5 w-5" />
+                      <Search className="h-5 w-5" />
                     </div>
                     <p className="text-xs font-bold text-slate-700">
-                      {appointmentFilterTab === 'FOLLOW_UP'
-                        ? 'Chưa có lịch tái khám nào'
-                        : appointmentFilterTab === 'APPOINTMENT'
-                          ? 'Chưa có lịch hẹn khám nào'
-                          : 'Chưa có lịch hẹn nào sắp tới'}
+                      Không tìm thấy lịch hẹn phù hợp
                     </p>
                     <p className="text-[11px] text-slate-400 mt-0.5">
-                      {appointmentFilterTab === 'FOLLOW_UP'
-                        ? 'Lịch tái khám do Bác sĩ chỉ định sau quá trình điều trị sẽ hiển thị tại đây.'
-                        : 'Đặt lịch khám để được bác sĩ theo dõi định kỳ.'}
+                      Vui lòng thử từ khóa khác hoặc điều chỉnh lại bộ lọc mốc thời gian.
                     </p>
+                    {(appointmentSearchQuery || appointmentTimeRange !== 'ALL') && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAppointmentSearchQuery('');
+                          setAppointmentTimeRange('ALL');
+                        }}
+                        className="mt-3 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-teal-700 bg-teal-50 border border-teal-200 hover:bg-teal-100 transition-colors cursor-pointer"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                        Xóa bộ lọc
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
-            </div>
           </div>
 
           {/* Right Column: Kế hoạch điều trị (Hỗ trợ nhiều bản ghi dạng Tabs) */}
@@ -1584,12 +1754,14 @@ export default function PatientDashboard() {
                   </span>
                 </div>
               )}
-              <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                <span className="text-slate-500 font-medium">Trạng thái:</span>
-                <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-200">
-                  {selectedAppointment.status}
-                </span>
-              </div>
+              {selectedAppointment.status ? (
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                  <span className="text-slate-500 font-medium">Trạng thái:</span>
+                  <span className={`rounded-md px-2.5 py-0.5 text-xs font-bold border ${selectedAppointment.statusColor || 'bg-teal-50 text-teal-700 border-teal-200'}`}>
+                    {selectedAppointment.status}
+                  </span>
+                </div>
+              ) : null}
 
               {/* Thông báo trạng thái và điều kiện chỉnh sửa */}
               {selectedAppointment.type === 'FOLLOW_UP' ? (

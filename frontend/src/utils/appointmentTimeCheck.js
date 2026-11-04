@@ -18,6 +18,15 @@ export const checkAppointmentModifiable = (apt) => {
     return { canModify: false, reason: 'Lịch hẹn đã hoàn thành khám bệnh, không thể chỉnh sửa' };
   }
 
+  // 1.5. Lịch tái khám do Bác sĩ chỉ định -> Không hủy/sửa trực tuyến
+  if (apt.type === 'FOLLOW_UP' || apt.isFollowUp) {
+    return {
+      canModify: false,
+      isFollowUp: true,
+      reason: 'Lịch tái khám do Bác sĩ chỉ định theo phác đồ điều trị. Quý khách vui lòng liên hệ hotline phòng khám nếu cần dời hoặc đổi lịch.',
+    };
+  }
+
   // 2. Trích xuất ngày & giờ hẹn
   const dateVal =
     apt.appointmentDate ||
