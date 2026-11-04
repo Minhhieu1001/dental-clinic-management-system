@@ -1052,14 +1052,14 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
                           </p>
                         </div>
 
-                        {/* Meta: Duration & Price */}
+                        {/* Meta: Duration & Category */}
                         <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
                           <span className="inline-flex items-center gap-1 text-slate-500 text-[11px] font-medium">
                             <Clock className="h-3 w-3 text-slate-400" />
                             ~{srv.estimatedDuration} phút
                           </span>
-                          <span className="text-[11px] font-extrabold text-[#009766] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                            {srv.price > 0 ? formatVND(srv.price) : 'Miễn phí khám'}
+                          <span className="text-[10px] font-semibold text-[#009766] bg-[#e6f7f0] px-2 py-0.5 rounded border border-[#009766]/20">
+                            {srv.categoryLabel || 'Khám & Tư vấn'}
                           </span>
                         </div>
                       </div>

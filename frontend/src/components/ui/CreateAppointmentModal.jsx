@@ -1064,8 +1064,8 @@ export default function CreateAppointmentModal({
                             <Clock className="h-3 w-3 text-slate-400" />
                             ~{srv.estimatedDuration} phút
                           </span>
-                          <span className="text-[11px] font-extrabold text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
-                            {srv.price > 0 ? formatVND(srv.price) : 'Miễn phí khám'}
+                          <span className="text-[10px] font-semibold text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                            {srv.categoryLabel || 'Khám & Tư vấn'}
                           </span>
                         </div>
                       </div>
