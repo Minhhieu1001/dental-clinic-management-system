@@ -12,6 +12,7 @@ import {
   Search,
   Building,
   ShieldAlert,
+  AlertCircle,
   Sparkles,
   Award,
   MapPin,
@@ -107,6 +108,7 @@ export default function CreateAppointmentModal({
 
   const isCreatedOverOneHour = useMemo(() => {
     if (!isEditMode) return false;
+    if (targetData?.allowReschedule) return false;
     const cVal = targetData?.createdAt || targetData?.createAt;
     if (!cVal) return false;
     try {
@@ -206,10 +208,19 @@ export default function CreateAppointmentModal({
 
         // Set initial selected dentist
         if (processedDentists.length > 0) {
-          setFormData((prev) => ({
-            ...prev,
-            dentistId: prev.dentistId || processedDentists[0].id,
-          }));
+          setFormData((prev) => {
+            let matchedId = prev.dentistId;
+            if (!matchedId && targetData?.dentistName) {
+              const matched = processedDentists.find(
+                (d) => getDoctorName(d).toLowerCase() === targetData.dentistName.toLowerCase()
+              );
+              if (matched) matchedId = matched.id;
+            }
+            return {
+              ...prev,
+              dentistId: matchedId || processedDentists[0].id,
+            };
+          });
         }
       } catch (err) {
         console.warn('Lỗi khởi tạo dữ liệu modal:', err);
@@ -227,23 +238,44 @@ export default function CreateAppointmentModal({
         let dateVal = new Date().toISOString().split('T')[0];
         if (targetData.appointmentDate) {
           try {
-            dateVal = typeof targetData.appointmentDate === 'string'
-              ? targetData.appointmentDate.split('T')[0]
-              : new Date(targetData.appointmentDate).toISOString().split('T')[0];
+            const raw = String(targetData.appointmentDate).trim().replace(' ', 'T');
+            const datePart = raw.includes('T') ? raw.split('T')[0] : raw;
+            if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+              dateVal = datePart;
+            } else {
+              const d = new Date(raw);
+              if (!isNaN(d.getTime())) {
+                dateVal = d.toISOString().split('T')[0];
+              }
+            }
           } catch (e) {
-            dateVal = String(targetData.appointmentDate).substring(0, 10);
+            dateVal = new Date().toISOString().split('T')[0];
           }
         }
 
-        let timeVal = targetData.time || targetData.appointmentTime || '09:00';
-        if (timeVal && timeVal.includes('T')) {
+        let timeVal = '09:00';
+        const rawTime = targetData.time || targetData.appointmentTime;
+        if (rawTime) {
           try {
-            const d = new Date(timeVal);
-            timeVal = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+            const raw = String(rawTime).trim().replace(' ', 'T');
+            const timePart = raw.includes('T') ? raw.split('T')[1] : raw;
+            const parts = timePart.split(':');
+            if (parts.length >= 2) {
+              timeVal = `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
+            } else {
+              const d = new Date(raw);
+              if (!isNaN(d.getTime())) {
+                timeVal = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+              }
+            }
           } catch (e) {
             timeVal = '09:00';
           }
         }
+
+        const rawNotes = targetData.notes || targetData.description || '';
+        const isUrgent = rawNotes.includes('[ƯU TIÊN / CẤP CỨU]');
+        const cleanNotes = rawNotes.replace(/^\[ƯU TIÊN \/ CẤP CỨU\]\s*/, '').trim();
 
         setFormData((prev) => ({
           ...prev,
@@ -262,11 +294,41 @@ export default function CreateAppointmentModal({
           appointmentDate: dateVal,
           appointmentTime: timeVal,
           reason: targetData.service || targetData.reason || targetData.note || targetData.description || COMMON_SERVICES[0],
-          notes: targetData.notes || '',
+          priority: isUrgent ? 'URGENT' : 'NORMAL',
+          notes: cleanNotes,
           status: targetData.status || targetData.rawStatus || null,
         }));
       } else {
         // Add mode (Creating new appointment from request or empty)
+        let addDateVal = new Date().toISOString().split('T')[0];
+        const rawAddDate = targetData.date || targetData.appointmentDate;
+        if (rawAddDate) {
+          try {
+            const raw = String(rawAddDate).trim().replace(' ', 'T');
+            const datePart = raw.includes('T') ? raw.split('T')[0] : raw;
+            if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+              addDateVal = datePart;
+            }
+          } catch (e) {}
+        }
+
+        let addTimeVal = '09:00';
+        const rawAddTime = targetData.time || targetData.appointmentTime;
+        if (rawAddTime) {
+          try {
+            const raw = String(rawAddTime).trim().replace(' ', 'T');
+            const timePart = raw.includes('T') ? raw.split('T')[1] : raw;
+            const parts = timePart.split(':');
+            if (parts.length >= 2) {
+              addTimeVal = `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
+            }
+          } catch (e) {}
+        }
+
+        const rawNotes = targetData.notes || targetData.description || targetData.note || '';
+        const isUrgent = rawNotes.includes('[ƯU TIÊN / CẤP CỨU]');
+        const cleanNotes = rawNotes.replace(/^\[ƯU TIÊN \/ CẤP CỨU\]\s*/, '').trim();
+
         setFormData((prev) => ({
           ...prev,
           appointmentId: null,
@@ -281,10 +343,11 @@ export default function CreateAppointmentModal({
           dob: targetData.dob || '',
           dentistId: targetData.dentistId || prev.dentistId,
           roomId: targetData.roomId || prev.roomId,
-          appointmentDate: targetData.date ? targetData.date.split(' ')[0] : new Date().toISOString().split('T')[0],
-          appointmentTime: '09:00',
+          appointmentDate: addDateVal,
+          appointmentTime: addTimeVal,
           reason: targetData.note || targetData.description || targetData.service || COMMON_SERVICES[0],
-          notes: targetData.notes || '',
+          priority: isUrgent ? 'URGENT' : 'NORMAL',
+          notes: cleanNotes,
         }));
       }
     } else {
@@ -347,7 +410,10 @@ export default function CreateAppointmentModal({
     setIsDoctorDropdownOpen(false);
   };
 
-  const selectedDoctor = dentists.find((d) => d.id === formData.dentistId) || dentists[0];
+  const selectedDoctor =
+    dentists.find(
+      (d) => String(d.id).toLowerCase() === String(formData.dentistId).toLowerCase()
+    ) || dentists[0];
 
   const filteredDentists = dentists.filter((d) => {
     const term = doctorSearchTerm.toLowerCase();
@@ -373,6 +439,12 @@ export default function CreateAppointmentModal({
 
     setSubmitting(true);
     try {
+      const rawNotes = (formData.notes || '').trim();
+      const cleanNotes = rawNotes.replace(/^\[ƯU TIÊN \/ CẤP CỨU\]\s*/, '').trim();
+      const finalNotes = formData.priority === 'URGENT'
+        ? `[ƯU TIÊN / CẤP CỨU] ${cleanNotes}`.trim()
+        : cleanNotes;
+
       const payloadData = {
         requestId: isValidUUID(formData.requestId) ? formData.requestId : null,
         patientId: user?.role === 'PATIENT'
@@ -387,8 +459,10 @@ export default function CreateAppointmentModal({
         appointmentDate: formData.appointmentDate,
         appointmentTime: formData.appointmentTime,
         reason: formData.reason.trim(),
-        notes: `${formData.priority === 'URGENT' ? '[ƯU TIÊN / CẤP CỨU] ' : ''}${formData.notes.trim()}`,
-        status: isEditMode && formData.status ? formData.status : undefined,
+        notes: finalNotes,
+        status: isEditMode
+          ? (formData.status === 'PENDING' && formData.dentistId ? 'CONFIRMED' : formData.status || 'CONFIRMED')
+          : undefined,
       };
 
       if (isEditMode && formData.appointmentId && !String(formData.appointmentId).startsWith('mock-')) {

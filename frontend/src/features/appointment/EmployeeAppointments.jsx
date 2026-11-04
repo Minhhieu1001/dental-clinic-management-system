@@ -33,7 +33,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { getDentistsList } from '../../services/dentist.service';
-import { getAppointments, updateAppointment } from '../../services/appointment.service';
+import { getAppointments, getAppointmentById, updateAppointment } from '../../services/appointment.service';
 import { getAppointmentRequestToday, updateAppointmentRequestStatus } from '../../services/appointmentRequest.service';
 import CreateAppointmentModal from '../../components/ui/CreateAppointmentModal';
 
@@ -109,6 +109,7 @@ export default function EmployeeAppointments() {
   // Modal States
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedRequestData, setSelectedRequestData] = useState(null);
+  const [modalType, setModalType] = useState('add');
 
   const currentUsername = user?.username || user?.email?.split('@')[0] || 'employee01';
 
@@ -195,15 +196,69 @@ export default function EmployeeAppointments() {
 
   useWebSocket(handleRealtimeAppointment, null);
 
-  // Handle Confirm & Schedule Online Request
-  const handleOpenScheduleModal = (apt) => {
+  // Handle Confirm & Schedule Online Request OR Edit / Reschedule Existing Appointment
+  const handleOpenScheduleModal = async (apt) => {
+    if (!apt) return;
+
+    // Check if it's an online request that hasn't been scheduled as an appointment yet
+    const isNewOnlineRequest = Boolean(
+      apt.isOnlineRequest && (apt.status === 'PENDING' || (!apt.dentistId && !apt.dentistName))
+    );
+
+    if (isNewOnlineRequest) {
+      setModalType('add');
+      setSelectedRequestData({
+        requestId: apt.id,
+        fullName: apt.patientName || apt.fullName || '',
+        phone: apt.phone || '',
+        description: apt.reason || apt.notes || '',
+        reason: apt.reason || apt.description || 'Tư vấn khám tổng quát',
+        notes: apt.notes || apt.description || '',
+        branchId: apt.branchId || null,
+        branchName: apt.branchName || 'Chưa xác định chi nhánh',
+        appointmentDate: apt.appointmentDate ? String(apt.appointmentDate).replace(' ', 'T').split('T')[0] : new Date().toISOString().split('T')[0],
+        appointmentTime: '09:00',
+      });
+      setIsCreateModalOpen(true);
+      return;
+    }
+
+    // Existing appointment: Mode is 'edit'
+    let fullApt = { ...apt };
+    if (apt.id && !String(apt.id).startsWith('mock-')) {
+      try {
+        const res = await getAppointmentById(apt.id);
+        if (res) fullApt = { ...apt, ...res };
+      } catch (err) {
+        console.warn('Lỗi lấy chi tiết lịch hẹn:', err);
+      }
+    }
+
+    setModalType('edit');
     setSelectedRequestData({
-      fullName: apt.patientName || apt.fullName,
-      phone: apt.phone,
-      description: apt.reason || apt.notes,
-      requestId: apt.id,
-      branchId: apt.branchId || null,
-      branchName: apt.branchName || 'Chưa xác định chi nhánh',
+      ...fullApt,
+      id: fullApt.id,
+      appointmentId: fullApt.id,
+      patientId: fullApt.patientId || null,
+      patientName: fullApt.patientName || fullApt.fullName || '',
+      fullName: fullApt.patientName || fullApt.fullName || '',
+      phone: fullApt.phone || '',
+      gender: fullApt.gender || 'Nam',
+      dob: fullApt.dob || '',
+      dentistId: fullApt.dentistId || null,
+      dentistName: fullApt.dentistName || null,
+      roomId: fullApt.roomId || null,
+      roomName: fullApt.roomName || null,
+      appointmentDate: fullApt.appointmentDate || null,
+      appointmentTime: fullApt.appointmentTime || null,
+      reason: fullApt.reason || fullApt.service || fullApt.notes || '',
+      notes: fullApt.notes || '',
+      status: fullApt.status || null,
+      branchId: fullApt.branchId || null,
+      branchName: fullApt.branchName || '',
+      branchAddress: fullApt.branchAddress || '',
+      createdAt: fullApt.createdAt || fullApt.createAt || null,
+      allowReschedule: true,
     });
     setIsCreateModalOpen(true);
   };
@@ -443,9 +498,14 @@ export default function EmployeeAppointments() {
       });
   }, [appointments, selectedDentistId, creatorScopeFilter, searchTerm, statusFilter, currentDate, isApptByCurrentEmp, isApptFromWeb]);
 
-  // Filter APPOINTMENTS matching dayIdx and hourStr for Receptionist view
-  const getEventsForCell = (dayIdx, hourStr) => {
-    const targetDayDate = weekDaysList[dayIdx];
+  const calendarDays = useMemo(() => {
+    if (viewMode === 'DAY') return [currentDate];
+    return weekDaysList;
+  }, [viewMode, currentDate, weekDaysList]);
+
+  // Filter APPOINTMENTS matching dayOrIdx and hourStr for Receptionist view
+  const getEventsForCell = (dayOrIdx, hourStr) => {
+    const targetDayDate = typeof dayOrIdx === 'number' ? weekDaysList[dayOrIdx] : dayOrIdx;
     if (!targetDayDate) return [];
 
     const targetYear = targetDayDate.getFullYear();
@@ -732,6 +792,7 @@ export default function EmployeeAppointments() {
             type="button"
             onClick={() => {
               setSelectedRequestData(null);
+              setModalType('add');
               setIsCreateModalOpen(true);
             }}
             className="flex items-center gap-1.5 rounded-sm bg-teal-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-teal-800 transition-all duration-150 active:scale-95 cursor-pointer"
@@ -1079,20 +1140,20 @@ export default function EmployeeAppointments() {
         </div>
       )}
 
-      {/* 3. Receptionist Calendar View Content (WEEK MATRIX VIEW) */}
-      {viewMode === 'WEEK' && (
+      {/* 3. Receptionist Calendar View Content (WEEK MATRIX VIEW / DAY VIEW) */}
+      {(viewMode === 'WEEK' || viewMode === 'DAY') && (
         <div className="rounded-sm border border-slate-200 bg-white shadow-2xs overflow-hidden">
           <div className="overflow-x-auto">
-            <div className="w-full min-w-[1100px] relative">
+            <div className={`w-full ${viewMode === 'DAY' ? 'min-w-[600px]' : 'min-w-[1100px]'} relative`}>
               {/* Matrix Table Header: Days of the Week */}
-              <div className="grid grid-cols-8 border-b border-slate-200 bg-slate-50/70 text-center text-xs font-bold text-slate-700">
+              <div className={`grid ${viewMode === 'DAY' ? 'grid-cols-2' : 'grid-cols-8'} border-b border-slate-200 bg-slate-50/70 text-center text-xs font-bold text-slate-700`}>
                 {/* Time slot column title */}
                 <div className="p-3 border-r border-slate-200 text-slate-400 font-semibold text-[11px] flex items-center justify-center">
                   Giờ / Ngày
                 </div>
 
-                {/* 7 Days Header (T2 - CN) */}
-                {weekDaysList.map((d, idx) => {
+                {/* Days Header */}
+                {calendarDays.map((d, idx) => {
                   const isToday =
                     d.getDate() === now.getDate() &&
                     d.getMonth() === now.getMonth() &&
@@ -1100,6 +1161,7 @@ export default function EmployeeAppointments() {
 
                   const dayNum = String(d.getDate()).padStart(2, '0');
                   const monthNum = String(d.getMonth() + 1).padStart(2, '0');
+                  const wdIndex = (d.getDay() + 6) % 7;
 
                   return (
                     <div
@@ -1108,7 +1170,7 @@ export default function EmployeeAppointments() {
                         }`}
                     >
                       <div className="flex items-center justify-center gap-1">
-                        <span className="text-xs font-extrabold uppercase">{WEEKDAYS[idx].short}</span>
+                        <span className="text-xs font-extrabold uppercase">{WEEKDAYS[wdIndex]?.short || 'CN'}</span>
                         {isToday && (
                           <span className="bg-teal-700 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-sm">
                             HÔM NAY
@@ -1127,15 +1189,15 @@ export default function EmployeeAppointments() {
               <div className="relative divide-y divide-slate-100">
                 {/* Time Slot Rows */}
                 {displayTimeSlots.map((hourStr) => (
-                  <div key={hourStr} className="grid grid-cols-8 min-h-[96px]">
+                  <div key={hourStr} className={`grid ${viewMode === 'DAY' ? 'grid-cols-2' : 'grid-cols-8'} min-h-[96px]`}>
                     {/* Time Label Column */}
                     <div className="p-2 border-r border-slate-200 bg-slate-50/40 text-xs font-bold text-slate-500 flex items-center justify-center">
                       {hourStr}
                     </div>
 
-                    {/* 7 Day Matrix Cells */}
-                    {weekDaysList.map((d, dayIdx) => {
-                      const cellEvents = getEventsForCell(dayIdx, hourStr);
+                    {/* Day Matrix Cells */}
+                    {calendarDays.map((d, dayIdx) => {
+                      const cellEvents = getEventsForCell(d, hourStr);
 
                       return (
                         <div
@@ -1373,10 +1435,7 @@ export default function EmployeeAppointments() {
                           return (
                             <div
                               key={apt.id}
-                              onClick={() => {
-                                setSelectedRequestData(apt);
-                                setIsCreateModalOpen(true);
-                              }}
+                              onClick={() => handleOpenScheduleModal(apt)}
                               className={`p-1 rounded border border-slate-200 text-[10px] cursor-pointer hover:shadow-2xs transition-all text-left truncate ${style.cardBg}`}
                             >
                               <div className="font-bold truncate flex items-center justify-between gap-1">
@@ -1408,13 +1467,16 @@ export default function EmployeeAppointments() {
         </div>
       )}
 
-      {/* Create / Schedule Appointment Modal for Receptionist */}
+      {/* Create / Schedule / Edit Appointment Modal for Receptionist */}
       <CreateAppointmentModal
         isOpen={isCreateModalOpen}
         onClose={() => {
           setIsCreateModalOpen(false);
           setSelectedRequestData(null);
+          setModalType('add');
         }}
+        type={modalType}
+        payload={selectedRequestData}
         initialData={selectedRequestData}
         onSuccess={fetchAppointmentsData}
       />
