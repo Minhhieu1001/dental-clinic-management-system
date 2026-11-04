@@ -1782,6 +1782,7 @@ export default function PatientAppointments() {
           setEditingAppointment(null);
         }}
         onSuccess={() => {
+          setIsBookingModalOpen(false);
           setEditingAppointment(null);
           fetchAppointments();
         }}

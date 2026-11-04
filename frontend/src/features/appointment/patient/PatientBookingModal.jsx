@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   X,
   Calendar,
@@ -20,7 +20,10 @@ import {
   Phone,
   Mail,
   ShieldCheck,
+  Bell,
+  Sparkles,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
 import { getBranches } from '../../../services/clinic.service';
@@ -32,7 +35,6 @@ import {
   getPatientsByPhone,
   searchPatient,
 } from '../../../services/patient.service';
-import { createNotification } from '../../../services/notification.service';
 
 // Danh sách dịch vụ & lý do khám bệnh chuẩn y chang bên role nhân viên
 export const EMPLOYEE_COMMON_SERVICES = [
@@ -276,6 +278,21 @@ const DentalToothIcon = ({ className = 'w-9 h-9' }) => {
     </div>
   );
 };
+
+// Chuẩn hóa tên bác sĩ không bị lặp học hàm/học vị (tránh BS. ThS. BS.)
+const formatDoctorName = (name) => {
+  if (!name || name === 'Chưa có') return 'BS. Crown Dental';
+  let clean = String(name).trim();
+  clean = clean.replace(/^(BS\.?\s*)+(ThS|TS|PGS|GS)\.?\s*(BS\.?\s*)?/i, '$2. BS. ');
+  clean = clean.replace(/^(BS\.?\s*)+/i, 'BS. ');
+  clean = clean.replace(/^(ThS\.?\s*)+/i, 'ThS. ');
+  clean = clean.replace(/^(TS\.?\s*)+/i, 'TS. ');
+  if (!/^(BS|ThS|TS|PGS|GS)\.?\s+/i.test(clean)) {
+    clean = `BS. ${clean}`;
+  }
+  return clean.replace(/\s+/g, ' ');
+};
+
 // Doctor Avatar with robust fallback to initials
 const DoctorAvatar = ({ src, name, className = 'h-11 w-11' }) => {
   const [imgError, setImgError] = useState(false);
@@ -310,6 +327,7 @@ const DoctorAvatar = ({ src, name, className = 'h-11 w-11' }) => {
 
 export default function PatientBookingModal({ isOpen, onClose, onSuccess, initialAppointment = null }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // Smooth modal transition state & Maximize state
   const [mounted, setMounted] = useState(false);
@@ -324,6 +342,9 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
   const [branches, setBranches] = useState([]);
   const [dentists, setDentists] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+
+  // Ref to prevent duplicate API fetches when modal is already open
+  const hasLoadedRef = useRef(false);
 
   // Step 1: Dịch vụ / Lý do khám bệnh
   const [activeTab, setActiveTab] = useState('ALL');
@@ -365,13 +386,13 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
       setMounted(true);
       const timer = setTimeout(() => {
         setActive(true);
-      }, 25);
+      }, 20);
       return () => clearTimeout(timer);
     } else {
       setActive(false);
       const timer = setTimeout(() => {
         setMounted(false);
-      }, 220);
+      }, 280);
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
@@ -381,7 +402,7 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
     setIsMaximized(false);
     setTimeout(() => {
       onClose();
-    }, 200);
+    }, 250);
   }, [onClose]);
 
   // Close on Escape key press
@@ -395,9 +416,15 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, handleSmoothClose]);
 
-  // Initialize and load data when modal opens
+  // Initialize and load data when modal opens (only once per open)
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      hasLoadedRef.current = false;
+      return;
+    }
+
+    if (hasLoadedRef.current) return;
+    hasLoadedRef.current = true;
 
     setStep(1);
     setSelectedService(EMPLOYEE_COMMON_SERVICES[0]);
@@ -573,7 +600,7 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
     };
 
     loadData();
-  }, [isOpen, user, initialAppointment]);
+  }, [isOpen, user?.id, initialAppointment?.id]);
 
   // Update default reason note when service changes
   useEffect(() => {
@@ -690,6 +717,8 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
 
   // Handle final submission to createAppointment API
   const handleConfirmBooking = async () => {
+    if (submitting) return;
+
     if (!patientInfo.fullName.trim() || !patientInfo.phone.trim()) {
       toast.error('Vui lòng cung cấp đầy đủ Họ tên và Số điện thoại!');
       setIsEditingPatient(true);
@@ -728,62 +757,38 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
       };
 
       if (initialAppointment?.id) {
-        // Mode: Chỉnh sửa lại thông tin đặt lịch (trong vòng 1h kể từ khi đặt)
+        // Mode: Chỉnh sửa lại thông tin đặt lịch
         await updateAppointment(initialAppointment.id, payload);
-        toast.success('Chỉnh sửa thông tin đặt lịch thành công!', { duration: 4000 });
-
-        // Phát thông báo chuông
-        try {
-          if (user?.id) {
-            await createNotification({
-              userId: user.id,
-              title: 'Cập nhật lịch khám thành công',
-              content: `Bạn đã chỉnh sửa thông tin lịch khám (${selectedService?.serviceName || 'Khám răng'}) vào lúc ${selectedTime} ngày ${formattedSelectedDate} tại ${selectedBranch?.branchName || 'Crown Dental'}.`,
-              type: 'STATUS_CHANGE',
-              targetUrl: '/patient/appointments',
-            });
-          }
-        } catch (notifErr) {
-          console.warn('Lỗi gửi thông báo cho bệnh nhân:', notifErr);
-        }
+        toast.success('Chỉnh sửa thông tin đặt lịch thành công!', { duration: 3500 });
       } else {
-        // Mode: Đặt lịch khám mới
+        // Mode: Đặt lịch khám mới (Backend tự lưu lịch và gửi notification realtime)
         await createAppointment(payload);
-        toast.success('Đặt lịch khám thành công! Chúng tôi đã ghi nhận lịch hẹn của bạn.', { duration: 4000 });
-
-        // Phát thông báo đến chuông (Notification Bell)
-        try {
-          if (user?.id) {
-            await createNotification({
-              userId: user.id,
-              title: 'Đặt lịch khám thành công',
-              content: `Bạn đã đặt lịch khám (${selectedService?.serviceName || 'Khám răng tổng quát'}) vào lúc ${selectedTime} ngày ${formattedSelectedDate} tại ${selectedBranch?.branchName || 'Crown Dental'}.`,
-              type: 'PATIENT_CHECKIN',
-              targetUrl: '/patient/appointments',
-            });
-          }
-        } catch (notifErr) {
-          console.warn('Lỗi gửi thông báo cho bệnh nhân:', notifErr);
-        }
+        toast.success('Đặt lịch khám thành công! Crown Dental đã ghi nhận lịch hẹn của bạn.', { duration: 3500 });
       }
 
-      // Kích hoạt cập nhật chuông và làm mới dữ liệu realtime
+      // Kích hoạt cập nhật chuông và làm mới dữ liệu realtime ngay lập tức
       window.dispatchEvent(new CustomEvent('notification_updated'));
       window.dispatchEvent(new CustomEvent('appointment_created'));
 
-      if (onSuccess) onSuccess();
+      // Đóng modal ngay lập tức một cách smooth, không giữ lại màn hình
       handleSmoothClose();
+
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (err) {
       console.error('Lỗi khi đặt lịch khám:', err);
-      toast.error(err.response?.data?.message || 'Không thể tạo lịch khám. Vui lòng thử lại!');
+      toast.error(err.response?.data?.message || err.message || 'Không thể tạo lịch khám. Vui lòng thử lại!');
     } finally {
       setSubmitting(false);
     }
   };
 
+  if (!mounted) return null;
+
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center transition-all duration-200 ease-out ${isMaximized ? 'p-0' : 'p-0 sm:p-5 backdrop-blur-xs'
+      className={`fixed inset-0 z-50 flex items-center justify-center transition-all duration-300 ease-out ${isMaximized ? 'p-0' : 'p-0 sm:p-5 backdrop-blur-xs'
         } ${active ? 'bg-slate-900/50 opacity-100' : 'bg-slate-900/0 opacity-0 pointer-events-none'
         }`}
       onClick={(e) => {
@@ -791,7 +796,7 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
       }}
     >
       <div
-        className={`relative w-full bg-white overflow-hidden flex flex-col font-sans transition-all duration-200 ease-out transform ${isMaximized
+        className={`relative w-full bg-white overflow-hidden flex flex-col font-sans transition-all duration-300 ease-out transform ${isMaximized
           ? 'h-full w-full max-w-none max-h-none rounded-none border-0 shadow-none'
           : 'h-full sm:h-auto sm:max-h-[90vh] sm:max-w-4xl rounded-none sm:rounded-lg shadow-xl border-0 sm:border sm:border-slate-200/90'
           } ${active ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-[0.98] translate-y-2'
@@ -851,119 +856,119 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
         </div>
 
         {/* Mobile Stepper (sm:hidden) */}
-        <div className="sm:hidden px-3.5 py-2 bg-slate-50 border-b border-slate-200 shrink-0">
-          <div className="flex items-center justify-between text-xs mb-1">
-            <span className="font-bold text-[#009766] flex items-center gap-1.5 truncate">
-              <span className="h-4.5 w-4.5 rounded-full bg-[#009766] text-white flex items-center justify-center text-[10px] font-bold shrink-0">
-                {step}
-              </span>
-              {step === 1 && '1. Lý do khám bệnh'}
-              {step === 2 && '2. Chi nhánh & Bác sĩ'}
-              {step === 3 && '3. Thời gian khám'}
-              {step === 4 && '4. Xác nhận thông tin'}
-            </span>
-            <span className="text-[11px] font-semibold text-slate-400 shrink-0">
-              {step}/4
-            </span>
-          </div>
-          {/* 4 Segmented Progress Bar */}
-          <div className="grid grid-cols-4 gap-1">
-            {[1, 2, 3, 4].map((num) => (
-              <div
-                key={num}
-                onClick={() => step > num && setStep(num)}
-                className={`h-1 rounded-sm transition-all ${num <= step ? 'bg-[#009766]' : 'bg-slate-200'
-                  } ${step > num ? 'cursor-pointer' : ''}`}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Desktop Stepper (hidden sm:block) */}
-        <div className="hidden sm:block bg-slate-50/90 border-b border-slate-200 px-5 py-2.5 shrink-0">
-          <div className="max-w-2xl mx-auto flex items-center justify-between">
-            {/* Step 1 */}
-            <div
-              onClick={() => step > 1 && setStep(1)}
-              className={`flex items-center gap-2 transition-all select-none ${step >= 1 ? 'cursor-pointer' : 'cursor-default'}`}
-            >
-              <div
-                className={`h-6.5 w-6.5 rounded-full flex items-center justify-center text-xs font-bold transition-all ${step === 1
-                  ? 'bg-[#009766] text-white ring-2 ring-[#009766]/20 shadow-xs'
-                  : step > 1
-                    ? 'bg-[#009766] text-white'
-                    : 'bg-slate-200 text-slate-500'
-                  }`}
-              >
-                {step > 1 ? <Check className="h-3 w-3 stroke-[3]" /> : '1'}
+            <div className="sm:hidden px-3.5 py-2 bg-slate-50 border-b border-slate-200 shrink-0">
+              <div className="flex items-center justify-between text-xs mb-1">
+                <span className="font-bold text-[#009766] flex items-center gap-1.5 truncate">
+                  <span className="h-4.5 w-4.5 rounded-full bg-[#009766] text-white flex items-center justify-center text-[10px] font-bold shrink-0">
+                    {step}
+                  </span>
+                  {step === 1 && '1. Lý do khám bệnh'}
+                  {step === 2 && '2. Chi nhánh & Bác sĩ'}
+                  {step === 3 && '3. Thời gian khám'}
+                  {step === 4 && '4. Xác nhận thông tin'}
+                </span>
+                <span className="text-[11px] font-semibold text-slate-400 shrink-0">
+                  {step}/4
+                </span>
               </div>
-              <span className={`text-xs font-semibold ${step === 1 ? 'text-[#009766] font-bold' : step > 1 ? 'text-slate-700' : 'text-slate-400'}`}>
-                Lý do khám
-              </span>
+              {/* 4 Segmented Progress Bar */}
+              <div className="grid grid-cols-4 gap-1">
+                {[1, 2, 3, 4].map((num) => (
+                  <div
+                    key={num}
+                    onClick={() => step > num && setStep(num)}
+                    className={`h-1 rounded-sm transition-all ${num <= step ? 'bg-[#009766]' : 'bg-slate-200'
+                      } ${step > num ? 'cursor-pointer' : ''}`}
+                  />
+                ))}
+              </div>
             </div>
 
-            <div className={`flex-1 h-[1.5px] mx-3 transition-colors ${step >= 2 ? 'bg-[#009766]' : 'bg-slate-200'}`} />
+            {/* Desktop Stepper (hidden sm:block) */}
+            <div className="hidden sm:block bg-slate-50/90 border-b border-slate-200 px-5 py-2.5 shrink-0">
+              <div className="max-w-2xl mx-auto flex items-center justify-between">
+                {/* Step 1 */}
+                <div
+                  onClick={() => step > 1 && setStep(1)}
+                  className={`flex items-center gap-2 transition-all select-none ${step >= 1 ? 'cursor-pointer' : 'cursor-default'}`}
+                >
+                  <div
+                    className={`h-6.5 w-6.5 rounded-full flex items-center justify-center text-xs font-bold transition-all ${step === 1
+                      ? 'bg-[#009766] text-white ring-2 ring-[#009766]/20 shadow-xs'
+                      : step > 1
+                        ? 'bg-[#009766] text-white'
+                        : 'bg-slate-200 text-slate-500'
+                      }`}
+                  >
+                    {step > 1 ? <Check className="h-3 w-3 stroke-[3]" /> : '1'}
+                  </div>
+                  <span className={`text-xs font-semibold ${step === 1 ? 'text-[#009766] font-bold' : step > 1 ? 'text-slate-700' : 'text-slate-400'}`}>
+                    Lý do khám
+                  </span>
+                </div>
 
-            {/* Step 2 */}
-            <div
-              onClick={() => step > 2 && setStep(2)}
-              className={`flex items-center gap-2 transition-all select-none ${step >= 2 ? 'cursor-pointer' : 'cursor-default'}`}
-            >
-              <div
-                className={`h-6.5 w-6.5 rounded-full flex items-center justify-center text-xs font-bold transition-all ${step === 2
-                  ? 'bg-[#009766] text-white ring-2 ring-[#009766]/20 shadow-xs'
-                  : step > 2
-                    ? 'bg-[#009766] text-white'
-                    : 'bg-slate-200 text-slate-500'
-                  }`}
-              >
-                {step > 2 ? <Check className="h-3 w-3 stroke-[3]" /> : '2'}
+                <div className={`flex-1 h-[1.5px] mx-3 transition-colors ${step >= 2 ? 'bg-[#009766]' : 'bg-slate-200'}`} />
+
+                {/* Step 2 */}
+                <div
+                  onClick={() => step > 2 && setStep(2)}
+                  className={`flex items-center gap-2 transition-all select-none ${step >= 2 ? 'cursor-pointer' : 'cursor-default'}`}
+                >
+                  <div
+                    className={`h-6.5 w-6.5 rounded-full flex items-center justify-center text-xs font-bold transition-all ${step === 2
+                      ? 'bg-[#009766] text-white ring-2 ring-[#009766]/20 shadow-xs'
+                      : step > 2
+                        ? 'bg-[#009766] text-white'
+                        : 'bg-slate-200 text-slate-500'
+                      }`}
+                  >
+                    {step > 2 ? <Check className="h-3 w-3 stroke-[3]" /> : '2'}
+                  </div>
+                  <span className={`text-xs font-semibold ${step === 2 ? 'text-[#009766] font-bold' : step > 2 ? 'text-slate-700' : 'text-slate-400'}`}>
+                    Chi nhánh & Bác sĩ
+                  </span>
+                </div>
+
+                <div className={`flex-1 h-[1.5px] mx-3 transition-colors ${step >= 3 ? 'bg-[#009766]' : 'bg-slate-200'}`} />
+
+                {/* Step 3 */}
+                <div
+                  onClick={() => step > 3 && setStep(3)}
+                  className={`flex items-center gap-2 transition-all select-none ${step >= 3 ? 'cursor-pointer' : 'cursor-default'}`}
+                >
+                  <div
+                    className={`h-6.5 w-6.5 rounded-full flex items-center justify-center text-xs font-bold transition-all ${step === 3
+                      ? 'bg-[#009766] text-white ring-2 ring-[#009766]/20 shadow-xs'
+                      : step > 3
+                        ? 'bg-[#009766] text-white'
+                        : 'bg-slate-200 text-slate-500'
+                      }`}
+                  >
+                    {step > 3 ? <Check className="h-3 w-3 stroke-[3]" /> : '3'}
+                  </div>
+                  <span className={`text-xs font-semibold ${step === 3 ? 'text-[#009766] font-bold' : step > 3 ? 'text-slate-700' : 'text-slate-400'}`}>
+                    Thời gian khám
+                  </span>
+                </div>
+
+                <div className={`flex-1 h-[1.5px] mx-3 transition-colors ${step >= 4 ? 'bg-[#009766]' : 'bg-slate-200'}`} />
+
+                {/* Step 4 */}
+                <div className="flex items-center gap-2 select-none">
+                  <div
+                    className={`h-6.5 w-6.5 rounded-full flex items-center justify-center text-xs font-bold transition-all ${step === 4
+                      ? 'bg-[#009766] text-white ring-2 ring-[#009766]/20 shadow-xs'
+                      : 'bg-slate-200 text-slate-500'
+                      }`}
+                  >
+                    4
+                  </div>
+                  <span className={`text-xs font-semibold ${step === 4 ? 'text-[#009766] font-bold' : 'text-slate-400'}`}>
+                    Xác nhận
+                  </span>
+                </div>
               </div>
-              <span className={`text-xs font-semibold ${step === 2 ? 'text-[#009766] font-bold' : step > 2 ? 'text-slate-700' : 'text-slate-400'}`}>
-                Chi nhánh & Bác sĩ
-              </span>
             </div>
-
-            <div className={`flex-1 h-[1.5px] mx-3 transition-colors ${step >= 3 ? 'bg-[#009766]' : 'bg-slate-200'}`} />
-
-            {/* Step 3 */}
-            <div
-              onClick={() => step > 3 && setStep(3)}
-              className={`flex items-center gap-2 transition-all select-none ${step >= 3 ? 'cursor-pointer' : 'cursor-default'}`}
-            >
-              <div
-                className={`h-6.5 w-6.5 rounded-full flex items-center justify-center text-xs font-bold transition-all ${step === 3
-                  ? 'bg-[#009766] text-white ring-2 ring-[#009766]/20 shadow-xs'
-                  : step > 3
-                    ? 'bg-[#009766] text-white'
-                    : 'bg-slate-200 text-slate-500'
-                  }`}
-              >
-                {step > 3 ? <Check className="h-3 w-3 stroke-[3]" /> : '3'}
-              </div>
-              <span className={`text-xs font-semibold ${step === 3 ? 'text-[#009766] font-bold' : step > 3 ? 'text-slate-700' : 'text-slate-400'}`}>
-                Thời gian khám
-              </span>
-            </div>
-
-            <div className={`flex-1 h-[1.5px] mx-3 transition-colors ${step >= 4 ? 'bg-[#009766]' : 'bg-slate-200'}`} />
-
-            {/* Step 4 */}
-            <div className="flex items-center gap-2 select-none">
-              <div
-                className={`h-6.5 w-6.5 rounded-full flex items-center justify-center text-xs font-bold transition-all ${step === 4
-                  ? 'bg-[#009766] text-white ring-2 ring-[#009766]/20 shadow-xs'
-                  : 'bg-slate-200 text-slate-500'
-                  }`}
-              >
-                4
-              </div>
-              <span className={`text-xs font-semibold ${step === 4 ? 'text-[#009766] font-bold' : 'text-slate-400'}`}>
-                Xác nhận
-              </span>
-            </div>
-          </div>
-        </div>
 
         {/* Main Body per Step */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-5 bg-slate-50/50">

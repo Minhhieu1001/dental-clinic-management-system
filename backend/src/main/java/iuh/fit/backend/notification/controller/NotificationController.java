@@ -1,12 +1,18 @@
 package iuh.fit.backend.notification.controller;
 
+import iuh.fit.backend.notification.dto.CreateNotificationDTO;
 import iuh.fit.backend.notification.dto.NotificationResponseDTO;
 import iuh.fit.backend.notification.entity.Notification;
+import iuh.fit.backend.notification.enums.NotificationType;
 import iuh.fit.backend.notification.repository.notificationRepository;
+import iuh.fit.backend.user.entity.User;
+import iuh.fit.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -17,6 +23,48 @@ import java.util.stream.Collectors;
 public class NotificationController {
 
     private final notificationRepository notificationRepo;
+    private final UserRepository userRepository;
+    private final SimpMessagingTemplate simpMessagingTemplate;
+
+    @PostMapping
+    public ResponseEntity<NotificationResponseDTO> createNotification(@RequestBody CreateNotificationDTO dto) {
+        if (dto.getUserId() == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        User recipient = userRepository.findById(dto.getUserId()).orElse(null);
+        if (recipient == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        User sender = null;
+        if (dto.getSenderId() != null) {
+            sender = userRepository.findById(dto.getSenderId()).orElse(null);
+        }
+
+        Notification notif = Notification.builder()
+                .user(recipient)
+                .sender(sender)
+                .title(dto.getTitle() != null && !dto.getTitle().isBlank() ? dto.getTitle() : "Thông báo hệ thống")
+                .content(dto.getContent() != null ? dto.getContent() : "")
+                .type(dto.getType() != null ? dto.getType() : NotificationType.SYSTEM)
+                .targetUrl(dto.getTargetUrl())
+                .isRead(false)
+                .build();
+
+        notif = notificationRepo.save(notif);
+        NotificationResponseDTO res = mapToDTO(notif);
+
+        try {
+            if (simpMessagingTemplate != null) {
+                simpMessagingTemplate.convertAndSendToUser(recipient.getId().toString(), "/queue/notifications", res);
+                simpMessagingTemplate.convertAndSend("/topic/notifications", res);
+            }
+        } catch (Exception e) {
+            // ignore websocket errors
+        }
+
+        return ResponseEntity.ok(res);
+    }
 
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<NotificationResponseDTO>> getNotificationsByUser(@PathVariable UUID userId) {

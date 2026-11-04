@@ -1992,6 +1992,7 @@ export default function PatientDashboard() {
           setEditingAppointment(null);
         }}
         onSuccess={() => {
+          setIsBookingModalOpen(false);
           setEditingAppointment(null);
           const patientId = user?.patientId || user?.id;
           if (patientId) {
