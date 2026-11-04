@@ -28,7 +28,8 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
 import { getBranches } from '../../../services/clinic.service';
 import { getDentistsList } from '../../../services/dentist.service';
-import { createAppointment, updateAppointment } from '../../../services/appointment.service';
+import { getServices } from '../../../services/service.service';
+import { createAppointment, updateAppointment, getAppointments } from '../../../services/appointment.service';
 import {
   getPatientById,
   getPatientByPatientCode,
@@ -36,199 +37,49 @@ import {
   searchPatient,
 } from '../../../services/patient.service';
 
-// Danh sách dịch vụ & lý do khám bệnh chuẩn y chang bên role nhân viên
-export const EMPLOYEE_COMMON_SERVICES = [
-  {
-    id: 'srv-1',
-    serviceName: 'Tư vấn niềng răng trong suốt Invisalign',
-    category: 'NIENG_RANG',
-    categoryLabel: 'Niềng răng',
-    price: 25000000,
-    estimatedDuration: 60,
-    description: 'Chỉnh nha máng trong suốt Invisalign vô hình, biết trước kết quả 3D, thẩm mỹ đỉnh cao',
-    iconType: 'ortho',
-  },
-  {
-    id: 'srv-2',
-    serviceName: 'Tư vấn niềng răng mắc cài kim loại/sứ',
-    category: 'NIENG_RANG',
-    categoryLabel: 'Niềng răng',
-    price: 18000000,
-    estimatedDuration: 60,
-    description: 'Nắn chỉnh răng hô, móm, lệch lạc hiệu quả tối ưu, cải thiện khớp cắn và gương mặt',
-    iconType: 'ortho',
-  },
-  {
-    id: 'srv-3',
-    serviceName: 'Cạo vôi răng & Đánh bóng 2 hàm',
-    category: 'KHAM_DIEU_TRI',
-    categoryLabel: 'Khám tổng quát',
-    price: 200000,
-    estimatedDuration: 30,
-    description: 'Làm sạch mảng bám vôi răng dưới nướu, đánh bóng sáng bóng, ngăn ngừa viêm nướu',
-    iconType: 'scaling',
-  },
-  {
-    id: 'srv-4',
-    serviceName: 'Trám răng thẩm mỹ Composite',
-    category: 'RANG_PHUC_HOI',
-    categoryLabel: 'Răng phục hồi',
-    price: 300000,
-    estimatedDuration: 45,
-    description: 'Điều trị răng sâu, răng sứt mẻ với vật liệu Composite cao cấp trùng khít màu răng thật',
-    iconType: 'filling',
-  },
-  {
-    id: 'srv-5',
-    serviceName: 'Nhổ răng khôn (R8) mọc lệch',
-    category: 'KHAM_DIEU_TRI',
-    categoryLabel: 'Khám tổng quát',
-    price: 800000,
-    estimatedDuration: 60,
-    description: 'Nhổ răng khôn an toàn bằng công nghệ sóng siêu âm Piezotome không đau, hồi phục nhanh',
-    iconType: 'extraction',
-  },
-  {
-    id: 'srv-6',
-    serviceName: 'Cấy ghép Implant Nha khoa',
-    category: 'IMPLANT',
-    categoryLabel: 'Implant',
-    price: 20000000,
-    estimatedDuration: 90,
-    description: 'Trồng răng Implant tiêu chuẩn Quốc tế, tích hợp xương sinh học, phục hồi ăn nhai 100%',
-    iconType: 'implant',
-  },
-  {
-    id: 'srv-7',
-    serviceName: 'Tẩy trắng răng công nghệ Laser',
-    category: 'RANG_SU',
-    categoryLabel: 'Răng thẩm mỹ',
-    price: 1200000,
-    estimatedDuration: 45,
-    description: 'Bật 2-3 tone trắng sáng tức thì chỉ sau 45 phút, an toàn tuyệt đối cho men răng',
-    iconType: 'whitening',
-  },
-  {
-    id: 'srv-8',
-    serviceName: 'Bọc răng sứ thẩm mỹ',
-    category: 'RANG_SU',
-    categoryLabel: 'Răng thẩm mỹ',
-    price: 1500000,
-    estimatedDuration: 60,
-    description: 'Răng toàn sứ chính hãng, cải thiện form dáng và độ trắng sáng tự nhiên hoàn hảo',
-    iconType: 'crown',
-  },
-  {
-    id: 'srv-9',
-    serviceName: 'Khám tổng quát & Chụp phim X-quang',
-    category: 'KHAM_DIEU_TRI',
-    categoryLabel: 'Khám tổng quát',
-    price: 100000,
-    estimatedDuration: 30,
-    description: 'Kiểm tra tổng quát sức khỏe răng miệng & chụp phim X-quang chẩn đoán chuyên sâu cùng bác sĩ',
-    iconType: 'general',
-  },
-];
+export const getCategoryLabel = (category) => {
+  switch (category) {
+    case 'KHAM_DIEU_TRI':
+      return 'Khám & Chẩn đoán';
+    case 'RANG_SU':
+      return 'Răng sứ & Thẩm mỹ';
+    case 'TAY_TRANG':
+      return 'Tẩy trắng răng';
+    case 'IMPLANT':
+      return 'Cấy ghép Implant';
+    case 'NIENG_RANG':
+      return 'Niềng răng - Chỉnh nha';
+    default:
+      return 'Khám nha khoa';
+  }
+};
 
-const COMMON_SERVICE_NAMES = EMPLOYEE_COMMON_SERVICES.map((s) => s.serviceName);
+export const getIconTypeByCategory = (category) => {
+  switch (category) {
+    case 'NIENG_RANG':
+      return 'ortho';
+    case 'IMPLANT':
+      return 'implant';
+    case 'RANG_SU':
+      return 'crown';
+    case 'TAY_TRANG':
+      return 'whitening';
+    default:
+      return 'general';
+  }
+};
 
 const SERVICE_TABS = [
   { id: 'ALL', label: 'Tất cả' },
-  { id: 'KHAM_DIEU_TRI', label: 'Khám tổng quát' },
-  { id: 'RANG_SU', label: 'Răng thẩm mỹ' },
-  { id: 'RANG_PHUC_HOI', label: 'Răng phục hồi' },
-  { id: 'IMPLANT', label: 'Implant' },
+  { id: 'KHAM_DIEU_TRI', label: 'Khám & Chẩn đoán' },
+  { id: 'RANG_SU', label: 'Răng sứ & Thẩm mỹ' },
+  { id: 'TAY_TRANG', label: 'Tẩy trắng răng' },
+  { id: 'IMPLANT', label: 'Cấy ghép Implant' },
   { id: 'NIENG_RANG', label: 'Niềng răng' },
-  { id: 'OTHER', label: 'Khác' },
+  { id: 'OTHER', label: 'Khác / Yêu cầu riêng' },
 ];
 
-const FALLBACK_BRANCHES = [
-  {
-    branchId: 'BR-Q1',
-    id: 'BR-Q1',
-    branchName: 'SmileCare Quận 1',
-    address: '123 Nguyễn Thị Minh Khai, Quận 1, TP.HCM',
-    openHours: '08:00 - 20:00 (Thứ 2 - Chủ nhật)',
-    image: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=400&q=80',
-  },
-  {
-    branchId: 'BR-TD',
-    id: 'BR-TD',
-    branchName: 'SmileCare Thủ Đức',
-    address: '456 Võ Văn Ngân, TP. Thủ Đức, TP.HCM',
-    openHours: '08:00 - 20:00 (Thứ 2 - Chủ nhật)',
-    image: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=400&q=80',
-  },
-  {
-    branchId: 'BR-TB',
-    id: 'BR-TB',
-    branchName: 'SmileCare Tân Bình',
-    address: '789 Cộng Hòa, Q. Tân Bình, TP.HCM',
-    openHours: '08:00 - 20:00 (Thứ 2 - Chủ nhật)',
-    image: 'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&w=400&q=80',
-  },
-  {
-    branchId: 'BR-Q7',
-    id: 'BR-Q7',
-    branchName: 'SmileCare Quận 7',
-    address: '321 Nguyễn Thị Thập, Quận 7, TP.HCM',
-    openHours: '08:00 - 20:00 (Thứ 2 - Chủ nhật)',
-    image: 'https://images.unsplash.com/photo-1538108149393-fbbd81895907?auto=format&fit=crop&w=400&q=80',
-  },
-];
 
-const FALLBACK_DENTISTS = [
-  {
-    id: 'a1111111-1111-1111-1111-111111111111',
-    name: 'BS. Trần Minh Đức',
-    fullName: 'BS. Trần Minh Đức',
-    specialization: 'Chuyên khoa Implant',
-    rating: 4.9,
-    reviewCount: 120,
-    avatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=300&q=80',
-    branchId: 'BR-Q1',
-  },
-  {
-    id: 'a2222222-2222-2222-2222-222222222222',
-    name: 'BS. Phạm Anh Tuấn',
-    fullName: 'BS. Phạm Anh Tuấn',
-    specialization: 'Chuyên khoa Răng sứ thẩm mỹ',
-    rating: 4.8,
-    reviewCount: 98,
-    avatar: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=300&q=80',
-    branchId: 'BR-Q1',
-  },
-  {
-    id: 'a3333333-3333-3333-3333-333333333333',
-    name: 'BS. Lê Thu Hà',
-    fullName: 'BS. Lê Thu Hà',
-    specialization: 'Chuyên khoa Nha chu',
-    rating: 4.8,
-    reviewCount: 85,
-    avatar: 'https://images.unsplash.com/photo-1594824813511-1bf30eb9df7c?auto=format&fit=crop&w=300&q=80',
-    branchId: 'BR-TD',
-  },
-  {
-    id: 'a4444444-4444-4444-4444-444444444444',
-    name: 'BS. Nguyễn Thị Lan',
-    fullName: 'BS. Nguyễn Thị Lan',
-    specialization: 'Chuyên khoa Tổng quát',
-    rating: 4.7,
-    reviewCount: 76,
-    avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=300&q=80',
-    branchId: 'BR-TB',
-  },
-  {
-    id: 'a5555555-5555-5555-5555-555555555555',
-    name: 'ThS. BS. Nguyễn Thị Phương',
-    fullName: 'ThS. BS. Nguyễn Thị Phương',
-    specialization: 'Chuyên khoa Niềng răng & Chỉnh hình',
-    rating: 5.0,
-    reviewCount: 142,
-    avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=300&q=80',
-    branchId: 'BR-Q1',
-  },
-];
 
 const MORNING_SLOTS = ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30'];
 const AFTERNOON_SLOTS = ['13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00'];
@@ -337,10 +188,13 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
   // Current Step: 1 -> 4
   const [step, setStep] = useState(1);
 
-  // Data lists - Sử dụng danh sách dịch vụ y hệt bên role nhân viên
-  const [services] = useState(EMPLOYEE_COMMON_SERVICES);
+  // Data lists - Sử dụng dữ liệu thực tế từ DB & API
+  const [services, setServices] = useState([]);
+  const [loadingServices, setLoadingServices] = useState(false);
   const [branches, setBranches] = useState([]);
   const [dentists, setDentists] = useState([]);
+  const [bookedTimes, setBookedTimes] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Ref to prevent duplicate API fetches when modal is already open
@@ -348,7 +202,7 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
 
   // Step 1: Dịch vụ / Lý do khám bệnh
   const [activeTab, setActiveTab] = useState('ALL');
-  const [selectedService, setSelectedService] = useState(EMPLOYEE_COMMON_SERVICES[0]);
+  const [selectedService, setSelectedService] = useState(null);
   const [isCustomReason, setIsCustomReason] = useState(false);
   const [customReasonText, setCustomReasonText] = useState('');
 
@@ -427,68 +281,101 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
     hasLoadedRef.current = true;
 
     setStep(1);
-    setSelectedService(EMPLOYEE_COMMON_SERVICES[0]);
     setIsCustomReason(false);
     setCustomReasonText('');
 
-    // If editing existing appointment, populate fields from initialAppointment
-    if (initialAppointment) {
-      const targetReason = initialAppointment.title || initialAppointment.reason || '';
-      const foundSrv = EMPLOYEE_COMMON_SERVICES.find(
-        (s) => s.serviceName.toLowerCase() === targetReason.toLowerCase()
-      );
-      if (foundSrv) {
-        setSelectedService(foundSrv);
-        setIsCustomReason(false);
-      } else if (targetReason) {
-        setIsCustomReason(true);
-        setCustomReasonText(targetReason);
-        setSelectedService({
-          id: 'custom-reason',
-          serviceName: targetReason,
-          categoryLabel: 'Lý do khám',
-          category: 'OTHER',
-          price: 0,
-        });
-      }
-
-      if (initialAppointment.appointmentDate) {
-        const cleanDate = typeof initialAppointment.appointmentDate === 'string'
-          ? initialAppointment.appointmentDate.split('T')[0]
-          : formatYMD(initialAppointment.appointmentDate);
-        setSelectedDate(cleanDate);
-      }
-
-      if (initialAppointment.appointmentTime || initialAppointment.time) {
-        let t = String(initialAppointment.appointmentTime || initialAppointment.time).trim();
-        if (t.includes('T')) t = t.split('T')[1];
-        if (t.length > 5) t = t.substring(0, 5);
-        setSelectedTime(t);
-      }
-
-      if (initialAppointment.notes && initialAppointment.notes !== 'Chưa có') {
-        setReasonNotes(initialAppointment.notes);
-      }
-    }
-
-    // Initialize patient info from auth / localStorage
-    const savedPhone = user?.phone || user?.phoneNumber || (typeof localStorage !== 'undefined' ? localStorage.getItem('patient_phone') : '') || '';
-    const initialName = (user?.fullName && user.fullName !== user.username)
-      ? user.fullName
-      : (user?.username && !user.username.startsWith('PA-'))
-        ? user.username
-        : '';
-
-    setPatientInfo({
-      fullName: initialName || user?.username || '',
-      phone: savedPhone,
-      email: user?.email || '',
-      dob: user?.dateOfBirth ? String(user.dateOfBirth).split('T')[0] : '2000-08-15',
-      gender: user?.gender === 'FEMALE' ? 'Nữ' : 'Nam',
-    });
-
     const loadData = async () => {
       try {
+        // 0. Fetch Real Services from Database
+        setLoadingServices(true);
+        let fetchedServices = [];
+        try {
+          const rawServices = await getServices();
+          const sList = Array.isArray(rawServices) ? rawServices : (rawServices?.data || []);
+          if (sList.length > 0) {
+            fetchedServices = sList
+              .filter((s) => s.isActive !== false)
+              .map((s) => ({
+                id: s.id,
+                serviceCode: s.serviceCode,
+                serviceName: s.serviceName,
+                category: s.category || 'KHAM_DIEU_TRI',
+                categoryLabel: getCategoryLabel(s.category),
+                price: Number(s.price || 0),
+                discountedPrice: s.discountedPrice ? Number(s.discountedPrice) : null,
+                estimatedDuration: s.estimatedDuration || 30,
+                description: s.description || 'Dịch vụ khám & điều trị chuyên sâu',
+                imageUrl: s.imageUrl || '',
+                iconType: getIconTypeByCategory(s.category),
+              }));
+          }
+        } catch (sErr) {
+          console.warn('Lỗi tải danh sách dịch vụ từ DB:', sErr);
+        }
+
+        setServices(fetchedServices);
+        setLoadingServices(false);
+
+        // If editing existing appointment, populate fields from initialAppointment
+        if (initialAppointment) {
+          const targetReason = initialAppointment.title || initialAppointment.reason || '';
+          const foundSrv = fetchedServices.find(
+            (s) => s.serviceName.toLowerCase() === targetReason.toLowerCase()
+          );
+          if (foundSrv) {
+            setSelectedService(foundSrv);
+            setIsCustomReason(false);
+          } else if (targetReason) {
+            setIsCustomReason(true);
+            setCustomReasonText(targetReason);
+            setSelectedService({
+              id: 'custom-reason',
+              serviceName: targetReason,
+              categoryLabel: 'Lý do khám',
+              category: 'OTHER',
+              price: 0,
+              estimatedDuration: 30,
+              description: targetReason,
+            });
+          }
+
+          if (initialAppointment.appointmentDate) {
+            const cleanDate = typeof initialAppointment.appointmentDate === 'string'
+              ? initialAppointment.appointmentDate.split('T')[0]
+              : formatYMD(initialAppointment.appointmentDate);
+            setSelectedDate(cleanDate);
+          }
+
+          if (initialAppointment.appointmentTime || initialAppointment.time) {
+            let t = String(initialAppointment.appointmentTime || initialAppointment.time).trim();
+            if (t.includes('T')) t = t.split('T')[1];
+            if (t.length > 5) t = t.substring(0, 5);
+            setSelectedTime(t);
+          }
+
+          if (initialAppointment.notes && initialAppointment.notes !== 'Chưa có') {
+            setReasonNotes(initialAppointment.notes);
+          }
+        } else {
+          setSelectedService(fetchedServices[0] || null);
+        }
+
+        // Initialize patient info from auth / localStorage
+        const savedPhone = user?.phone || user?.phoneNumber || (typeof localStorage !== 'undefined' ? localStorage.getItem('patient_phone') : '') || '';
+        const initialName = (user?.fullName && user.fullName !== user.username)
+          ? user.fullName
+          : (user?.username && !user.username.startsWith('PA-'))
+            ? user.username
+            : '';
+
+        setPatientInfo({
+          fullName: initialName || user?.username || '',
+          phone: savedPhone,
+          email: user?.email || '',
+          dob: user?.dateOfBirth ? String(user.dateOfBirth).split('T')[0] : '2000-08-15',
+          gender: user?.gender === 'FEMALE' ? 'Nữ' : 'Nam',
+        });
+
         // Fetch full Patient profile from DB to get exact phone, full name, dob, gender
         const patientLookup = async () => {
           let p = null;
@@ -529,46 +416,39 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
         };
         patientLookup();
 
-        // 1. Fetch Branches
+        // 1. Fetch Branches directly from DB
         const bRes = await getBranches().catch(() => []);
         let bList = Array.isArray(bRes) ? bRes : (bRes?.data || []);
-        if (!bList || bList.length === 0) {
-          bList = FALLBACK_BRANCHES;
-        } else {
-          bList = bList.map((b) => ({
-            branchId: b.branchId || b.id,
-            id: b.branchId || b.id,
-            branchName: b.branchName || b.name || 'Crown Dental - Trung tâm Nha khoa',
-            address: b.address || b.clinicAddress || 'TP. Hồ Chí Minh',
-            openHours: b.openHours || '08:00 - 20:00 (Thứ 2 - Chủ nhật)',
-            image: b.image || b.imageUrl || 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=400&q=80',
-          }));
-        }
+        bList = bList.map((b) => ({
+          branchId: b.branchId || b.id,
+          id: b.branchId || b.id,
+          branchName: b.branchName || b.name || 'Crown Dental - Trung tâm Nha khoa',
+          address: b.address || b.clinicAddress || 'TP. Hồ Chí Minh',
+          openHours: b.openHours || '08:00 - 20:00 (Thứ 2 - Chủ nhật)',
+          image: b.image || b.imageUrl || 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=400&q=80',
+        }));
         setBranches(bList);
-        setSelectedBranch(bList[0]);
+        setSelectedBranch(bList[0] || null);
 
-        // 2. Fetch Dentists
+        // 2. Fetch Dentists directly from DB
         const dRes = await getDentistsList().catch(() => []);
         let dList = Array.isArray(dRes) ? dRes : (dRes?.data || []);
-        if (!dList || dList.length === 0) {
-          dList = FALLBACK_DENTISTS;
-        } else {
-          dList = dList.map((d) => {
-            const rawName = d.fullName || d.name || d.user?.fullName || d.user?.username || 'Bác sĩ chuyên khoa';
-            const cleanName = rawName.startsWith('BS.') || rawName.startsWith('ThS.') || rawName.startsWith('TS.') ? rawName : `BS. ${rawName}`;
-            const specialty = d.specialization || d.qualification || d.description || (Array.isArray(d.specializations) && d.specializations.length > 0 ? d.specializations.map((s) => s.name || s).join(', ') : 'Chuyên khoa Nha khoa tổng quát');
-            return {
-              id: d.id,
-              name: cleanName,
-              fullName: cleanName,
-              specialization: specialty,
-              rating: 4.8 + Math.round(Math.random() * 2) / 10,
-              reviewCount: 50 + Math.floor(Math.random() * 100),
-              avatar: d.avatar || d.user?.avatar || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=300&q=80',
-              branchId: d.branchId || d.branch?.id || (bList[0] ? (bList[0].branchId || bList[0].id) : null),
-            };
-          });
-        }
+        dList = dList.map((d) => {
+          const rawName = d.fullName || d.name || d.user?.fullName || d.user?.username || 'Bác sĩ chuyên khoa';
+          const cleanName = rawName.startsWith('BS.') || rawName.startsWith('ThS.') || rawName.startsWith('TS.') ? rawName : `BS. ${rawName}`;
+          const specialty = d.specialization || d.qualification || d.description || (Array.isArray(d.specializations) && d.specializations.length > 0 ? d.specializations.map((s) => s.name || s).join(', ') : 'Chuyên khoa Nha khoa tổng quát');
+          return {
+            id: d.id,
+            name: cleanName,
+            fullName: cleanName,
+            specialization: specialty,
+            rating: 4.8 + Math.round(Math.random() * 2) / 10,
+            reviewCount: 50 + Math.floor(Math.random() * 100),
+            avatar: d.avatar || d.user?.avatar || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=300&q=80',
+            branchId: d.branchId || d.branch_id || (d.branch && (d.branch.branchId || d.branch.id)) || null,
+            branchName: d.branchName || d.branch_name || (d.branch && d.branch.branchName) || '',
+          };
+        });
         setDentists(dList);
 
         // Pre-select dentist and branch based on initialAppointment if present
@@ -602,6 +482,54 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
     loadData();
   }, [isOpen, user?.id, initialAppointment?.id]);
 
+  // Kiểm tra danh sách khung giờ đã có lịch hẹn của bác sĩ từ DB theo ngày đã chọn
+  useEffect(() => {
+    if (!selectedDentist?.id || !selectedDate) {
+      setBookedTimes([]);
+      return;
+    }
+
+    let isMounted = true;
+    setLoadingSlots(true);
+
+    getAppointments({ dentistId: selectedDentist.id, date: selectedDate })
+      .then((res) => {
+        if (!isMounted) return;
+        const list = Array.isArray(res) ? res : res?.data || [];
+        const times = list
+          .filter((apt) => {
+            const st = String(apt.status || '').toUpperCase();
+            if (st === 'CANCELLED') return false;
+            if (initialAppointment?.id && String(apt.id) === String(initialAppointment.id)) {
+              return false;
+            }
+            return true;
+          })
+          .map((apt) => {
+            let t = apt.appointmentTime || apt.time || '';
+            if (typeof t === 'string') {
+              if (t.includes('T')) t = t.split('T')[1];
+              return t.substring(0, 5);
+            }
+            return '';
+          })
+          .filter(Boolean);
+
+        setBookedTimes(times);
+      })
+      .catch((err) => {
+        console.warn('Lỗi lấy danh sách giờ hẹn đã đặt của bác sĩ:', err);
+        if (isMounted) setBookedTimes([]);
+      })
+      .finally(() => {
+        if (isMounted) setLoadingSlots(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedDentist?.id, selectedDate, initialAppointment?.id]);
+
   // Update default reason note when service changes
   useEffect(() => {
     if (selectedService && !reasonNotes) {
@@ -612,19 +540,46 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
   // Filtered Services for Step 1
   const filteredServices = useMemo(() => {
     if (activeTab === 'ALL') return services;
-    return services.filter((s) => {
-      if (activeTab === 'OTHER') {
-        return !['KHAM_DIEU_TRI', 'RANG_SU', 'RANG_PHUC_HOI', 'IMPLANT', 'NIENG_RANG'].includes(s.category);
-      }
-      return s.category === activeTab;
-    });
+    if (activeTab === 'OTHER') {
+      return services.filter(
+        (s) => !['KHAM_DIEU_TRI', 'RANG_SU', 'TAY_TRANG', 'IMPLANT', 'NIENG_RANG'].includes(s.category)
+      );
+    }
+    return services.filter((s) => s.category === activeTab);
   }, [services, activeTab]);
 
   // Filtered Dentists for Step 2 based on chosen branch & specialty
   const availableDentists = useMemo(() => {
     if (!selectedBranch) return dentists;
-    const branchKey = selectedBranch.branchId || selectedBranch.id;
-    let list = dentists.filter((d) => !d.branchId || d.branchId === branchKey);
+    const branchKey = String(selectedBranch.branchId || selectedBranch.id || '').trim().toLowerCase();
+    const branchName = String(selectedBranch.branchName || '').trim().toLowerCase();
+
+    let list = dentists.filter((d) => {
+      const dBranchId = String(d.branchId || '').trim().toLowerCase();
+      const dBranchName = String(d.branchName || '').trim().toLowerCase();
+
+      if (dBranchId && branchKey) {
+        if (dBranchId === branchKey || dBranchId.includes(branchKey) || branchKey.includes(dBranchId)) {
+          return true;
+        }
+      }
+
+      if (dBranchName && branchName) {
+        if (dBranchName === branchName || dBranchName.includes(branchName) || branchName.includes(dBranchName)) {
+          return true;
+        }
+        const getBranchCode = (str) => {
+          const m = str.match(/cơ\s*sở\s*(\d+)/i) || str.match(/chi\s*nhánh\s*(\d+)/i) || str.match(/branch_?(\w+)/i);
+          return m ? m[1].toLowerCase() : null;
+        };
+        const c1 = getBranchCode(dBranchName) || getBranchCode(dBranchId);
+        const c2 = getBranchCode(branchName) || getBranchCode(branchKey);
+        if (c1 && c2 && c1 === c2) return true;
+      }
+
+      return false;
+    });
+
     if (list.length === 0) list = dentists;
 
     if (specialtyFilter !== 'ALL') {
@@ -975,80 +930,46 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
           {/* ================= STEP 1: CHỌN DỊCH VỤ ================= */}
           {step === 1 && (
             <div className="space-y-3.5 animate-in fade-in duration-150">
-              {/* Dropdown Select chuẩn role nhân viên */}
-              <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-2xs space-y-2">
-                <label className="block text-xs font-bold text-slate-800">
-                  <span className="flex items-center gap-1.5 text-[#009766]">
-                    <FileText size={14} className="text-[#009766]" /> Lý do khám bệnh <span className="text-rose-500">*</span>
-                  </span>
-                </label>
-                <div className="space-y-2">
-                  <select
-                    value={COMMON_SERVICE_NAMES.includes(selectedService?.serviceName) ? selectedService?.serviceName : 'OTHER'}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val === 'OTHER') {
-                        setIsCustomReason(true);
-                        setSelectedService({
-                          id: 'custom',
-                          serviceName: customReasonText || 'Khám theo yêu cầu',
-                          price: 0,
-                          estimatedDuration: 30,
-                          description: customReasonText || 'Bệnh nhân tự nhập lý do khám',
-                          category: 'OTHER',
-                        });
-                      } else {
-                        setIsCustomReason(false);
-                        const found = EMPLOYEE_COMMON_SERVICES.find((s) => s.serviceName === val);
-                        if (found) setSelectedService(found);
-                      }
-                    }}
-                    className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-800 bg-white focus:border-[#009766] focus:outline-none focus:ring-1 focus:ring-[#009766]/30 cursor-pointer shadow-2xs"
-                  >
-                    {EMPLOYEE_COMMON_SERVICES.map((srv) => (
-                      <option key={srv.id} value={srv.serviceName}>
-                        {srv.serviceName}
-                      </option>
-                    ))}
-                    <option value="OTHER">-- Khác (Tự nhập chi tiết lý do khám) --</option>
-                  </select>
-
-                  {isCustomReason && (
-                    <input
-                      type="text"
-                      value={customReasonText}
-                      onChange={(e) => {
-                        setCustomReasonText(e.target.value);
-                        setSelectedService((prev) => ({
-                          ...prev,
-                          serviceName: e.target.value || 'Khám theo yêu cầu',
-                          description: e.target.value || 'Bệnh nhân tự nhập lý do khám',
-                        }));
-                      }}
-                      placeholder="Nhập chi tiết lý do bạn muốn đến khám..."
-                      className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-800 focus:border-[#009766] focus:outline-none focus:ring-1 focus:ring-[#009766]/30"
-                    />
-                  )}
-                </div>
-              </div>
-
               {/* Title & Tabs with subtle border radius */}
               <div>
-                <div className="flex items-center justify-between pb-1">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">Gợi ý lý do khám phổ biến</h3>
+                <div className="flex items-center justify-between pb-1.5 border-b border-slate-200">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                    <FileText size={14} className="text-[#009766]" />
+                    Lý do khám bệnh <span className="text-rose-500">*</span>
+                  </h3>
+                  <span className="text-[11px] text-[#009766] font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    Đã chọn: {selectedService?.serviceName || 'Chưa chọn'}
+                  </span>
                 </div>
 
                 {/* Filter Tabs in Green Theme */}
-                <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none border-b border-slate-200">
+                <div className="flex items-center gap-1.5 overflow-x-auto py-2 scrollbar-none">
                   {SERVICE_TABS.map((tab) => (
                     <button
                       key={tab.id}
                       type="button"
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`shrink-0 px-2.5 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${activeTab === tab.id
-                        ? 'bg-[#009766] text-white shadow-2xs'
-                        : 'bg-white text-slate-600 hover:bg-[#e6f7f0] border border-slate-200'
-                        }`}
+                      onClick={() => {
+                        setActiveTab(tab.id);
+                        if (tab.id === 'OTHER') {
+                          setIsCustomReason(true);
+                          if (!customReasonText) {
+                            setSelectedService({
+                              id: 'custom',
+                              serviceName: 'Khám theo yêu cầu',
+                              price: 0,
+                              estimatedDuration: 30,
+                              description: 'Bệnh nhân tự nhập lý do khám',
+                              category: 'OTHER',
+                              categoryLabel: 'Khác',
+                            });
+                          }
+                        }
+                      }}
+                      className={`shrink-0 px-2.5 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                        activeTab === tab.id
+                          ? 'bg-[#009766] text-white shadow-2xs'
+                          : 'bg-white text-slate-600 hover:bg-[#e6f7f0] border border-slate-200'
+                      }`}
                     >
                       {tab.label}
                     </button>
@@ -1056,57 +977,96 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
                 </div>
               </div>
 
+              {/* Ô nhập lý do tùy ý khi chọn tab Khác */}
+              {activeTab === 'OTHER' && (
+                <div className="bg-white p-3.5 rounded-lg border border-[#009766]/40 bg-[#e6f7f0]/30 shadow-2xs space-y-2 animate-in fade-in duration-100">
+                  <label className="block text-xs font-bold text-slate-800">
+                    Nhập chi tiết lý do bạn muốn đến khám: <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={customReasonText}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setCustomReasonText(val);
+                      setIsCustomReason(true);
+                      setSelectedService({
+                        id: 'custom',
+                        serviceName: val || 'Khám theo yêu cầu',
+                        price: 0,
+                        estimatedDuration: 30,
+                        description: val || 'Bệnh nhân tự nhập lý do khám',
+                        category: 'OTHER',
+                        categoryLabel: 'Khác',
+                      });
+                    }}
+                    placeholder="Ví dụ: Răng hàm bị đau nhức ê buốt khi ăn đồ lạnh..."
+                    className="w-full p-2.5 rounded-md border border-slate-300 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#009766] focus:border-[#009766] bg-white shadow-2xs"
+                  />
+                  <p className="text-[11px] text-slate-500 italic">
+                    Bác sĩ sẽ kiểm tra và tư vấn phác đồ điều trị chi tiết theo nhu cầu thực tế khi bạn đến khám.
+                  </p>
+                </div>
+              )}
+
               {/* Service Cards Grid in Green Theme */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                {filteredServices.map((srv) => {
-                  const isSelected = selectedService?.serviceName === srv.serviceName;
-                  return (
-                    <div
-                      key={srv.id}
-                      onClick={() => {
-                        setSelectedService(srv);
-                        setIsCustomReason(false);
-                      }}
-                      className={`relative p-3 rounded-lg border transition-all cursor-pointer flex flex-col justify-between select-none ${isSelected
-                        ? 'border-[#009766] bg-[#e6f7f0]/40 shadow-2xs ring-1 ring-[#009766]/30'
-                        : 'border-slate-200 bg-white hover:border-[#009766]/40 hover:shadow-2xs'
-                        }`}
-                    >
-                      {/* Top icon & radio */}
-                      <div className="flex items-start justify-between gap-2.5">
-                        <DentalToothIcon className="w-8 h-8 rounded-md" />
-                        <div
-                          className={`h-4 w-4 rounded-full border flex items-center justify-center transition-all ${isSelected ? 'border-[#009766] bg-[#009766] text-white' : 'border-slate-300 bg-white'
-                            }`}
-                        >
-                          {isSelected && <Check className="h-2.5 w-2.5 stroke-[3]" />}
+              {loadingServices ? (
+                <div className="p-8 text-center bg-white rounded-lg border border-slate-200">
+                  <div className="h-6 w-6 border-2 border-[#009766] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                  <p className="text-xs font-semibold text-slate-600">Đang tải danh mục dịch vụ từ cơ sở dữ liệu...</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                  {filteredServices.map((srv) => {
+                    const isSelected = selectedService?.serviceName === srv.serviceName;
+                    return (
+                      <div
+                        key={srv.id}
+                        onClick={() => {
+                          setSelectedService(srv);
+                          setIsCustomReason(false);
+                        }}
+                        className={`relative p-3 rounded-lg border transition-all cursor-pointer flex flex-col justify-between select-none ${isSelected
+                          ? 'border-[#009766] bg-[#e6f7f0]/40 shadow-2xs ring-1 ring-[#009766]/30'
+                          : 'border-slate-200 bg-white hover:border-[#009766]/40 hover:shadow-2xs'
+                          }`}
+                      >
+                        {/* Top icon & radio */}
+                        <div className="flex items-start justify-between gap-2.5">
+                          <DentalToothIcon className="w-8 h-8 rounded-md" />
+                          <div
+                            className={`h-4 w-4 rounded-full border flex items-center justify-center transition-all ${isSelected ? 'border-[#009766] bg-[#009766] text-white' : 'border-slate-300 bg-white'
+                              }`}
+                          >
+                            {isSelected && <Check className="h-2.5 w-2.5 stroke-[3]" />}
+                          </div>
+                        </div>
+
+                        {/* Info */}
+                        <div className="mt-2">
+                          <h4 className="text-xs font-bold text-slate-800 line-clamp-1 group-hover:text-[#009766]">
+                            {srv.serviceName}
+                          </h4>
+                          <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2 leading-relaxed">
+                            {srv.description}
+                          </p>
+                        </div>
+
+                        {/* Meta: Duration & Price */}
+                        <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                          <span className="inline-flex items-center gap-1 text-slate-500 text-[11px] font-medium">
+                            <Clock className="h-3 w-3 text-slate-400" />
+                            ~{srv.estimatedDuration} phút
+                          </span>
+                          <span className="text-[11px] font-extrabold text-[#009766] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            {srv.price > 0 ? formatVND(srv.price) : 'Miễn phí khám'}
+                          </span>
                         </div>
                       </div>
-
-                      {/* Info */}
-                      <div className="mt-2">
-                        <h4 className="text-xs font-bold text-slate-800 line-clamp-1 group-hover:text-[#009766]">
-                          {srv.serviceName}
-                        </h4>
-                        <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2 leading-relaxed">
-                          {srv.description}
-                        </p>
-                      </div>
-
-                      {/* Meta: Duration & Category Badge (No Price) */}
-                      <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-                        <span className="inline-flex items-center gap-1 text-slate-500 text-[11px] font-medium">
-                          <Clock className="h-3 w-3 text-slate-400" />
-                          Thời gian dự kiến: ~{srv.estimatedDuration} phút
-                        </span>
-                        <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-                          {srv.categoryLabel || 'Khám & Tư vấn'}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -1367,7 +1327,16 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
               {/* Cột 2: Chọn khung giờ */}
               <div className="lg:col-span-4 bg-white p-3.5 rounded-lg border border-slate-200 shadow-2xs space-y-2.5">
                 <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
-                  <h3 className="text-xs font-bold text-slate-800">Khung giờ khám</h3>
+                  <div className="flex flex-col">
+                    <h3 className="text-xs font-bold text-slate-800">Khung giờ khám</h3>
+                    {loadingSlots ? (
+                      <span className="text-[10px] text-amber-600 font-medium animate-pulse">Đang kiểm tra lịch trống...</span>
+                    ) : bookedTimes.length > 0 ? (
+                      <span className="text-[10px] text-rose-500 font-medium">Bác sĩ có {bookedTimes.length} giờ đã kín</span>
+                    ) : (
+                      <span className="text-[10px] text-emerald-600 font-medium">Tất cả khung giờ đều sẵn sàng</span>
+                    )}
+                  </div>
                   <span className="text-[11px] font-extrabold text-[#009766] bg-[#e6f7f0] px-2 py-0.5 rounded-md border border-[#009766]/20">
                     {selectedTime}
                   </span>
@@ -1383,17 +1352,26 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
                     <div className="grid grid-cols-4 gap-1">
                       {MORNING_SLOTS.map((time) => {
                         const isSelected = selectedTime === time;
+                        const isBooked = bookedTimes.includes(time);
                         return (
                           <button
                             key={time}
                             type="button"
-                            onClick={() => setSelectedTime(time)}
-                            className={`py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${isSelected
-                              ? 'bg-[#009766] text-white shadow-2xs font-bold'
-                              : 'bg-slate-50 hover:bg-[#e6f7f0] hover:text-[#009766] text-slate-700 border border-slate-200'
-                              }`}
+                            disabled={isBooked}
+                            title={isBooked ? 'Bác sĩ đã có lịch khám vào khung giờ này' : `Chọn giờ ${time}`}
+                            onClick={() => !isBooked && setSelectedTime(time)}
+                            className={`relative py-1.5 rounded-md text-xs font-semibold transition-all ${
+                              isBooked
+                                ? 'bg-slate-100 text-slate-400 border border-slate-200 line-through cursor-not-allowed opacity-60'
+                                : isSelected
+                                ? 'bg-[#009766] text-white shadow-2xs font-bold cursor-pointer'
+                                : 'bg-slate-50 hover:bg-[#e6f7f0] hover:text-[#009766] text-slate-700 border border-slate-200 cursor-pointer'
+                            }`}
                           >
                             {time}
+                            {isBooked && (
+                              <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-rose-500 ring-1 ring-white" />
+                            )}
                           </button>
                         );
                       })}
@@ -1409,17 +1387,26 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
                     <div className="grid grid-cols-4 gap-1">
                       {AFTERNOON_SLOTS.map((time) => {
                         const isSelected = selectedTime === time;
+                        const isBooked = bookedTimes.includes(time);
                         return (
                           <button
                             key={time}
                             type="button"
-                            onClick={() => setSelectedTime(time)}
-                            className={`py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${isSelected
-                              ? 'bg-[#009766] text-white shadow-2xs font-bold'
-                              : 'bg-slate-50 hover:bg-[#e6f7f0] hover:text-[#009766] text-slate-700 border border-slate-200'
-                              }`}
+                            disabled={isBooked}
+                            title={isBooked ? 'Bác sĩ đã có lịch khám vào khung giờ này' : `Chọn giờ ${time}`}
+                            onClick={() => !isBooked && setSelectedTime(time)}
+                            className={`relative py-1.5 rounded-md text-xs font-semibold transition-all ${
+                              isBooked
+                                ? 'bg-slate-100 text-slate-400 border border-slate-200 line-through cursor-not-allowed opacity-60'
+                                : isSelected
+                                ? 'bg-[#009766] text-white shadow-2xs font-bold cursor-pointer'
+                                : 'bg-slate-50 hover:bg-[#e6f7f0] hover:text-[#009766] text-slate-700 border border-slate-200 cursor-pointer'
+                            }`}
                           >
                             {time}
+                            {isBooked && (
+                              <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-rose-500 ring-1 ring-white" />
+                            )}
                           </button>
                         );
                       })}
@@ -1435,17 +1422,26 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
                     <div className="grid grid-cols-3 gap-1">
                       {EVENING_SLOTS.map((time) => {
                         const isSelected = selectedTime === time;
+                        const isBooked = bookedTimes.includes(time);
                         return (
                           <button
                             key={time}
                             type="button"
-                            onClick={() => setSelectedTime(time)}
-                            className={`py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${isSelected
-                              ? 'bg-[#009766] text-white shadow-2xs font-bold'
-                              : 'bg-slate-50 hover:bg-[#e6f7f0] hover:text-[#009766] text-slate-700 border border-slate-200'
-                              }`}
+                            disabled={isBooked}
+                            title={isBooked ? 'Bác sĩ đã có lịch khám vào khung giờ này' : `Chọn giờ ${time}`}
+                            onClick={() => !isBooked && setSelectedTime(time)}
+                            className={`relative py-1.5 rounded-md text-xs font-semibold transition-all ${
+                              isBooked
+                                ? 'bg-slate-100 text-slate-400 border border-slate-200 line-through cursor-not-allowed opacity-60'
+                                : isSelected
+                                ? 'bg-[#009766] text-white shadow-2xs font-bold cursor-pointer'
+                                : 'bg-slate-50 hover:bg-[#e6f7f0] hover:text-[#009766] text-slate-700 border border-slate-200 cursor-pointer'
+                            }`}
                           >
                             {time}
+                            {isBooked && (
+                              <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-rose-500 ring-1 ring-white" />
+                            )}
                           </button>
                         );
                       })}
