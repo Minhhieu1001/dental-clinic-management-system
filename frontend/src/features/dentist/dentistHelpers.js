@@ -140,6 +140,11 @@ export const mapDentistFromApi = (dentist, index = 0) => {
         certificate_file_url: cert.certificateFileUrl || cert.certificate_file_url || '',
         certificate_type: isPracticeLicense ? 'PRACTICE_LICENSE' : (certType || null),
         type: isPracticeLicense ? 'practice_license' : 'specialization',
+        scope_of_practice: cert.scopeOfPractice || cert.scope_of_practice || '',
+        identity_card_number: cert.identityCardNumber || cert.identity_card_number || '',
+        practicing_doctor_name: cert.practicingDoctorName || cert.practicing_doctor_name || '',
+        qualification: cert.qualification || '',
+        is_lifetime: cert.isLifetime !== undefined ? cert.isLifetime : (cert.is_lifetime || false),
       };
     }),
     avatar:

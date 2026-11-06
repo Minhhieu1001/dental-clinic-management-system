@@ -51,6 +51,9 @@ public class Dentist {
 
     private Integer experienceYears;
 
+    @Column(name = "license_number", length = 255)
+    private String licenseNumber;
+
     @Builder.Default
     @OneToMany(mappedBy = "dentist", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Certificate> certificates = new ArrayList<>();

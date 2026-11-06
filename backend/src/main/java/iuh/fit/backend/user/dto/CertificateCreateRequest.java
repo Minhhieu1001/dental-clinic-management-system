@@ -11,6 +11,11 @@ public record CertificateCreateRequest(
         LocalDateTime issueDate,
         LocalDateTime expiryDate,
         String certificateFileUrl,
-        CertificateType certificateType
+        CertificateType certificateType,
+        String scopeOfPractice,
+        String identityCardNumber,
+        String practicingDoctorName,
+        String qualification,
+        Boolean isLifetime
 ) {
 }

@@ -47,6 +47,20 @@ public class Certificate {
     @Enumerated(EnumType.STRING)
     private CertificateType certificateType;
 
+    @Column(length = 500)
+    private String scopeOfPractice;
+
+    @Column(length = 100)
+    private String identityCardNumber;
+
+    @Column(length = 255)
+    private String practicingDoctorName;
+
+    @Column(length = 255)
+    private String qualification;
+
+    private Boolean isLifetime;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

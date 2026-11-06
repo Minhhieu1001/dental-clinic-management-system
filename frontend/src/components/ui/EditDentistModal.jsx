@@ -17,6 +17,7 @@ import {
     Phone,
     Plus,
     ShieldCheck,
+    Sparkles,
     Stethoscope,
     Trash2,
     Upload,
@@ -28,6 +29,8 @@ import { updateDentist, updateUser } from '../../services/dentist.service';
 import { getBranches } from '../../services/clinic.service';
 import { uploadImage } from '../../services/media.service';
 import { CERTIFICATE_TYPE_OPTIONS, getCertificateTypeLabel } from '../../features/dentist/dentistHelpers';
+import OcrCertificateReviewModal from './OcrCertificateReviewModal';
+import { performCertificateOcr } from '../../utils/certificateOcr';
 
 const EMPTY_CERTIFICATE = {
     certificate_name: '',
@@ -35,6 +38,9 @@ const EMPTY_CERTIFICATE = {
     issued_by: '',
     issue_date: '',
     expiry_date: '',
+    is_lifetime: false,
+    qualification: '',
+    scope_of_practice: '',
     certificate_file: null,
     certificate_file_preview: null,
     certificate_type: 'GENERAL_DENTISTRY',
@@ -84,7 +90,7 @@ function StepIndicator({ currentStep }) {
     );
 }
 
-function CertificateCard({ cert, index, onChange, onRemove, onFileChange, canRemove, label }) {
+function CertificateCard({ cert, index, onChange, onRemove, onFileChange, canRemove, label, isPractice = false, onOpenOcr }) {
     const fileRef = useRef(null);
 
     const handleFileSelect = (e) => {
@@ -100,22 +106,35 @@ function CertificateCard({ cert, index, onChange, onRemove, onFileChange, canRem
     };
 
     return (
-        <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4 relative group hover:border-blue-200 transition-colors">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4 relative group hover:border-blue-200 transition-colors shadow-xs">
             <div className="flex items-center justify-between">
                 <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
                     <FileText className="w-4 h-4 text-blue-500" />
                     {label}
                 </h4>
-                {canRemove && (
-                    <button
-                        type="button"
-                        onClick={() => onRemove(index)}
-                        className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
-                        title="Xóa chứng chỉ"
-                    >
-                        <Trash2 className="w-4 h-4" />
-                    </button>
-                )}
+                <div className="flex items-center gap-2">
+                    {cert.certificate_file_preview && onOpenOcr && (
+                        <button
+                            type="button"
+                            onClick={() => onOpenOcr(index, cert, isPractice)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition-all cursor-pointer shadow-xs active:scale-95"
+                            title="Mở giao diện lớn để đối soát và tự động quét OCR"
+                        >
+                            <Sparkles className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
+                            Đối soát
+                        </button>
+                    )}
+                    {canRemove && (
+                        <button
+                            type="button"
+                            onClick={() => onRemove(index)}
+                            className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                            title="Xóa chứng chỉ"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </button>
+                    )}
+                </div>
             </div>
 
             {cert.certificate_type !== undefined && (
@@ -141,7 +160,7 @@ function CertificateCard({ cert, index, onChange, onRemove, onFileChange, canRem
                     <input
                         required
                         type="text"
-                        value={cert.certificate_name}
+                        value={cert.certificate_name || ''}
                         onChange={(e) => onChange(index, 'certificate_name', e.target.value)}
                         placeholder="VD: Chứng chỉ hành nghề"
                         className="w-full px-3 h-9 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm"
@@ -152,10 +171,10 @@ function CertificateCard({ cert, index, onChange, onRemove, onFileChange, canRem
                     <input
                         required
                         type="text"
-                        value={cert.certificate_number}
+                        value={cert.certificate_number || ''}
                         onChange={(e) => onChange(index, 'certificate_number', e.target.value)}
                         placeholder="VD: CCHN-2024-001"
-                        className="w-full px-3 h-9 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm"
+                        className="w-full px-3 h-9 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm font-semibold text-blue-700"
                     />
                 </div>
             </div>
@@ -165,11 +184,34 @@ function CertificateCard({ cert, index, onChange, onRemove, onFileChange, canRem
                 <input
                     required
                     type="text"
-                    value={cert.issued_by}
+                    value={cert.issued_by || ''}
                     onChange={(e) => onChange(index, 'issued_by', e.target.value)}
-                    placeholder="VD: Bộ Y Tế"
+                    placeholder="VD: Sở Y Tế..."
                     className="w-full px-3 h-9 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm"
                 />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-slate-600">Văn bằng chuyên môn</label>
+                    <input
+                        type="text"
+                        value={cert.qualification || ''}
+                        onChange={(e) => onChange(index, 'qualification', e.target.value)}
+                        placeholder="VD: Bác sĩ, Bác sĩ CKI..."
+                        className="w-full px-3 h-9 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm"
+                    />
+                </div>
+                <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-slate-600">Phạm vi hoạt động chuyên môn</label>
+                    <input
+                        type="text"
+                        value={cert.scope_of_practice || ''}
+                        onChange={(e) => onChange(index, 'scope_of_practice', e.target.value)}
+                        placeholder="VD: Khám bệnh, chữa bệnh chuyên khoa Răng hàm mặt"
+                        className="w-full px-3 h-9 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm"
+                    />
+                </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -180,22 +222,40 @@ function CertificateCard({ cert, index, onChange, onRemove, onFileChange, canRem
                         <input
                             required
                             type="date"
-                            value={cert.issue_date}
+                            value={cert.issue_date || ''}
                             onChange={(e) => onChange(index, 'issue_date', e.target.value)}
                             className="w-full pl-9 pr-3 h-9 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm"
                         />
                     </div>
                 </div>
                 <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-slate-600">Ngày hết hạn <span className="text-red-400">*</span></label>
+                    <div className="flex items-center justify-between">
+                        <label className="text-xs font-medium text-slate-600">
+                            Ngày hết hạn {!cert.is_lifetime && <span className="text-red-400">*</span>}
+                        </label>
+                        <label className="flex items-center gap-1 text-[11px] text-slate-500 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={cert.is_lifetime !== undefined ? cert.is_lifetime : true}
+                                onChange={(e) => {
+                                    const checked = e.target.checked;
+                                    onChange(index, 'is_lifetime', checked);
+                                    if (checked) onChange(index, 'expiry_date', '');
+                                }}
+                                className="rounded text-blue-600 focus:ring-blue-500 w-3 h-3"
+                            />
+                            <span>Vô thời hạn</span>
+                        </label>
+                    </div>
                     <div className="relative">
                         <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                         <input
-                            required
+                            required={!cert.is_lifetime}
+                            disabled={cert.is_lifetime}
                             type="date"
-                            value={cert.expiry_date}
+                            value={cert.expiry_date || ''}
                             onChange={(e) => onChange(index, 'expiry_date', e.target.value)}
-                            className="w-full pl-9 pr-3 h-9 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm"
+                            className="w-full pl-9 pr-3 h-9 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm disabled:bg-slate-100 disabled:text-slate-400"
                         />
                     </div>
                 </div>
@@ -208,20 +268,30 @@ function CertificateCard({ cert, index, onChange, onRemove, onFileChange, canRem
                         <img
                             src={cert.certificate_file_preview}
                             alt="Certificate"
-                            className="w-full h-32 object-cover rounded-lg border border-slate-200"
+                            className="w-full h-36 object-cover rounded-lg border border-slate-200"
                         />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 rounded-lg flex items-center justify-center gap-2 transition-opacity">
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/img:opacity-100 rounded-lg flex items-center justify-center gap-2 transition-opacity">
+                            {onOpenOcr && (
+                                <button
+                                    type="button"
+                                    onClick={() => onOpenOcr(index, cert, isPractice)}
+                                    className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 shadow-sm flex items-center gap-1.5 cursor-pointer"
+                                >
+                                    <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+                                    Đối soát & Quét OCR
+                                </button>
+                            )}
                             <button
                                 type="button"
                                 onClick={() => fileRef.current?.click()}
-                                className="px-3 py-1.5 bg-white rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50"
+                                className="px-3 py-1.5 bg-white rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 cursor-pointer"
                             >
                                 Thay đổi
                             </button>
                             <button
                                 type="button"
                                 onClick={() => onFileChange(index, null, null)}
-                                className="px-3 py-1.5 bg-red-500 rounded-lg text-xs font-medium text-white hover:bg-red-600"
+                                className="px-3 py-1.5 bg-red-500 rounded-lg text-xs font-medium text-white hover:bg-red-600 cursor-pointer"
                             >
                                 Xóa
                             </button>
@@ -277,12 +347,27 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
         issued_by: '',
         issue_date: '',
         expiry_date: '',
+        is_lifetime: true,
+        qualification: '',
+        scope_of_practice: '',
+        identity_card_number: '',
+        practicing_doctor_name: '',
         certificate_file: null,
         certificate_file_preview: null,
     });
 
     // Specialization certificates
     const [specCertificates, setSpecCertificates] = useState([]);
+
+    // Big OCR Review Modal States
+    const [ocrModalOpen, setOcrModalOpen] = useState(false);
+    const [ocrModalTarget, setOcrModalTarget] = useState('practice');
+    const [ocrModalFile, setOcrModalFile] = useState(null);
+    const [ocrModalImage, setOcrModalImage] = useState(null);
+    const [ocrModalData, setOcrModalData] = useState(null);
+    const [ocrModalScanning, setOcrModalScanning] = useState(false);
+    const [ocrModalProgress, setOcrModalProgress] = useState(0);
+    const [ocrModalStatus, setOcrModalStatus] = useState('');
 
     useEffect(() => {
         if (isOpen && dentist) {
@@ -304,41 +389,55 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
 
             // Populate certificates
             if (dentist.certificates && dentist.certificates.length > 0) {
-                const pLicense = dentist.certificates.find((c) => c.type === 'practice_license');
+                const pLicense = dentist.certificates.find((c) => c.type === 'practice_license' || c.certificate_type === 'PRACTICE_LICENSE' || c.certificateType === 'PRACTICE_LICENSE');
                 if (pLicense) {
                     setPracticeLicense({
-                        certificate_name: pLicense.certificate_name || 'Chứng chỉ hành nghề bác sĩ',
-                        certificate_number: pLicense.certificate_number || '',
-                        issued_by: pLicense.issued_by || '',
-                        issue_date: pLicense.issue_date || '',
-                        expiry_date: pLicense.expiry_date || '',
+                        certificate_name: pLicense.certificate_name || pLicense.certificateName || 'Chứng chỉ hành nghề bác sĩ',
+                        certificate_number: pLicense.certificate_number || pLicense.certificateNumber || '',
+                        issued_by: pLicense.issued_by || pLicense.issuedBy || '',
+                        issue_date: pLicense.issue_date || pLicense.issueDate || '',
+                        expiry_date: pLicense.expiry_date || pLicense.expiryDate || '',
+                        is_lifetime: pLicense.is_lifetime !== undefined ? pLicense.is_lifetime : (pLicense.isLifetime !== undefined ? pLicense.isLifetime : true),
+                        qualification: pLicense.qualification || '',
+                        scope_of_practice: pLicense.scope_of_practice || pLicense.scopeOfPractice || '',
+                        identity_card_number: pLicense.identity_card_number || pLicense.identityCardNumber || '',
+                        practicing_doctor_name: pLicense.practicing_doctor_name || pLicense.practicingDoctorName || '',
                         certificate_file: null,
-                        certificate_file_preview: pLicense.certificate_file_url || null,
+                        certificate_file_preview: pLicense.certificate_file_url || pLicense.certificateFileUrl || null,
                     });
                 } else {
-                    // Reset if none found
                     setPracticeLicense({
                         certificate_name: 'Chứng chỉ hành nghề bác sĩ',
                         certificate_number: '',
                         issued_by: '',
                         issue_date: '',
                         expiry_date: '',
+                        is_lifetime: true,
+                        qualification: '',
+                        scope_of_practice: '',
+                        identity_card_number: '',
+                        practicing_doctor_name: '',
                         certificate_file: null,
                         certificate_file_preview: null,
                     });
                 }
 
-                const sCerts = dentist.certificates.filter((c) => c.type !== 'practice_license');
+                const sCerts = dentist.certificates.filter((c) => c.type !== 'practice_license' && c.certificate_type !== 'PRACTICE_LICENSE' && c.certificateType !== 'PRACTICE_LICENSE');
                 setSpecCertificates(
                     sCerts.map((c) => ({
-                        certificate_name: c.certificate_name || '',
-                        certificate_number: c.certificate_number || '',
-                        issued_by: c.issued_by || '',
-                        issue_date: c.issue_date || '',
-                        expiry_date: c.expiry_date || '',
+                        certificate_name: c.certificate_name || c.certificateName || '',
+                        certificate_number: c.certificate_number || c.certificateNumber || '',
+                        issued_by: c.issued_by || c.issuedBy || '',
+                        issue_date: c.issue_date || c.issueDate || '',
+                        expiry_date: c.expiry_date || c.expiryDate || '',
+                        is_lifetime: c.is_lifetime !== undefined ? c.is_lifetime : (c.isLifetime !== undefined ? c.isLifetime : false),
+                        qualification: c.qualification || '',
+                        scope_of_practice: c.scope_of_practice || c.scopeOfPractice || '',
+                        identity_card_number: c.identity_card_number || c.identityCardNumber || '',
+                        practicing_doctor_name: c.practicing_doctor_name || c.practicingDoctorName || '',
                         certificate_type: c.certificate_type || c.certificateType || '',
                         certificate_file: null,
-                        certificate_file_preview: c.certificate_file_url || null,
+                        certificate_file_preview: c.certificate_file_url || c.certificateFileUrl || null,
                     }))
                 );
             } else {
@@ -348,6 +447,11 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                     issued_by: '',
                     issue_date: '',
                     expiry_date: '',
+                    is_lifetime: true,
+                    qualification: '',
+                    scope_of_practice: '',
+                    identity_card_number: '',
+                    practicing_doctor_name: '',
                     certificate_file: null,
                     certificate_file_preview: null,
                 });
@@ -400,6 +504,132 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
         if (avatarInputRef.current) avatarInputRef.current.value = '';
     };
 
+    // OCR execution and auto-fill logic
+    const runOcrForModal = async (file, target = 'practice') => {
+        setOcrModalTarget(target);
+        setOcrModalFile(file);
+        const previewUrl = typeof file === 'string' ? file : URL.createObjectURL(file);
+        setOcrModalImage(previewUrl);
+        setOcrModalOpen(true);
+        setOcrModalScanning(true);
+        setOcrModalProgress(0.1);
+        setOcrModalStatus('Đang đọc ảnh & tiền xử lý...');
+
+        try {
+            const result = await performCertificateOcr(file, (p, status) => {
+                setOcrModalProgress(p);
+                setOcrModalStatus(status);
+            });
+
+            if (result.success && result.data) {
+                setOcrModalData(result.data);
+
+                // Tự động điền dữ liệu ngay vào biểu mẫu
+                if (target === 'practice') {
+                    setPracticeLicense((prev) => ({
+                        ...prev,
+                        certificate_name: result.data.certificate_name || prev.certificate_name,
+                        certificate_number: result.data.certificate_number || prev.certificate_number,
+                        issued_by: result.data.issued_by || prev.issued_by,
+                        issue_date: result.data.issue_date || prev.issue_date,
+                        expiry_date: result.data.expiry_date || prev.expiry_date,
+                        is_lifetime: result.data.is_lifetime !== undefined ? result.data.is_lifetime : prev.is_lifetime,
+                        qualification: result.data.qualification || prev.qualification,
+                        scope_of_practice: result.data.scope_of_practice || prev.scope_of_practice,
+                        identity_card_number: result.data.identity_card_number || prev.identity_card_number,
+                        practicing_doctor_name: result.data.doctor_name || prev.practicing_doctor_name,
+                    }));
+                } else {
+                    setSpecCertificates((prev) =>
+                        prev.map((c, i) =>
+                            i === target
+                                ? {
+                                    ...c,
+                                    certificate_name: result.data.certificate_name || c.certificate_name,
+                                    certificate_number: result.data.certificate_number || c.certificate_number,
+                                    issued_by: result.data.issued_by || c.issued_by,
+                                    issue_date: result.data.issue_date || c.issue_date,
+                                    expiry_date: result.data.expiry_date || c.expiry_date,
+                                    is_lifetime: result.data.is_lifetime !== undefined ? result.data.is_lifetime : c.is_lifetime,
+                                    qualification: result.data.qualification || c.qualification,
+                                    scope_of_practice: result.data.scope_of_practice || c.scope_of_practice,
+                                }
+                                : c
+                        )
+                    );
+                }
+                toast.success('Nhận diện thông tin chứng chỉ thành công!');
+            } else {
+                toast.error('Không thể tự động đọc toàn bộ thông tin. Bạn có thể kiểm tra trên modal.');
+            }
+        } catch (err) {
+            console.error('OCR Error:', err);
+            toast.error('Quá trình quét OCR gặp sự cố.');
+        } finally {
+            setOcrModalScanning(false);
+        }
+    };
+
+    const handleOpenOcrReview = (target = 'practice') => {
+        let cert = target === 'practice' ? practiceLicense : specCertificates[target];
+        if (!cert || (!cert.certificate_file && !cert.certificate_file_preview)) {
+            toast.error('Vui lòng tải lên ảnh chứng chỉ trước!');
+            return;
+        }
+        const fileOrUrl = cert.certificate_file || cert.certificate_file_preview;
+        runOcrForModal(fileOrUrl, target);
+    };
+
+    const handleConfirmOcr = (reviewedData) => {
+        if (ocrModalTarget === 'practice') {
+            setPracticeLicense((prev) => ({
+                ...prev,
+                certificate_name: reviewedData.certificate_name,
+                certificate_number: reviewedData.certificate_number,
+                issued_by: reviewedData.issued_by,
+                issue_date: reviewedData.issue_date,
+                expiry_date: reviewedData.expiry_date,
+                is_lifetime: reviewedData.is_lifetime,
+                qualification: reviewedData.qualification,
+                scope_of_practice: reviewedData.scope_of_practice,
+                identity_card_number: reviewedData.identity_card_number,
+                practicing_doctor_name: reviewedData.doctor_name,
+            }));
+
+            if (reviewedData.syncToPersonal) {
+                setFormData((prev) => ({
+                    ...prev,
+                    username: reviewedData.doctor_name || prev.username,
+                    dateOfBirth: reviewedData.date_of_birth || prev.dateOfBirth,
+                    address: reviewedData.address || prev.address,
+                    education: reviewedData.qualification || prev.education,
+                }));
+            }
+        } else {
+            setSpecCertificates((prev) =>
+                prev.map((c, i) =>
+                    i === ocrModalTarget
+                        ? {
+                            ...c,
+                            certificate_name: reviewedData.certificate_name,
+                            certificate_number: reviewedData.certificate_number,
+                            issued_by: reviewedData.issued_by,
+                            issue_date: reviewedData.issue_date,
+                            expiry_date: reviewedData.expiry_date,
+                            is_lifetime: reviewedData.is_lifetime,
+                            qualification: reviewedData.qualification,
+                            scope_of_practice: reviewedData.scope_of_practice,
+                            certificate_type: reviewedData.certificate_type || c.certificate_type,
+                        }
+                        : c
+                )
+            );
+        }
+
+        setOcrModalOpen(false);
+        toast.success('Đã cập nhật thông tin chứng chỉ vào biểu mẫu!');
+    };
+
     // Practice license handlers
     const handlePracticeLicenseChange = (_, field, value) => {
         setPracticeLicense((prev) => ({ ...prev, [field]: value }));
@@ -411,6 +641,9 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
             certificate_file: file,
             certificate_file_preview: preview,
         }));
+        if (file && (file.type?.startsWith('image/') || typeof file === 'string')) {
+            runOcrForModal(file, 'practice');
+        }
     };
 
     // Specialization certificate handlers
@@ -426,6 +659,9 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                 i === index ? { ...cert, certificate_file: file, certificate_file_preview: preview } : cert
             )
         );
+        if (file && (file.type?.startsWith('image/') || typeof file === 'string')) {
+            runOcrForModal(file, index);
+        }
     };
 
     const addSpecCertificate = () => {
@@ -436,20 +672,51 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
         setSpecCertificates((prev) => prev.filter((_, i) => i !== index));
     };
 
+    // Safe date formatters
+    const toIsoDate = (val) => {
+        if (!val) return null;
+        const s = String(val).trim();
+        if (!s) return null;
+        if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+            const d = new Date(s);
+            return isNaN(d.getTime()) ? null : d.toISOString();
+        }
+        const m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/);
+        if (m) {
+            const d = new Date(`${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`);
+            return isNaN(d.getTime()) ? null : d.toISOString();
+        }
+        const d = new Date(s);
+        return isNaN(d.getTime()) ? null : d.toISOString();
+    };
+
+    const toLocalDate = (val) => {
+        if (!val) return null;
+        const s = String(val).trim();
+        if (!s) return null;
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+        const m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/);
+        if (m) {
+            return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+        }
+        const d = new Date(s);
+        return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0];
+    };
+
     // Validation
     const isPracticeLicenseValid = () => {
         return (
-            practiceLicense.certificate_name.trim() &&
-            practiceLicense.certificate_number.trim() &&
-            practiceLicense.issued_by.trim() &&
+            practiceLicense.certificate_name?.trim() &&
+            practiceLicense.certificate_number?.trim() &&
+            practiceLicense.issued_by?.trim() &&
             practiceLicense.issue_date &&
-            practiceLicense.expiry_date &&
+            (practiceLicense.is_lifetime || practiceLicense.expiry_date) &&
             practiceLicense.certificate_file_preview
         );
     };
 
     const isStep1Valid = () => {
-        return formData.username.trim() && formData.phone.trim() && formData.education.trim() && formData.branchId;
+        return formData.username?.trim() && formData.phone?.trim() && formData.education?.trim() && formData.branchId;
     };
 
     const isStep2Valid = () => {
@@ -457,11 +724,11 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
         for (const cert of specCertificates) {
             if (
                 !cert.certificate_type ||
-                !cert.certificate_name.trim() ||
-                !cert.certificate_number.trim() ||
-                !cert.issued_by.trim() ||
+                !cert.certificate_name?.trim() ||
+                !cert.certificate_number?.trim() ||
+                !cert.issued_by?.trim() ||
                 !cert.issue_date ||
-                !cert.expiry_date ||
+                (!cert.is_lifetime && !cert.expiry_date) ||
                 !cert.certificate_file_preview
             ) {
                 return false;
@@ -489,7 +756,7 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
     };
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault();
         setError(null);
         setLoading(true);
 
@@ -501,15 +768,18 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
             }
             let avatarUrl = dentist.avatar;
             if (avatarFile) {
-                const uploadResult = await uploadImage(avatarFile);
-                avatarUrl = uploadResult.url || uploadResult.secure_url || uploadResult;
+                try {
+                    const uploadResult = await uploadImage(avatarFile);
+                    avatarUrl = uploadResult?.url || uploadResult?.secure_url || uploadResult || avatarUrl;
+                } catch (uploadErr) {
+                    console.warn('Avatar upload failed, using fallback:', uploadErr);
+                }
             } else if (!avatarPreview) {
                 avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.username)}&background=random`;
             }
 
             // --- REAL API CALL ---
             if (dentist.userId) {
-                ``
                 await updateUser(dentist.userId, {
                     username: formData.username,
                     phone: formData.phone,
@@ -520,20 +790,34 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
 
             // Helper to upload certificate file and map to DTO
             const uploadAndMapCertificate = async (cert, certType) => {
-                let fileUrl = cert.certificate_file_preview || '';
-                // Only upload if it's a new file (not a string URL)
+                let fileUrl = '';
                 if (cert.certificate_file) {
-                    const res = await uploadImage(cert.certificate_file);
-                    fileUrl = res.url || res.secure_url || res;
+                    try {
+                        const res = await uploadImage(cert.certificate_file);
+                        fileUrl = res?.url || res?.secure_url || res || '';
+                    } catch (uploadErr) {
+                        console.warn('Certificate upload failed, using fallback:', uploadErr);
+                        if (cert.certificate_file_preview && cert.certificate_file_preview.startsWith('http')) {
+                            fileUrl = cert.certificate_file_preview;
+                        }
+                    }
+                } else if (cert.certificate_file_preview && cert.certificate_file_preview.startsWith('http')) {
+                    fileUrl = cert.certificate_file_preview;
                 }
+
                 return {
                     certificateName: cert.certificate_name,
                     certificateNumber: cert.certificate_number,
                     issuedBy: cert.issued_by,
-                    issueDate: cert.issue_date ? new Date(cert.issue_date).toISOString() : null,
-                    expiryDate: cert.expiry_date ? new Date(cert.expiry_date).toISOString() : null,
+                    issueDate: toIsoDate(cert.issue_date),
+                    expiryDate: cert.is_lifetime ? null : toIsoDate(cert.expiry_date),
                     certificateFileUrl: fileUrl,
                     certificateType: certType,
+                    scopeOfPractice: cert.scope_of_practice || null,
+                    identityCardNumber: cert.identity_card_number || null,
+                    practicingDoctorName: cert.practicing_doctor_name || null,
+                    qualification: cert.qualification || null,
+                    isLifetime: cert.is_lifetime !== undefined ? cert.is_lifetime : false,
                 };
             };
 
@@ -547,7 +831,7 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
 
             await updateDentist(dentist.id, {
                 fullName: formData.username,
-                dateOfBirth: formData.dateOfBirth || null,
+                dateOfBirth: toLocalDate(formData.dateOfBirth),
                 address: formData.address || null,
                 certificates: allCertificates,
                 experienceYears: formData.experienceYears,
@@ -556,14 +840,15 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                 description: formData.description,
                 branchId: formData.branchId,
             });
-            // ⚠️ Note: the actual backend may need a specific endpoint to update certificates
 
             toast.success('Cập nhật thông tin thành công!');
             onSuccess();
             onClose();
         } catch (err) {
             console.error(err);
-            setError(err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật thông tin.');
+            const errorMsg = err.response?.data?.message || err.message || 'Có lỗi xảy ra khi cập nhật thông tin.';
+            setError(errorMsg);
+            toast.error(errorMsg);
         } finally {
             setLoading(false);
         }
@@ -795,6 +1080,8 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                     onRemove={() => { }}
                     canRemove={false}
                     label="Giấy phép hành nghề bác sĩ"
+                    isPractice={true}
+                    onOpenOcr={() => handleOpenOcrReview('practice')}
                 />
             </div>
 
@@ -835,6 +1122,8 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                                 onRemove={removeSpecCertificate}
                                 canRemove={true}
                                 label={`Chứng chỉ chuyên môn #${idx + 1}`}
+                                isPractice={false}
+                                onOpenOcr={() => handleOpenOcrReview(idx)}
                             />
                         ))}
                         <button
@@ -895,13 +1184,22 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                             <img
                                 src={practiceLicense.certificate_file_preview}
                                 alt="Practice license"
-                                className="w-24 h-16 object-cover rounded-lg border border-slate-200"
+                                className="w-28 h-20 object-cover rounded-lg border border-slate-200 shrink-0"
                             />
                         )}
                         <div className="text-sm space-y-1 flex-1">
-                            <p className="font-medium text-slate-700">{practiceLicense.certificate_name}</p>
-                            <p className="text-slate-400">Số: {practiceLicense.certificate_number}</p>
-                            <p className="text-slate-400">Nơi cấp: {practiceLicense.issued_by}</p>
+                            <p className="font-semibold text-slate-800">{practiceLicense.certificate_name}</p>
+                            <p className="text-slate-600"><span className="text-slate-400">Số CCHN:</span> <span className="font-bold text-blue-700">{practiceLicense.certificate_number}</span></p>
+                            <p className="text-slate-600"><span className="text-slate-400">Nơi cấp:</span> {practiceLicense.issued_by}</p>
+                            {practiceLicense.qualification && (
+                                <p className="text-slate-600"><span className="text-slate-400">Văn bằng:</span> {practiceLicense.qualification}</p>
+                            )}
+                            {practiceLicense.scope_of_practice && (
+                                <p className="text-slate-600"><span className="text-slate-400">Phạm vi:</span> {practiceLicense.scope_of_practice}</p>
+                            )}
+                            <p className="text-slate-500 text-xs">
+                                {practiceLicense.issue_date} → {practiceLicense.is_lifetime ? 'Vô thời hạn' : (practiceLicense.expiry_date || 'Không có')}
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -913,18 +1211,28 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                         </h4>
                         <div className="space-y-3">
                             {specCertsDisplay.map((cert, idx) => (
-                                <div key={idx} className="flex gap-3 items-start p-3 rounded-lg bg-slate-50">
+                                <div key={idx} className="flex gap-4 items-start p-3 rounded-lg bg-slate-50">
                                     {cert.certificate_file_preview && (
                                         <img
                                             src={cert.certificate_file_preview}
                                             alt="Certificate"
-                                            className="w-16 h-12 object-cover rounded-md border border-slate-200"
+                                            className="w-24 h-16 object-cover rounded-lg border border-slate-200"
                                         />
                                     )}
-                                    <div className="text-sm space-y-0.5 flex-1 min-w-0">
+                                    <div className="text-sm space-y-1 flex-1 min-w-0">
                                         <p className="font-medium text-slate-700 truncate">{cert.certificate_name}</p>
                                         <p className="text-xs text-slate-400">
                                             {getCertificateTypeLabel(cert.certificate_type)} • Số: {cert.certificate_number}
+                                        </p>
+                                        <p className="text-xs text-slate-500">Nơi cấp: {cert.issued_by}</p>
+                                        {cert.qualification && (
+                                            <p className="text-xs text-slate-600"><span className="text-slate-400">Văn bằng:</span> {cert.qualification}</p>
+                                        )}
+                                        {cert.scope_of_practice && (
+                                            <p className="text-xs text-slate-600"><span className="text-slate-400">Phạm vi:</span> {cert.scope_of_practice}</p>
+                                        )}
+                                        <p className="text-xs text-slate-400">
+                                            {cert.issue_date} → {cert.is_lifetime ? 'Vô thời hạn' : (cert.expiry_date || 'Không có')}
                                         </p>
                                     </div>
                                 </div>
@@ -1048,6 +1356,25 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                     </div>
                 </div>
             </div>
+
+            {/* Really Big OCR Review Modal */}
+            <OcrCertificateReviewModal
+                isOpen={ocrModalOpen}
+                onClose={() => setOcrModalOpen(false)}
+                imageUrl={ocrModalImage}
+                imageFile={ocrModalFile}
+                ocrData={ocrModalData}
+                isScanning={ocrModalScanning}
+                progress={ocrModalProgress}
+                statusMessage={ocrModalStatus}
+                isPracticeLicense={ocrModalTarget === 'practice'}
+                onConfirm={handleConfirmOcr}
+                onRescan={() => {
+                    if (ocrModalFile) {
+                        runOcrForModal(ocrModalFile, ocrModalTarget);
+                    }
+                }}
+            />
         </div>
     );
 }

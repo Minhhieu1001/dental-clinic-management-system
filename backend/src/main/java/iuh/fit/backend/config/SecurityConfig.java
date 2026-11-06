@@ -118,7 +118,8 @@ public class SecurityConfig {
                                 "/api/v1/admin/dashboard/**",
                                 "/ws/**",
                                 "/ws",
-                                "/api/v1/ai/**"
+                                "/api/v1/ai/**",
+                                "/api/v1/ocr/**"
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v1/clinics/**",

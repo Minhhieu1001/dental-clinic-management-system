@@ -65,20 +65,38 @@ function CertificateView({ cert }) {
                     </a>
                 )}
                 <div className="flex-1 space-y-1 text-xs">
-                    <div className="grid grid-cols-[70px_1fr] gap-1">
+                    <div className="grid grid-cols-[80px_1fr] gap-1">
                         <span className="text-slate-400 text-[11px]">Số CC:</span>
                         <span className="font-medium text-slate-700 text-[11px]">{cert.certificate_number}</span>
                     </div>
-                    <div className="grid grid-cols-[70px_1fr] gap-1">
+                    <div className="grid grid-cols-[80px_1fr] gap-1">
                         <span className="text-slate-400 text-[11px]">Nơi cấp:</span>
                         <span className="font-medium text-slate-700 text-[11px]">{cert.issued_by}</span>
                     </div>
-                    <div className="grid grid-cols-[70px_1fr] gap-1">
+                    <div className="grid grid-cols-[80px_1fr] gap-1">
                         <span className="text-slate-400 text-[11px]">Thời hạn:</span>
                         <span className="font-medium text-slate-700 text-[11px]">
-                            {cert.issue_date} → {cert.expiry_date}
+                            {cert.issue_date || 'Chưa cập nhật'} → {cert.is_lifetime ? 'Vô thời hạn' : (cert.expiry_date || 'Không có')}
                         </span>
                     </div>
+                    {cert.qualification && (
+                        <div className="grid grid-cols-[80px_1fr] gap-1">
+                            <span className="text-slate-400 text-[11px]">Văn bằng:</span>
+                            <span className="font-medium text-slate-700 text-[11px]">{cert.qualification}</span>
+                        </div>
+                    )}
+                    {cert.scope_of_practice && (
+                        <div className="grid grid-cols-[80px_1fr] gap-1">
+                            <span className="text-slate-400 text-[11px]">Phạm vi:</span>
+                            <span className="font-medium text-slate-700 text-[11px] leading-tight">{cert.scope_of_practice}</span>
+                        </div>
+                    )}
+                    {cert.identity_card_number && (
+                        <div className="grid grid-cols-[80px_1fr] gap-1">
+                            <span className="text-slate-400 text-[11px]">Số CMND:</span>
+                            <span className="font-medium text-slate-700 text-[11px]">{cert.identity_card_number}</span>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

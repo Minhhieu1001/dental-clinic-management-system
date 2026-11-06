@@ -12,6 +12,7 @@ import iuh.fit.backend.user.service.DentistService;
 import iuh.fit.backend.user.service.UserService;
 import iuh.fit.backend.user.enums.Role;
 import iuh.fit.backend.user.enums.StatusUser;
+import iuh.fit.backend.user.enums.CertificateType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -122,8 +123,17 @@ public class DentistServiceImpl implements DentistService {
     public void deleteDentist(UUID id) {
         Dentist dentist = findDentist(id);
         try {
+            User user = dentist.getUser();
+            if (user != null) {
+                user.setDentist(null);
+                dentist.setUser(null);
+            }
             dentistRepository.delete(dentist);
             dentistRepository.flush();
+            if (user != null) {
+                userRepository.delete(user);
+                userRepository.flush();
+            }
         } catch (DataIntegrityViolationException exception) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
@@ -195,8 +205,17 @@ public class DentistServiceImpl implements DentistService {
                 cert.setExpiryDate(cc.expiryDate());
                 cert.setCertificateFileUrl(cc.certificateFileUrl());
                 cert.setCertificateType(cc.certificateType());
+                cert.setScopeOfPractice(cc.scopeOfPractice());
+                cert.setIdentityCardNumber(cc.identityCardNumber());
+                cert.setPracticingDoctorName(cc.practicingDoctorName());
+                cert.setQualification(cc.qualification());
+                cert.setIsLifetime(cc.isLifetime());
                 cert.setDentist(dentist);
                 dentist.getCertificates().add(cert);
+
+                if (cc.certificateType() == CertificateType.PRACTICE_LICENSE && cc.certificateNumber() != null) {
+                    dentist.setLicenseNumber(cc.certificateNumber());
+                }
             }
         }
     }
@@ -267,7 +286,12 @@ public class DentistServiceImpl implements DentistService {
                         cert.getIssueDate(),
                         cert.getExpiryDate(),
                         cert.getCertificateFileUrl(),
-                        cert.getCertificateType()
+                        cert.getCertificateType(),
+                        cert.getScopeOfPractice(),
+                        cert.getIdentityCardNumber(),
+                        cert.getPracticingDoctorName(),
+                        cert.getQualification(),
+                        cert.getIsLifetime()
                 ))
                 .toList();
 
