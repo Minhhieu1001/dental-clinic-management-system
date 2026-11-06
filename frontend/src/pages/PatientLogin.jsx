@@ -69,6 +69,7 @@ export default function PatientLogin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isLoading) return;
     setError('');
 
     if (!patientCode.trim()) {
@@ -84,7 +85,6 @@ export default function PatientLogin() {
       return;
     }
     setIsLoading(true);
-    setIsLoading(true);
 
     try {
       localStorage.setItem('patient_phone', phone.trim());
@@ -95,14 +95,14 @@ export default function PatientLogin() {
         password,
       });
 
-      toast.success('Đăng nhập thành công! Chào mừng quý khách.');
+      toast.success('Đăng nhập thành công! Chào mừng quý khách.', { id: 'patient-login-toast' });
       navigate('/patient/dashboard', { replace: true });
     } catch (err) {
       const msg =
         err?.response?.data?.message ||
         'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin hồ sơ.';
       setError(msg);
-      toast.error(msg);
+      toast.error(msg, { id: 'patient-login-toast' });
     } finally {
       setIsLoading(false);
     }

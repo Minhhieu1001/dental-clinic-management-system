@@ -69,6 +69,14 @@ public class DentistServiceImpl implements DentistService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<DentistListResponse> getDentistsByBranch(String branchId) {
+        return dentistRepository.findAllByBranchIdWithUser(branchId).stream()
+                .map(this::toDentistListResponse)
+                .toList();
+    }
+
+    @Override
     public Map<String, Long> getDentistStats() {
         List<Dentist> allDentists = dentistRepository.findAllWithUser();
         long total = allDentists.size();

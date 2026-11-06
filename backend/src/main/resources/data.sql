@@ -4,6 +4,33 @@
 -- Dùng ON CONFLICT DO NOTHING để tránh lỗi trùng dữ liệu
 -- ============================================================
 
+-- Tự động bổ sung cột version cho Optimistic Locking
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS version BIGINT DEFAULT 0;
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS version BIGINT DEFAULT 0;
+ALTER TABLE appointment_requests ADD COLUMN IF NOT EXISTS version BIGINT DEFAULT 0;
+UPDATE patients SET version = 0 WHERE version IS NULL;
+UPDATE appointments SET version = 0 WHERE version IS NULL;
+UPDATE appointment_requests SET version = 0 WHERE version IS NULL;
+
+-- Dọn dẹp các lịch trùng lặp cũ nếu có trong CSDL (chuyển bản ghi trùng thành CANCELLED để không bị lỗi index)
+UPDATE appointments
+SET status = 'CANCELLED'
+WHERE id IN (
+    SELECT id FROM (
+        SELECT id, ROW_NUMBER() OVER(
+            PARTITION BY dentist_id, appointment_date, appointment_time 
+            ORDER BY id
+        ) as rn
+        FROM appointments
+        WHERE dentist_id IS NOT NULL AND status != 'CANCELLED'
+    ) t WHERE t.rn > 1
+);
+
+-- Chặn trùng lịch hẹn của cùng một bác sĩ trong cùng ngày và giờ (trừ các lịch đã bị hủy CANCELLED)
+CREATE UNIQUE INDEX IF NOT EXISTS uk_dentist_active_timeslot 
+ON appointments (dentist_id, appointment_date, appointment_time) 
+WHERE status != 'CANCELLED';
+
 -- Cho phép lưu ảnh dạng data URL/Base64 từ giao diện quản trị
 ALTER TABLE clinics ALTER COLUMN logo_url TYPE TEXT;
 ALTER TABLE clinics ALTER COLUMN image TYPE TEXT;

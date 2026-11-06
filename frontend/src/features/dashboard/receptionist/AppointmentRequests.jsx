@@ -81,22 +81,21 @@ export default function AppointmentRequests({
     const rawPhone = dto.phone || dto.phoneNumber;
     const phone = (rawPhone && typeof rawPhone === 'string' && rawPhone.trim()) ? rawPhone.trim() : 'Chưa có SĐT';
 
-    // Cross-reference with existing doctor appointments (match by requestId or phone)
+    // Cross-reference only by the explicit request ID. Matching by phone can
+    // associate an unrelated appointment with a still-pending request.
     const isCompletedRequest = dto.status === 'COMPLETED' || dto.status === 'PROCESSED';
-
-    const cleanPhone = (p) => (typeof p === 'string' ? p.replace(/\D/g, '') : '');
-    const dtoPhoneDigits = cleanPhone(phone);
 
     const matchedApt = Array.isArray(apptsData)
       ? apptsData.find(
         (apt) =>
           (apt.requestIdStr && String(apt.requestIdStr) === String(dto.id)) ||
-          (apt.requestId && String(apt.requestId) === String(dto.id)) ||
-          (dtoPhoneDigits && apt.phone && cleanPhone(apt.phone) === dtoPhoneDigits)
+          (apt.requestId && String(apt.requestId) === String(dto.id))
       )
       : null;
 
-    const isScheduled = !!matchedApt || isCompletedRequest;
+    // The request status is authoritative. An appointment alone must not make
+    // a PENDING request appear as scheduled.
+    const isScheduled = isCompletedRequest;
 
     let scheduledTimeStr = '';
     let doctorNameStr = '';

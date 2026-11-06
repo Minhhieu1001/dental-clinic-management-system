@@ -24,6 +24,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -44,6 +46,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "medical_records", key = "'all'")
     public List<MedicalRecordDTO> getAllMedicalRecords() {
         return medicalRecordRepository.findAllByOrderByRecordDateDesc()
                 .stream()
@@ -53,7 +56,8 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<MedicalRecordDTO> getMedicalRecords(String search, String gender, UUID dentistId, String dentistName, Integer year, Integer month) {
+    public List<MedicalRecordDTO> getMedicalRecords(String search, String gender, UUID dentistId, String dentistName,
+            Integer year, Integer month) {
         List<MedicalRecord> list = medicalRecordRepository.findAllByOrderByRecordDateDesc();
 
         return list.stream()
@@ -61,13 +65,18 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
                     Patient p = r.getPatient();
                     Dentist d = r.getDentist();
 
-                    // Search filter: medicalRecordCode, patientCode, patientName, patientPhone, cccd
+                    // Search filter: medicalRecordCode, patientCode, patientName, patientPhone,
+                    // cccd
                     if (search != null && !search.trim().isEmpty()) {
                         String q = search.trim().toLowerCase();
-                        boolean matchCode = r.getMedicalRecordCode() != null && r.getMedicalRecordCode().toLowerCase().contains(q);
-                        boolean matchPatientCode = p != null && p.getPatientCode() != null && p.getPatientCode().toLowerCase().contains(q);
-                        boolean matchName = p != null && p.getFullName() != null && p.getFullName().toLowerCase().contains(q);
-                        boolean matchPhone = p != null && p.getPhoneNumber() != null && p.getPhoneNumber().toLowerCase().contains(q);
+                        boolean matchCode = r.getMedicalRecordCode() != null
+                                && r.getMedicalRecordCode().toLowerCase().contains(q);
+                        boolean matchPatientCode = p != null && p.getPatientCode() != null
+                                && p.getPatientCode().toLowerCase().contains(q);
+                        boolean matchName = p != null && p.getFullName() != null
+                                && p.getFullName().toLowerCase().contains(q);
+                        boolean matchPhone = p != null && p.getPhoneNumber() != null
+                                && p.getPhoneNumber().toLowerCase().contains(q);
                         boolean matchCccd = p != null && p.getCccd() != null && p.getCccd().toLowerCase().contains(q);
                         if (!matchCode && !matchPatientCode && !matchName && !matchPhone && !matchCccd) {
                             return false;
@@ -76,7 +85,8 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
 
                     // Gender filter
                     if (gender != null && !gender.trim().isEmpty() && !"ALL".equalsIgnoreCase(gender)) {
-                        if (p == null || p.getGender() == null || !p.getGender().name().equalsIgnoreCase(gender.trim())) {
+                        if (p == null || p.getGender() == null
+                                || !p.getGender().name().equalsIgnoreCase(gender.trim())) {
                             return false;
                         }
                     }
@@ -90,7 +100,8 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
 
                     // Dentist Name filter
                     if (dentistName != null && !dentistName.trim().isEmpty() && !"ALL".equalsIgnoreCase(dentistName)) {
-                        if (d == null || d.getFullName() == null || !d.getFullName().trim().equalsIgnoreCase(dentistName.trim())) {
+                        if (d == null || d.getFullName() == null
+                                || !d.getFullName().trim().equalsIgnoreCase(dentistName.trim())) {
                             return false;
                         }
                     }
@@ -118,14 +129,17 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
 
     @Override
     @Transactional(readOnly = true)
+
     public MedicalRecordDTO getMedicalRecordById(UUID id) {
         MedicalRecord record = medicalRecordRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy hồ sơ bệnh án ID: " + id));
+                .orElseThrow(
+                        () -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy hồ sơ bệnh án ID: " + id));
         return mapToDTO(record);
     }
 
     @Override
     @Transactional(readOnly = true)
+
     public MedicalRecordDTO getMedicalRecordByCode(String medicalRecordCode) {
         if (medicalRecordCode == null || medicalRecordCode.trim().isEmpty()) {
             throw new AppException(ErrorCode.INVALID_REQUEST, "Mã hồ sơ bệnh án không được để trống");
@@ -140,6 +154,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "medical_records", key = "'patient:' + #patientId")
     public List<MedicalRecordDTO> getMedicalRecordsByPatientId(UUID patientId) {
         return medicalRecordRepository.findByPatientIdOrderByRecordDateDesc(patientId)
                 .stream()
@@ -149,6 +164,7 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "medical_records", key = "'patient_code:' + #patientCode", condition = "#patientCode != null && !#patientCode.trim().isEmpty()")
     public List<MedicalRecordDTO> getMedicalRecordsByPatientCode(String patientCode) {
         if (patientCode == null || patientCode.trim().isEmpty()) {
             return getAllMedicalRecords();
@@ -161,16 +177,19 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "medical_records", allEntries = true)
     public MedicalRecordDTO createMedicalRecord(MedicalRecordRequest request) {
         Branch branch = findBranch(request.getBranchId());
         // Resolve patient
         Patient patient = null;
         if (request.getPatientId() != null) {
             patient = patientRepository.findById(request.getPatientId())
-                    .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy bệnh nhân ID: " + request.getPatientId()));
+                    .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND,
+                            "Không tìm thấy bệnh nhân ID: " + request.getPatientId()));
         } else if (request.getPatientCode() != null && !request.getPatientCode().trim().isEmpty()) {
             patient = patientRepository.findByPatientCode(request.getPatientCode().trim())
-                    .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy bệnh nhân có mã: " + request.getPatientCode()));
+                    .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND,
+                            "Không tìm thấy bệnh nhân có mã: " + request.getPatientCode()));
         }
 
         Dentist dentist = null;
@@ -195,19 +214,23 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
                 .build();
 
         record = medicalRecordRepository.save(record);
-        log.info("Đã tạo hồ sơ bệnh án ID: {} cho bệnh nhân: {}", record.getId(), patient != null ? patient.getFullName() : "N/A");
+        log.info("Đã tạo hồ sơ bệnh án ID: {} cho bệnh nhân: {}", record.getId(),
+                patient != null ? patient.getFullName() : "N/A");
         return mapToDTO(record);
     }
 
     @Override
     @Transactional
+    @CacheEvict(value = "medical_records", allEntries = true)
     public MedicalRecordDTO updateMedicalRecord(UUID id, MedicalRecordRequest request) {
         MedicalRecord record = medicalRecordRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy hồ sơ bệnh án ID: " + id));
+                .orElseThrow(
+                        () -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy hồ sơ bệnh án ID: " + id));
 
         if (request.getPatientId() != null) {
             Patient patient = patientRepository.findById(request.getPatientId())
-                    .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy bệnh nhân ID: " + request.getPatientId()));
+                    .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND,
+                            "Không tìm thấy bệnh nhân ID: " + request.getPatientId()));
             record.setPatient(patient);
         }
 
@@ -239,9 +262,11 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "medical_records", allEntries = true)
     public void deleteMedicalRecord(UUID id) {
         MedicalRecord record = medicalRecordRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy hồ sơ bệnh án ID: " + id));
+                .orElseThrow(
+                        () -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy hồ sơ bệnh án ID: " + id));
         medicalRecordRepository.delete(record);
         log.info("Đã xóa hồ sơ bệnh án ID: {}", id);
     }
@@ -272,7 +297,8 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
                 .branchName(branch != null ? branch.getBranchName() : null)
                 .branchAddress(branch != null ? branch.getAddress() : null)
                 .clinicId(branch != null && branch.getClinic() != null ? branch.getClinic().getClinicId() : null)
-                .dentalClinicName(branch != null && branch.getClinic() != null ? branch.getClinic().getLegalName() : null)
+                .dentalClinicName(
+                        branch != null && branch.getClinic() != null ? branch.getClinic().getLegalName() : null)
                 .id(record.getId())
                 .medicalRecordCode(record.getMedicalRecordCode() != null
                         ? record.getMedicalRecordCode()

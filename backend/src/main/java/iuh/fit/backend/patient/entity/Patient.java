@@ -108,5 +108,9 @@ public class Patient {
     @OneToMany(mappedBy = "patient", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<PatientRelationship> relationships = new ArrayList<>();
 
+    @Version
+    @Builder.Default
+    private Long version = 0L;
+
 
 }
