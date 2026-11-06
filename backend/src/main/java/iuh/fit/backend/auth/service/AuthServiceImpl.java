@@ -1,5 +1,6 @@
 package iuh.fit.backend.auth.service;
 
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import iuh.fit.backend.auth.dto.AuthResponse;
 import iuh.fit.backend.auth.dto.LoginRequest;
 import iuh.fit.backend.auth.dto.PatientLoginRequest;
@@ -47,6 +48,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
 
     @Override
+    @RateLimiter(name = "loginLimiter")
     public AuthResponse login(LoginRequest request, HttpServletResponse response) {
         try {
             Authentication authentication = authenticationManager.authenticate(
@@ -84,6 +86,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @RateLimiter(name = "loginLimiter")
     public AuthResponse patientLogin(PatientLoginRequest request, HttpServletResponse response) {
         String code = request.patientCode().trim().toUpperCase();
         String rawPhone = request.phone().trim().replaceAll("[^0-9]", "");

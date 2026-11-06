@@ -13,6 +13,8 @@ public interface DentistService {
 
     List<DentistListResponse> getDentistsList();
 
+    List<DentistListResponse> getDentistsByBranch(String branchId);
+
     Map<String, Long> getDentistStats();
 
     DentistListResponse getDentistById(UUID id);

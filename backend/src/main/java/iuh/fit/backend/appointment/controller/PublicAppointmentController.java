@@ -1,5 +1,6 @@
 package iuh.fit.backend.appointment.controller;
 
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import iuh.fit.backend.appointment.dto.AppointmentCreateDTO;
 import iuh.fit.backend.appointment.dto.AppointmentDetailDTO;
 import iuh.fit.backend.appointment.service.AppointmentService;
@@ -24,6 +25,7 @@ public class PublicAppointmentController {
         return appointmentService.getAllAppointments(null, null, null);
     }
 
+    @RateLimiter(name = "appointmentBookingLimiter")
     @PostMapping
     public ResponseEntity<?> createPublicAppointment(@RequestBody LegacyAppointmentRequest request) {
         try {

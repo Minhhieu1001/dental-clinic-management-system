@@ -206,6 +206,23 @@ public class AppointmentServiceImpl implements AppointmentService {
 
         Branch branch = resolveBranch(dto);
 
+        // Claim the request before creating the appointment. The flush makes the
+        // optimistic-lock conflict happen before any appointment insert.
+        if (dto.getRequestId() != null) {
+            AppointmentRequest request = appointmentRequestRepository.findById(dto.getRequestId())
+                    .orElseThrow(() -> new AppException(ErrorCode.APPOINTMENT_REQUEST_NOT_FOUND));
+
+            if (request.getStatustAppointmentRequest() != StatustAppointmentRequest.PENDING) {
+                throw new AppException(ErrorCode.APPOINTMENT_REQUEST_ALREADY_PROCESSED);
+            }
+
+            if (employee != null) {
+                request.setEmployee(employee);
+            }
+            request.setStatustAppointmentRequest(StatustAppointmentRequest.COMPLETED);
+            appointmentRequestRepository.saveAndFlush(request);
+        }
+
         // 5. Build Appointment entity with direct patientName and phone
         Appointment appointment = Appointment.builder()
                 .patient(patient)
@@ -224,19 +241,6 @@ public class AppointmentServiceImpl implements AppointmentService {
                 .build();
 
         appointment = appointmentRepository.save(appointment);
-
-        // 6. If linked to AppointmentRequest, update its status
-        if (dto.getRequestId() != null) {
-            Optional<AppointmentRequest> reqOpt = appointmentRequestRepository.findById(dto.getRequestId());
-            if (reqOpt.isPresent()) {
-                AppointmentRequest req = reqOpt.get();
-                if (employee != null) {
-                    req.setEmployee(employee);
-                }
-                req.setStatustAppointmentRequest(StatustAppointmentRequest.COMPLETED);
-                appointmentRequestRepository.save(req);
-            }
-        }
 
         AppointmentDetailDTO resultDto = mapToDTO(appointment);
 
@@ -425,6 +429,22 @@ public class AppointmentServiceImpl implements AppointmentService {
 
         return appointmentRepository.findByDentistIdInOrderByAppointmentDateAscAppointmentTimeAsc(matchingDentistIds)
                 .stream().map(this::mapToDTO).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AppointmentDetailDTO> getAppointmentsByDentistAndSlot(
+            UUID dentistId, LocalDate appointmentDate, LocalTime appointmentTime) {
+        LocalDateTime slotDateTime = appointmentDate.atTime(appointmentTime);
+
+        return appointmentRepository.findActiveByDentistAndAppointmentDateAndTime(
+                        dentistId,
+                        appointmentDate.atStartOfDay(),
+                        appointmentDate.plusDays(1).atStartOfDay(),
+                        slotDateTime)
+                .stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
     }
 
     @Override

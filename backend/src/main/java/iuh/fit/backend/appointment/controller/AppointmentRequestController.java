@@ -1,5 +1,6 @@
 package iuh.fit.backend.appointment.controller;
 
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import iuh.fit.backend.appointment.dto.AppointmentRequestDTO;
 import iuh.fit.backend.appointment.dto.AppointmentResponseDTO;
 import iuh.fit.backend.appointment.enums.StatustAppointmentRequest;
@@ -27,6 +28,7 @@ public class AppointmentRequestController {
 
     private final AppointmentRequestService appointmentRequestService;
 
+    @RateLimiter(name = "appointmentRequestLimiter")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public AppointmentResponseDTO createAppointmentRequest(@RequestBody AppointmentRequestDTO requestDTO)

@@ -17,6 +17,10 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
     @Query("SELECT e FROM Employee e LEFT JOIN FETCH e.user u ORDER BY u.createdAt DESC")
     List<Employee> findAllWithUser();
 
+    @Query("SELECT e FROM Employee e LEFT JOIN FETCH e.user u " +
+            "WHERE e.branch.branchId = :branchId ORDER BY u.createdAt DESC")
+    List<Employee> findAllByBranchIdWithUser(@Param("branchId") String branchId);
+
     @Query("SELECT e FROM Employee e WHERE e.user.id = :userId")
     Optional<Employee> findByUserId(@Param("userId") UUID userId);
 

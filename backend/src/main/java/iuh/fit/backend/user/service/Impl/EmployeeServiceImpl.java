@@ -49,6 +49,14 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<EmployeeListResponse> getEmployeesByBranch(String branchId) {
+        return employeeRepository.findAllByBranchIdWithUser(branchId).stream()
+                .map(this::toEmployeeListResponse)
+                .toList();
+    }
+
+    @Override
     public EmployeeResponse getEmployeeById(UUID id) {
         return toEmployeeResponse(findEmployee(id));
     }

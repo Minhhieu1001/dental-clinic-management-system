@@ -39,6 +39,10 @@ public class AppointmentRequest {
     @JoinColumn(name = "branch_id", nullable = true)
     private Branch branch;
 
+    @Version
+    @Builder.Default
+    private Long version = 0L;
+
 
 
 }

@@ -3,6 +3,7 @@ package iuh.fit.backend.user.repository;
 import iuh.fit.backend.user.entity.Dentist;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -22,8 +23,12 @@ public interface DentistRepository extends JpaRepository<Dentist, UUID> {
 
     @Query("SELECT d FROM Dentist d " +
            "LEFT JOIN FETCH d.user " +
+           "WHERE d.branch.branchId = :branchId " +
+           "ORDER BY d.user.createdAt DESC")
+    List<Dentist> findAllByBranchIdWithUser(@Param("branchId") String branchId);
+
+    @Query("SELECT d FROM Dentist d " +
+           "LEFT JOIN FETCH d.user " +
            "WHERE d.id = :id")
     Optional<Dentist> findByIdWithUser(UUID id);
 }
-
-

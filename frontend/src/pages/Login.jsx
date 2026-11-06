@@ -67,6 +67,7 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isLoading) return;
     setError('');
 
     // Basic validation
@@ -88,7 +89,7 @@ export default function Login() {
       const currentUser = useAuthStore.getState().user;
 
       if (currentUser) {
-        toast.success('Đăng nhập thành công!');
+        toast.success('Đăng nhập thành công!', { id: 'login-toast' });
         const from = location.state?.from?.pathname;
         const redirectTo = from || ROLE_REDIRECT_MAP[currentUser.role] || '/';
         navigate(redirectTo, { replace: true });
@@ -98,7 +99,7 @@ export default function Login() {
         err?.response?.data?.message ||
         'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.';
       setError(errorMessage);
-      toast.error(errorMessage);
+      toast.error(errorMessage, { id: 'login-toast' });
     } finally {
       setIsLoading(false);
     }

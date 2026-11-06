@@ -1,5 +1,6 @@
 package iuh.fit.backend.auth.controller;
 
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import iuh.fit.backend.auth.dto.AuthResponse;
 import iuh.fit.backend.auth.dto.LoginRequest;
 import iuh.fit.backend.auth.dto.PatientLoginRequest;
@@ -19,6 +20,7 @@ public class AuthController {
 
     private final AuthService authService;
 
+    @RateLimiter(name = "loginLimiter")
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(
             @Valid @RequestBody LoginRequest request,
@@ -28,6 +30,7 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Đăng nhập thành công", authResponse));
     }
 
+    @RateLimiter(name = "loginLimiter")
     @PostMapping("/patient/login")
     public ResponseEntity<ApiResponse<AuthResponse>> patientLogin(
             @Valid @RequestBody PatientLoginRequest request,

@@ -1,5 +1,6 @@
 package iuh.fit.backend.appointment.controller;
 
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import iuh.fit.backend.appointment.dto.AppointmentCreateDTO;
 import iuh.fit.backend.appointment.dto.AppointmentDetailDTO;
 import iuh.fit.backend.appointment.entity.Room;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.UUID;
 
 @RestController
@@ -32,6 +34,7 @@ public class AppointmentController {
     private final UserRepository userRepository;
     private final PatientRepository patientRepository;
 
+    @RateLimiter(name = "appointmentBookingLimiter")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public AppointmentDetailDTO createAppointment(@RequestBody AppointmentCreateDTO dto) {
@@ -66,6 +69,15 @@ public class AppointmentController {
     @GetMapping("/dentist/{dentistId}")
     public List<AppointmentDetailDTO> getAppointmentsByDentist(@PathVariable UUID dentistId) {
         return appointmentService.getAppointmentsByDentist(dentistId);
+    }
+
+    @GetMapping("/dentist/{dentistId}/check")
+    public List<AppointmentDetailDTO> checkDentistAppointmentSlot(
+            @PathVariable UUID dentistId,
+            @RequestParam("appointdate_date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate appointmentDate,
+            @RequestParam("appointtime") @DateTimeFormat(pattern = "HH:mm") LocalTime appointmentTime) {
+        return appointmentService.getAppointmentsByDentistAndSlot(
+                dentistId, appointmentDate, appointmentTime);
     }
 
     @GetMapping("/patient/{patientId}")
