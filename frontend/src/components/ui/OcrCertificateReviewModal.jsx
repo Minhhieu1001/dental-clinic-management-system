@@ -120,10 +120,7 @@ export default function OcrCertificateReviewModal({
                 <h2 className="text-base sm:text-lg font-bold text-slate-900">
                   Đối soát & Quét thông tin chứng chỉ
                 </h2>
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  <Sparkles className="w-3 h-3 text-emerald-500" />
-                  Tesseract + Tess4J OCR
-                </span>
+
               </div>
               <p className="text-xs text-slate-500">
                 So sánh ảnh gốc bên trái và dữ liệu nhận diện tự động bên phải để đảm bảo chính xác 100%
