@@ -67,3 +67,35 @@ export const getAppointmentById = async (id) => {
   const response = await api.get(`/appointments/${id}`);
   return response.data;
 };
+
+// Check dentist appointment slot by date and time
+export const checkDentistAppointmentSlot = async (dentistId, appointmentDate, appointmentTime) => {
+  const response = await api.get(`/appointments/dentist/${dentistId}/check`, {
+    params: {
+      appointdate_date: appointmentDate,
+      appointtime: appointmentTime,
+    },
+  });
+  return response.data;
+};
+
+const BOOKABLE_SLOT_TIMES = [
+  '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+  '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00',
+  '17:30', '18:00', '18:30', '19:00', '19:30', '20:00',
+];
+
+export const getDentistBookedTimesByDate = async (dentistId, date, excludeId) => {
+  const slots = await Promise.all(
+    BOOKABLE_SLOT_TIMES.map(async (time) => [
+      time,
+      await checkDentistAppointmentSlot(dentistId, date, time),
+    ])
+  );
+
+  return slots
+    .filter(([, appointments]) =>
+      appointments.some(({ id }) => !excludeId || String(id) !== String(excludeId))
+    )
+    .map(([time]) => time);
+};

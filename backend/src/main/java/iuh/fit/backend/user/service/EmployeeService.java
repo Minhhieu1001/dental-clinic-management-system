@@ -13,6 +13,8 @@ public interface EmployeeService {
 
     List<EmployeeListResponse> getEmployeesList();
 
+    List<EmployeeListResponse> getEmployeesByBranch(String branchId);
+
     EmployeeResponse getEmployeeById(UUID id);
 
     EmployeeListResponse getEmployeeWithBranchById(UUID id);
@@ -27,5 +29,4 @@ public interface EmployeeService {
 
     Map<String, Long> getEmployeeStats();
 }
-
 

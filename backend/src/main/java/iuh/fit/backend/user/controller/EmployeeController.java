@@ -36,6 +36,11 @@ public class EmployeeController {
         return employeeService.getEmployeesList();
     }
 
+    @GetMapping("/branch/{branchId}")
+    public List<EmployeeListResponse> getEmployeesByBranch(@PathVariable String branchId) {
+        return employeeService.getEmployeesByBranch(branchId);
+    }
+
     @GetMapping("/count")
     public long countAllEmployees() {
         return employeeService.countAllEmployees();

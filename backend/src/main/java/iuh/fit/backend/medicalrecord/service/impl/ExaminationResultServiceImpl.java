@@ -30,6 +30,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.CacheEvict;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -87,6 +88,7 @@ public class ExaminationResultServiceImpl implements ExaminationResultService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "medical_records", allEntries = true)
     public ExaminationResultDTO createExaminationResult(ExaminationResultRequest request) {
         MedicalRecord medicalRecord = medicalRecordRepository.findById(request.getMedicalRecordId())
                 .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy hồ sơ bệnh án ID: " + request.getMedicalRecordId()));
@@ -211,6 +213,7 @@ public class ExaminationResultServiceImpl implements ExaminationResultService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "medical_records", allEntries = true)
     public ExaminationResultDTO updateExaminationResult(UUID id, ExaminationResultRequest request) {
         ExaminationResult examResult = examinationResultRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy kết quả khám ID: " + id));

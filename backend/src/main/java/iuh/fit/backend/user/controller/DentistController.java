@@ -41,6 +41,11 @@ public class DentistController {
         return dentistService.getDentistsList();
     }
 
+    @GetMapping("/branch/{branchId}")
+    public List<DentistListResponse> getDentistsByBranch(@PathVariable String branchId) {
+        return dentistService.getDentistsByBranch(branchId);
+    }
+
     @GetMapping("/stats")
     public Map<String, Long> getDentistStats() {
         return dentistService.getDentistStats();

@@ -60,6 +60,21 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
   List<Appointment> findByDentistIdAndAppointmentDateBetweenOrderByAppointmentDateAscAppointmentTimeAsc(
       UUID dentistId, LocalDateTime start, LocalDateTime end);
 
+  @Query("""
+      SELECT a FROM Appointment a
+      WHERE a.dentist.id = :dentistId
+        AND a.appointmentDate >= :appointmentDateStart
+        AND a.appointmentDate < :appointmentDateEnd
+        AND a.appointmentTime = :appointmentTime
+        AND (a.status IS NULL OR a.status <> iuh.fit.backend.appointment.enums.StatusAppointment.CANCELLED)
+      ORDER BY a.appointmentTime ASC
+      """)
+  List<Appointment> findActiveByDentistAndAppointmentDateAndTime(
+      @Param("dentistId") UUID dentistId,
+      @Param("appointmentDateStart") LocalDateTime appointmentDateStart,
+      @Param("appointmentDateEnd") LocalDateTime appointmentDateEnd,
+      @Param("appointmentTime") LocalDateTime appointmentTime);
+
   List<Appointment> findByStatusOrderByAppointmentDateAscAppointmentTimeAsc(StatusAppointment status);
 
   List<Appointment> findAllByOrderByAppointmentDateDescAppointmentTimeDesc();

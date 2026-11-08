@@ -91,4 +91,8 @@ public class Appointment {
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(name = "branch_id", nullable = true)
     private Branch branch;
+
+    @Version
+    @Builder.Default
+    private Long version = 0L;
 }

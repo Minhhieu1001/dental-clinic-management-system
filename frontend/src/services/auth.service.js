@@ -69,7 +69,7 @@ export const getMe = async () => {
 };
 
 export const changePassword = async (data) => {
-  const response = await api.post('/auth/change-password', data);
+  const response = await api.put('/users/me/password', data);
   return response.data;
 };
 
@@ -102,4 +102,3 @@ export const resetPassword = async (data) => {
   const response = await api.post('/auth/reset-password', data);
   return response.data;
 };
-

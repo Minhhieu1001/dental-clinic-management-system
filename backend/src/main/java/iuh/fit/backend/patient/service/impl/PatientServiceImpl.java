@@ -32,6 +32,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 
 import java.time.LocalDateTime;
 import java.time.LocalDate;
@@ -66,6 +69,7 @@ public class PatientServiceImpl implements PatientService {
 
     @Override
     @Transactional(readOnly = true)
+
     public PatientStatisticsResponse getPatientStatistics(UUID id) {
         if (!patientRepository.existsById(id)) {
             throw new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy hồ sơ bệnh nhân ID: " + id);
@@ -93,6 +97,7 @@ public class PatientServiceImpl implements PatientService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "patients", key = "'all'")
     public List<PatientDTO> getAllPatients() {
         return patientRepository.findAllByOrderByCreatedAtDesc()
                 .stream()
@@ -102,6 +107,7 @@ public class PatientServiceImpl implements PatientService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "patients", key = "'registered'")
     public List<PatientDTO> getRegisteredPatients() {
         return patientRepository.findByUserIsNotNullOrderByCreatedAtDesc()
                 .stream()
@@ -115,8 +121,7 @@ public class PatientServiceImpl implements PatientService {
         Patient patient = patientRepository.findById(id)
                 .orElseThrow(() -> new AppException(
                         ErrorCode.RESOURCE_NOT_FOUND,
-                        "Không tìm thấy hồ sơ bệnh nhân ID: " + id
-                ));
+                        "Không tìm thấy hồ sơ bệnh nhân ID: " + id));
 
         return isBlank(patient.getFullName())
                 || isBlank(patient.getPhoneNumber())
@@ -136,14 +141,17 @@ public class PatientServiceImpl implements PatientService {
 
     @Override
     @Transactional(readOnly = true)
+
     public PatientDTO getPatientById(UUID id) {
         Patient patient = patientRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy hồ sơ bệnh nhân ID: " + id));
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND,
+                        "Không tìm thấy hồ sơ bệnh nhân ID: " + id));
         return mapToDTO(patient);
     }
 
     @Override
     @Transactional(readOnly = true)
+
     public List<PatientDTO> getPatientsByPhoneNumber(String phoneNumber) {
         if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
             return getAllPatients();
@@ -180,13 +188,15 @@ public class PatientServiceImpl implements PatientService {
             patient = patientRepository.findFirstByPatientCodeOrderByCreatedAtDesc(value);
         }
 
-        return mapToDTO(patient.orElseThrow(() ->
-                new AppException(ErrorCode.RESOURCE_NOT_FOUND,
-                        "Không tìm thấy bệnh nhân theo từ khóa: " + value)));
+        return mapToDTO(patient.orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND,
+                "Không tìm thấy bệnh nhân theo từ khóa: " + value)));
     }
 
     @Override
     @Transactional
+    @Caching(evict = { @CacheEvict(value = "patients", allEntries = true),
+
+            @CacheEvict(value = "medical_records", allEntries = true) })
     public PatientDTO createPatient(PatientCreateDTO dto) {
         if (dto.getBranchId() == null || dto.getBranchId().isBlank()) {
             throw new AppException(ErrorCode.INVALID_REQUEST, "Vui lòng chọn chi nhánh");
@@ -230,7 +240,8 @@ public class PatientServiceImpl implements PatientService {
                         .orElseGet(() -> dentistRepository.findByUserId(dto.getDoctorId()).orElse(null));
             }
 
-            // 2. Nếu FE không truyền doctorId, tự động phát hiện từ người dùng đăng nhập hiện tại
+            // 2. Nếu FE không truyền doctorId, tự động phát hiện từ người dùng đăng nhập
+            // hiện tại
             if (assignedDentist == null) {
                 try {
                     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -248,7 +259,6 @@ public class PatientServiceImpl implements PatientService {
                 }
             }
 
-
             MedicalRecord medicalRecord = MedicalRecord.builder()
                     .patient(patient)
                     .dentist(assignedDentist)
@@ -260,7 +270,8 @@ public class PatientServiceImpl implements PatientService {
             medicalRecordRepository.save(medicalRecord);
             log.info("Successfully created default medical record for patient");
         } catch (Exception e) {
-            log.error("Failed to create default medical record for patient {}: {}", patient.getPatientCode(), e.getMessage(), e);
+            log.error("Failed to create default medical record for patient {}: {}", patient.getPatientCode(),
+                    e.getMessage(), e);
             throw e;
         }
 
@@ -269,9 +280,13 @@ public class PatientServiceImpl implements PatientService {
 
     @Override
     @Transactional
+    @Caching(evict = { @CacheEvict(value = "patients", allEntries = true),
+
+            @CacheEvict(value = "medical_records", allEntries = true) })
     public PatientDTO updatePatient(UUID id, PatientCreateDTO dto) {
         Patient patient = patientRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy hồ sơ bệnh nhân ID: " + id));
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND,
+                        "Không tìm thấy hồ sơ bệnh nhân ID: " + id));
 
         if (dto.getFullName() != null && !dto.getFullName().trim().isEmpty()) {
             patient.setFullName(dto.getFullName().trim());
@@ -317,17 +332,23 @@ public class PatientServiceImpl implements PatientService {
 
     @Override
     @Transactional
+    @Caching(evict = { @CacheEvict(value = "patients", allEntries = true),
+
+            @CacheEvict(value = "medical_records", allEntries = true) })
     public void deletePatient(UUID id) {
         Patient patient = patientRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy hồ sơ bệnh nhân ID: " + id));
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND,
+                        "Không tìm thấy hồ sơ bệnh nhân ID: " + id));
         patientRepository.delete(patient);
         log.info("Successfully deleted patient ID: {}", id);
     }
 
     @Override
+
     public PatientDTO getPatientByPatientCode(String code) {
         Patient patient = patientRepository.findByPatientCode(code)
-                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy hồ sơ bệnh nhân : " + code));
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND,
+                        "Không tìm thấy hồ sơ bệnh nhân : " + code));
         return mapToDTO(patient);
     }
 
@@ -342,19 +363,19 @@ public class PatientServiceImpl implements PatientService {
         }
 
         Map<String, Object> firstRow = rows.get(0);
-        PatientInvoiceDataResponse.PatientSummaryDTO patientInfo =
-                PatientInvoiceDataResponse.PatientSummaryDTO.builder()
-                        .id(asUuid(firstRow.get("patient_id")))
-                        .patientCode(asString(firstRow.get("patient_code")))
-                        .fullName(asString(firstRow.get("full_name")))
-                        .phone(asString(firstRow.get("phone")))
-                        .cccd(asString(firstRow.get("cccd")))
-                        .gender(asEnum(Gender.class, firstRow.get("gender")))
-                        .dateOfBirth(asDateTime(firstRow.get("date_of_birth")))
-                        .address(asString(firstRow.get("address")))
-                        .hometown(asString(firstRow.get("hometown")))
-                        .job(asString(firstRow.get("job")))
-                        .build();
+        PatientInvoiceDataResponse.PatientSummaryDTO patientInfo = PatientInvoiceDataResponse.PatientSummaryDTO
+                .builder()
+                .id(asUuid(firstRow.get("patient_id")))
+                .patientCode(asString(firstRow.get("patient_code")))
+                .fullName(asString(firstRow.get("full_name")))
+                .phone(asString(firstRow.get("phone")))
+                .cccd(asString(firstRow.get("cccd")))
+                .gender(asEnum(Gender.class, firstRow.get("gender")))
+                .dateOfBirth(asDateTime(firstRow.get("date_of_birth")))
+                .address(asString(firstRow.get("address")))
+                .hometown(asString(firstRow.get("hometown")))
+                .job(asString(firstRow.get("job")))
+                .build();
 
         Map<UUID, PlanAggregate> plans = new LinkedHashMap<>();
         for (Map<String, Object> row : rows) {
@@ -395,8 +416,8 @@ public class PatientServiceImpl implements PatientService {
 
             UUID phaseId = asUuid(row.get("phase_id"));
             if (phaseId != null) {
-                PatientInvoiceDataResponse.PhaseDTO phase = plan.phases.computeIfAbsent(phaseId, ignored ->
-                        PatientInvoiceDataResponse.PhaseDTO.builder()
+                PatientInvoiceDataResponse.PhaseDTO phase = plan.phases.computeIfAbsent(phaseId,
+                        ignored -> PatientInvoiceDataResponse.PhaseDTO.builder()
                                 .id(phaseId)
                                 .phaseName(asString(row.get("phase_name")))
                                 .phaseOrder(asString(row.get("phase_order")))
@@ -408,16 +429,16 @@ public class PatientServiceImpl implements PatientService {
 
                 UUID treatmentServiceId = asUuid(row.get("treatment_service_id"));
                 if (treatmentServiceId != null) {
-                    PatientInvoiceDataResponse.InvoiceServiceItemDTO service =
-                            PatientInvoiceDataResponse.InvoiceServiceItemDTO.builder()
-                                    .treatmentServiceId(treatmentServiceId)
-                                    .serviceId(asUuid(row.get("service_id")))
-                                    .serviceName(asString(row.get("service_name")))
-                                    .toothNumber(asString(row.get("tooth_number")))
-                                    .quantity(asInteger(row.get("quantity")))
-                                    .unitPrice(asBigDecimal(row.get("price")))
-                                    .totalAmount(asBigDecimal(row.get("total_amount")))
-                                    .build();
+                    PatientInvoiceDataResponse.InvoiceServiceItemDTO service = PatientInvoiceDataResponse.InvoiceServiceItemDTO
+                            .builder()
+                            .treatmentServiceId(treatmentServiceId)
+                            .serviceId(asUuid(row.get("service_id")))
+                            .serviceName(asString(row.get("service_name")))
+                            .toothNumber(asString(row.get("tooth_number")))
+                            .quantity(asInteger(row.get("quantity")))
+                            .unitPrice(asBigDecimal(row.get("price")))
+                            .totalAmount(asBigDecimal(row.get("total_amount")))
+                            .build();
                     if (plan.serviceIdsByPhase.computeIfAbsent(phaseId, ignored -> new HashSet<>())
                             .add(treatmentServiceId)) {
                         phase.getServices().add(service);
@@ -458,7 +479,8 @@ public class PatientServiceImpl implements PatientService {
     }
 
     private static Integer asInteger(Object value) {
-        return value instanceof Number number ? number.intValue() : value == null ? null : Integer.valueOf(value.toString());
+        return value instanceof Number number ? number.intValue()
+                : value == null ? null : Integer.valueOf(value.toString());
     }
 
     private static BigDecimal asBigDecimal(Object value) {

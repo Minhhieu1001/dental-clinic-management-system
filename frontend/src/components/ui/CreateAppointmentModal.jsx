@@ -26,7 +26,12 @@ import { useAuth } from '../../hooks/useAuth';
 import { getBranches } from '../../services/clinic.service';
 import { getDentistsList } from '../../services/dentist.service';
 import { getServices } from '../../services/service.service';
-import { createAppointment, updateAppointment, getAppointments } from '../../services/appointment.service';
+import {
+  createAppointment,
+  updateAppointment,
+  checkDentistAppointmentSlot,
+  getDentistBookedTimesByDate,
+} from '../../services/appointment.service';
 import { getEmployeeAddressById, getEmployeesList } from '../../services/employee.service';
 
 export const getCategoryLabel = (category) => {
@@ -495,30 +500,19 @@ export default function CreateAppointmentModal({
     let isMounted = true;
     setLoadingSlots(true);
 
-    getAppointments({ dentistId: selectedDentist.id, date: selectedDate })
-      .then((res) => {
+    getDentistBookedTimesByDate(
+      selectedDentist.id,
+      selectedDate,
+      isEditMode ? targetData?.id : null
+    )
+      .then((times) => {
         if (!isMounted) return;
-        const list = Array.isArray(res) ? res : res?.data || [];
-        const times = list
-          .filter((apt) => {
-            const st = String(apt.status || '').toUpperCase();
-            if (st === 'CANCELLED') return false;
-            if (isEditMode && targetData?.id && String(apt.id) === String(targetData.id)) {
-              return false;
-            }
-            return true;
-          })
-          .map((apt) => {
-            let t = apt.appointmentTime || apt.time || '';
-            if (typeof t === 'string') {
-              if (t.includes('T')) t = t.split('T')[1];
-              return t.substring(0, 5);
-            }
-            return '';
-          })
-          .filter(Boolean);
-
         setBookedTimes(times);
+        setSelectedTime((currentTime) => {
+          if (!times.includes(currentTime)) return currentTime;
+          return [...MORNING_SLOTS, ...AFTERNOON_SLOTS, ...EVENING_SLOTS]
+            .find((time) => !times.includes(time)) || '';
+        });
       })
       .catch((err) => {
         console.warn('Lỗi lấy danh sách giờ hẹn đã đặt của bác sĩ:', err);
@@ -689,6 +683,11 @@ export default function CreateAppointmentModal({
 
     if (!selectedDate || !selectedTime) {
       toast.error('Vui lòng chọn ngày và giờ khám!');
+      setStep(3);
+      return;
+    }
+    if (bookedTimes.includes(selectedTime)) {
+      toast.error('Khung giờ này đã có lịch của bác sĩ, vui lòng chọn giờ khác.');
       setStep(3);
       return;
     }
@@ -1361,7 +1360,7 @@ export default function CreateAppointmentModal({
                             onClick={() => !isBooked && setSelectedTime(time)}
                             className={`relative py-1.5 rounded-md text-xs font-semibold transition-all ${
                               isBooked
-                                ? 'bg-slate-100 text-slate-400 border border-slate-200 line-through cursor-not-allowed opacity-60'
+                                ? 'bg-amber-100 text-amber-800 border border-amber-300 line-through cursor-not-allowed'
                                 : isSelected
                                 ? 'bg-teal-700 text-white shadow-2xs font-bold cursor-pointer'
                                 : 'bg-slate-50 hover:bg-teal-50 hover:text-teal-700 text-slate-700 border border-slate-200 cursor-pointer'
@@ -1396,7 +1395,7 @@ export default function CreateAppointmentModal({
                             onClick={() => !isBooked && setSelectedTime(time)}
                             className={`relative py-1.5 rounded-md text-xs font-semibold transition-all ${
                               isBooked
-                                ? 'bg-slate-100 text-slate-400 border border-slate-200 line-through cursor-not-allowed opacity-60'
+                                ? 'bg-amber-100 text-amber-800 border border-amber-300 line-through cursor-not-allowed'
                                 : isSelected
                                 ? 'bg-teal-700 text-white shadow-2xs font-bold cursor-pointer'
                                 : 'bg-slate-50 hover:bg-teal-50 hover:text-teal-700 text-slate-700 border border-slate-200 cursor-pointer'
@@ -1431,7 +1430,7 @@ export default function CreateAppointmentModal({
                             onClick={() => !isBooked && setSelectedTime(time)}
                             className={`relative py-1.5 rounded-md text-xs font-semibold transition-all ${
                               isBooked
-                                ? 'bg-slate-100 text-slate-400 border border-slate-200 line-through cursor-not-allowed opacity-60'
+                                ? 'bg-amber-100 text-amber-800 border border-amber-300 line-through cursor-not-allowed'
                                 : isSelected
                                 ? 'bg-teal-700 text-white shadow-2xs font-bold cursor-pointer'
                                 : 'bg-slate-50 hover:bg-teal-50 hover:text-teal-700 text-slate-700 border border-slate-200 cursor-pointer'
@@ -1459,10 +1458,36 @@ export default function CreateAppointmentModal({
                       <input
                         type="time"
                         value={selectedTime}
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            setSelectedTime(e.target.value);
+                        onChange={async (e) => {
+                          const time = e.target.value;
+                          if (!time) return;
+                          if (bookedTimes.includes(time)) {
+                            toast.error('Khung giờ này đã có lịch của bác sĩ.');
+                            return;
                           }
+                          if (selectedDentist?.id && selectedDate) {
+                            try {
+                              const appointments = await checkDentistAppointmentSlot(
+                                selectedDentist.id,
+                                selectedDate,
+                                time
+                              );
+                              const hasConflict = appointments.some(
+                                (appointment) =>
+                                  !isEditMode ||
+                                  String(appointment.id) !== String(targetData?.id)
+                              );
+                              if (hasConflict) {
+                                toast.error('Khung giờ này đã có lịch của bác sĩ.');
+                                return;
+                              }
+                            } catch (error) {
+                              console.warn('Lỗi kiểm tra giờ hẹn tùy ý:', error);
+                              toast.error('Không thể kiểm tra khung giờ này.');
+                              return;
+                            }
+                          }
+                          setSelectedTime(time);
                         }}
                         className="flex-1 px-2.5 py-1 rounded-md border border-slate-300 text-xs font-bold text-slate-800 bg-white focus:outline-none focus:ring-1 focus:ring-teal-700 focus:border-teal-700 cursor-pointer"
                       />

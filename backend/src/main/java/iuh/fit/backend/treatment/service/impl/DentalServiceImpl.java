@@ -10,9 +10,11 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
@@ -31,7 +33,9 @@ public class DentalServiceImpl implements DentalService {
     private EntityManager entityManager;
 
     @Override
-    public List<ServiceDTO> getAllServices(String search, ServiceCategory category, Boolean isActive, Boolean isFeatured) {
+    @Cacheable(value = "services", key = "'all:' + (#search != null ? #search : '') + ':' + (#category != null ? #category.name() : '') + ':' + (#isActive != null ? #isActive : '') + ':' + (#isFeatured != null ? #isFeatured : '')")
+    public List<ServiceDTO> getAllServices(String search, ServiceCategory category, Boolean isActive,
+            Boolean isFeatured) {
         List<Service> services = serviceRepository.findAllWithPromotion();
 
         boolean updatedAny = false;
@@ -49,17 +53,20 @@ public class DentalServiceImpl implements DentalService {
         return services.stream()
                 .filter(s -> category == null || s.getCategory() == category)
                 .filter(s -> {
-                    if (isActive == null) return true;
+                    if (isActive == null)
+                        return true;
                     boolean active = s.getIsActive() != null ? s.getIsActive() : true;
                     return active == isActive;
                 })
                 .filter(s -> {
-                    if (isFeatured == null) return true;
+                    if (isFeatured == null)
+                        return true;
                     boolean featured = s.getIsFeatured() != null ? s.getIsFeatured() : false;
                     return featured == isFeatured;
                 })
                 .filter(s -> {
-                    if (search == null || search.trim().isEmpty()) return true;
+                    if (search == null || search.trim().isEmpty())
+                        return true;
                     String kw = search.trim().toLowerCase();
                     boolean matchName = s.getServiceName() != null && s.getServiceName().toLowerCase().contains(kw);
                     boolean matchCode = s.getServiceCode() != null && s.getServiceCode().toLowerCase().contains(kw);
@@ -71,6 +78,7 @@ public class DentalServiceImpl implements DentalService {
     }
 
     @Override
+    @Cacheable(value = "services", key = "'top5'")
     @Transactional(readOnly = true)
     public List<ServiceDTO> getTopFiveServices() {
         return serviceRepository
@@ -103,6 +111,7 @@ public class DentalServiceImpl implements DentalService {
     }
 
     @Override
+    @CacheEvict(value = "services", allEntries = true)
     public ServiceDTO createService(ServiceCreateDTO dto) {
         String code = dto.getServiceCode();
         if (code == null || code.trim().isEmpty()) {
@@ -137,6 +146,7 @@ public class DentalServiceImpl implements DentalService {
     }
 
     @Override
+    @CacheEvict(value = "services", allEntries = true)
     public ServiceDTO updateService(UUID id, ServiceCreateDTO dto) {
         Service service = serviceRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy dịch vụ với ID: " + id));
@@ -149,20 +159,34 @@ public class DentalServiceImpl implements DentalService {
             service.setServiceCode(newCode);
         }
 
-        if (dto.getServiceName() != null) service.setServiceName(dto.getServiceName());
-        if (dto.getDescription() != null) service.setDescription(dto.getDescription());
-        if (dto.getPrice() != null) service.setPrice(dto.getPrice());
-        if (dto.getCostPrice() != null) service.setCostPrice(dto.getCostPrice());
-        if (dto.getEstimatedDuration() != null) service.setEstimatedDuration(dto.getEstimatedDuration());
-        if (dto.getSessionsCount() != null) service.setSessionsCount(dto.getSessionsCount());
-        if (dto.getCategory() != null) service.setCategory(dto.getCategory());
-        if (dto.getSubCategory() != null) service.setSubCategory(dto.getSubCategory());
-        if (dto.getUnit() != null) service.setUnit(dto.getUnit());
-        if (dto.getWarrantyPeriod() != null) service.setWarrantyPeriod(dto.getWarrantyPeriod());
-        if (dto.getImageUrl() != null) service.setImageUrl(dto.getImageUrl());
-        if (dto.getSortOrder() != null) service.setSortOrder(dto.getSortOrder());
-        if (dto.getIsFeatured() != null) service.setIsFeatured(dto.getIsFeatured());
-        if (dto.getIsActive() != null) service.setIsActive(dto.getIsActive());
+        if (dto.getServiceName() != null)
+            service.setServiceName(dto.getServiceName());
+        if (dto.getDescription() != null)
+            service.setDescription(dto.getDescription());
+        if (dto.getPrice() != null)
+            service.setPrice(dto.getPrice());
+        if (dto.getCostPrice() != null)
+            service.setCostPrice(dto.getCostPrice());
+        if (dto.getEstimatedDuration() != null)
+            service.setEstimatedDuration(dto.getEstimatedDuration());
+        if (dto.getSessionsCount() != null)
+            service.setSessionsCount(dto.getSessionsCount());
+        if (dto.getCategory() != null)
+            service.setCategory(dto.getCategory());
+        if (dto.getSubCategory() != null)
+            service.setSubCategory(dto.getSubCategory());
+        if (dto.getUnit() != null)
+            service.setUnit(dto.getUnit());
+        if (dto.getWarrantyPeriod() != null)
+            service.setWarrantyPeriod(dto.getWarrantyPeriod());
+        if (dto.getImageUrl() != null)
+            service.setImageUrl(dto.getImageUrl());
+        if (dto.getSortOrder() != null)
+            service.setSortOrder(dto.getSortOrder());
+        if (dto.getIsFeatured() != null)
+            service.setIsFeatured(dto.getIsFeatured());
+        if (dto.getIsActive() != null)
+            service.setIsActive(dto.getIsActive());
 
         Service updated = serviceRepository.save(service);
         return mapToDTO(updated);
@@ -173,36 +197,44 @@ public class DentalServiceImpl implements DentalService {
     public void cleanupDefaultSampleServices() {
         try {
             entityManager.createNativeQuery(
-                "DELETE FROM treatment_services WHERE service_id IN (SELECT id FROM services WHERE service_code LIKE 'DV-%' OR category IS NULL OR service_name IN ('Composite filling', 'General examination', 'Scaling and polishing', 'Teeth whitening', 'Root canal treatment'))"
-            ).executeUpdate();
-        } catch (Exception ignored) {}
+                    "DELETE FROM treatment_services WHERE service_id IN (SELECT id FROM services WHERE service_code LIKE 'DV-%' OR category IS NULL OR service_name IN ('Composite filling', 'General examination', 'Scaling and polishing', 'Teeth whitening', 'Root canal treatment'))")
+                    .executeUpdate();
+        } catch (Exception ignored) {
+        }
 
         try {
             entityManager.createNativeQuery(
-                "DELETE FROM invoice_details WHERE service_id IN (SELECT id FROM services WHERE service_code LIKE 'DV-%' OR category IS NULL OR service_name IN ('Composite filling', 'General examination', 'Scaling and polishing', 'Teeth whitening', 'Root canal treatment'))"
-            ).executeUpdate();
-        } catch (Exception ignored) {}
+                    "DELETE FROM invoice_details WHERE service_id IN (SELECT id FROM services WHERE service_code LIKE 'DV-%' OR category IS NULL OR service_name IN ('Composite filling', 'General examination', 'Scaling and polishing', 'Teeth whitening', 'Root canal treatment'))")
+                    .executeUpdate();
+        } catch (Exception ignored) {
+        }
 
         try {
             entityManager.createNativeQuery(
-                "DELETE FROM services WHERE service_code LIKE 'DV-%' OR category IS NULL OR service_name IN ('Composite filling', 'General examination', 'Scaling and polishing', 'Teeth whitening', 'Root canal treatment')"
-            ).executeUpdate();
-        } catch (Exception ignored) {}
+                    "DELETE FROM services WHERE service_code LIKE 'DV-%' OR category IS NULL OR service_name IN ('Composite filling', 'General examination', 'Scaling and polishing', 'Teeth whitening', 'Root canal treatment')")
+                    .executeUpdate();
+        } catch (Exception ignored) {
+        }
     }
 
     @Override
     @Transactional
+    @CacheEvict(value = "services", allEntries = true)
     public void deleteService(UUID id) {
         if (!serviceRepository.existsById(id)) {
             throw new IllegalArgumentException("Không tìm thấy dịch vụ với ID: " + id);
         }
 
-        try { serviceRepository.deleteTreatmentServicesByServiceId(id); } catch (Exception ignored) {}
+        try {
+            serviceRepository.deleteTreatmentServicesByServiceId(id);
+        } catch (Exception ignored) {
+        }
 
         serviceRepository.deleteServiceByIdNative(id);
     }
 
     @Override
+    @CacheEvict(value = "services", allEntries = true)
     public ServiceDTO toggleActiveStatus(UUID id) {
         Service service = serviceRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy dịch vụ với ID: " + id));
@@ -212,6 +244,7 @@ public class DentalServiceImpl implements DentalService {
     }
 
     @Override
+    @CacheEvict(value = "services", allEntries = true)
     public ServiceDTO toggleFeaturedStatus(UUID id) {
         Service service = serviceRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy dịch vụ với ID: " + id));
@@ -223,9 +256,11 @@ public class DentalServiceImpl implements DentalService {
     private ServiceDTO mapToDTO(Service service) {
         var promotion = service.getPromotion();
         BigDecimal discountAmount = promotion == null
-                ? BigDecimal.ZERO : promotion.calculateDiscount(service.getPrice());
+                ? BigDecimal.ZERO
+                : promotion.calculateDiscount(service.getPrice());
         BigDecimal discountedPrice = service.getPrice() == null
-                ? null : service.getPrice().subtract(discountAmount);
+                ? null
+                : service.getPrice().subtract(discountAmount);
         return ServiceDTO.builder()
                 .id(service.getId())
                 .serviceCode(service.getServiceCode())
