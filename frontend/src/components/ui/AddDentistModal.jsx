@@ -514,6 +514,7 @@ export default function AddDentistModal({ isOpen, onClose, onSuccess, mockMode =
                   is_lifetime: result.data.is_lifetime !== undefined ? result.data.is_lifetime : c.is_lifetime,
                   qualification: result.data.qualification || c.qualification,
                   scope_of_practice: result.data.scope_of_practice || c.scope_of_practice,
+                  certificate_type: (result.data.certificate_type && result.data.certificate_type !== 'PRACTICE_LICENSE') ? result.data.certificate_type : c.certificate_type,
                 }
                 : c
             )
@@ -635,13 +636,9 @@ export default function AddDentistModal({ isOpen, onClose, onSuccess, mockMode =
 
   // Validation
   const isPracticeLicenseValid = () => {
-    return (
+    return Boolean(
       practiceLicense.certificate_name?.trim() &&
-      practiceLicense.certificate_number?.trim() &&
-      practiceLicense.issued_by?.trim() &&
-      practiceLicense.issue_date &&
-      (practiceLicense.is_lifetime || practiceLicense.expiry_date) &&
-      practiceLicense.certificate_file_preview
+      practiceLicense.certificate_number?.trim()
     );
   };
 
@@ -661,11 +658,7 @@ export default function AddDentistModal({ isOpen, onClose, onSuccess, mockMode =
     for (const cert of specCertificates) {
       if (
         !cert.certificate_name?.trim() ||
-        !cert.certificate_number?.trim() ||
-        !cert.issued_by?.trim() ||
-        !cert.issue_date ||
-        (!cert.is_lifetime && !cert.expiry_date) ||
-        !cert.certificate_file_preview
+        !cert.certificate_number?.trim()
       ) {
         return false;
       }
@@ -758,11 +751,11 @@ export default function AddDentistModal({ isOpen, onClose, onSuccess, mockMode =
             fileUrl = res?.url || res?.secure_url || res || '';
           } catch (uploadErr) {
             console.warn('Certificate file upload failed, using preview url if available:', uploadErr);
-            if (cert.certificate_file_preview && cert.certificate_file_preview.startsWith('http')) {
+            if (cert.certificate_file_preview && !cert.certificate_file_preview.startsWith('data:')) {
               fileUrl = cert.certificate_file_preview;
             }
           }
-        } else if (cert.certificate_file_preview && cert.certificate_file_preview.startsWith('http')) {
+        } else if (cert.certificate_file_preview && !cert.certificate_file_preview.startsWith('data:')) {
           fileUrl = cert.certificate_file_preview;
         }
 

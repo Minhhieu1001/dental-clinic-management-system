@@ -204,7 +204,16 @@ public class DentistServiceImpl implements DentistService {
                 cert.setIssueDate(cc.issueDate());
                 cert.setExpiryDate(cc.expiryDate());
                 cert.setCertificateFileUrl(cc.certificateFileUrl());
-                cert.setCertificateType(cc.certificateType());
+
+                CertificateType cType = cc.certificateType();
+                if (cType == null) {
+                    if (cc.certificateName() != null && cc.certificateName().toLowerCase().contains("hành nghề")) {
+                        cType = CertificateType.PRACTICE_LICENSE;
+                    } else {
+                        cType = CertificateType.GENERAL_DENTISTRY;
+                    }
+                }
+                cert.setCertificateType(cType);
                 cert.setScopeOfPractice(cc.scopeOfPractice());
                 cert.setIdentityCardNumber(cc.identityCardNumber());
                 cert.setPracticingDoctorName(cc.practicingDoctorName());
@@ -213,7 +222,7 @@ public class DentistServiceImpl implements DentistService {
                 cert.setDentist(dentist);
                 dentist.getCertificates().add(cert);
 
-                if (cc.certificateType() == CertificateType.PRACTICE_LICENSE && cc.certificateNumber() != null) {
+                if (cType == CertificateType.PRACTICE_LICENSE && cc.certificateNumber() != null) {
                     dentist.setLicenseNumber(cc.certificateNumber());
                 }
             }

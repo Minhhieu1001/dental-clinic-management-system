@@ -389,56 +389,48 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
 
             // Populate certificates
             if (dentist.certificates && dentist.certificates.length > 0) {
-                const pLicense = dentist.certificates.find((c) => c.type === 'practice_license' || c.certificate_type === 'PRACTICE_LICENSE' || c.certificateType === 'PRACTICE_LICENSE');
-                if (pLicense) {
-                    setPracticeLicense({
-                        certificate_name: pLicense.certificate_name || pLicense.certificateName || 'Chứng chỉ hành nghề bác sĩ',
-                        certificate_number: pLicense.certificate_number || pLicense.certificateNumber || '',
-                        issued_by: pLicense.issued_by || pLicense.issuedBy || '',
-                        issue_date: pLicense.issue_date || pLicense.issueDate || '',
-                        expiry_date: pLicense.expiry_date || pLicense.expiryDate || '',
-                        is_lifetime: pLicense.is_lifetime !== undefined ? pLicense.is_lifetime : (pLicense.isLifetime !== undefined ? pLicense.isLifetime : true),
-                        qualification: pLicense.qualification || '',
-                        scope_of_practice: pLicense.scope_of_practice || pLicense.scopeOfPractice || '',
-                        identity_card_number: pLicense.identity_card_number || pLicense.identityCardNumber || '',
-                        practicing_doctor_name: pLicense.practicing_doctor_name || pLicense.practicingDoctorName || '',
-                        certificate_file: null,
-                        certificate_file_preview: pLicense.certificate_file_url || pLicense.certificateFileUrl || null,
-                    });
-                } else {
-                    setPracticeLicense({
-                        certificate_name: 'Chứng chỉ hành nghề bác sĩ',
-                        certificate_number: '',
-                        issued_by: '',
-                        issue_date: '',
-                        expiry_date: '',
-                        is_lifetime: true,
-                        qualification: '',
-                        scope_of_practice: '',
-                        identity_card_number: '',
-                        practicing_doctor_name: '',
-                        certificate_file: null,
-                        certificate_file_preview: null,
-                    });
-                }
+                let pIndex = dentist.certificates.findIndex(
+                    (c) => c.type === 'practice_license' || c.certificate_type === 'PRACTICE_LICENSE' || c.certificateType === 'PRACTICE_LICENSE'
+                );
+                if (pIndex === -1) pIndex = 0;
 
-                const sCerts = dentist.certificates.filter((c) => c.type !== 'practice_license' && c.certificate_type !== 'PRACTICE_LICENSE' && c.certificateType !== 'PRACTICE_LICENSE');
+                const pLicense = dentist.certificates[pIndex];
+                setPracticeLicense({
+                    certificate_name: pLicense.certificate_name || pLicense.certificateName || 'Chứng chỉ hành nghề bác sĩ',
+                    certificate_number: pLicense.certificate_number || pLicense.certificateNumber || '',
+                    issued_by: pLicense.issued_by || pLicense.issuedBy || '',
+                    issue_date: pLicense.issue_date || pLicense.issueDate ? String(pLicense.issue_date || pLicense.issueDate).split('T')[0] : '',
+                    expiry_date: pLicense.expiry_date || pLicense.expiryDate ? String(pLicense.expiry_date || pLicense.expiryDate).split('T')[0] : '',
+                    is_lifetime: pLicense.is_lifetime !== undefined ? pLicense.is_lifetime : (pLicense.isLifetime !== undefined ? pLicense.isLifetime : true),
+                    qualification: pLicense.qualification || '',
+                    scope_of_practice: pLicense.scope_of_practice || pLicense.scopeOfPractice || '',
+                    identity_card_number: pLicense.identity_card_number || pLicense.identityCardNumber || '',
+                    practicing_doctor_name: pLicense.practicing_doctor_name || pLicense.practicingDoctorName || '',
+                    certificate_file: null,
+                    certificate_file_preview: pLicense.certificate_file_url || pLicense.certificateFileUrl || null,
+                });
+
+                const sCerts = dentist.certificates.filter((_, idx) => idx !== pIndex);
                 setSpecCertificates(
-                    sCerts.map((c) => ({
-                        certificate_name: c.certificate_name || c.certificateName || '',
-                        certificate_number: c.certificate_number || c.certificateNumber || '',
-                        issued_by: c.issued_by || c.issuedBy || '',
-                        issue_date: c.issue_date || c.issueDate || '',
-                        expiry_date: c.expiry_date || c.expiryDate || '',
-                        is_lifetime: c.is_lifetime !== undefined ? c.is_lifetime : (c.isLifetime !== undefined ? c.isLifetime : false),
-                        qualification: c.qualification || '',
-                        scope_of_practice: c.scope_of_practice || c.scopeOfPractice || '',
-                        identity_card_number: c.identity_card_number || c.identityCardNumber || '',
-                        practicing_doctor_name: c.practicing_doctor_name || c.practicingDoctorName || '',
-                        certificate_type: c.certificate_type || c.certificateType || '',
-                        certificate_file: null,
-                        certificate_file_preview: c.certificate_file_url || c.certificateFileUrl || null,
-                    }))
+                    sCerts.map((c) => {
+                        const rawType = c.certificate_type || c.certificateType;
+                        const cType = (rawType && rawType !== 'PRACTICE_LICENSE') ? rawType : 'GENERAL_DENTISTRY';
+                        return {
+                            certificate_name: c.certificate_name || c.certificateName || '',
+                            certificate_number: c.certificate_number || c.certificateNumber || '',
+                            issued_by: c.issued_by || c.issuedBy || '',
+                            issue_date: c.issue_date || c.issueDate ? String(c.issue_date || c.issueDate).split('T')[0] : '',
+                            expiry_date: c.expiry_date || c.expiryDate ? String(c.expiry_date || c.expiryDate).split('T')[0] : '',
+                            is_lifetime: c.is_lifetime !== undefined ? c.is_lifetime : (c.isLifetime !== undefined ? c.isLifetime : false),
+                            qualification: c.qualification || '',
+                            scope_of_practice: c.scope_of_practice || c.scopeOfPractice || '',
+                            identity_card_number: c.identity_card_number || c.identityCardNumber || '',
+                            practicing_doctor_name: c.practicing_doctor_name || c.practicingDoctorName || '',
+                            certificate_type: cType,
+                            certificate_file: null,
+                            certificate_file_preview: c.certificate_file_url || c.certificateFileUrl || null,
+                        };
+                    })
                 );
             } else {
                 setPracticeLicense({
@@ -553,6 +545,7 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                                     is_lifetime: result.data.is_lifetime !== undefined ? result.data.is_lifetime : c.is_lifetime,
                                     qualification: result.data.qualification || c.qualification,
                                     scope_of_practice: result.data.scope_of_practice || c.scope_of_practice,
+                                    certificate_type: (result.data.certificate_type && result.data.certificate_type !== 'PRACTICE_LICENSE') ? result.data.certificate_type : (c.certificate_type || 'GENERAL_DENTISTRY'),
                                 }
                                 : c
                         )
@@ -705,18 +698,14 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
 
     // Validation
     const isPracticeLicenseValid = () => {
-        return (
+        return Boolean(
             practiceLicense.certificate_name?.trim() &&
-            practiceLicense.certificate_number?.trim() &&
-            practiceLicense.issued_by?.trim() &&
-            practiceLicense.issue_date &&
-            (practiceLicense.is_lifetime || practiceLicense.expiry_date) &&
-            practiceLicense.certificate_file_preview
+            practiceLicense.certificate_number?.trim()
         );
     };
 
     const isStep1Valid = () => {
-        return formData.username?.trim() && formData.phone?.trim() && formData.education?.trim() && formData.branchId;
+        return Boolean(formData.username?.trim() && formData.phone?.trim() && formData.education?.trim() && formData.branchId);
     };
 
     const isStep2Valid = () => {
@@ -725,11 +714,7 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
             if (
                 !cert.certificate_type ||
                 !cert.certificate_name?.trim() ||
-                !cert.certificate_number?.trim() ||
-                !cert.issued_by?.trim() ||
-                !cert.issue_date ||
-                (!cert.is_lifetime && !cert.expiry_date) ||
-                !cert.certificate_file_preview
+                !cert.certificate_number?.trim()
             ) {
                 return false;
             }
@@ -797,11 +782,11 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                         fileUrl = res?.url || res?.secure_url || res || '';
                     } catch (uploadErr) {
                         console.warn('Certificate upload failed, using fallback:', uploadErr);
-                        if (cert.certificate_file_preview && cert.certificate_file_preview.startsWith('http')) {
+                        if (cert.certificate_file_preview && !cert.certificate_file_preview.startsWith('data:')) {
                             fileUrl = cert.certificate_file_preview;
                         }
                     }
-                } else if (cert.certificate_file_preview && cert.certificate_file_preview.startsWith('http')) {
+                } else if (cert.certificate_file_preview && !cert.certificate_file_preview.startsWith('data:')) {
                     fileUrl = cert.certificate_file_preview;
                 }
 
@@ -821,11 +806,11 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
                 };
             };
 
-            const isCertValid = (c) => c && c.certificate_name?.trim() && c.certificate_number?.trim();
+            const isCertValid = (c) => Boolean(c && c.certificate_name?.trim() && c.certificate_number?.trim());
 
             const practiceCertData = isCertValid(practiceLicense) ? await uploadAndMapCertificate(practiceLicense, 'PRACTICE_LICENSE') : null;
             const specCertsData = await Promise.all(
-                specCertificates.filter(isCertValid).map((cert) => uploadAndMapCertificate(cert, cert.certificate_type))
+                specCertificates.filter(isCertValid).map((cert) => uploadAndMapCertificate(cert, cert.certificate_type || 'GENERAL_DENTISTRY'))
             );
             const allCertificates = [practiceCertData, ...specCertsData].filter(Boolean);
 
