@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { DentistStatusDot, SpecialtyBadge } from './DentistBadges';
+import { getCertificateTypeLabel } from './dentistHelpers';
 
 function DetailRow({ icon: Icon, label, children }) {
     return (
@@ -33,7 +34,8 @@ function DetailRow({ icon: Icon, label, children }) {
 }
 
 function CertificateView({ cert }) {
-    const isPracticeLicense = cert.type === 'practice_license' || (cert.certificate_name || '').includes('hành nghề');
+    const isPracticeLicense = cert.type === 'practice_license';
+    const specLabel = !isPracticeLicense && cert.certificate_type ? getCertificateTypeLabel(cert.certificate_type) : (cert.specialization || null);
     return (
         <div className="rounded-lg border border-slate-200 bg-white overflow-hidden shadow-2xs">
             <div className={`px-3 py-1.5 border-b border-slate-100 flex items-center justify-between ${isPracticeLicense ? 'bg-red-50/50' : 'bg-blue-50/50'
@@ -42,9 +44,9 @@ function CertificateView({ cert }) {
                     <FileText className={`w-3.5 h-3.5 ${isPracticeLicense ? 'text-red-500' : 'text-blue-500'}`} />
                     {cert.certificate_name}
                 </h4>
-                {cert.specialization && (
+                {specLabel && (
                     <span className="text-[10px] font-semibold text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded">
-                        {cert.specialization}
+                        {specLabel}
                     </span>
                 )}
             </div>
@@ -65,20 +67,38 @@ function CertificateView({ cert }) {
                     </a>
                 )}
                 <div className="flex-1 space-y-1 text-xs">
-                    <div className="grid grid-cols-[70px_1fr] gap-1">
+                    <div className="grid grid-cols-[80px_1fr] gap-1">
                         <span className="text-slate-400 text-[11px]">Số CC:</span>
                         <span className="font-medium text-slate-700 text-[11px]">{cert.certificate_number}</span>
                     </div>
-                    <div className="grid grid-cols-[70px_1fr] gap-1">
+                    <div className="grid grid-cols-[80px_1fr] gap-1">
                         <span className="text-slate-400 text-[11px]">Nơi cấp:</span>
                         <span className="font-medium text-slate-700 text-[11px]">{cert.issued_by}</span>
                     </div>
-                    <div className="grid grid-cols-[70px_1fr] gap-1">
+                    <div className="grid grid-cols-[80px_1fr] gap-1">
                         <span className="text-slate-400 text-[11px]">Thời hạn:</span>
                         <span className="font-medium text-slate-700 text-[11px]">
-                            {cert.issue_date} → {cert.expiry_date}
+                            {cert.issue_date || 'Chưa cập nhật'} → {cert.is_lifetime ? 'Vô thời hạn' : (cert.expiry_date || 'Không có')}
                         </span>
                     </div>
+                    {cert.qualification && (
+                        <div className="grid grid-cols-[80px_1fr] gap-1">
+                            <span className="text-slate-400 text-[11px]">Văn bằng:</span>
+                            <span className="font-medium text-slate-700 text-[11px]">{cert.qualification}</span>
+                        </div>
+                    )}
+                    {cert.scope_of_practice && (
+                        <div className="grid grid-cols-[80px_1fr] gap-1">
+                            <span className="text-slate-400 text-[11px]">Phạm vi:</span>
+                            <span className="font-medium text-slate-700 text-[11px] leading-tight">{cert.scope_of_practice}</span>
+                        </div>
+                    )}
+                    {cert.identity_card_number && (
+                        <div className="grid grid-cols-[80px_1fr] gap-1">
+                            <span className="text-slate-400 text-[11px]">Số CMND:</span>
+                            <span className="font-medium text-slate-700 text-[11px]">{cert.identity_card_number}</span>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

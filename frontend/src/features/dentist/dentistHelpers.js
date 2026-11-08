@@ -99,14 +99,54 @@ export const mapDentistFromApi = (dentist, index = 0) => {
     ? SHIFT_OPTIONS.find((s) => s.key === dentist.shiftKey) ?? SHIFT_OPTIONS[index % SHIFT_OPTIONS.length]
     : SHIFT_OPTIONS[index % SHIFT_OPTIONS.length];
 
-  // Derive specializations from certificate types (exclude PRACTICE_LICENSE)
   const certs = dentist.certificates || [];
-  const specTypes = certs
-    .map(c => c.certificateType || c.certificate_type)
-    .filter(t => t && t !== 'PRACTICE_LICENSE');
+
+  // Identify the practice license:
+  // 1. Look for first cert that has certificateType === 'PRACTICE_LICENSE'
+  // 2. If none, look for first cert whose name includes 'hành nghề'
+  // 3. If none and certs.length > 0, default to index 0
+  let practiceIndex = certs.findIndex(c => (c.certificateType || c.certificate_type) === 'PRACTICE_LICENSE');
+  if (practiceIndex === -1) {
+    practiceIndex = certs.findIndex(c => (c.certificateName || c.certificate_name || '').toLowerCase().includes('hành nghề'));
+  }
+  if (practiceIndex === -1 && certs.length > 0) {
+    practiceIndex = 0;
+  }
+
+  const mappedCertificates = certs.map((cert, i) => {
+    const rawType = cert.certificateType || cert.certificate_type || null;
+    const isPracticeLicense = i === practiceIndex;
+    const certType = isPracticeLicense
+      ? 'PRACTICE_LICENSE'
+      : (rawType && rawType !== 'PRACTICE_LICENSE' ? rawType : 'GENERAL_DENTISTRY');
+
+    return {
+      ...cert,
+      certificate_id: cert.id || cert.certificate_id || `cert-${i}-${Math.random().toString(36).substr(2, 9)}`,
+      certificate_name: cert.certificateName || cert.certificate_name || (isPracticeLicense ? 'Chứng chỉ hành nghề bác sĩ' : 'Chứng chỉ chuyên môn'),
+      certificate_number: cert.certificateNumber || cert.certificate_number || '',
+      issued_by: cert.issuedBy || cert.issued_by || '',
+      issue_date: cert.issueDate ? (typeof cert.issueDate === 'string' ? cert.issueDate.split('T')[0] : cert.issueDate) : (cert.issue_date || ''),
+      expiry_date: cert.expiryDate ? (typeof cert.expiryDate === 'string' ? cert.expiryDate.split('T')[0] : cert.expiryDate) : (cert.expiry_date || ''),
+      certificate_file_url: cert.certificateFileUrl || cert.certificate_file_url || '',
+      certificate_type: certType,
+      type: isPracticeLicense ? 'practice_license' : 'specialization',
+      scope_of_practice: cert.scopeOfPractice || cert.scope_of_practice || '',
+      identity_card_number: cert.identityCardNumber || cert.identity_card_number || '',
+      practicing_doctor_name: cert.practicingDoctorName || cert.practicing_doctor_name || '',
+      qualification: cert.qualification || '',
+      is_lifetime: cert.isLifetime !== undefined ? cert.isLifetime : (cert.is_lifetime || false),
+    };
+  });
+
+  // Derive specializations from certificate types (exclude PRACTICE_LICENSE)
+  const specTypes = mappedCertificates
+    .filter(c => c.type !== 'practice_license')
+    .map(c => c.certificate_type)
+    .filter(Boolean);
   const displaySpecializations = specTypes.length > 0
-    ? specTypes.map(t => getCertificateTypeLabel(t))
-    : ['Chưa cập nhật'];
+    ? [...new Set(specTypes.map(t => getCertificateTypeLabel(t)))]
+    : ['Nha khoa tổng quát'];
 
   return {
     ...dentist,
@@ -123,25 +163,7 @@ export const mapDentistFromApi = (dentist, index = 0) => {
     description: dentist.description || '',
     branchId: dentist.branchId || '',
     branchName: dentist.branchName || 'Chưa phân chi nhánh',
-    certificates: certs.map((cert, i) => {
-      const certType = cert.certificateType || cert.certificate_type || null;
-      const isPracticeLicense = certType === 'PRACTICE_LICENSE'
-        || (cert.certificateName || cert.certificate_name || '').toLowerCase().includes('hành nghề')
-        || (i === 0 && !certType);
-
-      return {
-        ...cert,
-        certificate_id: cert.id || cert.certificate_id || `cert-${i}-${Math.random().toString(36).substr(2, 9)}`,
-        certificate_name: cert.certificateName || cert.certificate_name || '',
-        certificate_number: cert.certificateNumber || cert.certificate_number || '',
-        issued_by: cert.issuedBy || cert.issued_by || '',
-        issue_date: cert.issueDate ? (typeof cert.issueDate === 'string' ? cert.issueDate.split('T')[0] : cert.issueDate) : (cert.issue_date || ''),
-        expiry_date: cert.expiryDate ? (typeof cert.expiryDate === 'string' ? cert.expiryDate.split('T')[0] : cert.expiryDate) : (cert.expiry_date || ''),
-        certificate_file_url: cert.certificateFileUrl || cert.certificate_file_url || '',
-        certificate_type: isPracticeLicense ? 'PRACTICE_LICENSE' : (certType || null),
-        type: isPracticeLicense ? 'practice_license' : 'specialization',
-      };
-    }),
+    certificates: mappedCertificates,
     avatar:
       dentist.avatar ||
       `https://ui-avatars.com/api/?name=${encodeURIComponent(dentist.name || dentist.username || 'BS')}&background=random`,
