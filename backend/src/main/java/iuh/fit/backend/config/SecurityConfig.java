@@ -122,7 +122,9 @@ public class SecurityConfig {
                                 "/api/v1/ocr/**"
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET,
+                                "/api/v1/clinics",
                                 "/api/v1/clinics/**",
+                                "/api/v1/branches",
                                 "/api/v1/branches/**",
                                 "/api/v1/primary-diagnoses/**",
                                 "/api/v1/tooth-statuses/**")

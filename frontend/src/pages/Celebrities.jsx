@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Sparkles, Star, Award, CheckCircle2, Quote, ArrowRight, ShieldCheck, Camera, Heart, Play, Calendar } from 'lucide-react'
+import { Sparkles, Star, Quote, ArrowRight, ShieldCheck, Calendar } from 'lucide-react'
 import AppointmentRequestModal from '../components/ui/AppointmentRequestModal'
 
 // Celebrity data showcase
@@ -128,14 +127,14 @@ export default function Celebrities() {
           <div className="flex flex-wrap justify-center gap-4 mb-16">
             <button
               onClick={() => setIsModalOpen(true)}
-              className="inline-flex items-center gap-2 rounded-full bg-[#00a859] hover:bg-[#059669] text-white text-xs font-black uppercase tracking-wider px-8 py-4 shadow-xl shadow-emerald-900/20 hover:scale-105 transition-all duration-300 cursor-pointer"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#00a859] hover:bg-[#059669] text-white text-xs font-black uppercase tracking-wider px-8 py-3.5 shadow-md hover:scale-102 transition-all duration-300 cursor-pointer"
             >
               <Calendar size={16} />
               <span>Đăng Ký Tư Vấn Nụ Cười Ngôi Sao</span>
             </button>
             <a
               href="#celebrity-gallery"
-              className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-7 py-4 backdrop-blur-md transition-all duration-300"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-7 py-3.5 backdrop-blur-md transition-all duration-300"
             >
               <span>Khám Phá Câu Chuyện Khách Hàng</span>
               <ArrowRight size={16} />
@@ -143,30 +142,30 @@ export default function Celebrities() {
           </div>
 
           {/* Key Stats Bar */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto bg-white/10 backdrop-blur-md border border-white/15 rounded-3xl p-6 sm:p-8">
-            {STATS_DATA.map((stat, i) => (
-              <div key={i} className="text-center">
-                <p className="text-2xl sm:text-3xl font-black text-white">{stat.number}</p>
-                <p className="text-[11px] sm:text-xs text-blue-100/80 font-medium mt-1">{stat.label}</p>
-              </div>
-            ))}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-6 sm:p-8">
+              {STATS_DATA.map((stat, i) => (
+                <div key={i} className="text-center">
+                  <p className="text-2xl sm:text-3xl font-black text-white">{stat.number}</p>
+                  <p className="text-[11px] sm:text-xs text-blue-100/80 font-medium mt-1">{stat.label}</p>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
       </section>
 
       {/* 2. Category Filter & Gallery Section */}
       <section id="celebrity-gallery" className="py-20 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 scroll-mt-24">
         {/* Section Title */}
         <div className="text-center mb-12">
-          <span className="inline-block bg-[#1f4fb2]/10 border border-[#1f4fb2]/20 text-[#1f4fb2] text-xs font-extrabold uppercase tracking-[0.25em] px-4 py-1.5 rounded-full mb-3">
-            GƯƠNG MẶT ĐẠI DIỆN TIN TƯỞNG
-          </span>
-          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 leading-tight">
-            Hành Trình Kiến Tạo Nụ Cười Ngôi Sao
-          </h2>
-          <p className="mt-3 text-sm text-slate-600 font-medium max-w-2xl mx-auto">
-            Lắng nghe trải nghiệm thực tế và cảm nhận trực tiếp từ các nghệ sĩ khi chăm sóc răng miệng tại Crown Dental.
-          </p>
+            <span className="inline-block bg-[#1f4fb2]/10 border border-[#1f4fb2]/20 text-[#1f4fb2] text-xs font-extrabold uppercase tracking-[0.25em] px-4 py-1.5 rounded-lg mb-3">
+              GƯƠNG MẶT ĐẠI DIỆN TIN TƯỞNG
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 leading-tight">
+              Hành Trình Kiến Tạo Nụ Cười Ngôi Sao
+            </h2>
+            <p className="mt-3 text-sm text-slate-600 font-medium max-w-2xl mx-auto">
+              Lắng nghe trải nghiệm thực tế và cảm nhận trực tiếp từ các nghệ sĩ khi chăm sóc răng miệng tại Crown Dental.
+            </p>
         </div>
 
         {/* Filter Navigation Tabs */}
@@ -175,9 +174,9 @@ export default function Celebrities() {
             <button
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
-              className={`rounded-full px-5 py-2.5 text-xs font-extrabold transition-all duration-300 cursor-pointer ${
+              className={`rounded-xl px-5 py-2.5 text-xs font-extrabold transition-all duration-300 cursor-pointer ${
                 activeCategory === cat.id
-                  ? 'bg-gradient-to-r from-[#1f4fb2] to-[#2563eb] text-white shadow-md shadow-blue-500/20 scale-105'
+                  ? 'bg-gradient-to-r from-[#1f4fb2] to-[#2563eb] text-white shadow-sm scale-102'
                   : 'bg-white text-slate-600 border border-slate-200 hover:border-[#1f4fb2]/40 hover:text-[#1f4fb2]'
               }`}
             >
@@ -191,7 +190,7 @@ export default function Celebrities() {
           {filteredCelebrities.map((c) => (
             <div
               key={c.id}
-              className="group relative rounded-3xl border border-slate-200/80 bg-white shadow-[0_4px_25px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_45px_rgba(31,79,178,0.14)] hover:-translate-y-1.5 transition-all duration-300 overflow-hidden flex flex-col justify-between"
+              className="group relative rounded-2xl border border-slate-200/80 bg-white shadow-xs hover:shadow-lg hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col justify-between"
             >
               {/* Photo Wrapper */}
               <div className="relative h-72 overflow-hidden bg-slate-100">
@@ -207,7 +206,7 @@ export default function Celebrities() {
 
                 {/* Service Tag on Image */}
                 <div className="absolute top-4 left-4">
-                  <span className="inline-flex items-center gap-1.5 bg-white/90 backdrop-blur-md text-[#1f4fb2] text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-sm">
+                  <span className="inline-flex items-center gap-1.5 bg-white/90 backdrop-blur-md text-[#1f4fb2] text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-lg shadow-xs">
                     <Sparkles size={12} className="text-[#00a859]" />
                     {c.service}
                   </span>
@@ -232,7 +231,7 @@ export default function Celebrities() {
 
                 {/* Highlight Stats & Rating */}
                 <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                  <div className="text-[11px] font-bold text-[#00a859] bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-full truncate max-w-[200px]">
+                  <div className="text-[11px] font-bold text-[#00a859] bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-lg truncate max-w-[200px]">
                     {c.stats}
                   </div>
                   <div className="flex items-center text-amber-400 gap-0.5">
@@ -253,7 +252,7 @@ export default function Celebrities() {
           <div className="grid gap-12 lg:grid-cols-2 items-center">
             {/* Left Content */}
             <div className="space-y-6">
-              <span className="inline-block bg-[#00a859]/10 border border-[#00a859]/20 text-[#00a859] text-xs font-extrabold uppercase tracking-[0.25em] px-4 py-1.5 rounded-full">
+              <span className="inline-block bg-[#00a859]/10 border border-[#00a859]/20 text-[#00a859] text-xs font-extrabold uppercase tracking-[0.25em] px-4 py-1.5 rounded-lg">
                 CÔNG NGHỆ ĐẮC LỰC
               </span>
               <h2 className="text-3xl sm:text-4xl font-black text-slate-900 leading-tight">
@@ -297,7 +296,7 @@ export default function Celebrities() {
             </div>
 
             {/* Right Media Card */}
-            <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-slate-200 group">
+            <div className="relative rounded-2xl overflow-hidden shadow-xl border border-slate-200 group">
               <img
                 src="https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&q=80&w=1000"
                 alt="3D Smile Design"
@@ -305,7 +304,7 @@ export default function Celebrities() {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent flex items-end p-8">
                 <div className="text-white">
-                  <span className="inline-flex items-center gap-2 bg-[#00a859] text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full mb-2">
+                  <span className="inline-flex items-center gap-2 bg-[#00a859] text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-md mb-2">
                     <ShieldCheck size={14} /> Tiêu chuẩn Thụy Sĩ
                   </span>
                   <h3 className="text-2xl font-black">Phòng Thăm Khám VIP</h3>
@@ -319,9 +318,9 @@ export default function Celebrities() {
 
       {/* 4. Bottom CTA Section */}
       <section className="mt-20 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#1f4fb2] via-[#2563eb] to-[#00a859] p-8 sm:p-12 text-white shadow-2xl">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#1f4fb2] via-[#2563eb] to-[#00a859] p-8 sm:p-12 text-white shadow-xl">
           <div className="relative z-10 max-w-2xl space-y-4">
-            <span className="inline-block bg-white/20 backdrop-blur-md text-white text-xs font-black uppercase tracking-[0.25em] px-4 py-1.5 rounded-full">
+            <span className="inline-block bg-white/20 backdrop-blur-md text-white text-xs font-black uppercase tracking-[0.25em] px-4 py-1.5 rounded-lg">
               ƯU ĐÃI NỤ CƯỜI NGÔI SAO
             </span>
             <h2 className="text-3xl sm:text-4xl font-black leading-tight">
@@ -333,7 +332,7 @@ export default function Celebrities() {
             <div className="pt-2 flex flex-wrap gap-4">
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-full bg-white text-[#1f4fb2] hover:bg-blue-50 text-xs font-black uppercase tracking-wider px-7 py-3.5 shadow-lg transition-all duration-300 hover:scale-105 cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-xl bg-white text-[#1f4fb2] hover:bg-blue-50 text-xs font-black uppercase tracking-wider px-7 py-3.5 shadow-md transition-all duration-300 hover:scale-102 cursor-pointer"
               >
                 <Calendar size={16} />
                 <span>Đặt Lịch Tư Vấn Miễn Phí</span>

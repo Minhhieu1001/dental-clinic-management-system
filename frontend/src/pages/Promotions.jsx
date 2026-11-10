@@ -39,7 +39,7 @@ function PromotionCard({ promotion }) {
         </h3>
         
         <div className="mt-2">
-          <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold text-[#1f4fb2] uppercase tracking-wider">
+          <span className="inline-flex rounded-lg bg-slate-100 px-3 py-1 text-[10px] font-bold text-[#1f4fb2] uppercase tracking-wider">
             {promotion.category || 'Dịch vụ'}
           </span>
         </div>
@@ -62,7 +62,7 @@ function PromotionCard({ promotion }) {
 
         <Link
           to={`/promotions/${promotion.id}`}
-          className="mt-auto mx-auto inline-flex items-center justify-center rounded-full bg-[#edf4ff] px-6 py-2 text-xs font-black text-[#1f64f2] transition hover:bg-[#e1ecff]"
+          className="mt-auto mx-auto inline-flex items-center justify-center rounded-xl bg-[#edf4ff] px-6 py-2 text-xs font-black text-[#1f64f2] transition hover:bg-[#e1ecff]"
         >
           Xem chi tiết
         </Link>
@@ -395,7 +395,7 @@ export default function Promotions() {
                   placeholder="Nhập tên của bạn"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full rounded-full border border-slate-200 bg-slate-50/40 px-5 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-[#1f4fb2] focus:bg-white focus:outline-none transition duration-200"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/40 px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-[#1f4fb2] focus:bg-white focus:outline-none transition duration-200"
                 />
               </div>
 
@@ -408,7 +408,7 @@ export default function Promotions() {
                   placeholder="Nhập số điện thoại"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full rounded-full border border-slate-200 bg-slate-50/40 px-5 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-[#1f4fb2] focus:bg-white focus:outline-none transition duration-200"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/40 px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-[#1f4fb2] focus:bg-white focus:outline-none transition duration-200"
                 />
               </div>
 
@@ -416,7 +416,7 @@ export default function Promotions() {
                 <button
                   type="submit"
                   disabled={formStatus.loading}
-                  className="flex items-center justify-center gap-2 rounded-full bg-[#ff5b15] hover:bg-[#e04c0d] text-white font-extrabold text-xs uppercase tracking-widest px-8 py-4 transition duration-200 shadow-lg shadow-orange-500/10 w-full sm:w-auto"
+                  className="flex items-center justify-center gap-2 rounded-xl bg-[#ff5b15] hover:bg-[#e04c0d] text-white font-extrabold text-xs uppercase tracking-widest px-8 py-3.5 transition duration-200 shadow-sm w-full sm:w-auto cursor-pointer"
                 >
                   <svg className="h-4 w-4 stroke-[3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
@@ -465,7 +465,7 @@ export default function Promotions() {
             <div className="mt-8 space-y-3">
               <a
                 href="tel:19008059"
-                className="flex items-center justify-center gap-2.5 rounded-full bg-[#edf3ff] hover:bg-[#e1ecff] text-[#1f64f2] text-xs font-black py-3.5 w-full transition duration-200 border border-blue-100 shadow-sm"
+                className="flex items-center justify-center gap-2.5 rounded-xl bg-[#edf3ff] hover:bg-[#e1ecff] text-[#1f64f2] text-xs font-black py-3.5 w-full transition duration-200 border border-blue-100 shadow-xs"
               >
                 <svg className="h-4 w-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
@@ -475,7 +475,7 @@ export default function Promotions() {
 
               <Link
                 to="/contact"
-                className="flex items-center justify-center gap-2.5 rounded-full text-white text-xs font-black py-3.5 w-full transition duration-200 shadow-md hover:opacity-95"
+                className="flex items-center justify-center gap-2.5 rounded-xl text-white text-xs font-black py-3.5 w-full transition duration-200 shadow-sm hover:opacity-95"
                 style={{ background: 'linear-gradient(90deg, #3E587B 0%, #394579 50%, #363876 100%)' }}
               >
                 <svg className="h-4 w-4 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">

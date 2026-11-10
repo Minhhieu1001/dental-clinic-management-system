@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, Settings } from 'lucide-react';
+import { Bell, Settings, Building2 } from 'lucide-react';
 import AdminProfileModal from '../../components/ui/AdminProfileModal';
 import NotificationDropdown from '../../components/common/NotificationDropdown';
 
@@ -11,17 +11,18 @@ export default function AdminHeader({ config }) {
     <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/80 backdrop-blur-xl">
       <div className="flex h-16 items-center justify-between px-2 sm:px-3 lg:px-4">
 
-        {/* Left Side: Crown Dental Branding (Text only) */}
-        <div className="flex items-center">
-          <div className="flex flex-col">
-            <div className="flex items-center gap-2">
-              <span className="text-base font-black tracking-tight text-slate-900">
-                CROWN<span className="text-[#005f73]">DENTAL</span> <span className="font-medium text-slate-400 text-xs tracking-normal">CLINIC SYSTEM</span>
-              </span>
-
-            </div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              Hệ Thống Quản Lý Nha Khoa Thẩm Mỹ & Điều Trị Chuyên Nghiệp
+        {/* Left Side: System Scope Info for Admin */}
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-50 border border-teal-100/80 text-teal-700 shadow-2xs">
+            <Building2 size={16} strokeWidth={2.2} />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-slate-800 tracking-tight">
+              Toàn hệ thống
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-teal-800 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200/60 shadow-2xs">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Tất cả chi nhánh
             </span>
           </div>
         </div>
@@ -30,7 +31,7 @@ export default function AdminHeader({ config }) {
         <div className="flex items-center gap-2 sm:gap-4 ml-4">
 
           {/* Role Badge (Hidden on mobile) */}
-          <div className="hidden sm:flex items-center justify-center rounded-full border border-sky-100 bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-600 shadow-sm">
+          <div className="hidden sm:flex items-center justify-center rounded-lg border border-sky-200/70 bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-600 shadow-2xs">
             {roleLabel}
           </div>
 
@@ -39,7 +40,7 @@ export default function AdminHeader({ config }) {
             <NotificationDropdown role="ADMIN" />
 
             {/* Settings */}
-            <button className="rounded-full p-2 text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-700 active:scale-95">
+            <button className="rounded-lg p-2 text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-700 active:scale-95">
               <Settings className="h-5 w-5" />
             </button>
           </div>

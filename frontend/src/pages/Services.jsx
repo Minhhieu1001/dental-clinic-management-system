@@ -210,12 +210,11 @@ const normalizeServices = (rawServices) => {
 };
 
 export default function Services() {
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
   const tabParam = searchParams.get('tab')
   
-  // Xác định tab active ban đầu dựa vào query param
-  const initialTab = TABS.some(t => t.key === tabParam) ? tabParam : 'NIENG_RANG'
-  const [activeTab, setActiveTab] = useState(initialTab)
+  // Xác định tab active dựa vào query param
+  const activeTab = TABS.some(t => t.key === tabParam) ? tabParam : 'NIENG_RANG'
   
   const [services, setServices] = useState([])
   const [loading, setLoading] = useState(true)
@@ -237,18 +236,6 @@ export default function Services() {
     };
     fetchServices()
   }, [])
-
-  // Mỗi lần query param thay đổi thì cập nhật activeTab tương ứng
-  useEffect(() => {
-    if (tabParam && TABS.some(t => t.key === tabParam)) {
-      setActiveTab(tabParam)
-    }
-  }, [tabParam])
-
-  const handleTabChange = (key) => {
-    setActiveTab(key)
-    setSearchParams({ tab: key })
-  }
 
   // Lọc dịch vụ theo danh mục (category) đang chọn và chỉ lấy dịch vụ đang hoạt động
   const filteredByCategory = services.filter(
@@ -290,7 +277,7 @@ export default function Services() {
   }
 
   return (
-    <div className="bg-slate-50 min-h-screen pb-16" style={{ fontFamily: "'Be Vietnam Pro', 'Inter', sans-serif" }}>
+    <div className="bg-slate-50 min-h-screen pb-16">
       {/* ── Breadcrumb ── */}
       <div className="bg-white border-b border-slate-100 py-3">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex items-center gap-2 text-xs text-slate-500">
@@ -368,7 +355,7 @@ export default function Services() {
             <p className="text-sm text-slate-500 mt-3 font-semibold">Đang tải dữ liệu dịch vụ...</p>
           </div>
         ) : processedList.length === 0 ? (
-          <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center shadow-sm">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center shadow-xs">
             <p className="text-lg text-slate-500 font-bold">Hiện chưa có dịch vụ nào thuộc danh mục này</p>
             <p className="text-xs text-slate-400 mt-1">Vui lòng quay lại sau hoặc liên hệ Hotline để được tư vấn trực tiếp.</p>
           </div>
@@ -377,7 +364,7 @@ export default function Services() {
             {processedList.map((service, index) => (
               <article
                 key={service.id || index}
-                className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col group hover:-translate-y-1.5 hover:shadow-xl transition-all duration-300"
+                className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden flex flex-col group hover:-translate-y-1 hover:shadow-md transition-all duration-200"
               >
                 {/* Image */}
                 <div className="h-56 overflow-hidden relative bg-slate-100">
@@ -387,11 +374,11 @@ export default function Services() {
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   {service.isFeatured && (
-                    <span className="absolute top-4 left-4 bg-red-500 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-sm">
+                    <span className="absolute top-4 left-4 bg-red-500 text-white text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md shadow-xs">
                       Bán chạy
                     </span>
                   )}
-                  <span className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-sm text-white text-[11px] font-bold px-3 py-1 rounded-full">
+                  <span className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-sm text-white text-[11px] font-bold px-2.5 py-1 rounded-md">
                     Đơn vị: {service.unit || 'Lần'}
                   </span>
                 </div>
@@ -404,7 +391,7 @@ export default function Services() {
                         {service.subCategory || TABS.find((t) => t.key === activeTab)?.label}
                       </p>
                       {service.warrantyPeriod && service.warrantyPeriod !== 'Không bảo hành' && (
-                        <span className="bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        <span className="bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-md">
                           🛡️ {service.warrantyPeriod}
                         </span>
                       )}
@@ -427,7 +414,7 @@ export default function Services() {
                     
                     <Link
                       to="/contact"
-                      className="bg-blue-50 text-[#1f4fb2] hover:bg-[#1f4fb2] hover:text-white transition-all font-bold text-xs px-4 py-2.5 rounded-full"
+                      className="bg-blue-50 text-[#1f4fb2] hover:bg-[#1f4fb2] hover:text-white transition-all font-bold text-xs px-4 py-2.5 rounded-xl"
                     >
                       Đăng ký tư vấn
                     </Link>
@@ -439,7 +426,7 @@ export default function Services() {
         )}
 
         {/* ── Creative Brochure & Detail Section (Dưới dạng bài viết bổ sung cực đẹp) ── */}
-        <section className="mt-16 bg-white rounded-[2.5rem] border border-slate-200/80 shadow-md p-6 sm:p-10 lg:p-14 space-y-12">
+        <section className="mt-16 bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 sm:p-10 lg:p-14 space-y-12">
           
           {/* Hộp định nghĩa */}
           <div className="grid lg:grid-cols-[1fr_320px] gap-10 items-center">
@@ -452,7 +439,7 @@ export default function Services() {
                 {intro.whatIs}
               </p>
             </div>
-            <div className="bg-[#f4f7fb] rounded-3xl p-6 border border-slate-100 text-center shadow-inner hidden lg:block">
+            <div className="bg-[#f4f7fb] rounded-2xl p-6 border border-slate-100 text-center shadow-inner hidden lg:block">
               <span className="text-5xl inline-block mb-3">💡</span>
               <h4 className="font-black text-slate-800 text-sm mb-1">Tư vấn của chuyên gia</h4>
               <p className="text-xs text-slate-500 leading-relaxed">
@@ -546,13 +533,13 @@ export default function Services() {
             <div className="flex flex-wrap gap-4 items-center">
               <a
                 href="tel:19008059"
-                className="bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-sm px-6 py-3.5 rounded-full transition-all flex items-center gap-2"
+                className="bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-sm px-6 py-3.5 rounded-xl transition-all flex items-center gap-2"
               >
                 📞 Hotline: 1900 8059
               </a>
               <Link
                 to="/contact"
-                className="bg-white hover:bg-blue-50 text-[#1f4fb2] font-black text-sm px-6 py-3.5 rounded-full shadow-lg shadow-black/10 transition-all flex items-center gap-1"
+                className="bg-white hover:bg-blue-50 text-[#1f4fb2] font-black text-sm px-6 py-3.5 rounded-xl shadow-md transition-all flex items-center gap-1"
               >
                 Đặt lịch hẹn ngay
               </Link>

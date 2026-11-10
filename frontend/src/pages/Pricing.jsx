@@ -293,7 +293,7 @@ export default function Pricing() {
   }
 
   return (
-    <div className="bg-slate-50 min-h-screen" style={{ fontFamily: "'Be Vietnam Pro', 'Inter', sans-serif" }}>
+    <div className="bg-slate-50 min-h-screen">
       {/* Breadcrumb */}
       <div className="bg-white border-b border-slate-100">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-2 text-xs text-slate-500">
@@ -319,13 +319,13 @@ export default function Pricing() {
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <a
               href="tel:19008059"
-              className="inline-flex items-center gap-2 bg-white text-[#1f4fb2] font-black text-sm px-6 py-3 rounded-full hover:bg-blue-50 transition-all shadow-md shadow-blue-900/10"
+              className="inline-flex items-center gap-2 bg-white text-[#1f4fb2] font-black text-sm px-6 py-3 rounded-xl hover:bg-blue-50 transition-all shadow-sm"
             >
               📞 1900 8059 – Nhận tư vấn nhanh
             </a>
             <Link
               to="/contact"
-              className="inline-flex items-center gap-2 bg-[#00a859] hover:bg-[#00954d] text-white font-bold text-sm px-6 py-3 rounded-full transition-all shadow-md shadow-green-900/10"
+              className="inline-flex items-center gap-2 bg-[#00a859] hover:bg-[#00954d] text-white font-bold text-sm px-6 py-3 rounded-xl transition-all shadow-sm"
             >
               Đặt lịch tư vấn miễn phí
             </Link>
@@ -392,8 +392,8 @@ export default function Pricing() {
           {/* Left Column: Tables */}
           <div className="space-y-8">
             {/* Tab Introduction info */}
-            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-6 items-center">
-              <div className="w-16 h-16 rounded-2xl bg-blue-50 text-3xl flex items-center justify-center flex-shrink-0">
+            <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row gap-6 items-center">
+              <div className="w-16 h-16 rounded-xl bg-blue-50 text-3xl flex items-center justify-center flex-shrink-0">
                 {currentData.icon}
               </div>
               <div className="text-center sm:text-left">
@@ -403,8 +403,13 @@ export default function Pricing() {
             </div>
 
             {/* Dynamic Price tables */}
-            {currentData.groups.map((group, index) => (
-              <div key={index} className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden p-6">
+            {loading ? (
+              <div className="py-16 text-center bg-white rounded-2xl border border-slate-200/80 p-8 shadow-xs">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-[#1f4fb2]" />
+                <p className="text-xs text-slate-500 mt-2 font-medium">Đang tải bảng giá dịch vụ...</p>
+              </div>
+            ) : currentData.groups.map((group, index) => (
+              <div key={index} className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden p-6">
                 <h3 className="text-sm font-black text-[#132c6b] uppercase tracking-widest border-l-4 border-[#00a859] pl-3 py-0.5 mb-5">
                   {group.name}
                 </h3>
@@ -446,12 +451,12 @@ export default function Pricing() {
             ))}
 
             {/* Note box */}
-            <div className="rounded-3xl bg-amber-50/60 border border-amber-100/70 p-6 flex gap-4">
+            <div className="rounded-2xl bg-amber-50/60 border border-amber-100/70 p-6 flex gap-4">
               <span className="text-2xl flex-shrink-0">⚠️</span>
               <div>
                 <h4 className="text-xs font-black text-amber-800 uppercase tracking-wider mb-1">Lưu ý quan trọng về bảng giá</h4>
                 <p className="text-[12px] text-amber-700 leading-relaxed font-semibold">
-                  Bảng giá trên đây mang tính chất tham khảo. Chi phí thực tế sẽ phụ thuộc chính xác vào tình trạng sức khỏe răng miệng thực tế, loại vật liệu lựa chọn và phác đồ điều trị của bác sĩ chuyên khoa. 
+                  Bảng giá trên đây mang tính chất tham khảo. Chi phí thực tế sẽ phụ thuộc chính xác vào tình trạng sức khỏe răng miệng thực tế, loại vật liệu lựa chọn và phác đồ điều trị của bác sĩ chuyên khoa.
                   Quý khách nên đến trực tiếp phòng khám nha khoa hoặc liên hệ hotline{' '}
                   <a href="tel:19008059" className="font-black text-[#1f4fb2] underline">1900 8059</a> để nhận báo giá chi tiết, cá nhân hóa hoàn toàn miễn phí.
                 </p>
@@ -462,12 +467,12 @@ export default function Pricing() {
           {/* Right Column: Sidebar */}
           <aside className="space-y-6">
             {/* Service Banner Image */}
-            <div className="rounded-3xl overflow-hidden shadow-md h-52 border border-slate-200 bg-slate-100">
+            <div className="rounded-2xl overflow-hidden shadow-sm h-52 border border-slate-200 bg-slate-100">
               <img src={currentData.image} alt={currentData.label} className="w-full h-full object-cover" />
             </div>
 
             {/* Categories sidebar quick list */}
-            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6">
               <h3 className="text-sm font-black text-[#132c6b] uppercase tracking-wider border-b border-slate-100 pb-3 mb-4">
                 Danh mục giá dịch vụ
               </h3>
@@ -496,7 +501,7 @@ export default function Pricing() {
             </div>
 
             {/* Side CTA Block */}
-            <div className="rounded-3xl bg-gradient-to-br from-[#132c6b] to-[#1f4fb2] p-6 text-white text-center shadow-lg relative overflow-hidden">
+            <div className="rounded-2xl bg-gradient-to-br from-[#132c6b] to-[#1f4fb2] p-6 text-white text-center shadow-md relative overflow-hidden">
               <div className="absolute top-0 right-0 opacity-5">
                 <svg width="150" height="150" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" />
@@ -509,14 +514,14 @@ export default function Pricing() {
               </p>
               <Link
                 to="/contact"
-                className="inline-block bg-[#00a859] hover:bg-[#00954d] transition-all text-white text-xs font-bold px-6 py-3 rounded-full shadow-md"
+                className="inline-block bg-[#00a859] hover:bg-[#00954d] transition-all text-white text-xs font-bold px-6 py-3 rounded-xl shadow-xs"
               >
                 Đặt lịch hẹn khám miễn phí
               </Link>
             </div>
 
             {/* Hotline Contact box */}
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-6 text-center shadow-xs">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Tổng đài hỗ trợ 24/7</p>
               <a href="tel:19008059" className="text-2xl font-black text-[#1f4fb2] hover:text-[#0f3a9e] transition-colors block">
                 1900 8059
