@@ -648,3 +648,96 @@ UPDATE employees e
 SET position = 'RECEPTIONIST', full_name = u.username
 FROM users u
 WHERE e.user_id = u.id AND u.username = 'employee02';
+
+-- ============================================================
+-- BẢNG 10: CLINICS & BRANCHES (Hệ thống phòng khám & Chi nhánh)
+-- ============================================================
+INSERT INTO clinics (
+    clinic_id, clinic_code, brand_name, legal_name, tax_code, 
+    business_license_no, established_year, representative, phone_number, 
+    email, logo_url, registered_address, description, created_at, updated_at
+) VALUES (
+    'clinic-main-01',
+    'CROWN-HQ',
+    'Nha Khoa Crown Dental',
+    'Công Ty TNHH Nha Khoa Quốc Tế Crown Dental',
+    '0108923456',
+    '0108923456-GP/SYT',
+    2011,
+    'BS. CKII Nguyễn Văn Hùng',
+    '1900 8059',
+    'contact@crowndental.vn',
+    '/logo-brand.png',
+    '328 Phố Huế, Phường Phố Huế, Quận Hai Bà Trưng, TP. Hà Nội',
+    'Hệ thống Nha khoa Quốc tế Crown Dental - Tiêu chuẩn Châu Âu với trang thiết bị hiện đại hàng đầu Việt Nam.',
+    NOW(),
+    NOW()
+) ON CONFLICT (clinic_id) DO UPDATE SET
+    brand_name = EXCLUDED.brand_name,
+    legal_name = EXCLUDED.legal_name,
+    phone_number = EXCLUDED.phone_number,
+    email = EXCLUDED.email,
+    registered_address = EXCLUDED.registered_address;
+
+INSERT INTO branches (
+    branch_id, clinic_id, branch_code, branch_name, phone_number,
+    email, address, open_time, close_time, image_branch, status
+) VALUES 
+(
+    'branch-hn-01',
+    'clinic-main-01',
+    'CN-HN01',
+    'Crown Dental Phố Huế - Hà Nội',
+    '1900 8059',
+    'hanoi@crowndental.vn',
+    '328 Phố Huế, Quận Hai Bà Trưng, Hà Nội',
+    '08:30:00',
+    '19:30:00',
+    'https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=800&q=80',
+    'ACTIVE'
+),
+(
+    'branch-hcm-01',
+    'clinic-main-01',
+    'CN-HCM01',
+    'Crown Dental Nam Kỳ Khởi Nghĩa - TP.HCM',
+    '1900 8059',
+    'hcm@crowndental.vn',
+    '215 Nam Kỳ Khởi Nghĩa, Phường Võ Thị Sáu, Quận 3, TP. Hồ Chí Minh',
+    '08:30:00',
+    '19:30:00',
+    'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=800&q=80',
+    'ACTIVE'
+),
+(
+    'branch-bd-01',
+    'clinic-main-01',
+    'CN-BD01',
+    'Crown Dental Thủ Dầu Một - Bình Dương',
+    '1900 8059',
+    'binhduong@crowndental.vn',
+    '564 Đại Lộ Bình Dương, TP. Thủ Dầu Một, Bình Dương',
+    '08:30:00',
+    '19:30:00',
+    'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&w=800&q=80',
+    'ACTIVE'
+) ON CONFLICT (branch_id) DO UPDATE SET
+    branch_name = EXCLUDED.branch_name,
+    phone_number = EXCLUDED.phone_number,
+    email = EXCLUDED.email,
+    address = EXCLUDED.address,
+    open_time = EXCLUDED.open_time,
+    close_time = EXCLUDED.close_time,
+    image_branch = EXCLUDED.image_branch,
+    status = EXCLUDED.status;
+
+-- Cập nhật nhân viên lễ tân vào chi nhánh mặc định nếu chưa gán
+UPDATE employees SET branch_id = 'branch-hn-01' WHERE branch_id IS NULL;
+
+-- Đồng bộ nhân viên thu ngân cho các giao dịch thanh toán nếu bị thiếu (lấy từ nhân viên lập hóa đơn)
+UPDATE payment_transactions pt
+SET employee_id = i.employee_id
+FROM invoices i
+WHERE pt.invoice_id = i.id AND pt.employee_id IS NULL AND i.employee_id IS NOT NULL;
+
+

@@ -1,9 +1,20 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import {Search,Bell,Settings,LogOut,Mail,ShieldAlert,User,ChevronDown,} from 'lucide-react';
+import {
+  Search,
+  Bell,
+  Settings,
+  LogOut,
+  Mail,
+  ShieldAlert,
+  User,
+  ChevronDown,
+  Building2,
+} from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import NotificationDropdown from '../../components/common/NotificationDropdown';
+import { getDentistById } from '../../services/dentist.service';
 
 export default function DentistHeader({ config }) {
   const { roleLabel } = config;
@@ -11,6 +22,34 @@ export default function DentistHeader({ config }) {
   const navigate = useNavigate();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef(null);
+
+  // Dynamic branch name fetched according to the logged in dentist
+  const [branchName, setBranchName] = useState(() => {
+    return localStorage.getItem(`dentist_branch_${user?.id}`) || '';
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchBranch() {
+      if (user?.dentistId) {
+        try {
+          const dentist = await getDentistById(user.dentistId);
+          if (isMounted && dentist?.branchName) {
+            setBranchName(dentist.branchName);
+            try {
+              localStorage.setItem(`dentist_branch_${user.id}`, dentist.branchName);
+            } catch (e) {}
+          }
+        } catch (err) {
+          console.error('Failed to load dentist branch info', err);
+        }
+      }
+    }
+    fetchBranch();
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.dentistId, user?.id]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -43,24 +82,23 @@ export default function DentistHeader({ config }) {
     <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/80 backdrop-blur-xl">
       <div className="flex h-16 items-center justify-between px-4 sm:px-6">
 
-        {/* Left Side: Logo Branding (Matches Home Page) */}
-        <div className="flex items-center gap-4">
-          <Link to="/dentist/dashboard" className="flex items-center gap-3 flex-shrink-0 select-none group">
-            <img
-              src="/logo.png"
-              alt="Crown Dental Logo"
-              className="h-10 w-10 sm:h-11 sm:w-11 object-contain group-hover:scale-105 transition-transform"
-            />
-            <div className="leading-tight">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">NHA KHOA</p>
-              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-[#1f4fb2] leading-none my-0.5 group-hover:text-[#193f90] transition-colors">
-                CROWN Dental
-              </h1>
-              <p className="text-[8px] text-slate-400 uppercase tracking-wider font-semibold">NGƯỜI BẠN TRỌN ĐỜI</p>
-            </div>
-          </Link>
-
-          <div className="hidden h-8 w-px bg-slate-200 sm:block" />
+        {/* Left Side: Dynamic Clinic Branch Info for Dentist */}
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-50 border border-teal-100/80 text-teal-700">
+            <Building2 size={16} strokeWidth={2.2} />
+          </div>
+          <div className="flex items-center gap-2">
+            <span
+              className="text-sm font-bold text-slate-800 tracking-tight truncate max-w-[200px] sm:max-w-[340px]"
+              title={branchName || 'Chi nhánh Crown Dental'}
+            >
+              {branchName || 'Chi nhánh Crown Dental'}
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60 shrink-0">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Hoạt động
+            </span>
+          </div>
         </div>
 
 
@@ -68,8 +106,8 @@ export default function DentistHeader({ config }) {
         {/* Right Side: Actions */}
         <div className="flex items-center gap-2 sm:gap-4 ml-4">
 
-          {/* Role Badge */}
-          <div className="hidden sm:flex items-center justify-center rounded-full border border-teal-100 bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700 shadow-sm">
+          {/* Role Badge - Soft border radius */}
+          <div className="hidden sm:flex items-center justify-center rounded-lg border border-teal-200/70 bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-700 shadow-2xs">
             {roleLabel}
           </div>
 
@@ -78,7 +116,7 @@ export default function DentistHeader({ config }) {
             <NotificationDropdown role="DENTIST" />
 
             {/* Settings */}
-            <button className="rounded-full p-2 text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-700 active:scale-95">
+            <button className="rounded-lg p-2 text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-700 active:scale-95">
               <Settings className="h-5 w-5" />
             </button>
           </div>
@@ -90,7 +128,7 @@ export default function DentistHeader({ config }) {
           <div className="relative" ref={profileRef}>
             <button
               onClick={() => setIsProfileOpen(!isProfileOpen)}
-              className="flex items-center gap-2.5 rounded-full p-1 pr-3 transition-colors border border-transparent hover:border-slate-200 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+              className="flex items-center gap-2.5 rounded-xl p-1 pr-3 transition-colors border border-transparent hover:border-slate-200 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
             >
               <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-teal-100 text-sm font-bold text-teal-700">
                 {avatarUrl ? (

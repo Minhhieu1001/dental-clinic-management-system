@@ -20,7 +20,6 @@ const navItems = [
   { label: 'Dịch Vụ', to: '/services', hasDropdown: true },
   { label: 'Người Nổi Tiếng', to: '/celebrities' },
   { label: 'Kiến Thức Nha Khoa', to: '/knowledge' },
-  { label: 'Tuyển Dụng', to: '/careers' },
   { label: 'Tìm Phòng Khám', to: '/contact' },
 ]
 
@@ -29,7 +28,7 @@ export default function PublicLayout() {
   const [isChatOpen, setIsChatOpen] = useState(false)
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 flex flex-col" style={{ fontFamily: "'Be Vietnam Pro', 'Inter', sans-serif" }}>
+    <div className="min-h-screen bg-white text-slate-900 flex flex-col">
       <header className="sticky top-0 z-40 bg-white shadow-sm">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           
@@ -54,8 +53,8 @@ export default function PublicLayout() {
 
             {/* Khu vực ở giữa: Thanh tìm kiếm + Nhóm link phụ */}
             <div className="hidden lg:flex flex-col flex-1 max-w-xl px-4 justify-center">
-              {/* Ô tìm kiếm bo viên thuốc */}
-              <div className="w-full flex items-center gap-3 rounded-full bg-[#f4f6fa]/80 border border-transparent px-5 py-3 focus-within:border-slate-200 transition">
+              {/* Ô tìm kiếm bo nhẹ nhàng */}
+              <div className="w-full flex items-center gap-3 rounded-xl bg-[#f4f6fa]/80 border border-transparent px-4 py-2.5 focus-within:border-slate-200 transition">
                 <svg className="h-5 w-5 text-slate-400 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
@@ -66,8 +65,8 @@ export default function PublicLayout() {
                 />
               </div>
 
-              {/* Nhóm link phụ - Đã fix pl-12 giúp lùi chữ vào thẳng hàng với ô input tìm kiếm phía trên */}
-              <div className="flex items-center gap-5 mt-2 pl-12">
+              {/* Nhóm link phụ */}
+              <div className="flex items-center gap-5 mt-2 pl-4">
                 {topLinks.map((item) => (
                   <NavLink
                     key={item.to}
@@ -86,7 +85,7 @@ export default function PublicLayout() {
               {/* Nút Hotline */}
               <a
                 href="tel:19008059"
-                className="flex items-center justify-center gap-2 rounded-full bg-[#ebf3ff] px-6 h-[44px] text-[15px] font-black text-[#1f64f2] hover:bg-[#dfeaff] transition duration-200"
+                className="flex items-center justify-center gap-2 rounded-xl bg-[#ebf3ff] px-5 h-[42px] text-[14px] font-black text-[#1f64f2] hover:bg-[#dfeaff] transition duration-200"
               >
                 <svg className="h-5 w-5 mr-1" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.57a1 1 0 00-1.01.24l-2.2 2.2a15.045 15.045 0 01-6.59-6.59l2.2-2.21a.96.96 0 00.25-1C9.17 6.36 8.97 5.17 8.97 3.94c0-.55-.45-1-1-1H4.42c-.55 0-1 .45-1 1C3.42 14.17 10.33 21 19.42 21c.55 0 1-.45 1-1v-3.62c0-.55-.45-1-1-1z" />
@@ -98,7 +97,7 @@ export default function PublicLayout() {
               <button
                 type="button"
                 onClick={() => setIsRequestModalOpen(true)}
-                className="flex items-center justify-center gap-2.5 rounded-full px-6 h-[44px] text-[15px] font-bold text-white transition duration-200 shadow-md shadow-blue-900/5 hover:opacity-95 cursor-pointer active:scale-95"
+                className="flex items-center justify-center gap-2.5 rounded-xl px-5.5 h-[42px] text-[14px] font-bold text-white transition duration-200 shadow-sm hover:opacity-95 cursor-pointer active:scale-95"
                 style={{ background: 'linear-gradient(90deg, #1f4fb2 0%, #00a859 100%)' }}
               >
                 <svg className="h-5 w-5 mr-1" fill="currentColor" viewBox="0 0 24 24">

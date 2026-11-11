@@ -716,8 +716,8 @@ export default function RevenueSection({ data, loading }) {
                       </td>
 
                       {/* Thu ngân */}
-                      <td className="px-3.5 py-2.5 text-slate-600">
-                        {p.cashierName || 'Hệ thống'}
+                      <td className="px-3.5 py-2.5 text-slate-600 font-medium">
+                        {p.cashierName || 'Quầy thu ngân'}
                       </td>
                     </tr>
                   );

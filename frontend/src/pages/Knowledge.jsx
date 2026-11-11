@@ -269,10 +269,10 @@ export default function Knowledge() {
               key={cat}
               onClick={() => { setActiveCategory(cat); setCurrentPage(1) }}
               className={[
-                'px-4 py-1.5 rounded-full text-xs font-bold transition-colors',
+                'px-4 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer',
                 activeCategory === cat
-                  ? 'bg-[#132c6b] text-white shadow-sm'
-                  : 'bg-white border border-slate-200 text-slate-600 hover:border-[#1f4fb2] hover:text-[#1f4fb2]',
+                    ? 'bg-[#132c6b] text-white shadow-xs'
+                    : 'bg-white border border-slate-200 text-slate-600 hover:border-[#1f4fb2] hover:text-[#1f4fb2]',
               ].join(' ')}
             >
               {cat}
@@ -327,7 +327,7 @@ export default function Knowledge() {
               </p>
               <Link
                 to="/contact"
-                className="inline-block bg-[#00a859] hover:bg-[#00954d] transition-colors text-white text-sm font-bold px-6 py-2.5 rounded-full"
+                className="inline-block bg-[#00a859] hover:bg-[#00954d] transition-colors text-white text-sm font-bold px-6 py-2.5 rounded-xl shadow-xs"
               >
                 Đặt lịch ngay
               </Link>

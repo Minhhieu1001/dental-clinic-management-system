@@ -103,32 +103,7 @@ public class InvoiceServiceImpl implements InvoiceService {
             treatmentPlan = treatmentPlanRepository.findById(request.getTreatmentPlanId()).orElse(null);
         }
 
-        Employee employee = null;
-        if (request.getEmployeeId() != null) {
-            employee = employeeRepository.findById(request.getEmployeeId()).orElse(null);
-        }
-
-        if (employee == null) {
-            try {
-                Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-                if (auth != null && auth.isAuthenticated() && !auth.getName().equalsIgnoreCase("anonymousUser")) {
-                    User currentUser = null;
-                    if (auth.getPrincipal() instanceof CustomUserDetails cud) {
-                        currentUser = cud.getUser();
-                    } else {
-                        String principal = auth.getName();
-                        currentUser = userRepository.findByEmail(principal)
-                                .or(() -> userRepository.findByUsername(principal))
-                                .orElse(null);
-                    }
-                    if (currentUser != null) {
-                        employee = employeeRepository.findByUserId(currentUser.getId()).orElse(null);
-                    }
-                }
-            } catch (Exception ex) {
-                log.warn("Không thể xác định nhân viên lập hóa đơn từ session đăng nhập: {}", ex.getMessage());
-            }
-        }
+        Employee employee = resolveCurrentEmployee(request.getEmployeeId());
 
         Promotion promotion = null;
         if (request.getPromotionId() != null) {
@@ -250,15 +225,19 @@ public class InvoiceServiceImpl implements InvoiceService {
         validateNonNegative(serviceAmount, "Tiền dịch vụ");
         validateNonNegative(medicineAmount, "Tiền thuốc");
 
-        Employee employee = null;
-        if (request.getEmployeeId() != null) {
-            employee = employeeRepository.findById(request.getEmployeeId())
-                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhân viên thanh toán"));
+        Employee employee = resolveCurrentEmployee(request.getEmployeeId());
+        if (employee == null && invoice.getEmployee() != null) {
+            employee = invoice.getEmployee();
         }
 
         LocalDateTime paymentTime = LocalDateTime.now();
+        Branch branch = resolveBranch(
+                request.getBranchId(),
+                invoice.getBranch() != null ? invoice.getBranch() : (employee != null ? employee.getBranch() : null)
+        );
+
         PaymentTransactions tx = PaymentTransactions.builder()
-                .branch(resolveBranch(request.getBranchId(), null))
+                .branch(branch)
                 .invoice(invoice)
                 .employee(employee)
                 .paymentTransactionsName("Thanh toán hóa đơn " + invoice.getInvoiceCode())
@@ -291,6 +270,32 @@ public class InvoiceServiceImpl implements InvoiceService {
 
         Invoice updated = invoiceRepository.save(invoice);
         return mapToResponse(updated);
+    }
+
+    private Employee resolveCurrentEmployee(UUID requestedEmployeeId) {
+        if (requestedEmployeeId != null) {
+            return employeeRepository.findById(requestedEmployeeId).orElse(null);
+        }
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated() && !auth.getName().equalsIgnoreCase("anonymousUser")) {
+                User currentUser = null;
+                if (auth.getPrincipal() instanceof CustomUserDetails cud) {
+                    currentUser = cud.getUser();
+                } else {
+                    String principal = auth.getName();
+                    currentUser = userRepository.findByEmail(principal)
+                            .or(() -> userRepository.findByUsername(principal))
+                            .orElse(null);
+                }
+                if (currentUser != null) {
+                    return employeeRepository.findByUserId(currentUser.getId()).orElse(null);
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("Không thể xác định nhân viên từ session đăng nhập: {}", ex.getMessage());
+        }
+        return null;
     }
 
     private Branch resolveBranch(String branchId, Branch fallback) {

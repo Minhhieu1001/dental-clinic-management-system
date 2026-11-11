@@ -92,7 +92,6 @@ export default function AppRouter() {
           <Route path="celebrities" element={<Celebrities />} />
           <Route path="knowledge" element={<Knowledge />} />
           <Route path="knowledge/:id" element={<KnowledgeDetail />} />
-          <Route path="careers" element={<PublicInfo />} />
           <Route path="doctors" element={<PublicInfo />} />
         </Route>
 

@@ -775,11 +775,20 @@ public class DashboardServiceImpl implements DashboardService {
                 pt.payment_method,
                 pt.status,
                 pt.payment_time,
-                e.full_name AS cashier_name
+                COALESCE(
+                    NULLIF(TRIM(e.full_name), ''),
+                    NULLIF(TRIM(u_e.username), ''),
+                    NULLIF(TRIM(e_inv.full_name), ''),
+                    NULLIF(TRIM(u_inv.username), ''),
+                    'Lễ tân thu ngân'
+                ) AS cashier_name
             FROM payment_transactions pt
             LEFT JOIN invoices i ON pt.invoice_id = i.id
             LEFT JOIN patients p ON i.patient_id = p.id
             LEFT JOIN employees e ON pt.employee_id = e.id
+            LEFT JOIN users u_e ON e.user_id = u_e.id
+            LEFT JOIN employees e_inv ON i.employee_id = e_inv.id
+            LEFT JOIN users u_inv ON e_inv.user_id = u_inv.id
             WHERE pt.status = 'SUCCESS' AND pt.payment_time BETWEEN ? AND ?
         """ + buildPaymentFilterSql("pt", branchId, paymentStatus, paymentMethod, patientSegment) + """
             ORDER BY pt.payment_time DESC
