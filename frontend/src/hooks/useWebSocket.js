@@ -31,8 +31,10 @@ export function useWebSocket(
         const currentUser = useAuthStore.getState().user;
         const employeeId = currentUser?.employeeId || currentUser?.id || null;
 
+        const wsUrl = import.meta.env.VITE_WS_URL;
+
         const client = new Client({
-            webSocketFactory: () => new SockJS('http://localhost:8080/ws'),
+            webSocketFactory: () => new SockJS(wsUrl),
             reconnectDelay: 5000,
             onConnect: () => {
                 // 1. Subscribe nhận thông báo cập nhật lịch hẹn chung
