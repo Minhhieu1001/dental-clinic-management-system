@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -18,13 +20,9 @@ public class XrayImage {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "medical_record_id")
-    private MedicalRecord medicalRecord;
-
-    // Đợt khám (lần khám) mà phim X-quang được chụp / phân tích - cho phép null với dữ liệu cũ
-    @ManyToOne(fetch = FetchType.LAZY, optional = true)
-    @JoinColumn(name = "examination_result_id", nullable = true)
+    // Mỗi đợt khám có tối đa một bản ghi ảnh X-quang.
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "examination_result_id", nullable = false, unique = true)
     private ExaminationResult examinationResult;
 
     @Column(length = 255)
@@ -36,6 +34,7 @@ public class XrayImage {
 
     private LocalDateTime captureDate;
 
-    @OneToOne(mappedBy = "xrayImage", fetch = FetchType.LAZY)
-    private XrayAnalysis xrayAnalysis;
+    @Builder.Default
+    @OneToMany(mappedBy = "xrayImage", fetch = FetchType.LAZY)
+    private List<XrayAnalysis> analyses = new ArrayList<>();
 }

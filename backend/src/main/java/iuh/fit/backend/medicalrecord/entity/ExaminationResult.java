@@ -59,6 +59,10 @@ public class ExaminationResult {
     @OneToOne(mappedBy = "examinationResult", fetch = FetchType.LAZY)
     private TreatmentPlan treatmentPlan;
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @OneToOne(mappedBy = "examinationResult", fetch = FetchType.LAZY)
+    private XrayImage xrayImage;
+
     @Builder.Default
     @OneToMany(mappedBy = "examinationResult", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<Prescription> prescriptions = new ArrayList<>();
@@ -66,4 +70,5 @@ public class ExaminationResult {
     @Builder.Default
     @OneToMany(mappedBy = "examinationResult", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<FollowUpAppointment> followUpAppointments = new ArrayList<>();
+    
 }

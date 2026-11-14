@@ -26,7 +26,7 @@ public class XrayAnalysisController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> analyze(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "medicalRecordId", required = false) UUID medicalRecordId,
-            @RequestParam(value = "examinationResultId", required = false) UUID examinationResultId,
+            @RequestParam("examinationResultId") UUID examinationResultId,
             @RequestParam(value = "imageType", required = false) String imageType,
             @RequestParam(value = "patientAge", required = false) String patientAge,
             @RequestParam(value = "chiefComplaint", required = false) String chiefComplaint) {

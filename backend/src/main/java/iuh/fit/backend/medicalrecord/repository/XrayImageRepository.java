@@ -5,13 +5,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface XrayImageRepository extends JpaRepository<XrayImage, UUID> {
 
-    List<XrayImage> findByMedicalRecordIdOrderByCaptureDateDesc(UUID medicalRecordId);
+    List<XrayImage> findByExaminationResult_MedicalRecord_IdOrderByCaptureDateDesc(UUID medicalRecordId);
 
-    List<XrayImage> findByExaminationResultIdOrderByCaptureDateDesc(UUID examinationResultId);
+    Optional<XrayImage> findByExaminationResultId(UUID examinationResultId);
 }
 

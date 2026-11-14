@@ -9,11 +9,11 @@ import iuh.fit.backend.ai.xray.XrayImagePreprocessor.PreparedImage;
 import iuh.fit.backend.ai.xray.XrayPromptLibrary;
 import iuh.fit.backend.ai.xray.XrayPromptLibrary.Tile;
 import iuh.fit.backend.medicalrecord.entity.ExaminationResult;
-import iuh.fit.backend.medicalrecord.entity.MedicalRecord;
+
 import iuh.fit.backend.medicalrecord.entity.XrayAnalysis;
 import iuh.fit.backend.medicalrecord.entity.XrayImage;
 import iuh.fit.backend.medicalrecord.repository.ExaminationResultRepository;
-import iuh.fit.backend.medicalrecord.repository.MedicalRecordRepository;
+
 import iuh.fit.backend.medicalrecord.repository.XrayAnalysisRepository;
 import iuh.fit.backend.medicalrecord.repository.XrayImageRepository;
 import iuh.fit.backend.storage.service.MediaService;
@@ -73,7 +73,6 @@ public class XrayAiAnalysisService {
     private final DentalVisionEngine dentalVisionEngine;
     private final XrayImageRepository xrayImageRepository;
     private final XrayAnalysisRepository xrayAnalysisRepository;
-    private final MedicalRecordRepository medicalRecordRepository;
     private final ExaminationResultRepository examinationResultRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
@@ -115,7 +114,6 @@ public class XrayAiAnalysisService {
                                  DentalVisionEngine dentalVisionEngine,
                                  XrayImageRepository xrayImageRepository,
                                  XrayAnalysisRepository xrayAnalysisRepository,
-                                 MedicalRecordRepository medicalRecordRepository,
                                  ExaminationResultRepository examinationResultRepository) {
         // ChatClient riêng cho đọc phim: không gắn tools / chat memory của trợ lý tư vấn bệnh nhân
         this.chatClient = builder.build();
@@ -124,7 +122,6 @@ public class XrayAiAnalysisService {
         this.dentalVisionEngine = dentalVisionEngine;
         this.xrayImageRepository = xrayImageRepository;
         this.xrayAnalysisRepository = xrayAnalysisRepository;
-        this.medicalRecordRepository = medicalRecordRepository;
         this.examinationResultRepository = examinationResultRepository;
     }
 
@@ -152,6 +149,15 @@ public class XrayAiAnalysisService {
                                        String patientAge,
                                        String chiefComplaint) {
         validateFile(file);
+        if (examinationResultId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cần chọn đợt khám để lưu ảnh X-quang.");
+        }
+        ExaminationResult exam = examinationResultRepository.findById(examinationResultId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy đợt khám."));
+        if (medicalRecordId != null && (exam.getMedicalRecord() == null
+                || !medicalRecordId.equals(exam.getMedicalRecord().getId()))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Đợt khám không thuộc hồ sơ bệnh án đã chọn.");
+        }
         long startedAt = System.currentTimeMillis();
 
         byte[] bytes;
@@ -358,25 +364,23 @@ public class XrayAiAnalysisService {
     /** Lịch sử phim X-quang đã phân tích của đợt khám / hồ sơ bệnh án. */
     public List<Map<String, Object>> history(UUID medicalRecordId, UUID examinationResultId) {
         List<XrayImage> images = examinationResultId != null
-                ? xrayImageRepository.findByExaminationResultIdOrderByCaptureDateDesc(examinationResultId)
-                : xrayImageRepository.findByMedicalRecordIdOrderByCaptureDateDesc(medicalRecordId);
+                ? xrayImageRepository.findByExaminationResultId(examinationResultId).stream().toList()
+                : xrayImageRepository.findByExaminationResult_MedicalRecord_IdOrderByCaptureDateDesc(medicalRecordId);
 
         List<Map<String, Object>> list = new ArrayList<>();
         for (XrayImage image : images) {
-            Map<String, Object> item = xrayAnalysisRepository.findByXrayImageId(image.getId())
-                    .map(a -> {
-                        Map<String, Object> m = parseStored(a.getResult());
-                        m.put("analysisId", a.getId());
-                        m.put("analyzedAt", a.getAnalyzedAt() != null ? a.getAnalyzedAt().toString() : null);
-                        return m;
-                    })
-                    .orElseGet(LinkedHashMap::new);
-            item.put("xrayImageId", image.getId());
-            item.put("imageUrl", image.getImageUrl());
-            item.putIfAbsent("imageType", image.getImageType());
-            item.put("captureDate", image.getCaptureDate() != null ? image.getCaptureDate().toString() : null);
-            item.put("disclaimer", DISCLAIMER);
-            list.add(item);
+            for (XrayAnalysis analysis : xrayAnalysisRepository.findByXrayImageIdOrderByAnalyzedAtDesc(image.getId())) {
+                Map<String, Object> item = parseStored(analysis.getResult());
+                item.put("analysisId", analysis.getId());
+                item.put("analyzedAt", analysis.getAnalyzedAt() != null ? analysis.getAnalyzedAt().toString() : null);
+                item.put("xrayImageId", image.getId());
+                // Keep the image snapshot associated with each historical analysis.
+                item.putIfAbsent("imageUrl", image.getImageUrl());
+                item.putIfAbsent("imageType", image.getImageType());
+                item.putIfAbsent("captureDate", image.getCaptureDate() != null ? image.getCaptureDate().toString() : null);
+                item.put("disclaimer", DISCLAIMER);
+                list.add(item);
+            }
         }
         return list;
     }
@@ -425,21 +429,15 @@ public class XrayAiAnalysisService {
         try {
             imageUrl = mediaService.uploadImage(file);
 
-            MedicalRecord medicalRecord = medicalRecordId != null
-                    ? medicalRecordRepository.findById(medicalRecordId).orElse(null) : null;
-            ExaminationResult examinationResult = examinationResultId != null
-                    ? examinationResultRepository.findById(examinationResultId).orElse(null) : null;
-            if (medicalRecord == null && examinationResult != null) {
-                medicalRecord = examinationResult.getMedicalRecord();
-            }
-
-            XrayImage image = xrayImageRepository.save(XrayImage.builder()
-                    .medicalRecord(medicalRecord)
-                    .examinationResult(examinationResult)
-                    .imageUrl(imageUrl)
-                    .imageType(String.valueOf(result.getOrDefault("imageType", declaredType)))
-                    .captureDate(now)
-                    .build());
+            ExaminationResult examinationResult = examinationResultRepository.findById(examinationResultId)
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đợt khám"));
+            XrayImage image = xrayImageRepository.findByExaminationResultId(examinationResultId)
+                    .orElseGet(() -> XrayImage.builder().examinationResult(examinationResult).build());
+            image.setImageUrl(imageUrl);
+            image.setImageType(String.valueOf(result.getOrDefault("imageType", declaredType)));
+            image.setCaptureDate(now);
+            image = xrayImageRepository.save(image);
+            result.put("captureDate", now.toString());
             xrayImageId = image.getId();
 
             result.put("xrayImageId", xrayImageId);
