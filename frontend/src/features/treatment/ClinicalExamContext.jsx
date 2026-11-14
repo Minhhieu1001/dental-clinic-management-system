@@ -27,6 +27,11 @@ import {
 } from '../../services/toothRecord.service';
 import { getPrimaryDiagnoses, getToothStatuses } from '../../services/systemDictionary.service';
 import {
+  analyzeXrayImage,
+  getXrayAnalysisHistory,
+  saveXrayDoctorReview,
+} from '../../services/xrayAi.service';
+import {
   mapCariesDepthToLevel,
   mapLocationToBackendEnum,
   mapBackendEnumToLocation,
@@ -160,6 +165,12 @@ export function ClinicalExamProvider({ children }) {
   const [aiOverlayEnabled, setAiOverlayEnabled] = useState(true);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isAiAnalyzing, setIsAiAnalyzing] = useState(false);
+  const [xrayAnalysis, setXrayAnalysis] = useState(null); // Kết quả AI đọc phim đang xem
+  const [xrayHistory, setXrayHistory] = useState([]); // Lịch sử phim đã phân tích của đợt khám
+  const [isLoadingXrayHistory, setIsLoadingXrayHistory] = useState(false);
+  const [isXrayModalOpen, setIsXrayModalOpen] = useState(false);
+  // Dữ liệu điền sẵn cho modal chẩn đoán (Bước 3) khi bác sĩ chuyển phát hiện AI đã chấp nhận
+  const [pendingDiagnosisPrefill, setPendingDiagnosisPrefill] = useState(null);
 
   // 6. Doctor Diagnosis State
   const [diagnosisScope, setDiagnosisScope] = useState('MULTI_TEETH'); // 'FULL_MOUTH' | 'UPPER_JAW' | 'LOWER_JAW' | 'MULTI_TEETH'
@@ -1563,13 +1574,98 @@ export function ClinicalExamProvider({ children }) {
   };
 
   const triggerAiAnalysis = () => {
+    // Mở trình phân tích X-quang AI toàn màn hình (tải phim & đọc phim thật bằng AI)
+    setIsXrayModalOpen(true);
+  };
+
+  // ================= X-QUANG & AI: tải lịch sử phim của đợt khám =================
+  const loadXrayHistory = useCallback(async () => {
+    if (!examinationResultId && !medicalRecord?.id) {
+      setXrayHistory([]);
+      setXrayAnalysis(null);
+      return;
+    }
+    try {
+      setIsLoadingXrayHistory(true);
+      const list = await getXrayAnalysisHistory({
+        examinationResultId: examinationResultId || undefined,
+        medicalRecordId: examinationResultId ? undefined : medicalRecord?.id,
+      });
+      setXrayHistory(list);
+      setXrayAnalysis(list[0] || null);
+    } catch (err) {
+      console.warn('Không tải được lịch sử phân tích X-quang:', err);
+      setXrayHistory([]);
+      setXrayAnalysis(null);
+    } finally {
+      setIsLoadingXrayHistory(false);
+    }
+  }, [examinationResultId, medicalRecord?.id]);
+
+  useEffect(() => {
+    loadXrayHistory();
+  }, [loadXrayHistory]);
+
+  // Gửi phim X-quang cho AI đọc phim
+  const analyzeXrayFile = async (file, imageType = 'AUTO') => {
+    if (!file) return null;
+    if (isHistoricalSession) {
+      toast.error('Đợt khám đã khóa, không thể phân tích phim mới.');
+      return null;
+    }
+    const ageYears = patient?.dateOfBirth
+      ? new Date().getFullYear() - new Date(patient.dateOfBirth).getFullYear()
+      : '';
     setIsAiAnalyzing(true);
-    toast.loading('AI đang phân tích cấu trúc xương và răng trên phim X-quang...', { id: 'ai-scan' });
-    setTimeout(() => {
-      setIsAiAnalyzing(false);
+    toast.loading('AI đang tiền xử lý, phân loại và đọc phim (mô hình lớn + soi chi tiết từng vùng)... có thể mất 1-2 phút', { id: 'ai-scan' });
+    try {
+      const result = await analyzeXrayImage(file, {
+        medicalRecordId: medicalRecord?.id,
+        examinationResultId: examinationResultId || undefined,
+        imageType,
+        patientAge: Number.isFinite(ageYears) && ageYears > 0 ? ageYears : '',
+        chiefComplaint: examReason || '',
+      });
+      setXrayAnalysis(result);
+      setXrayHistory((prev) => [result, ...prev.filter((h) => h.analysisId !== result.analysisId || !result.analysisId)]);
       setAiOverlayEnabled(true);
-      toast.success(`AI đã phát hiện tổn thương nghi ngờ sâu ngà trên Răng ${selectedTooth}!`, { id: 'ai-scan' });
-    }, 1200);
+      if (result?.isDentalRadiograph === false) {
+        toast.error('Ảnh tải lên không phải phim X-quang nha khoa hợp lệ.', { id: 'ai-scan' });
+      } else {
+        const n = result?.findings?.length || 0;
+        toast.success(n > 0 ? `AI phát hiện ${n} dấu hiệu cần đối soát trên phim.` : 'AI không ghi nhận tổn thương rõ ràng trên phim.', {
+          id: 'ai-scan',
+        });
+      }
+      if (result?.storageWarning) toast(result.storageWarning, { icon: '⚠️' });
+      return result;
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || 'Phân tích X-quang thất bại';
+      toast.error(msg, { id: 'ai-scan' });
+      return null;
+    } finally {
+      setIsAiAnalyzing(false);
+    }
+  };
+
+  // Lưu kết quả đối soát của bác sĩ cho lần phân tích hiện tại
+  const saveXrayReview = async ({ decisions, doctorNote }) => {
+    if (!xrayAnalysis) return false;
+    const review = { decisions, doctorNote, reviewedBy: treatingDoctor };
+    if (!xrayAnalysis.analysisId) {
+      setXrayAnalysis((prev) => ({ ...prev, doctorReview: { ...review, status: 'REVIEWED', reviewedAt: new Date().toISOString() } }));
+      return true;
+    }
+    try {
+      const saved = await saveXrayDoctorReview(xrayAnalysis.analysisId, review);
+      const merged = { ...xrayAnalysis, ...saved, doctorReview: saved?.doctorReview || review };
+      setXrayAnalysis(merged);
+      setXrayHistory((prev) => prev.map((h) => (h.analysisId === merged.analysisId ? merged : h)));
+      return true;
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Không lưu được kết quả đối soát');
+      return false;
+    }
   };
 
   const value = {
@@ -1665,6 +1761,17 @@ export function ClinicalExamProvider({ children }) {
     setSelectedImageIndex,
     isAiAnalyzing,
     triggerAiAnalysis,
+    xrayAnalysis,
+    setXrayAnalysis,
+    xrayHistory,
+    isLoadingXrayHistory,
+    loadXrayHistory,
+    analyzeXrayFile,
+    saveXrayReview,
+    isXrayModalOpen,
+    setIsXrayModalOpen,
+    pendingDiagnosisPrefill,
+    setPendingDiagnosisPrefill,
 
     // Diagnosis & Scopes (Toàn hàm / 1 Răng / Nhiều răng / Cung hàm)
     diagnosisScope,

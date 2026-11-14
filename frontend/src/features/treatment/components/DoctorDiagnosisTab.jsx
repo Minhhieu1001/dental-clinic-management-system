@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -68,22 +68,35 @@ const MOCK_AI_DETECTIONS = [
 
 export default function DoctorDiagnosisTab() {
   const {
-    examinedTeeth,
-    diagnosisList,
-    primaryDiagnoses,
-    toothConditions,
+    examinedTeeth = [],
+    diagnosisList = [],
+    primaryDiagnoses = [],
+    toothConditions = [],
     handleRemoveDiagnosisItem,
     handleSaveDiagnosisFromModal,
-    handleConfirmDiagnosis,
     handleCreateTreatmentPlan,
     setActiveTab,
     isHistoricalSession,
+    xrayAnalysis,
+    setIsXrayModalOpen,
+    pendingDiagnosisPrefill,
+    setPendingDiagnosisPrefill,
   } = useClinicalExam();
 
   // State quản lý Modal Chẩn Đoán Y Khoa (Dùng chung cho cả Thêm & Sửa)
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('ADD'); // 'ADD' | 'EDIT'
   const [modalInitialData, setModalInitialData] = useState(null);
+
+  // Tự động mở modal khi có dữ liệu prefill chuyển từ Bước 2 hoặc Modal lớn
+  useEffect(() => {
+    if (pendingDiagnosisPrefill) {
+      setModalMode('ADD');
+      setModalInitialData(pendingDiagnosisPrefill);
+      setIsModalOpen(true);
+      setPendingDiagnosisPrefill(null);
+    }
+  }, [pendingDiagnosisPrefill, setPendingDiagnosisPrefill]);
 
   // Bộ lọc bảng hồ sơ răng lâm sàng
   const [toothSearchQuery, setToothSearchQuery] = useState('');
@@ -118,7 +131,63 @@ export default function DoctorDiagnosisTab() {
     });
   }, [examinedTeeth, filterOnlyAbnormal, toothSearchQuery]);
 
-  // Mở modal thêm chẩn đoán mới trống
+  // Danh sách các phát hiện AI (từ X-quang thật đã phân tích)
+  // CHỈ HIỂN THỊ CÁC PHÁT HIỆN BÁC SĨ ĐÃ BẤM ĐỒNG Ý Ở BƯỚC 2
+  const aiDetections = useMemo(() => {
+    if (xrayAnalysis?.findings && xrayAnalysis.findings.length > 0) {
+      const decisions = xrayAnalysis?.doctorReview?.decisions || {};
+
+      return xrayAnalysis.findings
+        .filter((f) => decisions[f.id] === 'ACCEPTED')
+        .map((f) => {
+          const tone = f.severity === 'Nặng'
+            ? { bar: 'from-rose-500 to-red-600', badge: 'bg-rose-50 text-rose-700 border-rose-200' }
+            : f.severity === 'Nhẹ'
+              ? { bar: 'from-emerald-500 to-teal-600', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' }
+              : { bar: 'from-amber-500 to-orange-600', badge: 'bg-amber-50 text-amber-800 border-amber-200' };
+
+          return {
+            id: f.id,
+            toothNumber: f.toothNumber,
+            finding: f.label,
+            location: f.surfaces || f.region || '',
+            confidence: f.confidence,
+            icdCode: f.icd10 || '',
+            severity: f.severity || 'Trung bình',
+            recommendation: f.recommendation || '',
+            badgeColor: tone.badge,
+            barColor: tone.bar,
+            rawFinding: f,
+            decision: 'ACCEPTED',
+            isAccepted: true,
+          };
+        });
+    }
+    return [];
+  }, [xrayAnalysis]);
+
+  // Mở modal thêm chẩn đoán nhanh từ phát hiện của AI
+  const handleDiagnoseFromAiFinding = (aiItem) => {
+    if (isHistoricalSession) return;
+    setModalMode('ADD');
+    const matchedDiag = primaryDiagnoses?.find(
+      (d) =>
+        (aiItem.icdCode && d.code?.toLowerCase() === aiItem.icdCode.toLowerCase()) ||
+        d.label?.toLowerCase().includes(aiItem.finding?.toLowerCase().slice(0, 10))
+    );
+    const selectedTeethNumbers = aiItem.toothNumber ? [Number(aiItem.toothNumber)] : [];
+
+    setModalInitialData({
+      scope: 'MULTI_TEETH',
+      toothNumber: aiItem.toothNumber,
+      selectedTeeth: selectedTeethNumbers,
+      primaryDiagnosis: matchedDiag?.label || aiItem.finding || 'Bệnh lý răng miệng',
+      severity: aiItem.severity || 'Trung bình',
+      notes: `${aiItem.finding} - Vị trí: ${aiItem.location}. Khuyến nghị: ${aiItem.recommendation}`,
+      sources: ['Phim X-quang', 'Đề xuất AI'],
+    });
+    setIsModalOpen(true);
+  };
   const handleOpenAddModal = () => {
     if (isHistoricalSession) return;
     setModalMode('ADD');
@@ -215,7 +284,7 @@ export default function DoctorDiagnosisTab() {
             </span>
             <div className="flex items-baseline gap-1.5">
               <span className="text-xl sm:text-2xl font-black text-purple-900 font-mono">
-                3
+                {aiDetections.length}
               </span>
               <span className="text-xs font-semibold text-slate-400">phát hiện</span>
             </div>
@@ -321,8 +390,6 @@ export default function DoctorDiagnosisTab() {
                 <tbody className="divide-y divide-slate-100">
                   {filteredExaminedTeeth.map((t, idx) => {
                     const hasCaries = t.cariesStatus === 'YES' || t.hasCaries;
-                    const toothStatus = t.toothStatus || '';
-                    const isAbnormal = hasCaries || toothStatus !== 'Bình thường';
 
                     return (
                       <tr key={t.toothNumber || idx} className="hover:bg-teal-50/30 transition-colors">
@@ -420,61 +487,118 @@ export default function DoctorDiagnosisTab() {
                     Online
                   </span>
                 </div>
-
               </div>
             </div>
 
+            <button
+              type="button"
+              onClick={() => setIsXrayModalOpen(true)}
+              className="text-[10.5px] font-extrabold text-purple-700 hover:text-purple-900 bg-white border border-purple-200 px-2 py-1 rounded-lg hover:bg-purple-100 transition-colors cursor-pointer self-start sm:self-auto"
+              title="Mở toàn màn hình xem chi tiết 32 răng trên X-quang"
+            >
+              Mở X-quang AI
+            </button>
           </div>
 
           {/* Nội dung Bảng 2: Cuộn dọc khi vượt quá chiều cao */}
           <div className="p-3 overflow-x-auto overflow-y-auto flex-1 min-h-0">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead className="sticky top-0 bg-purple-50 z-10 shadow-2xs">
-                <tr className="border-b border-purple-100 text-[10.5px] font-bold text-slate-600 uppercase tracking-wider">
-                  <th className="py-2 px-2.5 w-14">Vị trí</th>
-                  <th className="py-2 px-2.5">Tổn thương AI nhận diện</th>
-                  <th className="py-2 px-2 text-center w-20">Độ tin cậy</th>
-                  <th className="py-2 px-2.5">Khuyến nghị xử lý</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-purple-50">
-                {MOCK_AI_DETECTIONS.map((item) => (
-                  <tr key={item.id} className="hover:bg-purple-50/50 transition-colors">
-                    <td className="py-2 px-2.5">
-                      <span className="inline-block font-mono font-black text-purple-950 bg-purple-100/90 border border-purple-200 px-2 py-0.5 rounded-md text-xs shadow-2xs">
-                        R{item.toothNumber}
-                      </span>
-                    </td>
-                    <td className="py-2 px-2.5">
-                      <div className="font-bold text-slate-900 text-xs leading-tight">
-                        {item.finding}
-                      </div>
-                      <div className="text-[10.5px] text-slate-500 mt-0.5">
-                        {item.location}
-                      </div>
-                    </td>
-                    <td className="py-2 px-2 text-center">
-                      <div className="inline-flex flex-col items-center">
-                        <span className="font-extrabold text-[11px] text-purple-900 font-mono">
-                          {item.confidence}%
-                        </span>
-                        <div className="w-14 h-1.5 bg-slate-100 rounded-full overflow-hidden mt-0.5 border border-slate-200/80">
-                          <div
-                            className={`h-full bg-gradient-to-r ${item.barColor} rounded-full`}
-                            style={{ width: `${item.confidence}%` }}
-                          />
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-2 px-2.5 text-slate-700 text-[11px]">
-                      <div className="font-medium line-clamp-2">
-                        {item.recommendation}
-                      </div>
-                    </td>
+            {aiDetections.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center p-4 text-slate-400 space-y-2">
+                <BrainCircuit size={26} className="text-purple-300" />
+                <p className="text-xs font-bold text-slate-600">Chưa có đề xuất phân tích AI</p>
+                <p className="text-[11px] text-slate-400 max-w-xs">
+                  Vui lòng tải phim X-quang và phân tích ở Bước 2 để AI trích xuất các tổn thương nghi ngờ.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('ai')}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                >
+                  <span>Chuyển sang Bước 2: Phân tích X-quang</span>
+                </button>
+              </div>
+            ) : (
+              <table className="w-full text-left border-collapse text-xs">
+                <thead className="sticky top-0 bg-purple-50 z-10 shadow-2xs">
+                  <tr className="border-b border-purple-100 text-[10.5px] font-bold text-slate-600 uppercase tracking-wider">
+                    <th className="py-2 px-2.5 w-14">Vị trí</th>
+                    <th className="py-2 px-2.5">Tổn thương AI nhận diện</th>
+                    <th className="py-2 px-2 text-center w-20">Độ tin cậy</th>
+                    <th className="py-2 px-2.5">Khuyến nghị xử lý</th>
+                    <th className="py-2 px-2 text-center w-16">Lập chẩn đoán</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-purple-50">
+                  {aiDetections.map((item) => (
+                    <tr
+                      key={item.id}
+                      className={`transition-colors ${
+                        item.isAccepted
+                          ? 'bg-emerald-50/30 hover:bg-emerald-50/50'
+                          : 'hover:bg-purple-50/50'
+                      }`}
+                    >
+                      <td className="py-2 px-2.5">
+                        <span className="inline-block font-mono font-black px-2 py-0.5 rounded-md text-xs shadow-2xs text-purple-950 bg-purple-100/90 border border-purple-200">
+                          R{item.toothNumber}
+                        </span>
+                      </td>
+                      <td className="py-2 px-2.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-xs leading-tight text-slate-900">
+                            {item.finding}
+                          </span>
+                          {item.isAccepted && (
+                            <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.2 rounded border border-emerald-300">
+                              Đã đồng ý
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[10.5px] text-slate-500 mt-0.5">
+                          {item.location}
+                        </div>
+                      </td>
+                      <td className="py-2 px-2 text-center">
+                        <div className="inline-flex flex-col items-center">
+                          <span className="font-extrabold text-[11px] text-purple-900 font-mono">
+                            {item.confidence}%
+                          </span>
+                          <div className="w-14 h-1.5 bg-slate-100 rounded-full overflow-hidden mt-0.5 border border-slate-200/80">
+                            <div
+                              className={`h-full bg-gradient-to-r ${item.barColor} rounded-full`}
+                              style={{ width: `${item.confidence}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-2 px-2.5 text-slate-700 text-[11px]">
+                        <div className="font-medium line-clamp-2">
+                          {item.recommendation}
+                        </div>
+                      </td>
+                      <td className="py-2 px-2 text-center">
+                        <button
+                          type="button"
+                          disabled={isHistoricalSession}
+                          onClick={() => handleDiagnoseFromAiFinding(item)}
+                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg font-bold text-[10.5px] transition-all shadow-2xs ${
+                            isHistoricalSession
+                              ? 'cursor-not-allowed opacity-40'
+                              : item.isAccepted
+                                ? 'bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer shadow-xs'
+                                : 'bg-purple-100 text-purple-900 hover:bg-purple-700 hover:text-white border border-purple-200 cursor-pointer'
+                          }`}
+                          title={`Lập kết luận chẩn đoán từ đề xuất AI cho Răng ${item.toothNumber}`}
+                        >
+                          <Plus size={11} />
+                          <span>Thêm</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       </div>

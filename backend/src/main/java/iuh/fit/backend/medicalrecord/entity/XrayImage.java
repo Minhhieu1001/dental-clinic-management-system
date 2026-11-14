@@ -22,8 +22,17 @@ public class XrayImage {
     @JoinColumn(name = "medical_record_id")
     private MedicalRecord medicalRecord;
 
+    // Đợt khám (lần khám) mà phim X-quang được chụp / phân tích - cho phép null với dữ liệu cũ
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "examination_result_id", nullable = true)
+    private ExaminationResult examinationResult;
+
     @Column(length = 255)
     private String imageUrl;
+
+    // Loại phim: PANORAMIC | PERIAPICAL | BITEWING | CEPHALOMETRIC | OTHER
+    @Column(length = 30)
+    private String imageType;
 
     private LocalDateTime captureDate;
 

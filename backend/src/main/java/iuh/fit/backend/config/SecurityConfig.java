@@ -68,6 +68,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/patient-relationships/linked")
                                 .hasAnyRole("EMPLOYEE", "DENTIST")
                         .requestMatchers("/api/v1/patient-relationships/**").hasRole("PATIENT")
+                        // Dữ liệu phim X-quang & kết quả AI đọc phim là dữ liệu y khoa: chỉ bác sĩ / quản trị truy cập
+                        .requestMatchers("/api/v1/ai/xray/**").hasAnyRole("DENTIST", "ADMIN")
                         .requestMatchers(
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/patient/login",

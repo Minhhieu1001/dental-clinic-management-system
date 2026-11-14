@@ -4,6 +4,9 @@
 -- Dùng ON CONFLICT DO NOTHING để tránh lỗi trùng dữ liệu
 -- ============================================================
 
+-- Dọn dẹp ràng buộc khóa ngoại không tương thích kiểu dữ liệu nếu có
+ALTER TABLE IF EXISTS invoice_details DROP CONSTRAINT IF EXISTS fk6olubg9il8wjve6h3dql5wpi;
+
 -- Tự động bổ sung cột version cho Optimistic Locking
 ALTER TABLE patients ADD COLUMN IF NOT EXISTS version BIGINT DEFAULT 0;
 ALTER TABLE appointments ADD COLUMN IF NOT EXISTS version BIGINT DEFAULT 0;
