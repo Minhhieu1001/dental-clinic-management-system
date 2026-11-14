@@ -1,0 +1,11 @@
+.git
+.idea
+.agents
+.env
+.env.*
+target
+uploads
+tessdata
+*.log
+*.iml
+src/main/resources/ai/document/vectorstore.json
