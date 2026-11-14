@@ -1,6 +1,11 @@
 import api from './axios';
 import { createUser } from './employee.service';
 
+export const getDentists = async () => {
+  const response = await api.get('/dentists');
+  return response.data?.data ?? response.data?.result ?? response.data ?? [];
+};
+
 export const getDentistsList = async () => {
   const response = await api.get('/dentists/list');
   return response.data;

@@ -22,7 +22,7 @@ import {
 import { getBranches } from '../services/clinic.service'
 import { getAdminServices } from '../services/service.service'
 import { createAppointmentRequest } from '../services/appointmentRequest.service'
-import { createAppointment } from '../services/api'
+import { createPublicAppointment as createAppointment } from '../services/appointment.service'
 import toast from 'react-hot-toast'
 
 const DEFAULT_BRANCHES = [
@@ -333,11 +333,10 @@ export default function Contact() {
                   key={tab.key}
                   type="button"
                   onClick={() => setSelectedCityTab(tab.key)}
-                  className={`rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${
-                    isActive
+                  className={`rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${isActive
                       ? 'bg-[#1f4fb2] text-white shadow-sm'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900'
-                  }`}
+                    }`}
                 >
                   {tab.label}
                 </button>
@@ -395,11 +394,10 @@ export default function Contact() {
                 return (
                   <div
                     key={branch.branchId}
-                    className={`group rounded-2xl bg-white border transition-all duration-200 flex flex-col justify-between overflow-hidden ${
-                      isSelected
+                    className={`group rounded-2xl bg-white border transition-all duration-200 flex flex-col justify-between overflow-hidden ${isSelected
                         ? 'border-[#1f4fb2] ring-2 ring-[#1f4fb2]/20 shadow-lg'
                         : 'border-slate-200/90 hover:border-blue-300 shadow-sm hover:shadow-md'
-                    }`}
+                      }`}
                   >
                     <div>
                       {/* Branch Image */}
@@ -475,11 +473,10 @@ export default function Contact() {
                       <button
                         type="button"
                         onClick={() => setSelectedBranchId(branch.branchId)}
-                        className={`rounded-xl border py-2 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                          isSelected
+                        className={`rounded-xl border py-2 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${isSelected
                             ? 'border-[#1f4fb2] bg-blue-50/70 text-[#1f4fb2]'
                             : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                        }`}
+                          }`}
                       >
                         <Navigation size={13} />
                         <span>Xem bản đồ</span>

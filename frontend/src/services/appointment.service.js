@@ -20,9 +20,15 @@ export const getAppointmentsByWeek = async (date) => {
   return response.data;
 };
 
-// Create new appointment
+// Create new appointment (nội bộ nhân viên / bệnh nhân)
 export const createAppointment = async (data) => {
   const response = await api.post('/appointments', data);
+  return response.data;
+};
+
+// Đặt lịch hẹn công khai (khách vãng lai từ trang Promotions/Contact)
+export const createPublicAppointment = async (data) => {
+  const response = await api.post('/public/appointments', data);
   return response.data;
 };
 

@@ -1,0 +1,58 @@
+name: dental-clinic-dev
+
+services:
+  db:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_DB: dental_clinic
+      POSTGRES_USER: dental
+      POSTGRES_PASSWORD: dental_local_only
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dental -d dental_clinic"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build: ./backend
+    env_file:
+      - path: ./backend/.env
+        required: false
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/dental_clinic
+      SPRING_DATASOURCE_USERNAME: dental
+      SPRING_DATASOURCE_PASSWORD: dental_local_only
+      APP_CORS_ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173
+      APP_WEBSOCKET_ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173
+    ports:
+      - "127.0.0.1:8081:8080"
+    volumes:
+      - uploads:/app/uploads
+      - ai_data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/v1/promotions"]
+      interval: 15s
+      timeout: 5s
+      start_period: 180s
+      retries: 10
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "127.0.0.1:3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  uploads:
+  ai_data:

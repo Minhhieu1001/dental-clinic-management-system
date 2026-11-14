@@ -4,77 +4,157 @@
 -- Dùng ON CONFLICT DO NOTHING để tránh lỗi trùng dữ liệu
 -- ============================================================
 
--- Tự động bổ sung cột version cho Optimistic Locking
-ALTER TABLE patients ADD COLUMN IF NOT EXISTS version BIGINT DEFAULT 0;
-ALTER TABLE appointments ADD COLUMN IF NOT EXISTS version BIGINT DEFAULT 0;
-ALTER TABLE appointment_requests ADD COLUMN IF NOT EXISTS version BIGINT DEFAULT 0;
-UPDATE patients SET version = 0 WHERE version IS NULL;
-UPDATE appointments SET version = 0 WHERE version IS NULL;
-UPDATE appointment_requests SET version = 0 WHERE version IS NULL;
+-- ============================================================
+-- KHỞI TẠO TRƯỚC: CLINICS & BRANCHES (Hệ thống phòng khám & Chi nhánh)
+-- ============================================================
+INSERT INTO clinics (
+    clinic_id, clinic_code, brand_name, legal_name, tax_code,
+    business_license_no, established_year, representative, phone_number,
+    email, logo_url, registered_address, description, image, created_at, updated_at
+) VALUES (
+    'clinic-main-01',
+    'CROWN-HQ',
+    'Nha Khoa Crown Dental',
+    'Công Ty TNHH Nha Khoa Quốc Tế Crown Dental',
+    '0108923456',
+    '0108923456-GP/SYT',
+    2011,
+    'BS. CKII Nguyễn Văn Hùng',
+    '1900 8059',
+    'contact@crowndental.vn',
+    '/logo-brand.png',
+    '328 Phố Huế, Phường Phố Huế, Quận Hai Bà Trưng, TP. Hà Nội',
+    'Hệ thống Nha khoa Quốc tế Crown Dental - Tiêu chuẩn Châu Âu với trang thiết bị hiện đại hàng đầu Việt Nam.',
+    '/clinic/crown-dental.jpg',
+    NOW(),
+    NOW()
+) ON CONFLICT (clinic_id) DO NOTHING;
 
--- Dọn dẹp các lịch trùng lặp cũ nếu có trong CSDL (chuyển bản ghi trùng thành CANCELLED để không bị lỗi index)
-UPDATE appointments
-SET status = 'CANCELLED'
-WHERE id IN (
-    SELECT id FROM (
-        SELECT id, ROW_NUMBER() OVER(
-            PARTITION BY dentist_id, appointment_date, appointment_time 
-            ORDER BY id
-        ) as rn
-        FROM appointments
-        WHERE dentist_id IS NOT NULL AND status != 'CANCELLED'
-    ) t WHERE t.rn > 1
-);
+INSERT INTO branches (
+    branch_id, clinic_id, branch_code, branch_name, phone_number,
+    email, address, open_time, close_time, image_branch, status
+) VALUES
+(
+    'branch-hn-01',
+    'clinic-main-01',
+    'CN-HN01',
+    'Crown Dental Phố Huế - Hà Nội',
+    '1900 8059',
+    'hanoi@crowndental.vn',
+    '328 Phố Huế, Quận Hai Bà Trưng, Hà Nội',
+    '08:30:00',
+    '19:30:00',
+    'https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=800&q=80',
+    'ACTIVE'
+),
+(
+    'branch-hcm-01',
+    'clinic-main-01',
+    'CN-HCM01',
+    'Crown Dental Nam Kỳ Khởi Nghĩa - TP.HCM',
+    '1900 8059',
+    'hcm@crowndental.vn',
+    '215 Nam Kỳ Khởi Nghĩa, Phường Võ Thị Sáu, Quận 3, TP. Hồ Chí Minh',
+    '08:30:00',
+    '19:30:00',
+    'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=800&q=80',
+    'ACTIVE'
+),
+(
+    'branch-bd-01',
+    'clinic-main-01',
+    'CN-BD01',
+    'Crown Dental Thủ Dầu Một - Bình Dương',
+    '1900 8059',
+    'binhduong@crowndental.vn',
+    '564 Đại Lộ Bình Dương, TP. Thủ Dầu Một, Bình Dương',
+    '08:30:00',
+    '19:30:00',
+    'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&w=800&q=80',
+    'ACTIVE'
+) ON CONFLICT (branch_id) DO NOTHING;
 
--- Chặn trùng lịch hẹn của cùng một bác sĩ trong cùng ngày và giờ (trừ các lịch đã bị hủy CANCELLED)
-CREATE UNIQUE INDEX IF NOT EXISTS uk_dentist_active_timeslot 
-ON appointments (dentist_id, appointment_date, appointment_time) 
-WHERE status != 'CANCELLED';
+-- ============================================================
+-- BẢNG 0: USERS, DENTISTS, EMPLOYEES, PATIENTS, ROOMS
+-- ============================================================
+INSERT INTO users (id, username, code_name, email, password, phone, avatar_url, role, status, created_at, updated_at)
+VALUES
+  ('11111111-1111-1111-1111-111111111111', 'Admin', 'ADMIN-001', 'admin@dental.com', '$2a$10$EGvcf2dZ1EA0Egj28geKruQphZIcvHEuAg/imSQc/ek1.DCOXRXge', '0900000000', '/avatars/admin.png', 'ADMIN', 'ACTIVE', NOW(), NOW()),
+  ('22222222-2222-2222-2222-222222222222', 'bs.nguyen.thi.phuong', 'DENTIST-001', 'phuong.nguyen@dental.com', '$2a$10$EGvcf2dZ1EA0Egj28geKruQphZIcvHEuAg/imSQc/ek1.DCOXRXge', '0901122334', '/avatars/dentist-phuong.png', 'DENTIST', 'ACTIVE', NOW(), NOW()),
+  ('33333333-3333-3333-3333-333333333333', 'bs.tran.quang', 'DENTIST-002', 'quang.tran@dental.com', '$2a$10$EGvcf2dZ1EA0Egj28geKruQphZIcvHEuAg/imSQc/ek1.DCOXRXge', '0905566778', '/avatars/dentist-quang.png', 'DENTIST', 'ACTIVE', NOW(), NOW()),
+  ('44444444-4444-4444-4444-444444444444', 'employee02', 'EMPLOYEE-002', 'thao.nguyen@dental.com', '$2a$10$EGvcf2dZ1EA0Egj28geKruQphZIcvHEuAg/imSQc/ek1.DCOXRXge', '0912345678', '/avatars/employee-thao.png', 'EMPLOYEE', 'ACTIVE', NOW(), NOW()),
+  ('55555555-5555-5555-5555-555555555555', 'patient_0343632524', 'PATIENT-001', 'tamthanh@patient.clinic.vn', '$2a$10$EGvcf2dZ1EA0Egj28geKruQphZIcvHEuAg/imSQc/ek1.DCOXRXge', '0343632524', '/avatars/patient.png', 'PATIENT', 'ACTIVE', NOW(), NOW()),
+  ('66666666-6666-6666-6666-666666666666', 'patient_0901112233', 'PATIENT-002', 'huong.le@patient.clinic.vn', '$2a$10$EGvcf2dZ1EA0Egj28geKruQphZIcvHEuAg/imSQc/ek1.DCOXRXge', '0901112233', '/avatars/patient.png', 'PATIENT', 'ACTIVE', NOW(), NOW()),
+  ('77777777-7777-7777-7777-777777777777', 'patient_0903456789', 'PATIENT-003', 'long.nguyen@patient.clinic.vn', '$2a$10$EGvcf2dZ1EA0Egj28geKruQphZIcvHEuAg/imSQc/ek1.DCOXRXge', '0903456789', '/avatars/patient.png', 'PATIENT', 'ACTIVE', NOW(), NOW())
+ON CONFLICT (id) DO NOTHING;
 
--- Cho phép lưu ảnh dạng data URL/Base64 từ giao diện quản trị
-ALTER TABLE clinics ALTER COLUMN logo_url TYPE TEXT;
-ALTER TABLE clinics ALTER COLUMN image TYPE TEXT;
-ALTER TABLE branches ALTER COLUMN image_branch TYPE TEXT;
+INSERT INTO dentists (id, user_id, full_name, gender, date_of_birth, address, education, description, experience_years, license_number, branch_id)
+VALUES
+  ('a1111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', 'BS. Nguyễn Thị Phương', 'Nữ', DATE '1988-05-12', 'Hà Nội', 'Đại học Y Dược TP.HCM', 'Chuyên gia Niềng răng & Chỉnh hình răng mặt', 8, 'DDS-HN-001', 'branch-hn-01'),
+  ('a2222222-2222-2222-2222-222222222222', '33333333-3333-3333-3333-333333333333', 'BS. Trần Quang', 'Nam', DATE '1985-09-20', 'Thành phố Hồ Chí Minh', 'Đại học Y Hà Nội', 'Chuyên gia Phục hình & Cấy ghép Implant', 10, 'DDS-HCM-002', 'branch-hcm-01')
+ON CONFLICT (id) DO NOTHING;
 
--- Cập nhật check constraint cho bảng tooth_records và diagnoses hỗ trợ enum Level mới
-ALTER TABLE tooth_records DROP CONSTRAINT IF EXISTS tooth_records_severity_check;
-ALTER TABLE tooth_records ADD CONSTRAINT tooth_records_severity_check
-    CHECK (severity IS NULL OR severity IN ('ENAMEL', 'DENTIN', 'NEAR_PULP', 'PULP', 'MILD', 'MODERATE', 'SEVERE'));
+INSERT INTO employees (id, user_id, full_name, position, salary, hire_date, status, gender, date_of_birth, address, branch_id)
+VALUES
+  ('b1111111-1111-1111-1111-111111111111', '44444444-4444-4444-4444-444444444444', 'Nguyễn Thảo', 'RECEPTIONIST', 9000000.00, CURRENT_TIMESTAMP - INTERVAL '2 years', TRUE, 'Nữ', DATE '1992-03-15', 'Hà Nội', 'branch-hn-01')
+ON CONFLICT (id) DO NOTHING;
 
-ALTER TABLE tooth_records DROP CONSTRAINT IF EXISTS tooth_records_caries_location_check;
-ALTER TABLE tooth_records ADD CONSTRAINT tooth_records_caries_location_check
-    CHECK (caries_location IS NULL OR caries_location IN ('OCCLUSAL', 'MESIAL', 'DISTAL', 'BUCCAL', 'LINGUAL', 'PALATAL', 'CERVICAL', 'WHOLE_CROWN'));
+-- Bổ sung chi nhánh cho dữ liệu mẫu cũ; giữ nguyên chi nhánh đã được phân công.
+UPDATE dentists AS dentist
+SET branch_id = seed.branch_id
+FROM (VALUES
+    ('a1111111-1111-1111-1111-111111111111'::uuid, 'branch-hn-01'),
+    ('a2222222-2222-2222-2222-222222222222'::uuid, 'branch-hcm-01')
+) AS seed(id, branch_id)
+WHERE dentist.id = seed.id AND dentist.branch_id IS NULL;
 
-ALTER TABLE tooth_records DROP CONSTRAINT IF EXISTS tooth_records_tooth_status_check;
+UPDATE employees
+SET branch_id = 'branch-hn-01'
+WHERE id = 'b1111111-1111-1111-1111-111111111111'::uuid
+  AND branch_id IS NULL;
 
-ALTER TABLE diagnoses DROP CONSTRAINT IF EXISTS diagnoses_level_check;
-ALTER TABLE diagnoses ADD CONSTRAINT diagnoses_level_check
-    CHECK (level IS NULL OR level IN ('ENAMEL', 'DENTIN', 'NEAR_PULP', 'PULP', 'MILD', 'MODERATE', 'SEVERE'));
+INSERT INTO patients (id, user_id, full_name, patient_code, nationality, hometown, job, phone_number, cccd, email, gender, date_of_birth, address, systemic_disease, allergies, current_medications, surgical_history, created_at, version)
+VALUES
+  ('c1111111-1111-1111-1111-111111111111', '55555555-5555-5555-5555-555555555555', 'Tâm Thành Nguyễn', 'PA-839092', 'Việt Nam', 'Hà Nội', 'Kỹ sư', '0343632524', '001088000001', 'tamthanh@patient.clinic.vn', 'MALE', TIMESTAMP '1990-04-10 00:00:00', '328 Phố Huế, Hà Nội', 'Không', 'Không', 'Không', 'Không', NOW(), 0),
+  ('c2222222-2222-2222-2222-222222222222', '66666666-6666-6666-6666-666666666666', 'Lê Thị Hương', 'BN-001890', 'Việt Nam', 'Hải Phòng', 'Giáo viên', '0901112233', '001088000002', 'huong.le@patient.clinic.vn', 'FEMALE', TIMESTAMP '1994-08-22 00:00:00', '12 Lê Lợi, Hải Phòng', 'Không', 'Không', 'Không', 'Không', NOW(), 0),
+  ('c3333333-3333-3333-3333-333333333333', '77777777-7777-7777-7777-777777777777', 'Nguyễn Minh Long', 'BN-002185', 'Việt Nam', 'Đà Nẵng', 'Nhân viên văn phòng', '0903456789', '001088000003', 'long.nguyen@patient.clinic.vn', 'MALE', TIMESTAMP '1989-12-05 00:00:00', '25 Nguyễn Văn Linh, Đà Nẵng', 'Không', 'Không', 'Không', 'Không', NOW(), 0)
+ON CONFLICT (id) DO NOTHING;
 
--- Bỏ unique constraint trên examination_result_id để hỗ trợ quan hệ 1-N giữa ExaminationResult và Diagnosis
-ALTER TABLE diagnoses DROP CONSTRAINT IF EXISTS diagnoses_examination_result_id_key;
+INSERT INTO rooms (id, room_name, floor_name, create_at)
+VALUES
+  ('f1111111-1111-1111-1111-111111111111', 'Phòng khám 01', 'Tầng 1', NOW()),
+  ('f2222222-2222-2222-2222-222222222222', 'Phòng chỉnh nha 02', 'Tầng 2', NOW())
+ON CONFLICT (id) DO NOTHING;
 
--- Đảm bảo quan hệ 1-1 giữa ExaminationResult và TreatmentPlans
-ALTER TABLE treatment_plans ADD COLUMN IF NOT EXISTS examination_result_id UUID;
-CREATE UNIQUE INDEX IF NOT EXISTS uk_treatment_plans_examination_result ON treatment_plans (examination_result_id);
--- Tự động cập nhật các cột mới nếu chưa tồn tại
-ALTER TABLE services ADD COLUMN IF NOT EXISTS service_code VARCHAR(50);
-ALTER TABLE services ADD COLUMN IF NOT EXISTS category VARCHAR(50);
-ALTER TABLE services ADD COLUMN IF NOT EXISTS sub_category VARCHAR(255);
-ALTER TABLE services ADD COLUMN IF NOT EXISTS unit VARCHAR(100);
-ALTER TABLE services ADD COLUMN IF NOT EXISTS warranty_period VARCHAR(100);
-ALTER TABLE services ADD COLUMN IF NOT EXISTS image_url VARCHAR(1000);
-ALTER TABLE services ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0;
-ALTER TABLE services ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE;
-ALTER TABLE services ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+INSERT INTO appointments (id, patient_id, patient_name, phone, dentist_id, employee_id, appointment_date, appointment_time, reason, attribute, status, notes, diagnosis, symptoms, treatment_notes, reminded_1day, reminded_1hour, room_id, created_at, version)
+VALUES
+  ('d1111111-1111-1111-1111-111111111111', 'c1111111-1111-1111-1111-111111111111', 'Tâm Thành Nguyễn', '0343632524', 'a1111111-1111-1111-1111-111111111111', 'b1111111-1111-1111-1111-111111111111', CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE - INTERVAL '6 days' + TIME '08:00:00', 'Cạo vôi răng & Đánh bóng', 'Khám trực tiếp tại phòng khám', 'COMPLETED', 'Đã đặt trước qua hotline', 'Vôi răng độ 1', 'Mảng bám bề mặt răng', 'Đã cạo vôi 2 hàm', FALSE, FALSE, 'f1111111-1111-1111-1111-111111111111', NOW(), 0),
+  ('d2222222-2222-2222-2222-222222222222', 'c2222222-2222-2222-2222-222222222222', 'Lê Thị Hương', '0901112233', 'a1111111-1111-1111-1111-111111111111', 'b1111111-1111-1111-1111-111111111111', CURRENT_DATE - INTERVAL '5 days', CURRENT_DATE - INTERVAL '5 days' + TIME '10:00:00', 'Trám răng composite R24', 'Khám trực tiếp tại phòng khám', 'COMPLETED', 'Đã check-in', 'Sâu răng độ 1 R24', 'Ê buốt nhẹ', 'Tiến hành trám composite', FALSE, FALSE, 'f2222222-2222-2222-2222-222222222222', NOW(), 0),
+  ('d3333333-3333-3333-3333-333333333333', 'c3333333-3333-3333-3333-333333333333', 'Nguyễn Minh Long', '0903456789', 'a1111111-1111-1111-1111-111111111111', 'b1111111-1111-1111-1111-111111111111', CURRENT_DATE - INTERVAL '4 days', CURRENT_DATE - INTERVAL '4 days' + TIME '09:00:00', 'Nhổ răng khôn R38', 'Khám trực tiếp tại phòng khám', 'COMPLETED', 'Đã chụp X-quang Pano', 'Răng khôn mọc lệch 90 độ', 'Đau sưng lợi vùng R38', 'Phẫu thuật nhổ răng khôn', FALSE, FALSE, 'f1111111-1111-1111-1111-111111111111', NOW(), 0),
+  ('d4444444-4444-4444-4444-444444444444', 'c1111111-1111-1111-1111-111111111111', 'Tâm Thành Nguyễn', '0343632524', 'a1111111-1111-1111-1111-111111111111', 'b1111111-1111-1111-1111-111111111111', CURRENT_DATE - INTERVAL '3 days', CURRENT_DATE - INTERVAL '3 days' + TIME '13:00:00', 'Nhổ răng sâu độ 3', 'Khám trực tiếp tại phòng khám', 'COMPLETED', 'Nhổ răng hàm dưới', 'Răng sâu hư vỡ lớn R46', 'Đau nhức sưng tấy', 'Tiến hành nhổ răng an toàn', FALSE, FALSE, 'f2222222-2222-2222-2222-222222222222', NOW(), 0),
+  ('d5555555-5555-5555-5555-555555555555', 'c2222222-2222-2222-2222-222222222222', 'Lê Thị Hương', '0901112233', 'a1111111-1111-1111-1111-111111111111', 'b1111111-1111-1111-1111-111111111111', CURRENT_DATE - INTERVAL '2 days', CURRENT_DATE - INTERVAL '2 days' + TIME '08:00:00', 'Tư vấn niềng răng mắc cài', 'Khám trực tiếp tại phòng khám', 'IN_PROGRESS', 'Muốn tư vấn mắc cài kim loại', 'Khớp cắn ngược độ 1', 'Chen chúc hàm dưới', 'Lên phác đồ niềng răng', FALSE, FALSE, 'f1111111-1111-1111-1111-111111111111', NOW(), 0),
+  ('d6666666-6666-6666-6666-666666666666', 'c3333333-3333-3333-3333-333333333333', 'Nguyễn Minh Long', '0903456789', 'a1111111-1111-1111-1111-111111111111', 'b1111111-1111-1111-1111-111111111111', CURRENT_DATE - INTERVAL '1 day', CURRENT_DATE - INTERVAL '1 day' + TIME '09:00:00', 'Cạo vôi răng & Đánh bóng', 'Khám trực tiếp tại phòng khám', 'COMPLETED', 'Hẹn tái khám 6 tháng', 'Vôi răng độ 2', 'Chảy máu chân răng', 'Đã xử lý sạch vôi răng', FALSE, FALSE, 'f2222222-2222-2222-2222-222222222222', NOW(), 0),
+  ('d7777777-7777-7777-7777-777777777777', 'c1111111-1111-1111-1111-111111111111', 'Tâm Thành Nguyễn', '0343632524', 'a1111111-1111-1111-1111-111111111111', 'b1111111-1111-1111-1111-111111111111', CURRENT_DATE, CURRENT_DATE + TIME '09:00:00', 'Tư vấn niềng răng Invisalign', 'Khám trực tiếp tại phòng khám', 'WAITING', 'Bệnh nhân có nhu cầu niềng răng', 'Khớp cắn lệch nhẹ', 'Răng thưa 2 hàm', 'Tư vấn phác đồ Invisalign 18 tháng', FALSE, FALSE, 'f1111111-1111-1111-1111-111111111111', NOW(), 0),
+  ('d8888888-8888-8888-8888-888888888888', 'c2222222-2222-2222-2222-222222222222', 'Lê Thị Hương', '0901112233', 'a1111111-1111-1111-1111-111111111111', 'b1111111-1111-1111-1111-111111111111', CURRENT_DATE, CURRENT_DATE + TIME '10:00:00', 'Nhổ răng khôn R48', 'Khám trực tiếp tại phòng khám', 'COMPLETED', 'Răng khôn mọc lệch', 'Răng khôn mọc kẹt R48', 'Đau sưng lợi', 'Đã tiến hành nhổ răng an toàn', FALSE, FALSE, 'f2222222-2222-2222-2222-222222222222', NOW(), 0)
+ON CONFLICT (id) DO NOTHING;
 
-UPDATE services SET is_active = true WHERE is_active IS NULL;
+INSERT INTO appointment_requests (id, full_name, phone, description, create_at, statust_appointment_request, employee_id, version)
+VALUES
+  ('e1111111-1111-1111-1111-111111111111', 'Tâm Thành Nguyễn', '0343632524', 'Tư vấn niềng răng trong suốt', NOW(), 'COMPLETED', 'b1111111-1111-1111-1111-111111111111', 0),
+  ('e2222222-2222-2222-2222-222222222222', 'Trịnh Hoàng Anh', '0922333444', 'Đặt lịch cạo vôi răng buổi chiều', NOW(), 'PENDING', 'b1111111-1111-1111-1111-111111111111', 0)
+ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================
 -- BẢNG 1: SERVICES (Dịch vụ nha khoa)
 -- ============================================================
-INSERT INTO services (id, service_name, description, price, category, sub_category, unit, image_url, sort_order, is_featured)
-VALUES
+INSERT INTO services (
+    id, service_name, description, price, category, sub_category, unit, image_url, sort_order, is_featured,
+    service_code, cost_price, estimated_duration, sessions_count, warranty_period, is_active
+)
+SELECT seed.id::uuid, seed.service_name, seed.description, seed.price, seed.category, seed.sub_category,
+       seed.unit, seed.image_url, seed.sort_order, seed.is_featured,
+       'SVC-' || UPPER(REPLACE(seed.id::text, '-', '')), seed.price, 60, '1 buổi', 'Không', TRUE
+FROM (VALUES
 
   -- ── NIỀNG RĂNG MẮC CÀI KIM LOẠI ─────────────────────────
   (
@@ -369,31 +449,34 @@ VALUES
     1500000.00, 'KHAM_DIEU_TRI', 'Điều trị cơ bản', '/răng',
     'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=600&q=80', 40, true
   )
-
-ON CONFLICT (id) DO UPDATE SET
-  service_name  = EXCLUDED.service_name,
-  description   = EXCLUDED.description,
-  price         = EXCLUDED.price,
-  category      = EXCLUDED.category,
-  sub_category  = EXCLUDED.sub_category,
-  unit          = EXCLUDED.unit,
-  image_url     = EXCLUDED.image_url,
-  sort_order    = EXCLUDED.sort_order,
-  is_featured   = EXCLUDED.is_featured;
+) AS seed(id, service_name, description, price, category, sub_category, unit, image_url, sort_order, is_featured)
+ON CONFLICT (id) DO NOTHING;
 
 
 -- ============================================================
 -- BẢNG 2: PROMOTIONS (Chương trình ưu đãi - 10 ưu đãi)
 -- ============================================================
-INSERT INTO promotions (id, title, category, description, image_url, discount_percent, start_date, end_date, created_at, updated_at)
-VALUES
+INSERT INTO promotions (
+    id, title, category, description, image_url, discount_percent, start_date, end_date, created_at, updated_at,
+    coupon_code, promotion_type, discount_amount, max_discount_amount, min_order_amount,
+    usage_limit, used_count, apply_all_services, status
+)
+SELECT seed.id::uuid, seed.title, seed.category, seed.description, seed.image_url, seed.discount_percent,
+       seed.start_date, seed.end_date, seed.created_at, seed.updated_at,
+       CASE WHEN seed.promotion_type = 'VOUCHER'
+            THEN 'PROMO-' || UPPER(REPLACE(seed.id::text, '-', ''))
+            ELSE NULL
+       END,
+       seed.promotion_type, 0.00, 0.00, 0.00,
+       100, 0, FALSE, 'ACTIVE'
+FROM (VALUES
   -- 1. Giảm 10% — Niềng răng trẻ em
   ('ee11111a-aaaa-4b17-b806-ab8c9c0da001',
    'Gói can thiệp sớm các lệch lạc tiền tăng trưởng - 2 năm',
    'Niềng răng trẻ em',
    'Can thiệp sớm các lệch lạc răng mặt ở trẻ em giúp định hướng xương hàm phát triển hài hòa. Tạo khoảng trống cho răng vĩnh viễn mọc đúng vị trí, giảm thiểu tối đa việc phải nhổ răng hay phẫu thuật xương hàm sau này. Gói điều trị 2 năm toàn diện với đội ngũ bác sĩ chuyên khoa nhi nha.',
    'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&w=800&q=80',
-   10.00, NOW(), NOW() + INTERVAL '30 days', NOW(), NOW()),
+   10.00, NOW(), NOW() + INTERVAL '30 days', NOW(), NOW(), 'VOUCHER'),
 
   -- 2. Giảm 20% — ClearCorrect bổ sung
   ('ee22222b-bbbb-4b17-b806-ab8c9c0db002',
@@ -401,7 +484,7 @@ VALUES
    'Niềng răng ClearCorrect',
    'Khay ClearCorrect bổ sung thiết kế riêng để tinh chỉnh và hoàn thiện các bước dịch chuyển răng cuối cùng. Đảm bảo kết quả nụ cười hoàn hảo nhất sau khi hoàn thành liệu trình chính. Ưu đãi áp dụng cho khách hàng đang điều trị tại Crown Dental.',
    'https://images.unsplash.com/photo-1606811971618-4486d14f3f99?auto=format&fit=crop&w=800&q=80',
-   20.00, NOW(), NOW() + INTERVAL '30 days', NOW(), NOW()),
+   20.00, NOW(), NOW() + INTERVAL '30 days', NOW(), NOW(), 'VOUCHER'),
 
   -- 3. Giảm 20% — ClearCorrect duy trì
   ('ee33333c-cccc-4b17-b806-ab8c9c0dc003',
@@ -409,7 +492,7 @@ VALUES
    'Niềng răng ClearCorrect',
    'Hàm duy trì ClearCorrect là khí cụ quan trọng sau khi kết thúc chỉnh nha, ổn định vị trí răng trong 6-12 tháng. Vật liệu cao cấp, trong suốt, thoải mái khi đeo và dễ vệ sinh. An toàn tiêu chuẩn y tế quốc tế.',
    'https://images.unsplash.com/photo-1598256989800-fe5f95da9787?auto=format&fit=crop&w=800&q=80',
-   20.00, NOW(), NOW() + INTERVAL '30 days', NOW(), NOW()),
+   20.00, NOW(), NOW() + INTERVAL '30 days', NOW(), NOW(), 'VOUCHER'),
 
   -- 4. Giảm 20% — Invisalign bổ sung
   ('ee44444d-dddd-4b17-b806-ab8c9c0dd004',
@@ -417,7 +500,7 @@ VALUES
    'Niềng răng trong suốt Invisalign',
    'Khay Invisalign bổ sung tinh chỉnh các dịch chuyển răng nhỏ chưa đạt yêu cầu sau đợt khay chính thức. Công nghệ ClinCheck 3D theo dõi từng bước, đảm bảo hàm răng đạt độ đều khít hoàn hảo.',
    'https://images.unsplash.com/photo-1513415277900-a62401e5084d?auto=format&fit=crop&w=800&q=80',
-   20.00, NOW(), NOW() + INTERVAL '30 days', NOW(), NOW()),
+   20.00, NOW(), NOW() + INTERVAL '30 days', NOW(), NOW(), 'VOUCHER'),
 
   -- 5. Giảm 15% — Invisalign Comprehensive
   ('ee55555e-eeee-4b17-b806-ab8c9c0de005',
@@ -425,7 +508,7 @@ VALUES
    'Niềng răng trong suốt Invisalign',
    'Niềng răng Invisalign với công nghệ khay trong suốt nhập khẩu từ Mỹ, điều trị cá nhân hóa 100% bằng phần mềm ClinCheck 3D. Ưu đãi 15% nhân dịp kỷ niệm thành lập Crown Dental. Crown là Red Diamond Invisalign Provider - cấp cao nhất toàn cầu với hơn 1.000 ca mỗi năm.',
    'https://images.unsplash.com/photo-1606811971618-4486d14f3f99?auto=format&fit=crop&w=800&q=80',
-   15.00, NOW(), NOW() + INTERVAL '45 days', NOW(), NOW()),
+   15.00, NOW(), NOW() + INTERVAL '45 days', NOW(), NOW(), 'VOUCHER'),
 
   -- 6. Giảm 25% — Veneer e.max
   ('ee66666f-ffff-4b17-b806-ab8c9c0df006',
@@ -433,7 +516,7 @@ VALUES
    'Răng sứ thẩm mỹ',
    'Mặt dán sứ Veneer siêu mỏng chỉ 0.3-0.5mm, bảo tồn tối đa men răng thật. Đem lại nụ cười trắng sáng, tự nhiên và bền bỉ đến 15-20 năm. Ưu đãi 25% nhân dịp mùa cưới, áp dụng cho khách hàng đặt lịch trong tháng này.',
    'https://images.unsplash.com/photo-1598256989800-fe5f95da9787?auto=format&fit=crop&w=800&q=80',
-   25.00, NOW(), NOW() + INTERVAL '45 days', NOW(), NOW()),
+   25.00, NOW(), NOW() + INTERVAL '45 days', NOW(), NOW(), 'EVENT'),
 
   -- 7. Giảm 10% — Implant Straumann
   ('ee77777a-aaab-4b17-b806-ab8c9c0d1007',
@@ -441,7 +524,7 @@ VALUES
    'Cấy ghép Implant',
    'Cấy ghép Implant phục hồi toàn diện cả chân răng và thân răng, đảm bảo ăn nhai thoải mái và thẩm mỹ tự nhiên. Ưu đãi 10% cho khách hàng cấy ghép 2 trụ trở lên. Trụ Implant Straumann (Thụy Sĩ) nhập khẩu chính hãng, bảo hành 10 năm.',
    'https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=800&q=80',
-   10.00, NOW(), NOW() + INTERVAL '60 days', NOW(), NOW()),
+   10.00, NOW(), NOW() + INTERVAL '60 days', NOW(), NOW(), 'EVENT'),
 
   -- 8. Giảm 30% — Tẩy trắng Zoom 2
   ('ee88888b-bbbc-4b17-b806-ab8c9c0d2008',
@@ -449,7 +532,7 @@ VALUES
    'Tẩy trắng răng',
    'Công nghệ Zoom Laser thế hệ mới, nâng tông răng lên đến 8 tông chỉ sau 1 lần điều trị 45 phút. An toàn tuyệt đối cho men răng, không gây ê buốt. Ưu đãi 30% cho khách hàng mới đăng ký trong tháng. Tặng kèm bộ tẩy trắng tại nhà miễn phí trị giá 800.000đ.',
    'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&w=800&q=80',
-   30.00, NOW(), NOW() + INTERVAL '30 days', NOW(), NOW()),
+   30.00, NOW(), NOW() + INTERVAL '30 days', NOW(), NOW(), 'EVENT'),
 
   -- 9. Giảm 50% — Khám gia đình
   ('ee99999c-cccd-4b17-b806-ab8c9c0d3009',
@@ -457,7 +540,7 @@ VALUES
    'Khám & Điều trị',
    'Khám răng tổng quát định kỳ bao gồm: chụp X-quang, lấy cao răng, kiểm tra sâu răng và tư vấn điều trị miễn phí. Ưu đãi 50% cho gói gia đình từ 3 người trở lên. Phát hiện sớm các vấn đề răng miệng, tiết kiệm tối đa chi phí điều trị.',
    'https://images.unsplash.com/photo-1468495244123-6c6c332eeece?auto=format&fit=crop&w=800&q=80',
-   50.00, NOW(), NOW() + INTERVAL '45 days', NOW(), NOW()),
+   50.00, NOW(), NOW() + INTERVAL '45 days', NOW(), NOW(), 'EVENT'),
 
   -- 10. Giảm 15% — Nhổ răng khôn
   ('eeaaaaa1-ddde-4b17-b806-ab8c9c0d4010',
@@ -465,8 +548,8 @@ VALUES
    'Khám & Điều trị',
    'Nhổ răng khôn bằng máy siêu âm Piezotome thế hệ mới, không đau, không sưng, lành thương chỉ trong 24-48 giờ. Giảm 15% cho khách hàng nhổ đồng thời 2 răng khôn. Bác sĩ chuyên khoa phẫu thuật miệng giàu kinh nghiệm thực hiện.',
    'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=800&q=80',
-   15.00, NOW(), NOW() + INTERVAL '60 days', NOW(), NOW())
-
+   15.00, NOW(), NOW() + INTERVAL '60 days', NOW(), NOW(), 'EVENT')
+) AS seed(id, title, category, description, image_url, discount_percent, start_date, end_date, created_at, updated_at, promotion_type)
 ON CONFLICT (id) DO NOTHING;
 
 
@@ -480,22 +563,14 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================================
 -- BẢNG 4: MEDICINES (50 Thuốc nha khoa chuyên dụng)
 -- ============================================================
-ALTER TABLE medicines ADD COLUMN IF NOT EXISTS code VARCHAR(50);
-ALTER TABLE medicines ADD COLUMN IF NOT EXISTS unit VARCHAR(255);
-ALTER TABLE medicines ADD COLUMN IF NOT EXISTS manufacturer VARCHAR(255);
-ALTER TABLE medicines ADD COLUMN IF NOT EXISTS stock_quantity INTEGER DEFAULT 0;
-ALTER TABLE medicines ADD COLUMN IF NOT EXISTS price NUMERIC(15, 2) DEFAULT 0.00;
-ALTER TABLE medicines ADD COLUMN IF NOT EXISTS manufacture_date DATE;
-ALTER TABLE medicines ADD COLUMN IF NOT EXISTS expiry_date DATE;
-ALTER TABLE medicines ADD COLUMN IF NOT EXISTS description TEXT;
-ALTER TABLE medicines ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'ACTIVE';
-ALTER TABLE medicines ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
-ALTER TABLE medicines ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
-
-CREATE UNIQUE INDEX IF NOT EXISTS uk_medicines_code ON medicines (code);
-
-INSERT INTO medicines (id, code, name, unit, manufacturer, stock_quantity, price, manufacture_date, expiry_date, description, status, created_at, updated_at)
-VALUES
+INSERT INTO medicines (
+    id, code, name, unit, manufacturer, stock_quantity, price, manufacture_date, expiry_date,
+    description, usage_instruction, status, created_at, updated_at
+)
+SELECT seed.id::uuid, seed.code, seed.name, seed.unit, seed.manufacturer, seed.stock_quantity, seed.price,
+       seed.manufacture_date::date, seed.expiry_date::date, seed.description,
+       'Sử dụng theo chỉ định của bác sĩ', seed.status, seed.created_at, seed.updated_at
+FROM (VALUES
   -- Nhóm 1: Kháng sinh điều trị nhiễm khuẩn răng miệng
   ('01a11111-1111-1111-1111-111111111101', 'MED-AMOX-500', 'Amoxicillin 500mg', 'Viên nang', 'Dược Hậu Giang (DHG)', 350, 2500.00, '2025-01-10', '2027-01-10', 'Kháng sinh phổ rộng nhóm Penicillin điều trị nhiễm trùng răng miệng, áp xe quanh cuống, viêm tủy cấp tính.', 'ACTIVE', NOW(), NOW()),
   ('01a11111-1111-1111-1111-111111111102', 'MED-AUG-625', 'Augmentin 625mg', 'Viên nén bao phim', 'GlaxoSmithKline (GSK)', 180, 18500.00, '2025-02-15', '2027-02-15', 'Kháng sinh phối hợp Amoxicillin + Acid Clavulanic đặc trị nhiễm khuẩn răng hàm mặt nặng, viêm mô tế bào sau nhổ răng.', 'ACTIVE', NOW(), NOW()),
@@ -556,188 +631,30 @@ VALUES
   ('01a11111-1111-1111-1111-111111111147', 'MED-BIOFLORA', 'Men vi sinh Bioflora 250mg', 'Gói', 'Biocodex (Pháp)', 120, 11500.00, '2025-03-01', '2027-03-01', 'Bổ sung nấm men Saccharomyces boulardii phòng ngừa tiêu chảy và rối loạn tiêu hóa khi uống kháng sinh nha khoa liều cao kéo dài.', 'ACTIVE', NOW(), NOW()),
   ('01a11111-1111-1111-1111-111111111148', 'MED-OMEP-20', 'Omeprazole 20mg', 'Viên nang', 'Dược Hậu Giang (DHG)', 200, 2000.00, '2025-01-05', '2028-01-05', 'Ức chế bơm proton bảo vệ niêm mạc dạ dày khi kê đơn thuốc kháng viêm NSAIDs giảm đau sau phẫu thuật răng hàm mặt.', 'ACTIVE', NOW(), NOW()),
   ('01a11111-1111-1111-1111-111111111149', 'MED-VITC-500', 'Vitamin C 500mg', 'Viên nén', 'Dược Mekophar', 300, 1500.00, '2025-02-10', '2028-02-10', 'Tăng sức bền thành mạch, giảm chảy máu chân răng và tăng cường tổng hợp collagen làm nhanh lành thương nướu răng.', 'ACTIVE', NOW(), NOW()),
-  ('01a11111-1111-1111-1111-111111111150', 'MED-ENAMELAST', 'Véc-ni Fluoride Enamelast 5% NaF', 'Tuýp', 'Ultradent Products (Mỹ)', 50, 85000.00, '2025-03-10', '2027-09-10', 'Vecni bôi phóng thích fluor kéo dài, đặc trị ê buốt cổ chân răng và ngừa sâu răng tái phát quanh mắc cài niềng răng.', 'ACTIVE', NOW(), NOW())
-
+   ('01a11111-1111-1111-1111-111111111150', 'MED-ENAMELAST', 'Véc-ni Fluoride Enamelast 5% NaF', 'Tuýp', 'Ultradent Products (Mỹ)', 50, 85000.00, '2025-03-10', '2027-09-10', 'Vecni bôi phóng thích fluor kéo dài, đặc trị ê buốt cổ chân răng và ngừa sâu răng tái phát quanh mắc cài niềng răng.', 'ACTIVE', NOW(), NOW())
+) AS seed(id, code, name, unit, manufacturer, stock_quantity, price, manufacture_date, expiry_date, description, status, created_at, updated_at)
 ON CONFLICT (code) DO NOTHING;
 
--- Backfill missing instructions from the existing insert_medicines.sql seed.
--- Preserve instructions already entered by users.
-ALTER TABLE medicines ADD COLUMN IF NOT EXISTS usage_instruction TEXT;
 
-UPDATE medicines AS m
-SET usage_instruction = seed.usage_instruction,
-    updated_at = CURRENT_TIMESTAMP
-FROM (VALUES
-  ('MED-AMOX-500', 'Ngày uống 3 lần, mỗi lần 1 viên sau ăn (cách nhau 8 giờ)'),
-  ('MED-AUG-625', 'Ngày uống 2 lần, mỗi lần 1 viên sau bữa ăn sáng và tối'),
-  ('MED-AUG-1000', 'Ngày uống 2 lần, mỗi lần 1 viên ngay trước bữa ăn'),
-  ('MED-CLAM-500', 'Ngày uống 3 lần, mỗi lần 1 viên sau ăn, uống với nhiều nước'),
-  ('MED-SPI-15M', 'Ngày uống 2 lần, mỗi lần 1 viên trước bữa ăn ít nhất 2 giờ'),
-  ('MED-RODO-250', 'Ngày uống 2 lần, mỗi lần 2 viên trong hoặc ngay sau bữa ăn'),
-  ('MED-METRO-250', 'Ngày uống 3 lần, mỗi lần 1 viên sau ăn no, kiêng bia rượu'),
-  ('MED-CLIN-300', 'Ngày uống 3 lần, mỗi lần 1 viên với 1 ly nước đầy, không nằm ngay sau uống'),
-  ('MED-ZIN-500', 'Ngày uống 2 lần, mỗi lần 1 viên ngay sau bữa ăn'),
-  ('MED-AZI-500', 'Uống 1 viên/ngày duy nhất, uống trước ăn 1 giờ hoặc sau ăn 2 giờ trong 3 ngày'),
-  ('MED-CIPRO-500', 'Ngày uống 2 lần, mỗi lần 1 viên sau ăn, uống cùng nhiều nước'),
-  ('MED-CEPH-500', 'Ngày uống 3 lần, mỗi lần 1 viên cách mỗi 8 giờ sau ăn'),
-  ('MED-DOXY-100', 'Ngày uống 1-2 lần, mỗi lần 1 viên với ly nước đầy sau bữa ăn'),
-  ('MED-PARA-500', 'Uống 1 viên khi đau hoặc sốt, cách nhau 4-6 giờ (tối đa 4 viên/ngày)'),
-  ('MED-PANADOL-EX', 'Uống 1-2 viên khi đau, cách nhau tối thiểu 4-6 giờ (tối đa 8 viên/ngày)'),
-  ('MED-EF-500', 'Hòa tan 1 viên vào nửa ly nước lọc, uống khi đau, cách nhau 4-6 giờ'),
-  ('MED-EF-COD', 'Hòa tan 1 viên vào nước uống khi đau nhiều, cách nhau ít nhất 6 giờ'),
-  ('MED-IBU-400', 'Ngày uống 2-3 lần, mỗi lần 1 viên sau khi ăn no'),
-  ('MED-MELOX-75', 'Ngày uống 1 lần, mỗi lần 1-2 viên sau bữa ăn trưa'),
-  ('MED-VOLT-50', 'Ngày uống 2 lần, mỗi lần 1 viên sau khi ăn no, nuốt nguyên viên'),
-  ('MED-CELE-200', 'Ngày uống 1 lần, mỗi lần 1 viên sau bữa ăn'),
-  ('MED-ALPHACHOAY', 'Ngậm dưới lưỡi 2 viên/lần, ngày 3-4 lần để tan từ từ'),
-  ('MED-KATADOL', 'Ngày uống 3 lần, mỗi lần 2 viên sau ăn với 1 ly nước đầy'),
-  ('MED-PRED-5', 'Uống 2-4 viên 1 lần duy nhất vào buổi sáng sau ăn no trong 2-3 ngày'),
-  ('MED-DEXA-05', 'Uống 1-2 viên vào buổi sáng sau ăn theo đúng chỉ định bác sĩ'),
-  ('MED-TRAMA-50', 'Uống 1 viên khi đau dữ dội, cách nhau tối thiểu 6 giờ (theo đơn)'),
-  ('MED-LIDO-2', 'Tiêm tê tại chỗ hoặc gây tê vùng theo chỉ định thủ thuật của nha sĩ'),
-  ('MED-SEPT-4', 'Tiêm tê tại chỗ hoặc tiêm ngấm xương vỏ theo chỉ định của nha sĩ'),
-  ('MED-SCAN-3', 'Gây tê vùng/tiêm ngấm cho người có bệnh lý tim mạch, cao huyết áp theo chỉ định nha sĩ'),
-  ('MED-XYLO-SPRAY', 'Xịt 1-2 nhát vào vị trí niêm mạc cần gây tê trước thủ thuật 1-2 phút'),
-  ('MED-EMLA-5', 'Bôi một lớp mỏng lên niêm mạc cần gây tê trước khi chích tê 3-5 phút'),
-  ('MED-BENZO-20', 'Dùng tăm bông lấy một lượng nhỏ gel bôi lên niêm mạc trong 30 giây'),
-  ('MED-KIN-GING', 'Súc miệng 15ml nguyên chất trong 30-60 giây, ngày 2 lần sau khi chải răng (không nuốt)'),
-  ('MED-MEDORAL', 'Súc miệng 10-15ml trong 1 phút, ngày 2 lần sau ăn, không ăn uống trong 30 phút sau súc'),
-  ('MED-BETA-GARG', 'Pha loãng với nước ấm tỉ lệ 1:1, súc miệng và họng trong 30 giây, ngày 2-3 lần'),
-  ('MED-POVI-10', 'Dùng gạc vô khuẩn thấm dung dịch sát khuẩn phẫu trường trước phẫu thuật'),
-  ('MED-ELUDRIL', 'Pha 10-15ml dung dịch vào cốc nước ấm đến vạch, súc miệng ngày 2-3 lần'),
-  ('MED-NACL-09', 'Súc miệng thật nhẹ nhàng sau mỗi bữa ăn và trước khi đi ngủ, ngày 3-4 lần'),
-  ('MED-KAMI-GEL', 'Bôi một lượng gel cỡ hạt đậu lên vùng niêm mạc tổn thương, ngày 3 lần sau ăn'),
-  ('MED-GENG-GEL', 'Bôi trực tiếp gel lên vùng nướu viêm sau khi vệ sinh răng, massage nhẹ 1-2 phút, ngày 3-4 lần'),
-  ('MED-METRO-DENT', 'Thoa gel vào túi nha chu hoặc chân răng viêm ngày 2 lần sau khi chải răng sạch'),
-  ('MED-PERIO-GEL', 'Bôi gel quanh cổ Implant hoặc vùng nướu tổn thương ngày 2-3 lần sau ăn'),
-  ('MED-ZYTEE-RB', 'Nhỏ 1-2 giọt gel lên đầu ngón tay sạch, thoa nhẹ lên vết trợt loét ngày 3-4 lần'),
-  ('MED-ORACORTIA', 'Bôi một lượng nhỏ lên vết loét trước khi đi ngủ hoặc sau ăn ngày 2-3 lần (không chà xát)'),
-  ('MED-SPONGO', 'Đặt trực tiếp miếng xốp vào ổ răng sau nhổ, cắn gạc chặt trong 30-45 phút'),
-  ('MED-TRANS-500', 'Ngày uống 2-3 lần, mỗi lần 1 viên sau ăn để hỗ trợ cầm máu theo đơn'),
-  ('MED-BIOFLORA', 'Hòa tan gói men vào nước ấm hoặc uống trực tiếp, ngày 1-2 gói cách xa thời điểm uống kháng sinh 2 giờ'),
-  ('MED-OMEP-20', 'Uống 1 viên trước bữa ăn sáng 30 phút'),
-  ('MED-VITC-500', 'Ngày uống 1 lần, 1 viên sau bữa ăn sáng (không uống vào buổi tối)'),
-  ('MED-ENAMELAST', 'Lau khô bề mặt răng, quét một lớp vecni mỏng lên vùng cổ răng ê buốt theo chỉ định nha sĩ')
-) AS seed(code, usage_instruction)
-WHERE m.code = seed.code
-  AND (m.usage_instruction IS NULL OR BTRIM(m.usage_instruction) = '');
 
--- Preserve legacy prescriber names; only link unambiguous exact name matches.
-ALTER TABLE prescriptions ADD COLUMN IF NOT EXISTS dentist_id UUID;
--- Hibernate creates fk_prescriptions_dentist from Prescription.dentist before
--- this script (ddl-auto=update, defer-datasource-initialization=true).
--- Keep statements compatible with Spring's semicolon-based SQL script parser.
-CREATE INDEX IF NOT EXISTS idx_prescriptions_dentist_id ON prescriptions(dentist_id);
+-- ============================================================
+-- RÀNG BUỘC QUAN TRỌNG: đặt sau toàn bộ dữ liệu seed
+-- ============================================================
 
--- One active parent per related patient; inactive links remain as history.
--- Existing duplicate active links must be resolved explicitly before startup.
+-- Không cho phép một bác sĩ có hai lịch đang hoạt động cùng thời điểm.
+CREATE UNIQUE INDEX IF NOT EXISTS uk_dentist_active_timeslot
+ON appointments (dentist_id, appointment_date, appointment_time)
+WHERE status != 'CANCELLED';
+
+-- Mỗi kết quả khám chỉ được gắn với một kế hoạch điều trị.
+CREATE UNIQUE INDEX IF NOT EXISTS uk_treatment_plans_examination_result
+ON treatment_plans (examination_result_id);
+
+-- Không cho phép trùng mã thuốc.
+CREATE UNIQUE INDEX IF NOT EXISTS uk_medicines_code
+ON medicines (code);
+
+-- Mỗi bệnh nhân chỉ có một quan hệ đang hoạt động với cùng đối tượng.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_patient_relationships_active_target
-    ON patient_relationships (related_patient_id) WHERE status = true;
-
-UPDATE prescriptions p
-SET dentist_id = d.id
-FROM dentists d
-WHERE p.dentist_id IS NULL
-  AND NULLIF(BTRIM(p.prescriber), '') IS NOT NULL
-  AND LOWER(BTRIM(p.prescriber)) = LOWER(BTRIM(d.full_name))
-  AND (SELECT COUNT(*) FROM dentists other
-       WHERE LOWER(BTRIM(other.full_name)) = LOWER(BTRIM(d.full_name))) = 1;
-
--- Đảm bảo tài khoản employee02 có chức vụ RECEPTIONIST và tên hiển thị đúng với tài khoản (employee02)
-UPDATE employees e
-SET position = 'RECEPTIONIST', full_name = u.username
-FROM users u
-WHERE e.user_id = u.id AND u.username = 'employee02';
-
--- ============================================================
--- BẢNG 10: CLINICS & BRANCHES (Hệ thống phòng khám & Chi nhánh)
--- ============================================================
-INSERT INTO clinics (
-    clinic_id, clinic_code, brand_name, legal_name, tax_code, 
-    business_license_no, established_year, representative, phone_number, 
-    email, logo_url, registered_address, description, created_at, updated_at
-) VALUES (
-    'clinic-main-01',
-    'CROWN-HQ',
-    'Nha Khoa Crown Dental',
-    'Công Ty TNHH Nha Khoa Quốc Tế Crown Dental',
-    '0108923456',
-    '0108923456-GP/SYT',
-    2011,
-    'BS. CKII Nguyễn Văn Hùng',
-    '1900 8059',
-    'contact@crowndental.vn',
-    '/logo-brand.png',
-    '328 Phố Huế, Phường Phố Huế, Quận Hai Bà Trưng, TP. Hà Nội',
-    'Hệ thống Nha khoa Quốc tế Crown Dental - Tiêu chuẩn Châu Âu với trang thiết bị hiện đại hàng đầu Việt Nam.',
-    NOW(),
-    NOW()
-) ON CONFLICT (clinic_id) DO UPDATE SET
-    brand_name = EXCLUDED.brand_name,
-    legal_name = EXCLUDED.legal_name,
-    phone_number = EXCLUDED.phone_number,
-    email = EXCLUDED.email,
-    registered_address = EXCLUDED.registered_address;
-
-INSERT INTO branches (
-    branch_id, clinic_id, branch_code, branch_name, phone_number,
-    email, address, open_time, close_time, image_branch, status
-) VALUES 
-(
-    'branch-hn-01',
-    'clinic-main-01',
-    'CN-HN01',
-    'Crown Dental Phố Huế - Hà Nội',
-    '1900 8059',
-    'hanoi@crowndental.vn',
-    '328 Phố Huế, Quận Hai Bà Trưng, Hà Nội',
-    '08:30:00',
-    '19:30:00',
-    'https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=800&q=80',
-    'ACTIVE'
-),
-(
-    'branch-hcm-01',
-    'clinic-main-01',
-    'CN-HCM01',
-    'Crown Dental Nam Kỳ Khởi Nghĩa - TP.HCM',
-    '1900 8059',
-    'hcm@crowndental.vn',
-    '215 Nam Kỳ Khởi Nghĩa, Phường Võ Thị Sáu, Quận 3, TP. Hồ Chí Minh',
-    '08:30:00',
-    '19:30:00',
-    'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=800&q=80',
-    'ACTIVE'
-),
-(
-    'branch-bd-01',
-    'clinic-main-01',
-    'CN-BD01',
-    'Crown Dental Thủ Dầu Một - Bình Dương',
-    '1900 8059',
-    'binhduong@crowndental.vn',
-    '564 Đại Lộ Bình Dương, TP. Thủ Dầu Một, Bình Dương',
-    '08:30:00',
-    '19:30:00',
-    'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&w=800&q=80',
-    'ACTIVE'
-) ON CONFLICT (branch_id) DO UPDATE SET
-    branch_name = EXCLUDED.branch_name,
-    phone_number = EXCLUDED.phone_number,
-    email = EXCLUDED.email,
-    address = EXCLUDED.address,
-    open_time = EXCLUDED.open_time,
-    close_time = EXCLUDED.close_time,
-    image_branch = EXCLUDED.image_branch,
-    status = EXCLUDED.status;
-
--- Cập nhật nhân viên lễ tân vào chi nhánh mặc định nếu chưa gán
-UPDATE employees SET branch_id = 'branch-hn-01' WHERE branch_id IS NULL;
-
--- Đồng bộ nhân viên thu ngân cho các giao dịch thanh toán nếu bị thiếu (lấy từ nhân viên lập hóa đơn)
-UPDATE payment_transactions pt
-SET employee_id = i.employee_id
-FROM invoices i
-WHERE pt.invoice_id = i.id AND pt.employee_id IS NULL AND i.employee_id IS NOT NULL;
-
-
+ON patient_relationships (related_patient_id)
+WHERE status = true;
