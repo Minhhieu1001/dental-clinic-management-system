@@ -322,7 +322,7 @@ export default function DoctorDiagnosisTab() {
         {/* BẢNG 1 (CỘT TRÁI - 60% DIỆN TÍCH): Danh sách hồ sơ răng lâm sàng đã ghi nhận */}
         <div className="lg:col-span-6 rounded-2xl border border-slate-200/90 bg-white shadow-2xs overflow-hidden flex flex-col h-[330px]">
           {/* Header Bảng 1 */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 px-4 py-2.5 bg-slate-50/80 gap-2 shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 px-4 py-2.5 bg-slate-50 gap-2 shrink-0 z-20">
             <div className="flex items-center gap-2.5">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-700 text-white shadow-2xs shrink-0">
                 <Stethoscope size={15} />
@@ -365,9 +365,9 @@ export default function DoctorDiagnosisTab() {
           </div>
 
           {/* Nội dung Bảng 1: Cuộn dọc khi vượt quá chiều cao */}
-          <div className="p-3 overflow-x-auto overflow-y-auto flex-1 min-h-0">
+          <div className="p-0 overflow-x-auto overflow-y-auto flex-1 min-h-0 relative">
             {filteredExaminedTeeth.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center p-6 text-center text-slate-400 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 space-y-1.5">
+              <div className="h-full flex flex-col items-center justify-center p-6 text-center text-slate-400 space-y-1.5">
                 <AlertCircle size={22} className="mx-auto text-slate-300" />
                 <p className="font-bold text-slate-600 text-xs">
                   {examinedTeeth.length === 0
@@ -377,14 +377,14 @@ export default function DoctorDiagnosisTab() {
               </div>
             ) : (
               <table className="w-full text-left border-collapse text-xs">
-                <thead className="sticky top-0 bg-slate-100 z-10 shadow-2xs">
-                  <tr className="border-b border-slate-200 text-[10.5px] font-bold text-slate-600 uppercase tracking-wider">
-                    <th className="py-2 px-2 text-center w-8">#</th>
-                    <th className="py-2 px-2.5">Răng</th>
-                    <th className="py-2 px-2.5">Tình trạng</th>
-                    <th className="py-2 px-2.5">Tổn thương & Mức độ</th>
-                    <th className="py-2 px-2">Triệu chứng đau</th>
-                    <th className="py-2 px-2 text-center w-24">Thao tác</th>
+                <thead className="sticky top-0 bg-slate-100 z-10 shadow-xs border-b border-slate-200">
+                  <tr className="text-[10.5px] font-bold text-slate-600 uppercase tracking-wider">
+                    <th className="py-2.5 px-3 text-center w-8 bg-slate-100">#</th>
+                    <th className="py-2.5 px-3 bg-slate-100">Răng</th>
+                    <th className="py-2.5 px-3 bg-slate-100">Tình trạng</th>
+                    <th className="py-2.5 px-3 bg-slate-100">Tổn thương & Mức độ</th>
+                    <th className="py-2.5 px-2 bg-slate-100">Triệu chứng đau</th>
+                    <th className="py-2.5 px-3 text-center w-24 bg-slate-100">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -392,16 +392,16 @@ export default function DoctorDiagnosisTab() {
                     const hasCaries = t.cariesStatus === 'YES' || t.hasCaries;
 
                     return (
-                      <tr key={t.toothNumber || idx} className="hover:bg-teal-50/30 transition-colors">
-                        <td className="py-2 px-2 font-mono text-slate-400 text-center text-[10.5px]">
+                      <tr key={t.toothNumber || idx} className="hover:bg-slate-50 transition-colors">
+                        <td className="py-2 px-3 font-mono text-slate-400 text-center text-[10.5px]">
                           {idx + 1}
                         </td>
-                        <td className="py-2 px-2.5">
+                        <td className="py-2 px-3">
                           <span className="inline-flex items-center gap-1 font-black text-teal-900 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md font-mono text-xs shadow-2xs">
                             R{t.toothNumber}
                           </span>
                         </td>
-                        <td className="py-2 px-2.5">
+                        <td className="py-2 px-3">
                           {(() => {
                             const cond = toothConditions?.find(
                               (c) => c.key === t.toothStatus || c.label === t.toothStatus || c.code === t.toothStatus
@@ -428,7 +428,7 @@ export default function DoctorDiagnosisTab() {
                             );
                           })()}
                         </td>
-                        <td className="py-2 px-2.5 text-slate-700 text-[11px]">
+                        <td className="py-2 px-3 text-slate-700 text-[11px]">
                           {hasCaries ? (
                             <span className="text-slate-900">
                               Sâu răng{t.cariesLocation && t.cariesLocation !== 'Bình thường' ? ` · ${t.cariesLocation}` : ''}
@@ -451,13 +451,15 @@ export default function DoctorDiagnosisTab() {
                             type="button"
                             disabled={isHistoricalSession}
                             onClick={() => handleDiagnoseFromExaminedTooth(t)}
-                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold text-[10.5px] transition-all shadow-2xs ${isHistoricalSession
-                              ? 'cursor-not-allowed'
-                              : 'bg-teal-50 text-teal-800 hover:bg-teal-700 hover:text-white border border-teal-200 cursor-pointer'
-                              }`}
+                            className={`inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded text-xs font-medium transition-colors border ${
+                              isHistoricalSession
+                                ? 'cursor-not-allowed opacity-40 bg-slate-50 text-slate-400 border-slate-200'
+                                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-400 cursor-pointer shadow-2xs'
+                            }`}
                             title={isHistoricalSession ? 'Đợt khám đã kết thúc / đã khóa kết quả' : `Mở modal lập chẩn đoán cho Răng ${t.toothNumber}`}
                           >
-                            {isHistoricalSession ? <Lock size={11} /> : <Plus size={11} />}
+                            {isHistoricalSession ? <Lock size={12} /> : <Plus size={12} />}
+                            {!isHistoricalSession && <span>Thêm</span>}
                           </button>
                         </td>
                       </tr>
@@ -472,18 +474,18 @@ export default function DoctorDiagnosisTab() {
         {/* BẢNG 2 (CỘT PHẢI - 40% DIỆN TÍCH): Kết quả phân tích & Đề xuất AI Copilot */}
         <div className="lg:col-span-4 rounded-2xl border border-purple-200/90 bg-white shadow-2xs overflow-hidden flex flex-col h-[330px]">
           {/* Header Bảng 2 */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-purple-200 px-4 py-2.5 bg-purple-50/60 gap-2 shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-purple-200 px-4 py-2.5 bg-purple-50/60 gap-2 shrink-0 z-20">
             <div className="flex items-center gap-2">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-700 text-white shadow-2xs shrink-0">
                 <BrainCircuit size={15} />
               </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <h3 className="font-extrabold text-slate-900 text-xs sm:text-sm">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-bold text-slate-900 text-xs sm:text-sm">
                     ĐỀ XUẤT PHÂN TÍCH AI
                   </h3>
-                  <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded-full shrink-0">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="flex items-center gap-1.5 text-[10.5px] font-medium text-slate-600 bg-slate-100 border border-slate-200/80 px-2 py-0.5 rounded shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                     Online
                   </span>
                 </div>
@@ -493,7 +495,7 @@ export default function DoctorDiagnosisTab() {
             <button
               type="button"
               onClick={() => setIsXrayModalOpen(true)}
-              className="text-[10.5px] font-extrabold text-purple-700 hover:text-purple-900 bg-white border border-purple-200 px-2 py-1 rounded-lg hover:bg-purple-100 transition-colors cursor-pointer self-start sm:self-auto"
+              className="text-[11px] font-medium text-slate-700 hover:text-slate-900 bg-white border border-slate-200 px-2.5 py-1 rounded hover:bg-slate-50 transition-colors cursor-pointer self-start sm:self-auto shadow-2xs"
               title="Mở toàn màn hình xem chi tiết 32 răng trên X-quang"
             >
               Mở X-quang AI
@@ -501,7 +503,7 @@ export default function DoctorDiagnosisTab() {
           </div>
 
           {/* Nội dung Bảng 2: Cuộn dọc khi vượt quá chiều cao */}
-          <div className="p-3 overflow-x-auto overflow-y-auto flex-1 min-h-0">
+          <div className="p-0 overflow-x-auto overflow-y-auto flex-1 min-h-0 relative">
             {aiDetections.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-4 text-slate-400 space-y-2">
                 <BrainCircuit size={26} className="text-purple-300" />
@@ -519,13 +521,13 @@ export default function DoctorDiagnosisTab() {
               </div>
             ) : (
               <table className="w-full text-left border-collapse text-xs">
-                <thead className="sticky top-0 bg-purple-50 z-10 shadow-2xs">
-                  <tr className="border-b border-purple-100 text-[10.5px] font-bold text-slate-600 uppercase tracking-wider">
-                    <th className="py-2 px-2.5 w-14">Vị trí</th>
-                    <th className="py-2 px-2.5">Tổn thương AI nhận diện</th>
-                    <th className="py-2 px-2 text-center w-20">Độ tin cậy</th>
-                    <th className="py-2 px-2.5">Khuyến nghị xử lý</th>
-                    <th className="py-2 px-2 text-center w-16">Lập chẩn đoán</th>
+                <thead className="sticky top-0 bg-purple-50/95 backdrop-blur-xs z-10 shadow-xs border-b border-purple-100">
+                  <tr className="text-[10.5px] font-bold text-slate-600 uppercase tracking-wider">
+                    <th className="py-2.5 px-3 w-14 bg-purple-50">Vị trí</th>
+                    <th className="py-2.5 px-3 bg-purple-50">Tổn thương AI nhận diện</th>
+                    <th className="py-2.5 px-2 text-center w-20 bg-purple-50">Độ tin cậy</th>
+                    <th className="py-2.5 px-3 bg-purple-50">Khuyến nghị xử lý</th>
+                    <th className="py-2.5 px-2 text-center w-16 bg-purple-50">Lập chẩn đoán</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-purple-50">
@@ -535,21 +537,21 @@ export default function DoctorDiagnosisTab() {
                       className={`transition-colors ${
                         item.isAccepted
                           ? 'bg-emerald-50/30 hover:bg-emerald-50/50'
-                          : 'hover:bg-purple-50/50'
+                          : 'hover:bg-purple-50/40'
                       }`}
                     >
-                      <td className="py-2 px-2.5">
-                        <span className="inline-block font-mono font-black px-2 py-0.5 rounded-md text-xs shadow-2xs text-purple-950 bg-purple-100/90 border border-purple-200">
+                      <td className="py-2 px-3">
+                        <span className="inline-block font-mono font-bold px-2 py-0.5 rounded text-xs text-slate-800 bg-slate-100 border border-slate-200">
                           R{item.toothNumber}
                         </span>
                       </td>
-                      <td className="py-2 px-2.5">
+                      <td className="py-2 px-3">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-bold text-xs leading-tight text-slate-900">
+                          <span className="font-semibold text-xs leading-tight text-slate-900">
                             {item.finding}
                           </span>
                           {item.isAccepted && (
-                            <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.2 rounded border border-emerald-300">
+                            <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
                               Đã đồng ý
                             </span>
                           )}
@@ -560,19 +562,19 @@ export default function DoctorDiagnosisTab() {
                       </td>
                       <td className="py-2 px-2 text-center">
                         <div className="inline-flex flex-col items-center">
-                          <span className="font-extrabold text-[11px] text-purple-900 font-mono">
+                          <span className="font-bold text-[11px] text-slate-700 font-mono">
                             {item.confidence}%
                           </span>
-                          <div className="w-14 h-1.5 bg-slate-100 rounded-full overflow-hidden mt-0.5 border border-slate-200/80">
+                          <div className="w-14 h-1.5 bg-slate-100 rounded-sm overflow-hidden mt-0.5 border border-slate-200">
                             <div
-                              className={`h-full bg-gradient-to-r ${item.barColor} rounded-full`}
+                              className="h-full bg-slate-500 rounded-sm"
                               style={{ width: `${item.confidence}%` }}
                             />
                           </div>
                         </div>
                       </td>
-                      <td className="py-2 px-2.5 text-slate-700 text-[11px]">
-                        <div className="font-medium line-clamp-2">
+                      <td className="py-2 px-3 text-slate-700 text-[11px]">
+                        <div className="font-normal line-clamp-2">
                           {item.recommendation}
                         </div>
                       </td>
@@ -581,16 +583,16 @@ export default function DoctorDiagnosisTab() {
                           type="button"
                           disabled={isHistoricalSession}
                           onClick={() => handleDiagnoseFromAiFinding(item)}
-                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg font-bold text-[10.5px] transition-all shadow-2xs ${
+                          className={`inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded text-xs font-medium transition-colors border ${
                             isHistoricalSession
-                              ? 'cursor-not-allowed opacity-40'
+                              ? 'cursor-not-allowed opacity-40 bg-slate-50 text-slate-400 border-slate-200'
                               : item.isAccepted
-                                ? 'bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer shadow-xs'
-                                : 'bg-purple-100 text-purple-900 hover:bg-purple-700 hover:text-white border border-purple-200 cursor-pointer'
+                                ? 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700 cursor-pointer shadow-2xs'
+                                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-400 cursor-pointer shadow-2xs'
                           }`}
                           title={`Lập kết luận chẩn đoán từ đề xuất AI cho Răng ${item.toothNumber}`}
                         >
-                          <Plus size={11} />
+                          <Plus size={12} />
                           <span>Thêm</span>
                         </button>
                       </td>

@@ -76,7 +76,9 @@ export default function AiAnalysisTab() {
   }, [pendingPreview]);
 
   // Kiểm tra trạng thái: có ảnh hay chưa
-  const hasAnalyzedData = Boolean(xrayAnalysis && xrayAnalysis.findings && xrayAnalysis.findings.length > 0);
+  const hasAnalyzedData = Boolean(
+    !pendingFile && xrayAnalysis && xrayAnalysis.findings && xrayAnalysis.findings.length > 0
+  );
   const hasImage = Boolean(pendingPreview || xrayAnalysis?.imageUrl);
   const displayImage = pendingPreview || xrayAnalysis?.imageUrl || null;
 
@@ -227,7 +229,7 @@ export default function AiAnalysisTab() {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isHistoricalSession || isAiAnalyzing}
-                className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer disabled:opacity-40"
+                className="flex items-center gap-1.5 rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer disabled:opacity-40"
                 title="Tải ảnh X-quang từ máy tính"
               >
                 <Upload size={13} className="text-teal-700" />
@@ -237,11 +239,10 @@ export default function AiAnalysisTab() {
               <button
                 type="button"
                 onClick={() => setIsXrayModalOpen(true)}
-                className="flex items-center gap-1.5 rounded-lg border border-purple-300 bg-purple-50 px-3 py-1.5 text-xs font-extrabold text-purple-900 hover:bg-purple-100 transition-colors shadow-2xs cursor-pointer"
+                className="flex items-center gap-1.5 rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
                 title="Mở giao diện phân tích toàn diện trên modal kích thước lớn"
               >
-                <Maximize2 size={13} className="text-purple-700" />
-                <span>Bản phim lớn</span>
+                <span>Xem phim lớn</span>
               </button>
 
               {hasImage && !hasAnalyzedData && (
@@ -274,64 +275,38 @@ export default function AiAnalysisTab() {
           >
             {/* TRƯỜNG HỢP 1: CHƯA CÓ ẢNH ĐƯỢC TẢI LÊN (EMPTY UPLOAD STATE CHUẨN Y KHOA) */}
             {!hasImage ? (
-              <div className="flex-1 flex flex-col items-center justify-center p-6 text-center my-auto">
+              <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 text-center my-auto">
                 <div
-                  className={`w-full max-w-lg rounded-2xl border-2 border-dashed p-8 sm:p-10 transition-all ${isDragging
-                    ? 'border-teal-400 bg-teal-500/10 scale-102'
-                    : 'border-slate-800 bg-slate-900/60 hover:border-slate-700'
-                    }`}
+                  className={`w-full max-w-md rounded-xl border transition-all p-7 sm:p-8 ${
+                    isDragging
+                      ? 'border-teal-400 bg-teal-950/20 shadow-md'
+                      : 'border-slate-800/80 bg-slate-900/40 hover:border-slate-700'
+                  }`}
                 >
-                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-teal-500/15 text-teal-300 border border-teal-500/30 mb-4 shadow-inner">
-                    <ImageIcon size={32} />
-                  </div>
-
-                  <h4 className="text-base sm:text-lg font-black text-white">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-teal-400">
+                    Kho lưu trữ hình ảnh & X-quang
+                  </p>
+                  
+                  <h4 className="text-base font-bold text-slate-100 mt-1.5">
                     Chưa có phim X-quang cho đợt khám này
                   </h4>
-                  <p className="text-xs text-slate-400 mt-2 leading-relaxed max-w-md mx-auto">
-                    Kéo thả hoặc chọn phim X-quang nha khoa từ máy tính để AI tiến hành quét cấu trúc răng, đo độ sâu tổn thương và đối soát lâm sàng.
+                  <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                    Kéo thả hoặc chọn file phim X-quang từ thiết bị để bắt đầu phân tích cấu trúc răng và đối soát lâm sàng.
                   </p>
 
-                  {/* Chế độ nhận diện AI tự động */}
-                  <div className="mt-4 flex items-center justify-center gap-2 flex-wrap text-xs">
-                    <div
-                      className="flex items-center gap-1.5 bg-slate-800 text-teal-300 border border-teal-500/30 rounded-lg px-3 py-1.5 text-xs font-bold shadow-sm"
-                      title="AI tự động phân loại cấu trúc phim và phát hiện răng"
-                    >
-                      <Sparkles size={13} className="text-teal-400 animate-pulse" />
-                      <span>Nhận diện AI tự động</span>
-                    </div>
-                  </div>
-
-                  {/* Nhãn định dạng hỗ trợ */}
-                  <div className="flex items-center justify-center gap-1.5 mt-3 text-[10px] text-slate-500 font-mono">
-                    <span className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700">DICOM Export</span>
-                    <span className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700">JPEG</span>
-                    <span className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700">PNG</span>
-                    <span className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700">Tối đa 10MB</span>
-                  </div>
-
-                  {/* Các nút hành động chính */}
-                  <div className="mt-5 flex items-center justify-center gap-3 flex-wrap">
+                  <div className="mt-5 flex items-center justify-center">
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-2.5 text-xs font-black text-white hover:bg-teal-500 transition-colors shadow-lg cursor-pointer"
+                      className="inline-flex items-center justify-center rounded-lg bg-teal-600 px-5 py-2.5 text-xs font-semibold text-white hover:bg-teal-500 transition-colors cursor-pointer shadow-xs active:scale-98"
                     >
-                      <Upload size={15} />
-                      <span>Chọn phim X-quang từ máy tính</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleLoadSampleDemo}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-purple-500/40 bg-purple-500/10 px-4 py-2.5 text-xs font-bold text-purple-300 hover:bg-purple-500/20 transition-colors cursor-pointer"
-                      title="Nạp phim Panorama mẫu để thử nghiệm nhanh tính năng AI"
-                    >
-                      <Sparkles size={13} />
-                      <span>Dùng phim mẫu thử nghiệm</span>
+                      Chọn phim từ máy tính
                     </button>
                   </div>
+
+                  <p className="mt-4 text-[11px] text-slate-500">
+                    Định dạng hỗ trợ: DICOM export, JPEG, PNG (tối đa 10MB)
+                  </p>
                 </div>
               </div>
             ) : (
@@ -464,15 +439,15 @@ export default function AiAnalysisTab() {
 
                   {/* BANNER THAO TÁC KHI VỪA TẢI ẢNH MỚI NHƯNG CHƯA BẤM PHÂN TÍCH */}
                   {!hasAnalyzedData && pendingPreview && (
-                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-xl bg-slate-900/95 border border-slate-700 px-3.5 py-2 shadow-2xl backdrop-blur-sm z-30">
-                      <span className="text-[11px] text-slate-300 max-w-[180px] truncate">
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-lg bg-slate-900/90 border border-slate-700/80 px-3 py-1.5 shadow-lg backdrop-blur-md z-30">
+                      <span className="text-xs text-slate-300 max-w-[160px] truncate">
                         {pendingFile?.name || 'Ảnh vừa tải lên'}
                       </span>
                       <button
                         type="button"
                         onClick={handleCancelPending}
                         disabled={isAiAnalyzing}
-                        className="rounded-lg border border-slate-600 px-2.5 py-1 text-xs font-bold text-slate-300 hover:bg-slate-800 disabled:opacity-40 cursor-pointer"
+                        className="rounded border border-slate-700 px-2.5 py-1 text-xs text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-40 transition-colors cursor-pointer"
                       >
                         Hủy
                       </button>
@@ -480,9 +455,9 @@ export default function AiAnalysisTab() {
                         type="button"
                         onClick={handleStartAnalysis}
                         disabled={isAiAnalyzing}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-teal-600 to-purple-600 px-3.5 py-1 text-xs font-extrabold text-white hover:opacity-90 disabled:opacity-50 cursor-pointer shadow-sm"
+                        className="inline-flex items-center gap-1.5 rounded bg-teal-600 hover:bg-teal-500 px-3 py-1 text-xs font-medium text-white disabled:opacity-50 transition-colors cursor-pointer shadow-xs"
                       >
-                        {isAiAnalyzing ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                        {isAiAnalyzing ? <Loader2 size={13} className="animate-spin" /> : null}
                         <span>{isAiAnalyzing ? 'Đang đọc phim...' : 'Bắt đầu phân tích AI'}</span>
                       </button>
                     </div>
@@ -606,19 +581,19 @@ export default function AiAnalysisTab() {
         {/* Card 2 (5/12): Kết quả phân tích AI trên X-quang & Đối soát lâm sàng */}
         <div className="lg:col-span-5 rounded-2xl border border-slate-200/90 bg-white p-4 sm:p-5 shadow-2xs space-y-4 text-xs flex flex-col justify-between">
           <div className="space-y-3.5 flex-1 flex flex-col">
-            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-              <div>
-                <h3 className="font-extrabold text-slate-900 text-sm">
+            <div className="border-b border-slate-100 pb-3 flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+              <div className="min-w-0">
+                <h3 className="font-extrabold text-slate-900 text-sm truncate">
                   Kết quả phân tích AI trên X-quang
                 </h3>
-                <p className="text-[11px] text-slate-400 mt-0.5">
+                <p className="text-[11px] text-slate-400 mt-0.5 truncate">
                   Mô hình học sâu (Deep Learning) phát hiện tổn thương cấu trúc răng
                 </p>
               </div>
 
               {hasAnalyzedData ? (
                 /* Nút chuyển tab phụ khi đã có dữ liệu phân tích */
-                <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-[10.5px] font-bold">
+                <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-[10.5px] font-bold shrink-0">
                   <button
                     type="button"
                     onClick={() => setActiveTabSub('detail')}
@@ -641,7 +616,7 @@ export default function AiAnalysisTab() {
                   </button>
                 </div>
               ) : (
-                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full border bg-slate-100 text-slate-500 border-slate-200">
+                <span className="text-[11px] font-medium px-2.5 py-1 rounded border bg-slate-100 text-slate-600 border-slate-200 whitespace-nowrap shrink-0">
                   Chờ phim X-quang
                 </span>
               )}
@@ -649,47 +624,43 @@ export default function AiAnalysisTab() {
 
             {/* TRƯỜNG HỢP A: CHƯA CÓ KẾT QUẢ PHÂN TÍCH (EMPTY STATE PHẢI) */}
             {!hasAnalyzedData ? (
-              <div className="py-6 px-3 text-center space-y-4">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-50 text-purple-700 border border-purple-200 shadow-2xs">
-                  <BrainCircuit size={28} />
-                </div>
-
-                <div className="space-y-1">
-                  <h4 className="font-extrabold text-slate-800 text-sm">
+              <div className="py-6 px-4 space-y-4">
+                <div className="text-center space-y-1">
+                  <h4 className="font-bold text-slate-800 text-sm">
                     {pendingPreview
                       ? 'Phim đã sẵn sàng phân tích'
                       : 'Chưa có dữ liệu phân tích X-quang'}
                   </h4>
-                  <p className="text-slate-500 text-[11.5px] max-w-xs mx-auto leading-relaxed">
+                  <p className="text-slate-500 text-xs max-w-sm mx-auto leading-relaxed">
                     {pendingPreview
-                      ? 'Nhấn nút "Bắt đầu phân tích AI" để mô hình quét toàn bộ phim và trích xuất tổn thương.'
-                      : 'Vui lòng tải phim X-quang lên ở khung bên trái để AI tiến hành đọc phim.'}
+                      ? 'Nhấn nút phân tích để mô hình nhận diện tổn thương và trích xuất cấu trúc răng.'
+                      : 'Vui lòng chọn hoặc tải phim X-quang lên để hệ thống hỗ trợ đọc phim.'}
                   </p>
                 </div>
 
                 {/* Quy trình nghiệp vụ 4 bước chuẩn phòng khám */}
-                <div className="bg-slate-50/80 rounded-xl border border-slate-200/80 p-3 text-left space-y-2 text-[11px]">
-                  <p className="font-extrabold text-slate-700 uppercase tracking-wide text-[10px]">
-                    Quy trình phân tích & đối soát y khoa:
+                <div className="bg-slate-50 rounded-xl border border-slate-200/80 p-3.5 space-y-2.5 text-xs">
+                  <p className="font-bold text-slate-700 text-[11px] tracking-wide uppercase">
+                    Quy trình xử lý lâm sàng:
                   </p>
-                  <div className="space-y-1.5 text-slate-600">
-                    <div className="flex items-center gap-2">
-                      <span className="h-5 w-5 rounded-full bg-teal-100 text-teal-800 flex items-center justify-center font-bold text-[10px] shrink-0">1</span>
-                      <span>Tải phim X-quang (Panorama, Cận chóp, Cánh cắn)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="h-5 w-5 rounded-full bg-purple-100 text-purple-800 flex items-center justify-center font-bold text-[10px] shrink-0">2</span>
-                      <span>AI quét men, ngà, tủy, chóp và đánh số răng FDI</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="h-5 w-5 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-[10px] shrink-0">3</span>
-                      <span>Bác sĩ đối soát chéo với khám lâm sàng Bước 1</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="h-5 w-5 rounded-full bg-sky-100 text-sky-800 flex items-center justify-center font-bold text-[10px] shrink-0">4</span>
-                      <span>Đồng ý kết luận và chuyển sang Bước 3 (Chẩn đoán)</span>
-                    </div>
-                  </div>
+                  <ol className="space-y-2 text-slate-600 text-xs">
+                    <li className="flex items-start gap-2.5">
+                      <span className="font-mono text-slate-400 font-bold text-xs shrink-0">01.</span>
+                      <span>Tải phim X-quang (Panorama, Cận chóp hoặc Cánh cắn)</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <span className="font-mono text-slate-400 font-bold text-xs shrink-0">02.</span>
+                      <span>Hệ thống phân tích cấu trúc răng và tổn thương tiềm ẩn</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <span className="font-mono text-slate-400 font-bold text-xs shrink-0">03.</span>
+                      <span>Bác sĩ đối soát chéo với kết quả khám lâm sàng</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <span className="font-mono text-slate-400 font-bold text-xs shrink-0">04.</span>
+                      <span>Xác nhận kết quả và chuyển tiếp sang bước chẩn đoán</span>
+                    </li>
+                  </ol>
                 </div>
 
                 {pendingPreview && (
@@ -697,10 +668,10 @@ export default function AiAnalysisTab() {
                     type="button"
                     onClick={handleStartAnalysis}
                     disabled={isAiAnalyzing}
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-teal-700 py-2.5 text-xs font-bold text-white shadow hover:bg-teal-800 transition-colors cursor-pointer"
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-teal-700 py-2.5 text-xs font-semibold text-white hover:bg-teal-800 transition-colors cursor-pointer shadow-xs"
                   >
-                    {isAiAnalyzing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                    <span>{isAiAnalyzing ? 'Đang phân tích...' : 'Bắt đầu phân tích AI ngay'}</span>
+                    {isAiAnalyzing ? <Loader2 size={14} className="animate-spin" /> : null}
+                    <span>{isAiAnalyzing ? 'Đang phân tích phim...' : 'Bắt đầu phân tích phim'}</span>
                   </button>
                 )}
               </div>
@@ -902,44 +873,39 @@ export default function AiAnalysisTab() {
           </div>
 
           {/* ACTION BUTTONS DƯỚI CARD 2 */}
-          <div className="space-y-2 pt-2 border-t border-slate-100">
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => setIsXrayModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded border border-slate-300 bg-white hover:bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 transition-colors cursor-pointer shadow-2xs shrink-0"
+              title="Mở toàn màn hình xem chi tiết 32 vị trí răng và đối soát y khoa"
+            >
+              <span>Xem phim lớn</span>
+            </button>
+
             {hasAnalyzedData ? (
               activeFindingDecision === 'REJECTED' ? (
-                <div className="w-full rounded-xl bg-slate-100 py-2.5 px-3 text-xs font-bold text-slate-500 border border-slate-200 flex items-center justify-center gap-2">
-                  <XCircle size={14} className="text-slate-500" />
-                  <span>Phát hiện này đã bị bác sĩ bác bỏ (không lập chẩn đoán)</span>
+                <div className="flex-1 rounded bg-slate-100 py-2 px-3 text-xs text-slate-500 border border-slate-200 text-center select-none font-medium">
+                  Đã bác bỏ phát hiện này
                 </div>
               ) : (
                 <button
                   type="button"
                   onClick={handleDiagnoseCurrentFinding}
                   disabled={isHistoricalSession}
-                  className="w-full rounded-xl bg-teal-700 py-2.5 text-xs font-bold text-white shadow hover:bg-teal-800 transition-colors cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40"
+                  className="flex-1 rounded bg-teal-700 py-2 px-3 text-xs font-medium text-white hover:bg-teal-800 transition-colors cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40 shadow-2xs"
                 >
-                  <FileText size={14} />
-                  <span>Đồng ý & lập chẩn đoán cho Răng {activeToothNumber}</span>
-                  <ChevronRight size={14} />
+                  <span>Lập chẩn đoán Răng {activeToothNumber}</span>
+                  <ChevronRight size={13} />
                 </button>
               )
             ) : (
-              <button
-                type="button"
-                disabled
-                className="w-full rounded-xl bg-slate-100 py-2.5 text-xs font-bold text-slate-400 cursor-not-allowed flex items-center justify-center gap-2"
+              <div
+                className="flex-1 rounded bg-slate-50 border border-slate-200/80 py-2 px-3 text-xs text-slate-500 text-center select-none"
               >
-                <FileText size={14} />
-                <span>Cần tải và phân tích phim trước khi lập chẩn đoán</span>
-              </button>
+                Chờ tải và phân tích phim
+              </div>
             )}
-
-            <button
-              type="button"
-              onClick={() => setIsXrayModalOpen(true)}
-              className="w-full rounded-xl border border-purple-300 bg-purple-50/60 py-2 text-xs font-bold text-purple-900 hover:bg-purple-100 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-            >
-              <Maximize2 size={13} className="text-purple-700" />
-              <span>Mở giao diện đọc phim AI chuyên sâu (Toàn màn hình)</span>
-            </button>
           </div>
         </div>
       </div>
@@ -960,21 +926,11 @@ export default function AiAnalysisTab() {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setIsXrayModalOpen(true)}
-            className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-purple-300 bg-purple-50 px-3.5 py-2 text-xs font-extrabold text-purple-900 hover:bg-purple-100 transition-colors cursor-pointer"
-          >
-            <BrainCircuit size={14} className="text-purple-700" />
-            <span>Trình đọc phim AI chuyên sâu</span>
-          </button>
-
-          <button
-            type="button"
             onClick={() => setActiveTab('diagnosis')}
-            className="flex items-center gap-2 rounded-lg bg-teal-700 px-5 py-2 text-xs font-bold text-white shadow hover:bg-teal-800 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 rounded bg-teal-700 px-4 py-2 text-xs font-medium text-white shadow-xs hover:bg-teal-800 transition-colors cursor-pointer"
           >
-            <FileText size={14} />
             <span>Tiếp tục: Bước 3 - Chẩn đoán của bác sĩ</span>
-            <ArrowRight size={14} />
+            <ArrowRight size={13} />
           </button>
         </div>
       </div>

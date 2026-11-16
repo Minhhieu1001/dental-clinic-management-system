@@ -567,28 +567,17 @@ export default function XrayAiAnalysisModal() {
                 </div>
               )}
 
-              {!readOnly && (
-                <>
-                  <div
-                    className="flex items-center gap-1.5 rounded-lg bg-white/10 border border-white/20 px-2.5 py-1.5 text-xs font-bold text-teal-200 select-none shadow-inner"
-                    title="Hệ thống AI tự động phân tích và xác định loại phim X-quang"
-                  >
-                    <Sparkles size={13} className="text-teal-300 animate-pulse" />
-                    <span>Tự động nhận diện (AI)</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isAiAnalyzing}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-white text-teal-800 px-3 py-1.5 text-xs font-extrabold hover:bg-teal-50 disabled:opacity-50 cursor-pointer shadow-sm"
-                  >
-                    <Upload size={13} /> Tải phim mới
-                  </button>
-                </>
-              )}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isAiAnalyzing}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-white text-teal-800 px-3 py-1.5 text-xs font-semibold hover:bg-teal-50 disabled:opacity-50 cursor-pointer shadow-xs"
+              >
+                Tải phim
+              </button>
               {readOnly && (
                 <span className="inline-flex items-center gap-1 rounded-lg bg-amber-400/20 border border-amber-300/40 px-2.5 py-1.5 text-[11px] font-bold">
-                  <Lock size={12} /> Đợt khám đã khóa · chỉ xem
+                  <Lock size={12} /> Đợt khám đã khóa
                 </span>
               )}
               <button
@@ -709,40 +698,51 @@ export default function XrayAiAnalysisModal() {
                 {!imageSrc ? (
                   <div className="absolute inset-0 flex items-center justify-center p-6">
                     <div
-                      className={`w-full max-w-xl rounded-2xl border-2 border-dashed p-10 text-center space-y-4 transition-colors ${isDragging ? 'border-teal-400 bg-teal-500/10' : 'border-slate-700 bg-slate-900/60'
-                        }`}
+                      className={`w-full max-w-md rounded-xl border p-8 text-center transition-colors ${
+                        isDragging ? 'border-teal-400 bg-teal-950/20' : 'border-slate-800/80 bg-slate-900/50'
+                      }`}
                     >
-                      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-teal-500/15 text-teal-300 border border-teal-500/30">
-                        <ImageIcon size={30} />
-                      </div>
-                      <div>
-                        <p className="text-white font-extrabold text-base">Chưa có phim X-quang cho đợt khám này</p>
-                        <p className="text-slate-400 text-xs mt-1.5 leading-relaxed">
-                          Kéo thả hoặc chọn phim Panorama / cận chóp / cánh cắn (JPEG, PNG, WEBP · tối đa 10MB).
-                          <br />
-                          AI sẽ quét toàn bộ 32 vị trí răng theo hệ FDI và đánh dấu từng tổn thương.
-                        </p>
-                      </div>
-                      {!readOnly && (
-                        <div className="flex items-center justify-center gap-3 flex-wrap">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-teal-400">
+                        Kho lưu trữ hình ảnh & X-quang
+                      </p>
+                      <h4 className="text-base font-bold text-slate-100 mt-1.5">
+                        Chưa có phim X-quang cho đợt khám này
+                      </h4>
+                      <p className="text-slate-400 text-xs mt-2 leading-relaxed">
+                        Kéo thả hoặc chọn file phim X-quang từ thiết bị để bắt đầu phân tích cấu trúc răng và đối soát lâm sàng.
+                      </p>
+
+                      {!readOnly ? (
+                        <div className="mt-5 flex items-center justify-center">
                           <button
                             type="button"
                             onMouseDown={(e) => e.stopPropagation()}
                             onClick={() => fileInputRef.current?.click()}
-                            className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-teal-500 cursor-pointer shadow-lg"
+                            className="inline-flex items-center justify-center rounded-lg bg-teal-600 px-5 py-2.5 text-xs font-semibold text-white hover:bg-teal-500 cursor-pointer shadow-xs transition-colors"
                           >
-                            <Upload size={16} /> Chọn phim X-quang
+                            Chọn phim từ máy tính
                           </button>
+                        </div>
+                      ) : (
+                        <div className="mt-5 flex flex-col items-center justify-center gap-2">
+                          <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 text-xs text-amber-300 font-medium">
+                            <Lock size={12} /> Đợt khám đã kết thúc / khóa hồ sơ
+                          </span>
                           <button
                             type="button"
                             onMouseDown={(e) => e.stopPropagation()}
-                            onClick={handleLoadSampleDemo}
-                            className="inline-flex items-center gap-1.5 rounded-xl border border-purple-500/40 bg-purple-500/10 px-4 py-2.5 text-xs font-bold text-purple-300 hover:bg-purple-500/20 cursor-pointer"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="inline-flex items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-700 px-4 py-2 text-xs font-semibold text-slate-200 cursor-pointer shadow-xs transition-colors"
+                            title="Tải phim lên để xem hoặc bổ sung hồ sơ phim"
                           >
-                            <Sparkles size={14} /> Dùng phim mẫu thử nghiệm
+                            Tải phim bổ sung từ máy tính
                           </button>
                         </div>
                       )}
+
+                      <p className="mt-4 text-[11px] text-slate-500">
+                        Định dạng hỗ trợ: DICOM export, JPEG, PNG (tối đa 10MB)
+                      </p>
                     </div>
                   </div>
                 ) : (
@@ -844,15 +844,15 @@ export default function XrayAiAnalysisModal() {
                 {/* Thanh xác nhận phân tích khi vừa chọn phim */}
                 {pendingPreview && (
                   <div
-                    className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-xl bg-slate-900/95 border border-slate-700 px-3 py-2 shadow-2xl"
+                    className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-lg bg-slate-900/90 border border-slate-700/80 px-3 py-1.5 shadow-lg backdrop-blur-md"
                     onMouseDown={(e) => e.stopPropagation()}
                   >
-                    <span className="text-[11px] text-slate-300 max-w-[220px] truncate">{pendingFile?.name}</span>
+                    <span className="text-xs text-slate-300 max-w-[200px] truncate">{pendingFile?.name}</span>
                     <button
                       type="button"
                       onClick={handleCancelPending}
                       disabled={isAiAnalyzing}
-                      className="rounded-lg border border-slate-600 px-3 py-1.5 text-xs font-bold text-slate-300 hover:bg-slate-800 disabled:opacity-40 cursor-pointer"
+                      className="rounded border border-slate-700 px-2.5 py-1 text-xs text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-40 transition-colors cursor-pointer"
                     >
                       Hủy
                     </button>
@@ -860,10 +860,10 @@ export default function XrayAiAnalysisModal() {
                       type="button"
                       onClick={handleStartAnalysis}
                       disabled={isAiAnalyzing}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-teal-600 to-purple-600 px-4 py-1.5 text-xs font-extrabold text-white hover:opacity-90 disabled:opacity-60 cursor-pointer"
+                      className="inline-flex items-center gap-1.5 rounded bg-teal-600 hover:bg-teal-500 px-3 py-1 text-xs font-medium text-white disabled:opacity-50 transition-colors cursor-pointer shadow-xs"
                     >
-                      {isAiAnalyzing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                      {isAiAnalyzing ? 'AI đang đọc phim...' : 'Bắt đầu phân tích AI'}
+                      {isAiAnalyzing ? <Loader2 size={13} className="animate-spin" /> : null}
+                      <span>{isAiAnalyzing ? 'Đang phân tích...' : 'Bắt đầu phân tích AI'}</span>
                     </button>
                   </div>
                 )}

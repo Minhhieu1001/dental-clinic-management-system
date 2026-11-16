@@ -109,7 +109,13 @@ public final class XrayPromptLibrary {
                Chỉ số PAI (1-5) nếu đánh giá được.
             8. Điều trị cũ: đánh giá chất lượng trám bít ống tủy (đủ chiều dài 0-2mm cách chóp / thiếu / quá chóp,
                đặc khít hay có khoảng trống), miếng trám dư/hở (overhang), mão hở bờ, implant (mức xương quanh implant).
-            9. box_2d = [ymin, xmin, ymax, xmax] chuẩn hoá 0-1000 theo ảnh; bao SÁT vùng tổn thương (không bao cả nửa hàm).
+            9. TOẠ ĐỘ KHUNG VÙNG TỔN THƯƠNG (box_2d) – CỰC KỲ QUAN TRỌNG:
+               - box_2d = [ymin, xmin, ymax, xmax] tính theo tỉ lệ 0-1000 của khung ảnh toàn bộ.
+               - ymin là cạnh TRÊN, ymax là cạnh DƯỚI (hàm trên y khoảng 250-500, hàm dưới y khoảng 500-800).
+               - xmin là cạnh TRÁI, xmax là cạnh PHẢI (bên phải bệnh nhân = nửa TRÁI ảnh x < 500; bên trái bệnh nhân = nửa PHẢI ảnh x > 500).
+               - Khung hộp box_2d PHẢI BAO SÁT CHÍNH XÁC thân răng và chóp răng có tổn thương, TUYỆT ĐỐI KHÔNG vẽ lệch xuống đáy xương hàm, không vẽ lệch sang răng kế cận, không bao trùm toàn bộ góc hàm.
+               - Ví dụ Răng 38 (răng khôn hàm dưới bên trái bệnh nhân) nằm ở nửa PHẢI ảnh, vùng góc hàm dưới: y khoảng 550-750, x khoảng 750-920.
+               - Ví dụ Răng 48 (răng khôn hàm dưới bên phải bệnh nhân) nằm ở nửa TRÁI ảnh, vùng góc hàm dưới: y khoảng 550-750, x khoảng 80-250.
             10. ICD-10 nha khoa phù hợp: K00.0 thiếu răng bẩm sinh, K00.1 răng thừa, K01.0 răng chưa mọc, K01.1 răng ngầm/kẹt,
                 K02.0 sâu men, K02.1 sâu ngà, K02.2 sâu xê măng, K02.5 sâu có thông tủy, K03.6 cao răng, K03.3 tiêu chân răng bệnh lý,
                 K04.0 viêm tủy, K04.1 hoại tử tủy, K04.4 viêm quanh chóp cấp, K04.5 viêm quanh chóp mạn, K04.6/K04.7 áp xe quanh chóp,

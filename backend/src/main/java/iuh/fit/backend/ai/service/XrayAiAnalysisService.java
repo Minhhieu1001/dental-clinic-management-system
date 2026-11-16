@@ -77,32 +77,32 @@ public class XrayAiAnalysisService {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
-    /** Mô hình lớn dùng đọc phim chính (mặc định gemini-3-flash-preview). */
-    @Value("${app.ai.xray.model:gemini-3-flash-preview}")
+    /** Mô hình lớn dùng đọc phim chính (mặc định gemini-3.5-flash). */
+    @Value("${app.ai.xray.model:gemini-3.5-flash}")
     private String readingModel;
 
     /** Mô hình dự phòng khi mô hình chính quá tải / hết quota. */
-    @Value("${app.ai.xray.fallback-model:${spring.ai.google.genai.chat.options.model:gemini-3-flash-preview}}")
+    @Value("${app.ai.xray.fallback-model:${spring.ai.google.genai.chat.options.model:gemini-3.5-flash-lite}}")
     private String fallbackModel;
 
     /** Mô hình phân loại phim (nhanh). */
-    @Value("${app.ai.xray.triage-model:${spring.ai.google.genai.chat.options.model:gemini-3-flash-preview}}")
+    @Value("${app.ai.xray.triage-model:${spring.ai.google.genai.chat.options.model:gemini-3.5-flash-lite}}")
     private String triageModel;
 
     /** Mô hình soi chi tiết từng vùng (mặc định dùng chung mô hình lớn). */
-    @Value("${app.ai.xray.tile-model:${app.ai.xray.model:gemini-3-flash-preview}}")
+    @Value("${app.ai.xray.tile-model:${app.ai.xray.model:gemini-3.5-flash}}")
     private String tileModel;
 
-    @Value("${app.ai.xray.tiling-enabled:true}")
+    @Value("${app.ai.xray.tiling-enabled:false}")
     private boolean tilingEnabled;
 
-    @Value("${app.ai.xray.thinking-budget:8192}")
+    @Value("${app.ai.xray.thinking-budget:2048}")
     private int thinkingBudget;
 
-    @Value("${app.ai.xray.max-image-side:2048}")
+    @Value("${app.ai.xray.max-image-side:1400}")
     private int maxImageSide;
 
-    @Value("${app.ai.xray.timeout-seconds:240}")
+    @Value("${app.ai.xray.timeout-seconds:45}")
     private int timeoutSeconds;
 
     @Value("${spring.ai.google.genai.api-key:}")
@@ -334,10 +334,8 @@ public class XrayAiAnalysisService {
                 .maxOutputTokens(maxTokens)
                 .responseMimeType("application/json");
         String m = model.toLowerCase(Locale.ROOT);
-        if (m.startsWith("gemini-3")) {
-            options.thinkingLevel(budget >= 4096 ? GoogleGenAiThinkingLevel.HIGH : GoogleGenAiThinkingLevel.LOW);
-        } else if (m.startsWith("gemini-2.5") && budget > 0) {
-            options.thinkingBudget(budget);
+        if (m.startsWith("gemini-3") || m.startsWith("gemini-2.5")) {
+            options.thinkingLevel(GoogleGenAiThinkingLevel.LOW);
         }
         return chatClient.prompt()
                 .options(options)

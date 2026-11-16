@@ -183,17 +183,17 @@ public class DentalVisionEngine {
                 toothCenterX = Math.max(10, Math.min(w - 10, toothCenterX));
 
                 // Đường cong Spee mặt phẳng nhai: nhóm răng sau hơi vếch lên so với răng trước
-                double curveOffset = (t >= 6) ? h * 0.02 * (t - 5) : 0;
+                double curveOffset = (t >= 6) ? h * 0.015 * (t - 5) : 0;
                 int toothCenterY;
                 if (isUpper) {
-                    toothCenterY = (int) (occlusalY - h * (t <= 3 ? 0.09 : 0.075) - curveOffset);
+                    toothCenterY = (int) (occlusalY - h * (t <= 3 ? 0.08 : 0.07) - curveOffset);
                 } else {
-                    toothCenterY = (int) (occlusalY + h * (t <= 3 ? 0.09 : 0.075) + curveOffset * 0.5);
+                    toothCenterY = (int) (occlusalY + h * (t <= 3 ? 0.08 : 0.07) + curveOffset * 0.4);
                 }
 
-                // Kích thước khung răng bao trọn thân và chân răng theo chuẩn FDI
-                int boxHalfW = (int) (w * (t >= 6 ? 0.038 : (t >= 4 ? 0.028 : 0.020)));
-                int boxHalfH = (int) (h * (t >= 6 ? 0.085 : 0.095));
+                // Kích thước khung răng bao sát thân và chân răng theo chuẩn FDI
+                int boxHalfW = (int) (w * (t >= 6 ? 0.032 : (t >= 4 ? 0.024 : 0.018)));
+                int boxHalfH = (int) (h * (t >= 6 ? 0.075 : 0.080));
 
                 int xmin = Math.max(0, toothCenterX - boxHalfW);
                 int xmax = Math.min(w, toothCenterX + boxHalfW);
@@ -214,25 +214,28 @@ public class DentalVisionEngine {
                 String toothStatus = "NORMAL";
                 String toothNote = "Thân và chân răng bình thường, dây chằng nha chu đều";
 
-                // Phân tích bệnh lý thực tế dựa trên tín hiệu điểm ảnh:
+                // Phân tích bệnh lý thực tế dựa trên tín hiệu ma trận quang học:
                 if (t == 8) {
-                    // Đánh giá răng khôn
-                    if (toothMean < 50) {
+                    // Đánh giá răng khôn (R18, R28, R38, R48)
+                    if (toothMean < 45) {
                         toothStatus = "MISSING";
                         toothNote = "Đã nhổ hoặc khuyết mầm răng khôn";
-                    } else if (toothMean > 75) {
-                        // Kiểm tra độ nghiêng trục thân răng khôn ở cành lên
+                    } else if (toothMean > 70 && (toothMax - toothMean > 50 || toothMean > 90)) {
+                        // Thân răng khôn kẹt trong cành lên hoặc mọc lệch ngầm
                         toothStatus = "IMPACTED";
                         toothNote = "Răng khôn mọc nghiêng / kẹt trong xương hàm";
                         String regionName = isPatientRight ? "Hàm " + (isUpper ? "trên" : "dưới") + " phải" : "Hàm " + (isUpper ? "trên" : "dưới") + " trái";
                         findings.add(createFinding(toothNo, regionName, "IMPACTED",
                                 String.format("Răng khôn %d mọc kẹt trong xương hàm (Impacted Third Molar)", toothNo),
-                                "Góc hàm & cành lên", "Trung bình", 93.0, "Không ảnh hưởng",
+                                "Góc hàm & cành lên", "Trung bình", 91.0, "Không ảnh hưởng",
                                 "Tiếp giáp mặt xa răng kế cận",
                                 String.format("Hình ảnh thân răng %d nghiêng kẹt vào vùng cổ - chân răng kế cận, buồng tủy rõ nét, nằm sát bản xương hàm.", toothNo),
                                 "K01.1",
                                 "Khám đánh giá nhổ răng khôn phòng ngừa sâu kẽ răng bên cạnh, tiêu xương mặt xa và viêm lợi trùm.",
                                 List.of(boxYmin, boxXmin, boxYmax, boxXmax)));
+                    } else {
+                        toothStatus = "NORMAL";
+                        toothNote = "Răng khôn mọc thẳng, cấu trúc bình thường";
                     }
                 } else if (toothMax > 240 && (toothMax - toothMean) > 75) {
                     // Cản quang rất cao -> Phục hình / Chụp mão
