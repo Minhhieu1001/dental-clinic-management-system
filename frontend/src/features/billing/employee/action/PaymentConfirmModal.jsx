@@ -73,6 +73,7 @@ export default function PaymentConfirmModal({ open, onClose, invoice, payment, o
         paymentMethod: payment.paymentMethod,
         employeeId,
         note: payment.note,
+        nextPaymentDate: payment.nextPaymentDate,
       });
 
       // Giữ lại các thông tin hiển thị mà backend có thể không trả về

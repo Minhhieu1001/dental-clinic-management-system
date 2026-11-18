@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -24,6 +25,7 @@ public class PaymentDraft {
     private PaymentMethod paymentMethod;
     private UUID employeeId;
     private String note;
+    private LocalDate nextPaymentDate;
     private Instant createdAt;
     private String status; // PENDING, SUCCESS, EXPIRED
 }

@@ -14,6 +14,8 @@ import java.util.UUID;
 public class PatientDTO {
     private UUID id;
     private String patientCode;
+    private String createdBranchId;
+    private String createdBranchName;
     private String fullName;
     private String phone;
     private String cccd;

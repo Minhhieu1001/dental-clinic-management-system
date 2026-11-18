@@ -5,5 +5,7 @@ import java.util.UUID;
 public record RegistrationResponse(
         UUID userId,
         UUID patientId,
-        String patientCode
+        String patientCode,
+        String createdBranchId,
+        String createdBranchName
 ) {}

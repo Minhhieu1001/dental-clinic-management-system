@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -33,4 +34,21 @@ public interface TreatmentPlanRepository extends JpaRepository<TreatmentPlan, UU
            "AND (tp.roadmap_sent = false OR tp.roadmap_sent IS NULL)",
            nativeQuery = true)
     List<TreatmentPlan> findPlansNeedingRoadmapNotification();
+
+    @Query("""
+            SELECT DISTINCT tp FROM TreatmentPlan tp
+            JOIN FETCH tp.examinationResult e
+            JOIN FETCH e.medicalRecord m
+            JOIN FETCH m.patient p
+            LEFT JOIN FETCH tp.treatmentPhases ph
+            WHERE tp.status = :status
+              AND (tp.startDate IS NULL OR tp.startDate < :end)
+              AND (tp.endDate IS NULL OR tp.endDate >= :start)
+              AND (:patientId IS NULL OR p.id = :patientId)
+            """)
+    List<TreatmentPlan> findActivePlansInPeriod(
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end,
+            @Param("patientId") UUID patientId,
+            @Param("status") StatusPhase status);
 }

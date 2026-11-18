@@ -28,7 +28,8 @@ public class PatientCreateDTO {
     private String surgicalHistory;
     private String notes;
 
-    // branchID
+    // Required when creating: origin branch of the patient and initial medical record.
+    // Ignored on profile update; the origin branch is immutable.
     private String branchId;
 
     // Doctor/Dentist ID (để trống nếu là lễ tân, có ID nếu là bác sĩ)

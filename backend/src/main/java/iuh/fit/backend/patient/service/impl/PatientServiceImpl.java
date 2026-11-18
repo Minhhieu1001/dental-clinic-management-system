@@ -1,5 +1,7 @@
 package iuh.fit.backend.patient.service.impl;
 
+import iuh.fit.backend.customercare.entity.CareStrategy;
+import iuh.fit.backend.customercare.repository.CareStrategyRepository;
 import iuh.fit.backend.common.exception.AppException;
 import iuh.fit.backend.common.exception.ErrorCode;
 import iuh.fit.backend.billing.dto.PatientInvoiceDataResponse;
@@ -9,6 +11,8 @@ import iuh.fit.backend.medicalrecord.entity.MedicalRecord;
 import iuh.fit.backend.medicalrecord.repository.MedicalRecordRepository;
 import iuh.fit.backend.patient.dto.PatientCreateDTO;
 import iuh.fit.backend.patient.dto.PatientDTO;
+import iuh.fit.backend.patient.dto.PatientWithInvoicesResponse;
+import iuh.fit.backend.billing.entity.Invoice;
 import iuh.fit.backend.patient.dto.PatientStatisticsResponse;
 import iuh.fit.backend.appointment.repository.AppointmentRepository;
 import iuh.fit.backend.appointment.repository.FollowUpAppointmentRepository;
@@ -42,6 +46,7 @@ import java.time.ZoneId;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -66,6 +71,77 @@ public class PatientServiceImpl implements PatientService {
     private final PrescriptionRepository prescriptionRepository;
     private final TreatmentPlanRepository treatmentPlanRepository;
     private final InvoiceRepository invoiceRepository;
+    private final CareStrategyRepository careStrategyRepository;
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countBirthdaysInCurrentMonth() {
+        int month = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).getMonthValue();
+        return patientRepository.countBirthdaysInMonth(month);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PatientWithInvoicesResponse> getPatientsWithInvoices() {
+        var patients = patientRepository.findAllWithInvoices();
+        var careList = careStrategyRepository.findAllWithPatientAndEmployee();
+        Map<UUID, List<CareStrategy>> careMap = careList.stream()
+                .filter(c -> c.getPatient() != null && c.getPatient().getId() != null)
+                .collect(Collectors.groupingBy(c -> c.getPatient().getId()));
+
+        return patients.stream()
+                .map(patient -> {
+                    var cares = careMap.getOrDefault(patient.getId(), List.of()).stream()
+                            .sorted(Comparator.comparing(CareStrategy::getCreateAt,
+                                    Comparator.nullsLast(Comparator.reverseOrder())))
+                            .map(care -> PatientWithInvoicesResponse.CareStrategySummary.builder()
+                                    .careTaskId(care.getCareTaskId())
+                                    .careCategory(care.getCareCategory())
+                                    .careContent(care.getCareContent())
+                                    .contactChannel(care.getContactChannel())
+                                    .status(care.getStatus())
+                                    .createAt(care.getCreateAt())
+                                    .employeeId(care.getEmployee() != null ? care.getEmployee().getId() : null)
+                                    .employeeName(care.getEmployee() != null ? care.getEmployee().getFullName() : null)
+                                    .build())
+                            .toList();
+                    var latestCare = cares.isEmpty() ? null : cares.get(0);
+
+                    return PatientWithInvoicesResponse.builder()
+                            .id(patient.getId())
+                            .createdBranchId(patient.getCreatedBranch() != null ? patient.getCreatedBranch().getBranchId() : null)
+                            .createdBranchName(patient.getCreatedBranch() != null ? patient.getCreatedBranch().getBranchName() : null)
+                            .patientCode(patient.getPatientCode())
+                            .fullName(patient.getFullName())
+                            .phone(patient.getPhoneNumber())
+                            .email(patient.getEmail())
+                            .gender(patient.getGender())
+                            .dateOfBirth(patient.getDateOfBirth())
+                            .address(patient.getAddress())
+                            .createdAt(patient.getCreatedAt())
+                            .latestCare(latestCare)
+                            .invoices(patient.getInvoices().stream()
+                                    .sorted(Comparator.comparing(Invoice::getInvoiceDate,
+                                                    Comparator.nullsLast(Comparator.reverseOrder()))
+                                            .thenComparing(Invoice::getId))
+                                    .map(invoice -> PatientWithInvoicesResponse.InvoiceSummary.builder()
+                                            .id(invoice.getId())
+                                            .invoiceCode(invoice.getInvoiceCode())
+                                            .invoiceDate(invoice.getInvoiceDate())
+                                            .isSave(invoice.getIsSave())
+                                            .totalAmount(invoice.getTotalAmount())
+                                            .discountAmount(invoice.getDiscountAmount())
+                                            .finalAmount(invoice.getFinalAmount())
+                                            .paidAmount(invoice.getPaidAmount())
+                                            .remainingAmount(invoice.getRemainingAmount())
+                                            .nextPaymentDate(invoice.getNextPaymentDate())
+                                            .paymentStatus(invoice.getPaymentStatus())
+                                            .build())
+                                    .toList())
+                            .build();
+                })
+                .toList();
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -206,6 +282,7 @@ public class PatientServiceImpl implements PatientService {
                         "Không tìm thấy chi nhánh: " + dto.getBranchId()));
         String patientCode = "PA-" + (System.currentTimeMillis() % 1000000);
         Patient patient = Patient.builder()
+                .createdBranch(branch)
                 .patientCode(patientCode)
                 .phoneNumber(dto.getPhone())
                 .cccd(normalize(dto.getCccd()))
@@ -345,6 +422,7 @@ public class PatientServiceImpl implements PatientService {
 
     @Override
 
+    @Transactional(readOnly = true)
     public PatientDTO getPatientByPatientCode(String code) {
         Patient patient = patientRepository.findByPatientCode(code)
                 .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND,
@@ -506,6 +584,8 @@ public class PatientServiceImpl implements PatientService {
 
         return PatientDTO.builder()
                 .id(patient.getId())
+                .createdBranchId(patient.getCreatedBranch() != null ? patient.getCreatedBranch().getBranchId() : null)
+                .createdBranchName(patient.getCreatedBranch() != null ? patient.getCreatedBranch().getBranchName() : null)
                 .patientCode(patient.getPatientCode())
                 .fullName(patient.getFullName())
                 .phone(phoneStr)

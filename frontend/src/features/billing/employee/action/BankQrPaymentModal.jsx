@@ -92,6 +92,7 @@ export default function BankQrPaymentModal({ open, onClose, invoice, payment, on
           paymentMethod: payment.paymentMethod || 'BANK_TRANSFER',
           employeeId,
           note: payment.note,
+          nextPaymentDate: payment.nextPaymentDate,
         });
 
         if (isMounted) {
@@ -110,7 +111,7 @@ export default function BankQrPaymentModal({ open, onClose, invoice, payment, on
     return () => {
       isMounted = false;
     };
-  }, [open, invoice?.rawId, amount]);
+  }, [open, invoice?.rawId, amount, payment?.nextPaymentDate]);
 
   if (!invoice || !payment) return null;
 
@@ -149,6 +150,7 @@ export default function BankQrPaymentModal({ open, onClose, invoice, payment, on
         paymentMethod: payment.paymentMethod || 'BANK_TRANSFER',
         employeeId,
         note: payment.note,
+        nextPaymentDate: payment.nextPaymentDate,
       });
 
       const updated = {

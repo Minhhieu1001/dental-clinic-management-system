@@ -12,6 +12,18 @@ import java.util.UUID;
 
 @Repository
 public interface FollowUpAppointmentRepository extends JpaRepository<FollowUpAppointment, UUID> {
+    @Query("""
+            SELECT f FROM FollowUpAppointment f
+            JOIN FETCH f.examinationResult e JOIN FETCH e.medicalRecord m JOIN FETCH m.patient p
+            WHERE (f.status IS NULL OR f.status = true)
+              AND f.followUpDate >= :start AND f.followUpDate < :end
+              AND (:patientId IS NULL OR p.id = :patientId)
+            ORDER BY p.id, f.followUpDate, f.id
+            """)
+    List<FollowUpAppointment> findCareFollowUps(@Param("start") LocalDateTime start,
+                                               @Param("end") LocalDateTime end,
+                                               @Param("patientId") UUID patientId);
+
 
     @Query("""
             SELECT COUNT(f) FROM FollowUpAppointment f

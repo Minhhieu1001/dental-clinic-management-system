@@ -60,6 +60,14 @@ public class PaymentQrServiceImpl implements PaymentQrService {
             throw new IllegalArgumentException("Số tiền thanh toán phải lớn hơn 0");
         }
 
+        BigDecimal serviceAmount = request.getServiceAmount() != null ? request.getServiceAmount() : amount;
+        BigDecimal finalAmount = invoice.getFinalAmount() != null ? invoice.getFinalAmount() : BigDecimal.ZERO;
+        BigDecimal paidAmount = invoice.getPaidAmount() != null ? invoice.getPaidAmount() : BigDecimal.ZERO;
+        if (finalAmount.subtract(paidAmount).subtract(serviceAmount).signum() > 0
+                && request.getNextPaymentDate() == null) {
+            throw new IllegalArgumentException("Vui lòng chọn ngày thanh toán tiếp theo khi hóa đơn còn nợ");
+        }
+
         String branchId = request.getBranchId();
         if (branchId != null && !branchId.isBlank()) {
             branchId = branchRepository.findById(branchId.trim())
@@ -90,6 +98,7 @@ public class PaymentQrServiceImpl implements PaymentQrService {
                         request.getPaymentMethod() != null ? request.getPaymentMethod() : PaymentMethod.BANK_TRANSFER)
                 .employeeId(request.getEmployeeId())
                 .note(request.getNote())
+                .nextPaymentDate(request.getNextPaymentDate())
                 .build();
 
         paymentDraftCache.put(transactionCode, draft);
@@ -164,6 +173,7 @@ public class PaymentQrServiceImpl implements PaymentQrService {
                     .amountReceived(amountPaid)
                     .paymentMethod(matchedDraft.getPaymentMethod())
                     .employeeId(matchedDraft.getEmployeeId())
+                    .nextPaymentDate(matchedDraft.getNextPaymentDate())
                     .note((matchedDraft.getNote() != null ? matchedDraft.getNote() + " | " : "") + "Casso TID: "
                             + cassotx.getTid())
                     .build();

@@ -158,7 +158,7 @@ export default function NotificationDropdown({ role = 'DENTIST', buttonClassName
             <span className="flex h-2 w-2 rounded-full bg-teal-500 animate-ping" />
             <p className="font-extrabold text-xs text-slate-900 tracking-tight">{newNotif.title || 'Thông báo mới'}</p>
           </div>
-          <p className="text-[12px] font-medium text-slate-600 leading-snug">{newNotif.content}</p>
+          <p className="text-[12px] font-medium text-slate-600 leading-snug line-clamp-3 break-words">{newNotif.content}</p>
         </div>
       ),
       {

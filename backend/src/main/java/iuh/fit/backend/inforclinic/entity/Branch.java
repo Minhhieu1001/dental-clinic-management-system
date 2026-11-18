@@ -10,6 +10,8 @@ import iuh.fit.backend.medicalrecord.entity.ExaminationResult;
 import iuh.fit.backend.medicalrecord.entity.MedicalRecord;
 import iuh.fit.backend.user.entity.Dentist;
 import iuh.fit.backend.user.entity.Employee;
+import iuh.fit.backend.patient.entity.Patient;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -65,6 +67,11 @@ public class Branch {
     @Column(length = 20, nullable = false)
     @Builder.Default
     private BranchStatus status = BranchStatus.ACTIVE;
+
+    @JsonIgnore
+    @Builder.Default
+    @OneToMany(mappedBy = "createdBranch", fetch = FetchType.LAZY)
+    private List<Patient> patients = new ArrayList<>();
 
     @Builder.Default
     @OneToMany(mappedBy = "branch", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})

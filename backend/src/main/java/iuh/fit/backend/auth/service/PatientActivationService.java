@@ -124,7 +124,9 @@ public class PatientActivationService {
         if (user.getEmail() != null && !user.getEmail().isBlank()) {
             events.publishEvent(new PatientRegistrationMailService.Registered(user.getEmail(), patient.getPatientCode()));
         }
-        return new RegistrationResponse(user.getId(), patient.getId(), patient.getPatientCode());
+        return new RegistrationResponse(user.getId(), patient.getId(), patient.getPatientCode(),
+                patient.getCreatedBranch() != null ? patient.getCreatedBranch().getBranchId() : null,
+                patient.getCreatedBranch() != null ? patient.getCreatedBranch().getBranchName() : null);
     }
 
     private PatientActivationCodeResponse sendCode(PatientActivation session) {
