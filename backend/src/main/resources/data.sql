@@ -4,6 +4,35 @@
 -- Dùng ON CONFLICT DO NOTHING để tránh lỗi trùng dữ liệu
 -- ============================================================
 
+-- Dọn dẹp ràng buộc khóa ngoại không tương thích kiểu dữ liệu nếu có
+ALTER TABLE IF EXISTS invoice_details DROP CONSTRAINT IF EXISTS fk6olubg9il8wjve6h3dql5wpi;
+
+-- Tự động bổ sung cột version cho Optimistic Locking
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS version BIGINT DEFAULT 0;
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS version BIGINT DEFAULT 0;
+ALTER TABLE appointment_requests ADD COLUMN IF NOT EXISTS version BIGINT DEFAULT 0;
+UPDATE patients SET version = 0 WHERE version IS NULL;
+UPDATE appointments SET version = 0 WHERE version IS NULL;
+UPDATE appointment_requests SET version = 0 WHERE version IS NULL;
+
+-- Dọn dẹp các lịch trùng lặp cũ nếu có trong CSDL (chuyển bản ghi trùng thành CANCELLED để không bị lỗi index)
+UPDATE appointments
+SET status = 'CANCELLED'
+WHERE id IN (
+    SELECT id FROM (
+        SELECT id, ROW_NUMBER() OVER(
+            PARTITION BY dentist_id, appointment_date, appointment_time 
+            ORDER BY id
+        ) as rn
+        FROM appointments
+        WHERE dentist_id IS NOT NULL AND status != 'CANCELLED'
+    ) t WHERE t.rn > 1
+);
+
+-- Chặn trùng lịch hẹn của cùng một bác sĩ trong cùng ngày và giờ (trừ các lịch đã bị hủy CANCELLED)
+CREATE UNIQUE INDEX IF NOT EXISTS uk_dentist_active_timeslot 
+ON appointments (dentist_id, appointment_date, appointment_time) 
+WHERE status != 'CANCELLED';
 -- ============================================================
 -- KHỞI TẠO TRƯỚC: CLINICS & BRANCHES (Hệ thống phòng khám & Chi nhánh)
 -- ============================================================

@@ -1,3 +1,4 @@
+import React, { Component } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -26,6 +27,46 @@ import CreateTreatmentSessionModal from './action/CreateTreatmentSessionModal';
 import MultiplePatientsModal from '../../components/common/MultiplePatientsModal';
 import { ConfirmSaveDiagnosisModal } from './action/ConfirmSaveDiagnosisModal';
 import PatientSearchBar from '../../components/ui/search/PatientSearchBar';
+import XrayAiAnalysisModal from './action/XrayAiAnalysisModal';
+
+class TabErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('Lỗi hiển thị tab khám bệnh:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50/50 p-6 text-center space-y-3 my-4">
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
+            <Activity size={24} />
+          </div>
+          <h3 className="text-sm font-bold text-slate-800">Đã xảy ra lỗi khi tải nội dung tab</h3>
+          <p className="text-xs text-slate-500 max-w-md mx-auto">
+            {this.state.error?.message || 'Vui lòng làm mới trang hoặc chuyển tab khác.'}
+          </p>
+          <button
+            type="button"
+            onClick={() => this.setState({ hasError: false, error: null })}
+            className="px-4 py-1.5 text-xs font-bold rounded-lg bg-teal-700 text-white hover:bg-teal-800 transition-colors cursor-pointer"
+          >
+            Thử lại
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function ClinicalExaminationContent() {
   const navigate = useNavigate();
@@ -426,9 +467,11 @@ function ClinicalExaminationContent() {
                       exit={{ opacity: 0, y: -6 }}
                       transition={{ duration: 0.2, ease: 'easeOut' }}
                     >
-                      {activeTab === 'clinical' && <ClinicalExamTab />}
-                      {activeTab === 'ai' && <AiAnalysisTab />}
-                      {activeTab === 'diagnosis' && <DoctorDiagnosisTab />}
+                      <TabErrorBoundary key={activeTab}>
+                        {activeTab === 'clinical' && <ClinicalExamTab />}
+                        {activeTab === 'ai' && <AiAnalysisTab />}
+                        {activeTab === 'diagnosis' && <DoctorDiagnosisTab />}
+                      </TabErrorBoundary>
                     </motion.div>
                   </AnimatePresence>
                 </div>
@@ -471,6 +514,9 @@ function ClinicalExaminationContent() {
         diagnosisList={diagnosisList}
         isSaving={isSavingDiagnosis}
       />
+
+      {/* Modal lớn phân tích X-quang AI toàn diện 32 răng & đối soát lâm sàng */}
+      <XrayAiAnalysisModal />
     </div>
   );
 }
