@@ -58,7 +58,8 @@ import EmployeeAppointments from '../features/appointment/EmployeeAppointments.j
 import EmployeePatients from '../features/patient/EmployeePatients.jsx'
 import EmployeeBilling from '../features/billing/employee/EmployeeBilling.jsx'
 import InvoiceLookup from '../features/billing/employee/InvoiceLookup.jsx'
-import CustomerCare from '../features/customer-care/CustomerCare.jsx'
+import CustomerCare from '../features/customer-care/employee/CustomerCare.jsx'
+import CustomerCareDetail from '../features/customer-care/employee/action/CustomerCareDetail.jsx'
 import EmployeeInventory from '../features/prescriptions/EmployeeInventory.jsx'
 import ShiftClosing from '../features/shift-closing/ShiftClosing.jsx'
 import EmployeeReport from '../features/report/EmployeeReport.jsx'
@@ -156,6 +157,7 @@ export default function AppRouter() {
             <Route path="invoice" element={<EmployeeBilling />} />
             <Route path="invoice-lookup" element={<InvoiceLookup />} />
             <Route path="customer-care" element={<CustomerCare />} />
+            <Route path="customer-care/:id" element={<CustomerCareDetail />} />
             <Route path="inventory" element={<EmployeeInventory />} />
             <Route path="shift-closing" element={<ShiftClosing />} />
             <Route path="import-export" element={<ShiftClosing />} />

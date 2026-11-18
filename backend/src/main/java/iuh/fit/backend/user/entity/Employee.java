@@ -1,5 +1,7 @@
 package iuh.fit.backend.user.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import iuh.fit.backend.customercare.entity.CareStrategy;
 import iuh.fit.backend.appointment.entity.Appointment;
 import iuh.fit.backend.appointment.entity.AppointmentRequest;
 import iuh.fit.backend.appointment.entity.Shift;
@@ -82,4 +84,9 @@ public class Employee {
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(name = "branch_id", nullable = true)
     private Branch branch;
+
+    @JsonIgnore
+    @Builder.Default
+    @OneToMany(mappedBy = "employee", fetch = FetchType.LAZY)
+    private List<CareStrategy> careStrategies = new ArrayList<>();
 }

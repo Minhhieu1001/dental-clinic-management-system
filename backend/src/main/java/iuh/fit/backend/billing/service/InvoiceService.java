@@ -10,6 +10,8 @@ import java.util.UUID;
 import java.util.List;
 
 public interface InvoiceService {
+
+    long countOutstandingInvoices();
     InvoiceListResponse getAllInvoiceDateDesc(Integer year, Integer month, PaymentStatus status, String search);
     InvoiceResponse getInvoiceById(UUID id);
     List<InvoiceResponse> getInvoicesByPatientId(UUID patientId);

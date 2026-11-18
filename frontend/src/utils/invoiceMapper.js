@@ -125,6 +125,7 @@ export const mapBackendInvoiceToUi = (inv) => {
         finalAmount: finalTotal,
         paidAmount: paid,
         debtAmount: Math.max(0, debt),
+        nextPaymentDate: inv.nextPaymentDate ?? null,
         status: uiStatus,
         branchId: inv.branchId || null,
         branchName: inv.branchName || null,

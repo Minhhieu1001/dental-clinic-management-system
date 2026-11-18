@@ -35,137 +35,141 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    @Value("${app.cors.allowed-origins:http://localhost:5173}")
-    private String[] allowedOrigins;
+        @Value("${app.cors.allowed-origins:http://localhost:5173}")
+        private String[] allowedOrigins;
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
-    private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
+        private final JwtAuthenticationFilter jwtAuthenticationFilter;
+        private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+        private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+        @Bean
+        public PasswordEncoder passwordEncoder() {
+                return new BCryptPasswordEncoder();
+        }
 
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
-        return authenticationConfiguration.getAuthenticationManager();
-    }
+        @Bean
+        public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration)
+                        throws Exception {
+                return authenticationConfiguration.getAuthenticationManager();
+        }
 
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf(AbstractHttpConfigurer::disable)
-                .exceptionHandling(exception -> exception
-                        .authenticationEntryPoint(jwtAuthenticationEntryPoint)
-                        .accessDeniedHandler(jwtAccessDeniedHandler)
-                )
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/api/v1/patient-relationships/request-otp",
-                                "/api/v1/patient-relationships/verify").hasAnyRole("PATIENT", "EMPLOYEE")
-                        .requestMatchers(HttpMethod.GET, "/api/v1/patient-relationships/patient/**")
-                                .hasAnyRole("PATIENT", "EMPLOYEE", "DENTIST")
-                        .requestMatchers(HttpMethod.GET, "/api/v1/patient-relationships/linked")
-                                .hasAnyRole("EMPLOYEE", "DENTIST")
-                        .requestMatchers("/api/v1/patient-relationships/**").hasRole("PATIENT")
-                        // Dữ liệu phim X-quang & kết quả AI đọc phim là dữ liệu y khoa: chỉ bác sĩ / quản trị truy cập
-                        .requestMatchers("/api/v1/ai/xray/**").hasAnyRole("DENTIST", "ADMIN")
-                        .requestMatchers(
-                                "/api/v1/auth/login",
-                                "/api/v1/auth/patient/login",
-                                "/api/v1/auth/patient/activate",
-                                "/api/v1/auth/patient/activate/resend",
-                                "/api/v1/auth/patient/activate/verify",
-                                "/api/v1/auth/patient/activate/complete",
-                                "/api/v1/auth/patient/register",
-                                "/api/v1/auth/patient/register/resend",
-                                "/api/v1/auth/patient/register/verify",
-                                "/api/v1/auth/forgot-password",
-                                "/api/v1/auth/forgot-password/resend",
-                                "/api/v1/auth/forgot-password/verify",
-                                "/api/v1/auth/reset-password",
-                                "/api/v1/auth/refresh",
-                                "/api/services/**",
-                                "/api/v1/services/**",
-                                "/api/media/**",
-                                "/api/v1/media/**",
-                                "/uploads/**",
-                                "/api/promotions/**",
-                                "/api/v1/promotions/**",
-                                "/api/dentists/**",
-                                "/api/v1/dentists/**",
-                                "/api/reviews/**",
-                                "/api/v1/reviews/**",
-                                "/api/appointments/**",
-                                "/api/v1/appointments/**",
-                                "/api/v1/public/appointments/**",
-                                "/api/v1/patients/**",
-                                "/api/v1/medical-records/**",
-                                "/api/v1/examination-results/**",
-                                "/api/v1/tooth-records/**",
-                                "/api/v1/treatment-plans/**",
-                                "/api/v1/medicines/**",
-                                "/api/v1/prescriptions/**",
-                                "/api/v1/follow-up-appointments/**",
-                                "/api/v1/notifications/**",
-                                "/api/v1/invoices/**",
-                                "/api/invoices/**",
-                                "/api/v1/payments/**",
-                                "/api/v1/shift-closings/**",
-                                "/api/v1/sms/**",
-                                "/api/v1/data-fix/**",
-                                "/v3/api-docs/**",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/version.json",
-                                "/favicon.ico",
-                                "/icon/**",
-                                "/api/v1/dashboard/**",
-                                "/api/v1/admin/dashboard/**",
-                                "/ws/**",
-                                "/ws",
-                                "/api/v1/ai/**",
-                                "/api/v1/ocr/**"
-                        ).permitAll()
-                        .requestMatchers(HttpMethod.GET,
-                                "/api/v1/clinics",
-                                "/api/v1/clinics/**",
-                                "/api/v1/branches",
-                                "/api/v1/branches/**",
-                                "/api/v1/primary-diagnoses/**",
-                                "/api/v1/tooth-statuses/**")
-                        .permitAll()
-                        .requestMatchers("/api/v1/payment-transactions/**")
-                        .hasAnyRole("ADMIN", "EMPLOYEE")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/appointmentrequest").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/dentists/**")
-                        .permitAll()
-                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/dentist/**").hasRole("DENTIST")
-                        .requestMatchers("/api/v1/employee/**").hasRole("EMPLOYEE")
-                        .requestMatchers("/api/v1/patient/**").hasRole("PATIENT")
-                        .anyRequest().authenticated()
-                )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        @Bean
+        public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+                http
+                                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                                .csrf(AbstractHttpConfigurer::disable)
+                                .exceptionHandling(exception -> exception
+                                                .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                                                .accessDeniedHandler(jwtAccessDeniedHandler))
+                                .sessionManagement(session -> session
+                                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                                .authorizeHttpRequests(auth -> auth
+                                                .requestMatchers(HttpMethod.POST,
+                                                                "/api/v1/patient-relationships/request-otp",
+                                                                "/api/v1/patient-relationships/verify")
+                                                .hasAnyRole("PATIENT", "EMPLOYEE")
+                                                .requestMatchers(HttpMethod.GET,
+                                                                "/api/v1/patient-relationships/patient/**")
+                                                .hasAnyRole("PATIENT", "EMPLOYEE", "DENTIST")
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/patient-relationships/linked")
+                                                .hasAnyRole("EMPLOYEE", "DENTIST")
+                                                .requestMatchers("/api/v1/patient-relationships/**").hasRole("PATIENT")
+                                                // Dữ liệu phim X-quang & kết quả AI đọc phim là dữ liệu y khoa: chỉ bác sĩ / quản trị truy cập
+                                                .requestMatchers("/api/v1/ai/xray/**").hasAnyRole("DENTIST", "ADMIN")
+                                                .requestMatchers(
+                                                                "/api/v1/auth/login",
+                                                                "/api/v1/auth/patient/login",
+                                                                "/api/v1/auth/patient/activate",
+                                                                "/api/v1/auth/patient/activate/resend",
+                                                                "/api/v1/auth/patient/activate/verify",
+                                                                "/api/v1/auth/patient/activate/complete",
+                                                                "/api/v1/auth/patient/register",
+                                                                "/api/v1/auth/patient/register/resend",
+                                                                "/api/v1/auth/patient/register/verify",
+                                                                "/api/v1/auth/forgot-password",
+                                                                "/api/v1/auth/forgot-password/resend",
+                                                                "/api/v1/auth/forgot-password/verify",
+                                                                "/api/v1/auth/reset-password",
+                                                                "/api/v1/auth/refresh",
+                                                                "/api/services/**",
+                                                                "/api/v1/services/**",
+                                                                "/api/media/**",
+                                                                "/api/v1/media/**",
+                                                                "/uploads/**",
+                                                                "/api/promotions/**",
+                                                                "/api/v1/promotions/**",
+                                                                "/api/dentists/**",
+                                                                "/api/v1/dentists/**",
+                                                                "/api/reviews/**",
+                                                                "/api/v1/reviews/**",
+                                                                "/api/appointments/**",
+                                                                "/api/v1/appointments/**",
+                                                                "/api/v1/public/appointments/**",
+                                                                "/api/v1/patients/**",
+                                                                "/api/v1/medical-records/**",
+                                                                "/api/v1/examination-results/**",
+                                                                "/api/v1/tooth-records/**",
+                                                                "/api/v1/treatment-plans/**",
+                                                                "/api/v1/medicines/**",
+                                                                "/api/v1/prescriptions/**",
+                                                                "/api/v1/follow-up-appointments/**",
+                                                                "/api/v1/notifications/**",
+                                                                "/api/v1/invoices/**",
+                                                                "/api/invoices/**",
+                                                                "/api/v1/payments/**",
+                                                                "/api/v1/shift-closings/**",
+                                                                "/api/v1/sms/**",
+                                                                "/api/v1/data-fix/**",
+                                                                "/v3/api-docs/**",
+                                                                "/swagger-ui/**",
+                                                                "/swagger-ui.html",
+                                                                "/version.json",
+                                                                "/favicon.ico",
+                                                                "/icon/**",
+                                                                "/api/v1/dashboard/**",
+                                                                "/api/v1/admin/dashboard/**",
+                                                                "/ws/**",
+                                                                "/ws",
+                                                                "/api/v1/ai/**",
+                                                                "/api/v1/ocr/**")
+                                                .permitAll()
+                                                .requestMatchers(HttpMethod.GET,
+                                                                "/api/v1/clinics",
+                                                                "/api/v1/clinics/**",
+                                                                "/api/v1/branches",
+                                                                "/api/v1/branches/**",
+                                                                "/api/v1/primary-diagnoses/**",
+                                                                "/api/v1/tooth-statuses/**")
+                                                .permitAll()
+                                                .requestMatchers("/api/v1/payment-transactions/**")
+                                                .hasAnyRole("ADMIN", "EMPLOYEE")
+                                                .requestMatchers(HttpMethod.POST, "/api/v1/appointmentrequest")
+                                                .permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/dentists/**")
+                                                .permitAll()
+                                                .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                                                .requestMatchers("/api/v1/dentist/**").hasRole("DENTIST")
+                                                .requestMatchers("/api/v1/employee/**").hasRole("EMPLOYEE")
+                                                .requestMatchers("/api/v1/patient/**").hasRole("PATIENT")
+                                                .anyRequest().authenticated())
+                                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-        return http.build();
-    }
+                return http.build();
+        }
 
-    @Bean
-    CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList(allowedOrigins));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers"));
-        configuration.setExposedHeaders(List.of("Access-Control-Allow-Origin", "Access-Control-Allow-Credentials"));
-        configuration.setAllowCredentials(true);
+        @Bean
+        CorsConfigurationSource corsConfigurationSource() {
+                CorsConfiguration configuration = new CorsConfiguration();
+                configuration.setAllowedOrigins(Arrays.asList(allowedOrigins));
+                configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+                configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With",
+                                "Accept", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers"));
+                configuration.setExposedHeaders(
+                                List.of("Access-Control-Allow-Origin", "Access-Control-Allow-Credentials"));
+                configuration.setAllowCredentials(true);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
-    }
+                UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+                source.registerCorsConfiguration("/**", configuration);
+                return source;
+        }
 }

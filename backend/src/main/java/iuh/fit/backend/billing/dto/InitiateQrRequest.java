@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Data
@@ -22,4 +23,5 @@ public class InitiateQrRequest {
     private PaymentMethod paymentMethod;
     private UUID employeeId;
     private String note;
+    private LocalDate nextPaymentDate;
 }

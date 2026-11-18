@@ -29,6 +29,13 @@ public class PromotionServiceImpl implements PromotionService {
     private final ServiceRepository serviceRepository;
 
     @Override
+    @Transactional(readOnly = true)
+    public long countApplicablePromotions() {
+        return promotionRepository.countApplicablePromotions(PromotionStatus.ACTIVE,
+                LocalDateTime.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh")));
+    }
+
+    @Override
     @Transactional
     public PromotionResponse createPromotion(PromotionRequest request) {
         validateDates(request);

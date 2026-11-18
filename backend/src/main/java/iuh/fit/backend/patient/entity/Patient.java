@@ -1,12 +1,14 @@
 package iuh.fit.backend.patient.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import iuh.fit.backend.customercare.entity.CareStrategy;
 import iuh.fit.backend.appointment.entity.AppointmentRequest;
 import iuh.fit.backend.appointment.entity.Appointment;
 import iuh.fit.backend.billing.entity.Invoice;
 import iuh.fit.backend.billing.entity.PaymentTransactions;
 import iuh.fit.backend.medicalrecord.entity.MedicalRecord;
 import iuh.fit.backend.patient.enums.Gender;
+import iuh.fit.backend.inforclinic.entity.Branch;
 import iuh.fit.backend.prescription.entity.Prescription;
 import iuh.fit.backend.treatment.entity.TreatmentPlan;
 import iuh.fit.backend.user.entity.User;
@@ -35,6 +37,12 @@ public class Patient {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    // Origin of the patient profile; independent of where future visits take place.
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_branch_id", updatable = false)
+    private Branch createdBranch;
 
     @Column(length = 255)
     private String patientCode;
@@ -107,6 +115,11 @@ public class Patient {
     @Builder.Default
     @OneToMany(mappedBy = "patient", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<PatientRelationship> relationships = new ArrayList<>();
+
+    @JsonIgnore
+    @Builder.Default
+    @OneToMany(mappedBy = "patient", fetch = FetchType.LAZY)
+    private List<CareStrategy> careStrategies = new ArrayList<>();
 
     @Version
     @Builder.Default

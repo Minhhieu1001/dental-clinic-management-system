@@ -15,6 +15,16 @@ import java.util.UUID;
 public interface PromotionRepository extends JpaRepository<Promotion, UUID> {
 
     @Query("""
+            SELECT COUNT(p) FROM Promotion p
+            WHERE p.status = :status
+              AND (p.startDate IS NULL OR p.startDate <= :currentTime)
+              AND (p.endDate IS NULL OR p.endDate >= :currentTime)
+              AND (p.usageLimit IS NULL OR COALESCE(p.usedCount, 0) < p.usageLimit)
+            """)
+    long countApplicablePromotions(@Param("status") PromotionStatus status,
+                                  @Param("currentTime") LocalDateTime currentTime);
+
+    @Query("""
             SELECT DISTINCT p
             FROM Promotion p
             LEFT JOIN FETCH p.services

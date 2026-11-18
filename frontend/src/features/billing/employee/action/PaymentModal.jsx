@@ -13,7 +13,7 @@ import {
   Receipt,
   RotateCcw,
 } from 'lucide-react';
-import { Dialog, DialogContent } from '@mui/material';
+import { Dialog, DialogContent, TextField } from '@mui/material';
 import toast from 'react-hot-toast';
 import PrescriptionSelectModal from './PrescriptionSelectModal';
 import VoucherSelectModal from './VoucherSelectModal';
@@ -31,8 +31,6 @@ const PAYMENT_METHODS = [
 ];
 
 export default function PaymentModal({ open, onClose, invoice, onPaymentSuccess }) {
-  if (!invoice) return null;
-
   const user = useAuthStore.getState().user;
   const [employeeBranchId, setEmployeeBranchId] = useState(null);
 
@@ -54,9 +52,10 @@ export default function PaymentModal({ open, onClose, invoice, onPaymentSuccess 
   }, [user?.employeeId, user?.id]);
 
   const [selectedMethod, setSelectedMethod] = useState('CASH');
-  const [payAmount, setPayAmount] = useState(invoice.debtAmount);
+  const [payAmount, setPayAmount] = useState(invoice?.debtAmount ?? 0);
   const [displayAmount, setDisplayAmount] = useState('');
   const [note, setNote] = useState('');
+  const [nextPaymentDate, setNextPaymentDate] = useState('');
   const [showRxModal, setShowRxModal] = useState(false);
   const [extraRxItems, setExtraRxItems] = useState([]);
 
@@ -76,12 +75,15 @@ export default function PaymentModal({ open, onClose, invoice, onPaymentSuccess 
         const initialAmt = invoice.debtAmount;
         setPayAmount(initialAmt);
         setDisplayAmount(formatNumberDots(initialAmt));
+        setNextPaymentDate(invoice.nextPaymentDate ?? '');
       }
       setExtraRxItems([]);
     } else {
       setExtraRxItems([]);
     }
   }, [open, invoice]);
+
+  if (!invoice) return null;
 
   const handleCloseModal = () => {
     setExtraRxItems([]);
@@ -95,7 +97,7 @@ export default function PaymentModal({ open, onClose, invoice, onPaymentSuccess 
       setDisplayAmount('');
       return;
     }
-    const val = Number(rawDigits);
+    const val = Math.min(Number(rawDigits), Math.max(0, Number(invoice.debtAmount) || 0));
     setPayAmount(val);
     setDisplayAmount(new Intl.NumberFormat('vi-VN').format(val));
   };
@@ -116,6 +118,7 @@ export default function PaymentModal({ open, onClose, invoice, onPaymentSuccess 
 
   // Số tiền trừ nợ hóa đơn (serviceAmount)
   const servicePayAmount = Math.max(0, Number(payAmount));
+  const remainingAfterPayment = Math.max(0, Number(invoiceDebt) - servicePayAmount);
 
   const handleAddRxItems = (items) => {
     setExtraRxItems(items);
@@ -130,10 +133,15 @@ export default function PaymentModal({ open, onClose, invoice, onPaymentSuccess 
     paymentMethod: selectedMethod,
     methodLabel: PAYMENT_METHODS.find((m) => m.id === selectedMethod)?.label || 'Tiền mặt',
     note,
+    nextPaymentDate: remainingAfterPayment > 0 ? nextPaymentDate || null : null,
   };
 
   // Kiểm tra dữ liệu rồi mở modal xác nhận (modal xác nhận sẽ gọi API)
   const handlePaymentSubmit = () => {
+    if (remainingAfterPayment > 0 && !nextPaymentDate) {
+      toast.error('Vui lòng chọn ngày thanh toán tiếp theo khi hóa đơn còn nợ');
+      return;
+    }
     if (selectedMethod !== 'CASH' && selectedMethod !== 'BANK_TRANSFER') {
       const selectedLabel = PAYMENT_METHODS.find((m) => m.id === selectedMethod)?.label || 'Phương thức này';
       toast.error(`Phương thức thanh toán ${selectedLabel} chưa được triển khai!`);
@@ -358,6 +366,22 @@ export default function PaymentModal({ open, onClose, invoice, onPaymentSuccess 
 
             </div>
 
+            {remainingAfterPayment > 0 && (
+              <TextField
+                label="Ngày thanh toán tiếp theo"
+                required
+                error={!nextPaymentDate}
+                type="date"
+                size="small"
+                fullWidth
+                value={nextPaymentDate}
+                onChange={(event) => setNextPaymentDate(event.target.value)}
+                slotProps={{ inputLabel: { shrink: true } }}
+                helperText={`Còn nợ sau lần thanh toán này: ${formatVND(remainingAfterPayment)}. Vui lòng chọn ngày thanh toán tiếp theo để xác nhận.`}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '4px', backgroundColor: 'white' } }}
+              />
+            )}
+
             {/* Note Input */}
             <div>
               <label className="block text-[11px] font-bold text-slate-700 mb-0.5">Ghi chú </label>
@@ -381,7 +405,8 @@ export default function PaymentModal({ open, onClose, invoice, onPaymentSuccess 
             </button>
             <button
               onClick={handlePaymentSubmit}
-              className="flex items-center gap-1.5 px-4 py-1.5 rounded-sm bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer border border-blue-700"
+              disabled={remainingAfterPayment > 0 && !nextPaymentDate}
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-sm bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer border border-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <CreditCard size={14} />
               <span>Xác nhận thanh toán</span>

@@ -55,6 +55,12 @@ public class InvoiceServiceImpl implements InvoiceService {
 
     @Override
     @Transactional(readOnly = true)
+    public long countOutstandingInvoices() {
+        return invoiceRepository.countOutstandingInvoices(PaymentStatus.CANCELLED);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public InvoiceListResponse getAllInvoiceDateDesc(Integer year, Integer month, PaymentStatus status, String search) {
         String keyword = search != null ? search.trim() : "";
 
@@ -225,6 +231,11 @@ public class InvoiceServiceImpl implements InvoiceService {
         validateNonNegative(serviceAmount, "Tiền dịch vụ");
         validateNonNegative(medicineAmount, "Tiền thuốc");
 
+        if (remainingBeforePayment.subtract(serviceAmount).signum() > 0
+                && request.getNextPaymentDate() == null) {
+            throw new IllegalArgumentException("Vui lòng chọn ngày thanh toán tiếp theo khi hóa đơn còn nợ");
+        }
+
         Employee employee = resolveCurrentEmployee(request.getEmployeeId());
         if (employee == null && invoice.getEmployee() != null) {
             employee = invoice.getEmployee();
@@ -267,6 +278,12 @@ public class InvoiceServiceImpl implements InvoiceService {
         invoice.setPaymentStatus(newRemaining.signum() == 0
                 ? PaymentStatus.PAID
                 : PaymentStatus.PARTIALLY_PAID);
+
+        if (newRemaining.signum() == 0) {
+            invoice.setNextPaymentDate(null);
+        } else if (request.getNextPaymentDate() != null) {
+            invoice.setNextPaymentDate(request.getNextPaymentDate());
+        }
 
         Invoice updated = invoiceRepository.save(invoice);
         return mapToResponse(updated);
@@ -392,6 +409,7 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .finalAmount(inv.getFinalAmount())
                 .paidAmount(inv.getPaidAmount())
                 .remainingAmount(inv.getRemainingAmount())
+                .nextPaymentDate(inv.getNextPaymentDate())
                 .paymentStatus(inv.getPaymentStatus())
                 .updateAt(inv.getUpdateAt())
                 .invoiceDetails(detailDTOs)

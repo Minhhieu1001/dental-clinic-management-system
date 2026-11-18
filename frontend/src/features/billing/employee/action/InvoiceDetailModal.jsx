@@ -529,6 +529,12 @@ export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSu
                           <span className="text-slate-500">Ngày tạo:</span>
                           <strong className="text-slate-900 font-bold">{invoice.date} 10:24</strong>
                         </div>
+                        <div className="flex justify-between gap-3">
+                          <span className="text-slate-500">Ngày thanh toán tiếp theo:</span>
+                          <strong className="text-slate-900 font-bold">
+                            {activeInvoice.nextPaymentDate?.split('-').reverse().join('/') || ''}
+                          </strong>
+                        </div>
                         <div className="flex justify-between">
                           <span className="text-slate-500">Người lập hóa đơn:</span>
                           <strong className="text-slate-900 font-bold">{invoice.employeeName}</strong>

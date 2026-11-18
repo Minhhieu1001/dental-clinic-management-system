@@ -42,13 +42,10 @@ export const payInvoice = async (invoiceId, paymentData) => {
 
 // Lấy danh sách hóa đơn theo bệnh nhân
 export const getInvoicesByPatientId = async (patientId) => {
-  try {
-    const response = await api.get(`/invoices/patient/${patientId}`);
-    return response.data?.data ?? response.data?.result ?? response.data ?? [];
-  } catch (error) {
-    console.warn('Lỗi lấy danh sách hóa đơn của bệnh nhân:', error);
-    return [];
-  }
+  const response = await api.get(`/invoices/patient/${patientId}`);
+  const data = response.data?.data ?? response.data?.result ?? response.data;
+  if (!Array.isArray(data)) throw new Error('Dữ liệu hóa đơn không hợp lệ.');
+  return data;
 };
 
 // Lấy chi tiết hóa đơn theo ID (dùng để Polling kiểm tra trạng thái thanh toán)

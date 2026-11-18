@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Optional;
 
 public interface PromotionService {
+
+    long countApplicablePromotions();
     List<PromotionResponse> getPublicPromotions();
     List<PromotionResponse> getTodayPromotions();
     List<PromotionResponse> getAdminPromotions();

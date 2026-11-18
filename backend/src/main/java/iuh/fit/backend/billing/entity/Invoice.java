@@ -10,6 +10,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -66,6 +67,9 @@ public class Invoice {
 
     @Column(name = "remaining_amount", precision = 15, scale = 2)
     private BigDecimal remainingAmount;
+
+    @Column(name = "next_payment_date")
+    private LocalDate nextPaymentDate;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_status", length = 50)

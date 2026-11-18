@@ -110,6 +110,7 @@ public class PatientRegistrationService {
                 .phone(pending.getPhone()).password(pending.getPasswordHash())
                 .role(Role.PATIENT).status(StatusUser.ACTIVE).build());
         Patient patient = patients.save(Patient.builder().patientCode(code).fullName(pending.getFullName())
+                .createdBranch(branch)
                 .dateOfBirth(pending.getDateOfBirth() == null ? null : pending.getDateOfBirth().atStartOfDay())
                 .gender(pending.getGender()).address(pending.getAddress())
                 .email(email).phoneNumber(pending.getPhone()).user(user).build());
@@ -117,7 +118,7 @@ public class PatientRegistrationService {
                 .recordDate(LocalDateTime.now()).build());
         registrations.delete(pending);
         events.publishEvent(new PatientRegistrationMailService.Registered(email, code));
-        return new RegistrationResponse(user.getId(), patient.getId(), code);
+        return new RegistrationResponse(user.getId(), patient.getId(), code, branch.getBranchId(), branch.getBranchName());
     }
 
     private Branch requireActiveBranch(String branchId) {
