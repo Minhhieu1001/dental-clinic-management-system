@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/appointments")
+@RequestMapping({"/api/v1/public/appointments", "/api/appointments"})
 @RequiredArgsConstructor
 public class PublicAppointmentController {
 

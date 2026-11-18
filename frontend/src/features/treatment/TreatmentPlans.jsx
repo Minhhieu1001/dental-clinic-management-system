@@ -44,7 +44,7 @@ import toast from 'react-hot-toast';
 import { getPatients, getPatientsByPhone, getPatientByPatientCode } from '../../services/patient.service';
 import { getMedicalRecordsByPatientCode, getMedicalRecordsByPatientId } from '../../services/medicalRecord.service';
 import { getExaminationResultsByMedicalRecordId } from '../../services/examinationResult.service';
-import { getDentists } from '../../services/api';
+import { getDentists } from '../../services/dentist.service';
 import { getAdminServices } from '../../services/service.service';
 import { useAuth } from '../../hooks/useAuth';
 import {

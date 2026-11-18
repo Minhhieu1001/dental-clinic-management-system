@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
-import { getPromotion, getPromotions, createAppointment } from '../services/api'
+import { getPromotion, getPromotions } from '../services/promotion.service'
+import { createPublicAppointment as createAppointment } from '../services/appointment.service'
 
 const formatMoney = (value) => new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(value || 0) + 'đ'
 
@@ -37,7 +38,7 @@ function useCountdown(endDateString) {
 export default function PromotionDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  
+
   const [promotion, setPromotion] = useState(null)
   const [otherPromotions, setOtherPromotions] = useState([])
   const [error, setError] = useState('')
@@ -52,7 +53,7 @@ export default function PromotionDetail() {
   useEffect(() => {
     setLoading(true)
     setError('')
-    
+
     // Fetch promotion chi tiết
     getPromotion(id)
       .then((data) => {
@@ -85,7 +86,7 @@ export default function PromotionDetail() {
 
     // Tìm tên dịch vụ được chọn để gửi đi
     const chosenService = promotion?.services?.find(s => s.id === selectedServiceId)
-    const serviceNameForBooking = chosenService 
+    const serviceNameForBooking = chosenService
       ? `Ưu đãi: ${chosenService.serviceName} (-${promotion.discountPercent}%)`
       : `Ưu đãi: ${promotion?.title}`
 
@@ -174,7 +175,7 @@ export default function PromotionDetail() {
         <div className="absolute inset-0 bg-grid-white/[0.03] bg-[size:20px_20px]" />
         <div className="absolute -left-12 -top-12 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
         <div className="absolute -right-12 -bottom-12 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl" />
-        
+
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="flex flex-wrap gap-2.5 items-center mb-4">
             <span className="rounded-full bg-blue-500/20 border border-blue-400/30 px-3.5 py-1 text-[10px] font-black uppercase tracking-wider text-blue-300">
@@ -184,7 +185,7 @@ export default function PromotionDetail() {
               Tiết kiệm {Number(promotion.discountPercent)}%
             </span>
           </div>
-          
+
           <h1 className="text-2xl sm:text-4xl font-black text-white leading-tight max-w-4xl tracking-tight">
             {promotion.title}
           </h1>
@@ -194,17 +195,17 @@ export default function PromotionDetail() {
       {/* Main Container */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-10">
         <div className="grid gap-8 lg:grid-cols-[2.5fr_1.1fr] items-start">
-          
+
           {/* Left Column: Image, Applied Services, & Details */}
           <div className="space-y-8">
             {/* Image Box */}
             <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white p-2.5 shadow-[0_15px_45px_rgba(15,45,95,0.03)] group">
               <div className="overflow-hidden rounded-2xl relative">
                 {promotion.imageUrl ? (
-                  <img 
-                    src={promotion.imageUrl} 
-                    alt={promotion.title} 
-                    className="w-full h-auto max-h-[500px] object-cover mx-auto transform transition duration-700 group-hover:scale-102" 
+                  <img
+                    src={promotion.imageUrl}
+                    alt={promotion.title}
+                    className="w-full h-auto max-h-[500px] object-cover mx-auto transform transition duration-700 group-hover:scale-102"
                   />
                 ) : (
                   <div className="flex h-72 items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400 font-bold">
@@ -230,21 +231,19 @@ export default function PromotionDetail() {
                     const savedAmount = originalPrice - finalPrice
 
                     return (
-                      <div 
-                        key={item.id} 
+                      <div
+                        key={item.id}
                         onClick={() => setSelectedServiceId(item.id)}
-                        className={`group border rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 transition duration-300 cursor-pointer ${
-                          selectedServiceId === item.id 
-                            ? 'border-[#1f4fb2] bg-blue-50/30 ring-1 ring-[#1f4fb2]/30' 
+                        className={`group border rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 transition duration-300 cursor-pointer ${selectedServiceId === item.id
+                            ? 'border-[#1f4fb2] bg-blue-50/30 ring-1 ring-[#1f4fb2]/30'
                             : 'border-slate-100 hover:border-slate-300 hover:bg-slate-50/50'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-start gap-3 flex-1">
-                          <div className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                            selectedServiceId === item.id 
-                              ? 'border-[#1f4fb2] bg-[#1f4fb2] text-white' 
+                          <div className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${selectedServiceId === item.id
+                              ? 'border-[#1f4fb2] bg-[#1f4fb2] text-white'
                               : 'border-slate-300 group-hover:border-slate-400'
-                          }`}>
+                            }`}>
                             <div className="h-2 w-2 rounded-full bg-white" />
                           </div>
                           <div>
@@ -383,7 +382,7 @@ export default function PromotionDetail() {
           {/* Right Column: Sticky Sidebar with Urgency, Price, & Direct Booking Form */}
           <div className="lg:sticky lg:top-24 space-y-6">
             <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-[0_15px_50px_rgba(15,45,95,0.05)] overflow-hidden relative">
-              
+
               {/* Hot promo banner line */}
               <div className="absolute top-0 left-0 right-0 h-[5px] bg-[#1f4fb2]" />
 
@@ -415,7 +414,7 @@ export default function PromotionDetail() {
 
                   {/* Visual timer progress bar */}
                   <div className="mt-4 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                    <div 
+                    <div
                       className="h-full bg-gradient-to-r from-orange-500 to-rose-500 transition-all duration-1000"
                       style={{ width: `${timeProgress}%` }}
                     />
@@ -444,7 +443,7 @@ export default function PromotionDetail() {
                       </p>
                       <p className="text-xl font-black text-[#f33434] mt-0.5">
                         {formatMoney(
-                          (Number(promotion.services.find(s => s.id === selectedServiceId)?.price || primaryService.price)) * 
+                          (Number(promotion.services.find(s => s.id === selectedServiceId)?.price || primaryService.price)) *
                           (1 - Number(promotion.discountPercent) / 100)
                         )}
                       </p>
@@ -459,11 +458,11 @@ export default function PromotionDetail() {
               {/* Booking/Registration Form */}
               <form onSubmit={handleFormSubmit} className="space-y-4">
                 <h4 className="text-xs font-black text-[#1f3266] uppercase tracking-wider">Đăng ký nhận cuộc gọi tư vấn miễn phí</h4>
-                
+
                 <div>
                   <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1.5">Họ và tên *</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     required
                     placeholder="Nhập tên của bạn"
                     value={fullName}
@@ -474,8 +473,8 @@ export default function PromotionDetail() {
 
                 <div>
                   <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1.5">Số điện thoại *</label>
-                  <input 
-                    type="tel" 
+                  <input
+                    type="tel"
                     required
                     placeholder="Nhập số điện thoại"
                     value={phone}
@@ -530,8 +529,8 @@ export default function PromotionDetail() {
               {/* Call Hotline */}
               <div className="mt-5 border-t border-slate-100 pt-5 text-center">
                 <p className="text-[10px] font-semibold text-slate-400">Hoặc liên hệ tổng đài đặt lịch trực tiếp:</p>
-                <a 
-                  href="tel:19008059" 
+                <a
+                  href="tel:19008059"
                   className="inline-flex items-center gap-2 mt-2 text-base font-black text-[#1f4fb2] hover:text-[#153a8a] transition"
                 >
                   📞 1900 8059
@@ -555,13 +554,13 @@ export default function PromotionDetail() {
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {otherPromotions.map((promo) => {
                 const promoService = promo.services?.[0]
-                const discountedPromoPrice = promoService?.price 
-                  ? Number(promoService.price) * (1 - Number(promo.discountPercent) / 100) 
+                const discountedPromoPrice = promoService?.price
+                  ? Number(promoService.price) * (1 - Number(promo.discountPercent) / 100)
                   : null
 
                 return (
-                  <article 
-                    key={promo.id} 
+                  <article
+                    key={promo.id}
                     className="flex flex-col overflow-hidden rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition duration-300 hover:-translate-y-0.5"
                   >
                     <div className="relative h-44 w-full overflow-hidden bg-slate-100">
@@ -604,8 +603,8 @@ export default function PromotionDetail() {
                         )}
                       </div>
 
-                      <Link 
-                        to={`/promotions/${promo.id}`} 
+                      <Link
+                        to={`/promotions/${promo.id}`}
                         className="mt-auto mx-auto inline-flex items-center justify-center rounded-xl bg-[#edf4ff] px-5 py-2 text-[10px] font-black text-[#1f64f2] transition hover:bg-[#e1ecff]"
                       >
                         Xem chi tiết

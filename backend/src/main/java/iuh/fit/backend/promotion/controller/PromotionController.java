@@ -17,12 +17,12 @@ import java.util.UUID;
 public class PromotionController {
     private final PromotionService promotionQueryService;
 
-    @GetMapping("/api/promotions")
+    @GetMapping({"/api/v1/promotions", "/api/promotions"})
     public List<PromotionResponse> getPublicPromotions() {
         return promotionQueryService.getPublicPromotions();
     }
 
-    @GetMapping("/api/promotions/today")
+    @GetMapping({"/api/v1/promotions/today", "/api/promotions/today"})
     public List<PromotionResponse> getTodayPromotions() {
         return promotionQueryService.getTodayPromotions();
     }
@@ -41,7 +41,7 @@ public class PromotionController {
                 ));
     }
 
-    @GetMapping("/api/promotions/{id}")
+    @GetMapping({"/api/v1/promotions/{id}", "/api/promotions/{id}"})
     public PromotionResponse getPublicPromotion(@PathVariable UUID id) {
         return promotionQueryService.getPublicPromotion(id);
     }

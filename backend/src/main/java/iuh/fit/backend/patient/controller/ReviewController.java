@@ -14,7 +14,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/reviews")
+@RequestMapping({"/api/v1/reviews", "/api/reviews"})
 public class ReviewController {
 
     private final ReviewRepository reviewRepository;

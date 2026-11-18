@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { getPromotions, createAppointment } from '../services/api'
+import { getPromotions } from '../services/promotion.service'
+import { createPublicAppointment as createAppointment } from '../services/appointment.service'
 
 const formatMoney = (value) => new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(value || 0) + 'đ'
 

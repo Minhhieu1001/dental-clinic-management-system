@@ -5,6 +5,7 @@ import com.cloudinary.utils.ObjectUtils;
 import iuh.fit.backend.storage.service.MediaService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -21,6 +22,9 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class CloudinaryServiceImpl implements MediaService {
+
+    @Value("${app.public-base-url:http://localhost:8080}")
+    private String publicBaseUrl;
 
     private final Cloudinary cloudinary;
 
@@ -69,7 +73,7 @@ public class CloudinaryServiceImpl implements MediaService {
                 Files.copy(inputStream, filePath, StandardCopyOption.REPLACE_EXISTING);
             }
 
-            return "http://localhost:8080/uploads/" + newFileName;
+            return publicBaseUrl.replaceAll("/+$", "") + "/uploads/" + newFileName;
         } catch (IOException e) {
             log.error("Failed to save file locally: ", e);
             throw new RuntimeException("Tải ảnh thất bại: " + e.getMessage(), e);

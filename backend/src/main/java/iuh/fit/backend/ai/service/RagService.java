@@ -10,6 +10,7 @@ import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -22,12 +23,15 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class RagService {
 
+    @Value("${app.ai.vector-store-path:src/main/resources/ai/document/vectorstore.json}")
+    private String vectorStorePath;
+
     private final VectorStore vectorStore;
 
     @PostConstruct
     public void initDocument() {
         try {
-            File vectorFile = new File("src/main/resources/ai/document/vectorstore.json");
+            File vectorFile = new File(vectorStorePath);
             // Nếu file vectorstore.json đã tồn tại và có dữ liệu, không ghi đè lại để tránh kích hoạt Spring Boot DevTools restart vòng lặp
             if (vectorFile.exists() && vectorFile.length() > 100) {
                 log.info("RAG: VectorStore đã tồn tại sẵn ({} bytes), bỏ qua bước nạp lại.", vectorFile.length());
@@ -50,6 +54,7 @@ public class RagService {
 
                 // Lưu lại cache vector ra file
                 if (vectorStore instanceof SimpleVectorStore simpleStore) {
+                    java.nio.file.Files.createDirectories(vectorFile.toPath().toAbsolutePath().getParent());
                     simpleStore.save(vectorFile);
                 }
                 log.info("RAG: Đã nạp thành công {} đoạn tài liệu vào VectorStore", chunks.size());
