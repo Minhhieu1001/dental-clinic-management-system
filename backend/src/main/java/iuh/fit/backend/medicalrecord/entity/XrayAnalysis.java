@@ -19,7 +19,7 @@ public class XrayAnalysis {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "xray_image_id")
     private XrayImage xrayImage;
 
