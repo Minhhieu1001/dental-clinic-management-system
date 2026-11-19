@@ -381,7 +381,6 @@ export default function TreatmentPlans() {
       const d = new Date();
       d.setDate(d.getDate() + 30);
       setEndDate(d.toISOString().split('T')[0]);
-      toast.success('Đang ở chế độ tạo kế hoạch điều trị mới');
       return;
     }
 
@@ -1468,16 +1467,6 @@ export default function TreatmentPlans() {
 
         {/* Nút hành động */}
         <div className="flex flex-wrap items-center gap-2">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.97 }}
-            type="button"
-            onClick={() => window.print()}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
-          >
-            <Printer size={15} className="text-slate-600" />
-            <span>In phác đồ</span>
-          </motion.button>
 
           <motion.button
             whileHover={{ scale: 1.02 }}
@@ -1616,56 +1605,53 @@ export default function TreatmentPlans() {
             <div className="px-4 py-3 bg-slate-50/30 space-y-2.5">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-md bg-teal-100 text-teal-800">
+                  <div className={`flex h-6 w-6 items-center justify-center rounded-md ${diagnosesList.length === 0 ? 'bg-amber-100 text-amber-800' : 'bg-teal-100 text-teal-800'}`}>
                     <Stethoscope size={13} />
                   </div>
-                  <span className="font-extrabold text-teal-900 text-xs uppercase tracking-wide">
+                  <span className={`font-extrabold text-xs uppercase tracking-wide ${diagnosesList.length === 0 ? 'text-amber-950' : 'text-teal-900'}`}>
                     Chẩn đoán lâm sàng theo răng ({diagnosesList.length}):
                   </span>
                 </div>
 
-                <span className="rounded-full bg-teal-50 text-teal-800 border border-teal-200 font-extrabold text-[11px] px-2.5 py-0.5 shrink-0">
+                <span className={`rounded-full border font-extrabold text-[11px] px-2.5 py-0.5 shrink-0 ${diagnosesList.length === 0
+                  ? 'bg-amber-100 text-amber-900 border-amber-300'
+                  : 'bg-teal-50 text-teal-800 border-teal-200'
+                  }`}>
                   {currentSession ? currentSession.label : `Tất cả đợt`} · {diagnosesList.length} chẩn đoán xác định
                 </span>
               </div>
 
               {/* Danh sách thẻ chẩn đoán */}
-              {diagnosesList.length === 0 ? (
-                <div className="text-center py-3 text-slate-400 italic text-xs bg-white rounded-lg border border-dashed border-slate-200">
-                  {currentSession
-                    ? `Đợt khám này (${currentSession.label}) chưa có kết quả chẩn đoán nào được ghi nhận.`
-                    : 'Chưa có kết quả chẩn đoán nào được ghi nhận từ đợt khám.'}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
-                  {diagnosesList.map((diag, index) => (
-                    <div
-                      key={diag.id || index}
-                      className="rounded-lg border border-slate-200 bg-white hover:bg-slate-50/50 p-2 flex items-center gap-2 shadow-2xs hover:border-teal-400 transition-all min-w-0"
-                    >
-                      <span className="rounded bg-amber-500 text-white font-extrabold text-[10.5px] px-2 py-0.5 shadow-2xs shrink-0 tracking-wide">
-                        {diag.toothPosition || 'R--'}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+                {diagnosesList.map((diag, index) => (
+                  <div
+                    key={diag.id || index}
+                    className="rounded-lg border border-slate-200 bg-white hover:bg-slate-50/50 p-2 flex items-center gap-2 shadow-2xs hover:border-teal-400 transition-all min-w-0"
+                  >
+                    <span className="rounded bg-amber-500 text-white font-extrabold text-[10.5px] px-2 py-0.5 shadow-2xs shrink-0 tracking-wide">
+                      {diag.toothPosition || 'R--'}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <span
+                        className="font-bold text-slate-900 text-xs block truncate leading-snug"
+                        title={diag.label || diag.primaryDiagnosis}
+                      >
+                        {diag.label || diag.primaryDiagnosis}
                       </span>
-                      <div className="min-w-0 flex-1">
+                      {diag.secondaryDiagnosis && (
                         <span
-                          className="font-bold text-slate-900 text-xs block truncate leading-snug"
-                          title={diag.label || diag.primaryDiagnosis}
+                          className="text-[10px] text-slate-500 block truncate mt-0.5 font-normal"
+                          title={diag.secondaryDiagnosis}
                         >
-                          {diag.label || diag.primaryDiagnosis}
+                          {diag.secondaryDiagnosis}
                         </span>
-                        {diag.secondaryDiagnosis && (
-                          <span
-                            className="text-[10px] text-slate-500 block truncate mt-0.5 font-normal"
-                            title={diag.secondaryDiagnosis}
-                          >
-                            {diag.secondaryDiagnosis}
-                          </span>
-                        )}
-                      </div>
+                      )}
                     </div>
-                  ))}
-                </div>
-              )}
+                  </div>
+                ))}
+              </div>
+
             </div>
 
             {/* TẦNG 3: THÔNG TIN PHÁC ĐỒ HOẶC CẢNH BÁO */}

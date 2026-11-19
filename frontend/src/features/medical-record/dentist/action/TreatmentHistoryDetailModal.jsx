@@ -335,17 +335,17 @@ export const TreatmentHistoryDetailModal = ({
         {/* ========================================================================= */}
         {/* TOP BAR 1: THANH TIÊU ĐỀ HỆ THỐNG ERP */}
         {/* ========================================================================= */}
-        <div className="flex items-center justify-between px-4 py-2.5 bg-slate-900 text-white border-b border-slate-800 shrink-0">
+        <div className="flex items-center justify-between px-4 py-2.5 bg-teal-800 text-white border-b border-teal-900 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="flex h-7 w-7 items-center justify-center bg-teal-600 text-white font-bold text-xs">
+            <div className="flex h-7 w-7 items-center justify-center bg-teal-950 text-teal-200 font-black text-xs rounded border border-teal-700/60 shadow-inner">
               HIS
             </div>
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold tracking-wide uppercase text-slate-100">
+              <h2 className="text-sm font-bold tracking-wide uppercase text-white">
                 HỒ SƠ BỆNH ÁN & CHI TIẾT KẾ HOẠCH ĐIỀU TRỊ
               </h2>
-              <span className="text-xs text-slate-400">|</span>
-              <span className="font-mono text-xs text-teal-400 bg-slate-800 px-2 py-0.5 border border-slate-700">
+              <span className="text-xs text-teal-300">|</span>
+              <span className="font-mono text-xs text-teal-200 bg-teal-900/90 px-2 py-0.5 rounded border border-teal-700/80">
                 CASE-ID: {String(record.id || '').slice(0, 10).toUpperCase()}
               </span>
             </div>
@@ -354,20 +354,11 @@ export const TreatmentHistoryDetailModal = ({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => window.print()}
-              className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 cursor-pointer"
-              title="In hồ sơ ca khám"
-            >
-              <Printer size={13} />
-              <span>In phiếu</span>
-            </button>
-            <button
-              type="button"
               onClick={onClose}
-              className="p-1 text-slate-400 hover:text-white hover:bg-rose-600 border border-transparent hover:border-rose-700 transition-colors cursor-pointer"
+              className="p-1 rounded text-teal-100 hover:text-white hover:bg-teal-700/80 transition-colors cursor-pointer"
               title="Đóng cửa sổ (ESC)"
             >
-              <X size={18} />
+              <X size={20} />
             </button>
           </div>
         </div>
@@ -519,10 +510,10 @@ export const TreatmentHistoryDetailModal = ({
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
                       <tr className="bg-slate-100 text-slate-700 border-b border-slate-300 font-bold text-[11px]">
-                        <th className="py-1.5 px-2.5 border-r border-slate-200 w-24">Vị trí</th>
-                        <th className="py-1.5 px-2.5 border-r border-slate-200">Mã & Tên chẩn đoán</th>
-                        <th className="py-1.5 px-2.5 border-r border-slate-200 w-30">Mức độ</th>
-                        <th className="py-1.5 px-2.5">Ghi chú</th>
+                        <th className="py-1.5 px-2.5 border-r border-slate-200 w-20 sm:w-24 whitespace-nowrap">Vị trí</th>
+                        <th className="py-1.5 px-2.5 border-r border-slate-200 min-w-[180px]">Mã & Tên chẩn đoán</th>
+                        <th className="py-1.5 px-2.5 border-r border-slate-200 w-28 sm:w-32 text-center whitespace-nowrap">Mức độ</th>
+                        <th className="py-1.5 px-2.5 min-w-[100px]">Ghi chú</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
@@ -534,24 +525,24 @@ export const TreatmentHistoryDetailModal = ({
 
                           return (
                             <tr key={diag.id || idx} className="hover:bg-slate-50">
-                              <td className="py-2 px-2.5 border-r border-slate-200 font-bold text-indigo-900 font-mono">
+                              <td className="py-2 px-2.5 border-r border-slate-200 font-bold text-indigo-900 font-mono whitespace-nowrap">
                                 {diag.toothPosition ? `Răng ${diag.toothPosition}` : 'Toàn hàm'}
                               </td>
-                              <td className="py-2 px-2.5 border-r border-slate-200 font-semibold text-slate-900">
-                                {code && <span className="font-mono text-indigo-700 mr-1">[{code}]</span>}
-                                <span className="whitespace-nowrap">{diagnosisName}</span>
+                              <td className="py-2 px-2.5 border-r border-slate-200 font-semibold text-slate-900 leading-snug break-words">
+                                {code && <span className="font-mono text-indigo-700 mr-1.5 font-bold">[{code}]</span>}
+                                <span>{diagnosisName}</span>
                               </td>
-                              <td className="py-2 px-2.5 border-r border-slate-200">
+                              <td className="py-2 px-2.5 border-r border-slate-200 text-center whitespace-nowrap">
                                 {diag.level ? (
-                                  <span className={`px-1.5 py-0.5 border text-[10px] font-bold ${levelInfo.badgeClass}`}>
+                                  <span className={`inline-block px-2.5 py-0.5 border text-[11px] font-bold whitespace-nowrap rounded ${levelInfo.badgeClass}`}>
                                     {levelInfo.label}
                                   </span>
                                 ) : (
                                   <span className="text-slate-400">-</span>
                                 )}
                               </td>
-                              <td className="py-2 px-2.5 text-slate-600 text-[11px]">
-                                <span className="whitespace-nowrap">{diag.diagnosticNotes || '-'}</span>
+                              <td className="py-2 px-2.5 text-slate-600 text-[11px] leading-snug break-words">
+                                <span>{diag.diagnosticNotes || '-'}</span>
                               </td>
                             </tr>
                           );
@@ -646,12 +637,12 @@ export const TreatmentHistoryDetailModal = ({
             <div className="lg:col-span-7 space-y-3">
               {/* PANEL 4: TỔNG QUAN PHÁC ĐỒ & CHI PHÍ DỰ KIẾN */}
               <div className="bg-white border border-slate-300 shadow-none">
-                <div className="flex items-center justify-between px-3 py-2 bg-slate-900 text-white font-bold text-xs uppercase tracking-wide">
+                <div className="flex items-center justify-between px-3 py-2 bg-teal-800 text-white font-bold text-xs uppercase tracking-wide border-b border-teal-900">
                   <div className="flex items-center gap-2">
-                    <Layers size={14} className="text-teal-400" />
-                    <span>2. Kế Hoạch Điều Trị & Phác Đồ Tiến Độ</span>
+                    <Layers size={14} className="text-teal-200" />
+                    <span className="text-white">2. Kế Hoạch Điều Trị & Phác Đồ Tiến Độ</span>
                   </div>
-                  <span className="text-teal-300 text-xs font-mono">
+                  <span className="text-teal-200 text-xs font-mono font-bold bg-teal-900/80 px-2 py-0.5 rounded border border-teal-700">
                     {Array.isArray(record.phases) ? record.phases.length : 0} GIAI ĐOẠN
                   </span>
                 </div>
@@ -881,25 +872,6 @@ export const TreatmentHistoryDetailModal = ({
                 )}
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* ========================================================================= */}
-        {/* THANH ĐIỀU HƯỚNG CUỐI (ERP FOOTER BAR) */}
-        {/* ========================================================================= */}
-        <div className="flex items-center justify-between px-4 py-2.5 bg-slate-900 text-white border-t border-slate-800 text-xs shrink-0">
-          <div className="flex items-center gap-3 text-slate-400">
-            <span>Hệ thống quản lý phòng khám Nha khoa</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-600 text-xs font-semibold cursor-pointer transition-colors"
-            >
-              Đóng (ESC)
-            </button>
           </div>
         </div>
       </div>

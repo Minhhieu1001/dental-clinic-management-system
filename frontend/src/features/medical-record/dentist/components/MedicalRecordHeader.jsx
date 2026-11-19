@@ -77,16 +77,6 @@ export default function MedicalRecordHeader({
         <div className="flex flex-wrap items-center justify-end gap-2.5 lg:shrink-0">
           <button
             type="button"
-            disabled={!hasPatientData}
-            onClick={() => toast.success('Đã gửi yêu cầu in hồ sơ bệnh án!')}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-teal-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs cursor-pointer"
-          >
-            <Printer size={15} className="text-slate-500" />
-            <span>In hồ sơ</span>
-          </button>
-
-          <button
-            type="button"
             onClick={onSave}
             disabled={saving || loadingMedicalRecord || !hasPatientData}
             className="flex items-center gap-2 rounded-lg bg-teal-700 px-4 py-2 text-xs font-extrabold text-white shadow-2xs hover:bg-teal-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
@@ -100,7 +90,7 @@ export default function MedicalRecordHeader({
               type="button"
               disabled={!hasPatientData || loadingMedicalRecord || navigatingExam}
               onClick={onNavigateTreatment}
-              className="flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-4 py-2 text-xs font-extrabold text-white shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+              className="flex items-center gap-1.5 rounded-lg bg-blue-600 hover:bg-emerald-700 px-4 py-2 text-xs font-extrabold text-white shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
               title="Chuyển sang khám bệnh và chẩn đoán điều trị"
             >
               {navigatingExam ? <RefreshCw size={15} className="animate-spin" /> : <Stethoscope size={15} />}

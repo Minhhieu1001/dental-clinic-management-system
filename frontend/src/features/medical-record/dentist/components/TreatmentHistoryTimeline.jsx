@@ -205,15 +205,15 @@ export default function TreatmentHistoryTimeline({
         </div>
       ) : records.length === 0 ? (
         /* 3. EMPTY STATE: CHƯA CÓ LỊCH SỬ ĐIỀU TRỊ */
-        <div className="flex flex-col items-center justify-center text-center p-7 space-y-3.5 bg-gradient-to-b from-slate-50/70 via-slate-50/30 to-white rounded-2xl border border-dashed border-slate-200/90 shadow-2xs">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-50 text-teal-700 border border-teal-100 shadow-2xs">
-            <ClipboardList size={26} className="stroke-[1.8]" />
+        <div className="flex flex-col items-center justify-center text-center p-7 space-y-3.5 bg-gradient-to-b from-teal-50/60 via-slate-50/20 to-white rounded-2xl border-2 border-dashed border-teal-200/90 shadow-2xs">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-teal-700 to-emerald-600 text-white shadow-md shadow-teal-700/20 ring-4 ring-teal-100">
+            <ClipboardList size={26} className="stroke-[2.2]" />
           </div>
           <div className="space-y-1 max-w-xs">
             <h4 className="text-sm font-black text-slate-800 tracking-tight">
               Chưa có lịch sử điều trị
             </h4>
-            <p className="text-xs text-slate-500 leading-relaxed">
+            <p className="text-xs text-slate-500 font-medium leading-relaxed">
               Bệnh nhân chưa có dữ liệu kết quả khám lâm sàng hoặc kế hoạch điều trị nào được ghi nhận.
             </p>
           </div>

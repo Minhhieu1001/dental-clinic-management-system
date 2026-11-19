@@ -589,9 +589,5 @@ export const CHIEF_COMPLAINT_SUGGESTIONS = [
   'Đau buốt răng khi ăn nhai hoặc uống nước lạnh',
   'Viêm nướu, chảy máu chân răng khi đánh răng',
   'Kiểm tra răng định kỳ & Cạo vôi răng',
-  'Mất răng muốn phục hồi cấy ghép Implant',
-  'Răng khấp khểnh, chen chúc muốn niềng răng',
-  'Răng ố vàng, xỉn màu muốn tẩy trắng thẩm mỹ',
-  'Đau nhức vùng góc hàm do răng khôn mọc kẹt',
-  'Trám răng bị sứt mẻ, vỡ miếng trám cũ',
+  'Mất răng muốn phục hồi cấy ghép Implant'
 ];
