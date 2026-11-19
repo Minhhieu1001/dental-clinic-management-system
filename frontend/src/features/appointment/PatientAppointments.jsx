@@ -652,7 +652,7 @@ export default function PatientAppointments() {
   }, [appointments]);
 
   return (
-    <div className="space-y-3 sm:space-y-4 max-w-7xl mx-auto px-0 sm:px-0 py-0.5 sm:py-1 font-sans animate-in fade-in duration-150">
+    <div className="space-y-3 sm:space-y-4 w-full px-0 sm:px-0 py-0.5 sm:py-1 font-sans animate-in fade-in duration-150">
       {/* ================= TOP BANNER: CROWN DENTAL PATIENT PORTAL ================= */}
       <div
         className="rounded-xl p-3.5 sm:p-5 text-white shadow-md shadow-emerald-950/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-3.5 sm:gap-5 relative overflow-hidden border border-emerald-600/30"
@@ -805,8 +805,8 @@ export default function PatientAppointments() {
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
                 className={`px-3.5 py-1.5 rounded-md text-xs transition-all duration-150 cursor-pointer select-none shrink-0 ${isActive
-                    ? 'bg-white text-slate-900 font-extrabold shadow-xs border border-slate-200/60'
-                    : 'text-slate-600 hover:text-slate-900 font-semibold hover:bg-white/60'
+                  ? 'bg-white text-slate-900 font-extrabold shadow-xs border border-slate-200/60'
+                  : 'text-slate-600 hover:text-slate-900 font-semibold hover:bg-white/60'
                   }`}
               >
                 <span>{tab.label}</span>
@@ -844,8 +844,8 @@ export default function PatientAppointments() {
               type="button"
               onClick={() => setViewMode('GRID')}
               className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs transition-all cursor-pointer select-none ${viewMode === 'GRID'
-                  ? 'bg-white text-[#009766] shadow-xs font-bold border border-slate-200/50'
-                  : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
+                ? 'bg-white text-[#009766] shadow-xs font-bold border border-slate-200/50'
+                : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
                 }`}
               title="Dạng xem thẻ"
             >
@@ -857,8 +857,8 @@ export default function PatientAppointments() {
               type="button"
               onClick={() => setViewMode('CALENDAR')}
               className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs transition-all cursor-pointer select-none ${viewMode === 'CALENDAR'
-                  ? 'bg-white text-[#009766] shadow-xs font-bold border border-slate-200/50'
-                  : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
+                ? 'bg-white text-[#009766] shadow-xs font-bold border border-slate-200/50'
+                : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
                 }`}
               title="Dạng xem lịch"
             >
@@ -870,8 +870,8 @@ export default function PatientAppointments() {
               type="button"
               onClick={() => setViewMode('TIMELINE')}
               className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs transition-all cursor-pointer select-none ${viewMode === 'TIMELINE'
-                  ? 'bg-white text-[#009766] shadow-xs font-bold border border-slate-200/50'
-                  : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
+                ? 'bg-white text-[#009766] shadow-xs font-bold border border-slate-200/50'
+                : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
                 }`}
               title="Dạng xem dòng thời gian"
             >
@@ -1020,11 +1020,10 @@ export default function PatientAppointments() {
                         }}
                         disabled={!canModifyAppointment(apt)}
                         title={!canModifyAppointment(apt) ? checkAppointmentModifiable(apt).reason : 'Hủy lịch hẹn'}
-                        className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors ${
-                          canModifyAppointment(apt)
+                        className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors ${canModifyAppointment(apt)
                             ? 'text-rose-600 hover:bg-rose-50 cursor-pointer'
                             : 'text-slate-300 cursor-not-allowed opacity-50'
-                        }`}
+                          }`}
                       >
                         Hủy hẹn
                       </button>
@@ -1044,11 +1043,10 @@ export default function PatientAppointments() {
                                 ? 'Chỉnh sửa lại thông tin đặt lịch (trong vòng 1h kể từ khi đặt)'
                                 : editCheck.reason
                             }
-                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold text-xs transition-colors shadow-2xs ${
-                              editCheck.canEdit
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold text-xs transition-colors shadow-2xs ${editCheck.canEdit
                                 ? 'bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 cursor-pointer'
                                 : 'bg-slate-100 text-slate-300 border border-slate-200 cursor-not-allowed opacity-50'
-                            }`}
+                              }`}
                           >
                             <Edit3 className="h-3 w-3" />
                             <span>Chỉnh sửa</span>
@@ -1145,24 +1143,24 @@ export default function PatientAppointments() {
                     type="button"
                     onClick={() => setSelectedCalendarDate(dayItem.dateString)}
                     className={`min-h-[58px] sm:min-h-[62px] p-2 rounded-lg border flex flex-col justify-between items-center transition-all duration-150 cursor-pointer ${isSelected
-                        ? 'border-[#009766] bg-emerald-50/50 ring-2 ring-[#009766]/20 shadow-2xs'
-                        : hasAppointments
-                          ? 'border-emerald-200/90 bg-emerald-50/20 hover:border-[#009766]/60 hover:bg-emerald-50/40 shadow-2xs'
-                          : dayItem.isCurrentMonth
-                            ? 'border-slate-100 bg-white hover:border-slate-300 hover:bg-slate-50/60'
-                            : 'border-transparent bg-slate-50/40 text-slate-300 hover:bg-slate-100/50'
+                      ? 'border-[#009766] bg-emerald-50/50 ring-2 ring-[#009766]/20 shadow-2xs'
+                      : hasAppointments
+                        ? 'border-emerald-200/90 bg-emerald-50/20 hover:border-[#009766]/60 hover:bg-emerald-50/40 shadow-2xs'
+                        : dayItem.isCurrentMonth
+                          ? 'border-slate-100 bg-white hover:border-slate-300 hover:bg-slate-50/60'
+                          : 'border-transparent bg-slate-50/40 text-slate-300 hover:bg-slate-100/50'
                       }`}
                   >
                     {/* Day Number */}
                     <div className="flex items-center justify-center w-full">
                       <span
                         className={`text-xs font-bold transition-colors ${isSelected
-                            ? 'h-6 w-6 rounded-full bg-[#009766] text-white flex items-center justify-center text-xs shadow-2xs'
-                            : isToday
-                              ? 'h-6 w-6 rounded-full border-2 border-[#009766] text-[#009766] font-black flex items-center justify-center text-xs'
-                              : dayItem.isCurrentMonth
-                                ? 'text-slate-800'
-                                : 'text-slate-300'
+                          ? 'h-6 w-6 rounded-full bg-[#009766] text-white flex items-center justify-center text-xs shadow-2xs'
+                          : isToday
+                            ? 'h-6 w-6 rounded-full border-2 border-[#009766] text-[#009766] font-black flex items-center justify-center text-xs'
+                            : dayItem.isCurrentMonth
+                              ? 'text-slate-800'
+                              : 'text-slate-300'
                           }`}
                       >
                         {dayItem.dayNumber}
@@ -1299,11 +1297,10 @@ export default function PatientAppointments() {
                                 }}
                                 disabled={!canModifyAppointment(apt)}
                                 title={!canModifyAppointment(apt) ? checkAppointmentModifiable(apt).reason : 'Hủy lịch hẹn'}
-                                className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors ${
-                                  canModifyAppointment(apt)
+                                className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors ${canModifyAppointment(apt)
                                     ? 'text-rose-600 hover:bg-rose-50 cursor-pointer'
                                     : 'text-slate-300 cursor-not-allowed opacity-50'
-                                }`}
+                                  }`}
                               >
                                 Hủy hẹn
                               </button>
@@ -1323,11 +1320,10 @@ export default function PatientAppointments() {
                                         ? 'Chỉnh sửa lại thông tin đặt lịch (trong vòng 1h kể từ khi đặt)'
                                         : editCheck.reason
                                     }
-                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold text-xs transition-colors shadow-2xs ${
-                                      editCheck.canEdit
+                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold text-xs transition-colors shadow-2xs ${editCheck.canEdit
                                         ? 'bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 cursor-pointer'
                                         : 'bg-slate-100 text-slate-300 border border-slate-200 cursor-not-allowed opacity-50'
-                                    }`}
+                                      }`}
                                   >
                                     <Edit3 className="h-3 w-3" />
                                     <span>Chỉnh sửa</span>
@@ -1377,10 +1373,10 @@ export default function PatientAppointments() {
                   {/* Timeline Dot Node */}
                   <div
                     className={`absolute -left-6 sm:-left-8 top-1 h-5 w-5 rounded-full border-2 border-white flex items-center justify-center transition-all ${isUpcoming
-                        ? 'bg-[#009766] ring-4 ring-[#009766]/20'
-                        : apt.status === 'COMPLETED'
-                          ? 'bg-slate-700'
-                          : 'bg-rose-500'
+                      ? 'bg-[#009766] ring-4 ring-[#009766]/20'
+                      : apt.status === 'COMPLETED'
+                        ? 'bg-slate-700'
+                        : 'bg-rose-500'
                       }`}
                   >
                     <div className="h-2 w-2 rounded-full bg-white" />
@@ -1433,11 +1429,10 @@ export default function PatientAppointments() {
                           }}
                           disabled={!canModifyAppointment(apt)}
                           title={!canModifyAppointment(apt) ? checkAppointmentModifiable(apt).reason : 'Hủy lịch hẹn'}
-                          className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
-                            canModifyAppointment(apt)
+                          className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${canModifyAppointment(apt)
                               ? 'text-rose-600 hover:bg-rose-50 cursor-pointer'
                               : 'text-slate-300 cursor-not-allowed opacity-50'
-                          }`}
+                            }`}
                         >
                           Hủy hẹn
                         </button>
@@ -1457,11 +1452,10 @@ export default function PatientAppointments() {
                                   ? 'Chỉnh sửa lại thông tin đặt lịch (trong vòng 1h kể từ khi đặt)'
                                   : editCheck.reason
                               }
-                              className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg font-bold text-xs transition-colors shadow-2xs ${
-                                editCheck.canEdit
+                              className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg font-bold text-xs transition-colors shadow-2xs ${editCheck.canEdit
                                   ? 'bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 cursor-pointer'
                                   : 'bg-slate-100 text-slate-300 border border-slate-200 cursor-not-allowed opacity-50'
-                              }`}
+                                }`}
                             >
                               <Edit3 className="h-3.5 w-3.5" />
                               <span>Chỉnh sửa</span>
@@ -1659,11 +1653,10 @@ export default function PatientAppointments() {
                   const editCheck = checkAppointmentCreationEditable(selectedAppointment);
                   return (
                     <div
-                      className={`p-3 rounded-lg border text-xs leading-relaxed font-medium space-y-0.5 ${
-                        editCheck.canEdit
+                      className={`p-3 rounded-lg border text-xs leading-relaxed font-medium space-y-0.5 ${editCheck.canEdit
                           ? 'bg-teal-50 border-teal-200 text-teal-900'
                           : 'bg-amber-50 border-amber-200 text-amber-900'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center gap-1.5 font-bold">
                         <Clock className={`h-3.5 w-3.5 ${editCheck.canEdit ? 'text-teal-600' : 'text-amber-600'}`} />
@@ -1712,11 +1705,10 @@ export default function PatientAppointments() {
                   }}
                   disabled={!canModifyAppointment(selectedAppointment)}
                   title={!canModifyAppointment(selectedAppointment) ? checkAppointmentModifiable(selectedAppointment).reason : 'Hủy lịch hẹn này'}
-                  className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors ${
-                    canModifyAppointment(selectedAppointment)
+                  className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors ${canModifyAppointment(selectedAppointment)
                       ? 'text-rose-600 hover:bg-rose-50 cursor-pointer'
                       : 'text-slate-300 cursor-not-allowed opacity-50'
-                  }`}
+                    }`}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   <span>Hủy lịch hẹn này</span>
@@ -1740,11 +1732,10 @@ export default function PatientAppointments() {
                             ? 'Chỉnh sửa lại thông tin đặt lịch (trong vòng 1h kể từ khi đặt)'
                             : editCheck.reason
                         }
-                        className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold transition-all shadow-xs ${
-                          editCheck.canEdit
+                        className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold transition-all shadow-xs ${editCheck.canEdit
                             ? 'bg-[#009766] hover:bg-[#028562] text-white cursor-pointer'
                             : 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-60'
-                        }`}
+                          }`}
                       >
                         <Edit3 className="h-3.5 w-3.5" />
                         <span>Chỉnh sửa</span>

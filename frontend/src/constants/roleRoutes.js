@@ -109,7 +109,7 @@ export const roleRoutes = {
         ],
       },
       { label: 'Chăm sóc KH', to: 'customer-care' },
-      { label: 'Kho', to: 'inventory' },
+      { label: 'Thông báo', to: 'notifications' },
       { label: 'Kết ca', to: 'shift-closing' },
       { label: 'Báo cáo', to: 'report' },
       {
@@ -154,8 +154,7 @@ export const roleRoutes = {
       { path: 'medical-records', title: 'Hồ sơ bệnh án cá nhân' },
       { path: 'prescriptions', title: 'Đơn thuốc của tôi' },
       { path: 'invoices', title: 'Hóa đơn của tôi' },
-      { path: 'reviews', title: 'Đánh giá dịch vụ' },
-      { path: 'notifications', title: 'Thông báo cá nhân' },
+      { path: 'notifications', title: 'Tin tức' },
       { path: 'profile', title: 'Thông tin tài khoản' },
     ],
   },

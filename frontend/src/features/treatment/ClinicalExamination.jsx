@@ -271,8 +271,8 @@ function ClinicalExaminationContent() {
                 <span className="font-bold text-slate-400 block text-[10.5px] uppercase tracking-wide">
                   Lý do khám bệnh
                 </span>
-                <p className="font-bold text-slate-900 text-sm mt-0.5">
-                  {examReason || 'Khám răng hàm mặt định kỳ'}
+                <p className="font-bold text-slate-900 text-sm mt-0.5 min-h-[20px]">
+                  {hasTreatmentSessions ? (examReason || '') : ''}
                 </p>
               </div>
 
@@ -498,7 +498,7 @@ function ClinicalExaminationContent() {
         patient={patient}
         currentDoctor={treatingDoctor}
         currentDoctorId={currentDoctorId}
-        initialReason={examReason || patient?.symptoms}
+        initialReason={hasTreatmentSessions ? (examReason || '') : ''}
         existingSessionsCount={treatmentSessions?.length || 0}
       />
 

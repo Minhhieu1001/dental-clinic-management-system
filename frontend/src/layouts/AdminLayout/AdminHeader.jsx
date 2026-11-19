@@ -8,7 +8,7 @@ export default function AdminHeader({ config }) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 backdrop-blur-xl">
       <div className="flex h-16 items-center justify-between px-2 sm:px-3 lg:px-4">
 
         {/* Left Side: System Scope Info for Admin */}

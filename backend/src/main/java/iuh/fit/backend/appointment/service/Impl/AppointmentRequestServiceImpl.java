@@ -66,12 +66,26 @@ public class AppointmentRequestServiceImpl implements AppointmentRequestService 
 
         // Notify only active employees of the selected branch.
         try {
+            User sender = null;
+            try {
+                Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+                if (auth != null && auth.getName() != null && !auth.getName().equalsIgnoreCase("anonymousUser")) {
+                    String username = auth.getName();
+                    sender = userRepository.findByUsername(username)
+                            .orElseGet(() -> userRepository.findByEmail(username).orElse(null));
+                }
+            } catch (Exception ignored) {}
+            if (sender == null && savedRequest.getPhone() != null && !savedRequest.getPhone().isBlank()) {
+                sender = userRepository.findByPhone(savedRequest.getPhone().trim()).orElse(null);
+            }
+
             List<User> activeEmployees = savedRequest.getBranch() == null ? List.of()
                     : userRepository.findByRoleAndStatusAndEmployee_Branch_BranchId(
                             Role.EMPLOYEE, StatusUser.ACTIVE, savedRequest.getBranch().getBranchId());
             for (User empUser : activeEmployees) {
                 Notification notif = Notification.builder()
                         .user(empUser)
+                        .sender(sender)
                         .title("Lịch hẹn mới đăng ký")
                         .content("Bệnh nhân " + savedRequest.getFullName() + " (" + savedRequest.getPhone() + ") vừa đăng ký lịch hẹn trực tuyến.")
                         .type(NotificationType.PATIENT_CHECKIN)
@@ -83,6 +97,8 @@ public class AppointmentRequestServiceImpl implements AppointmentRequestService 
                 NotificationResponseDTO notifDto = NotificationResponseDTO.builder()
                         .id(notif.getId())
                         .userId(empUser.getId())
+                        .senderId(sender != null ? sender.getId() : null)
+                        .senderName(sender != null ? (sender.getUsername() != null ? sender.getUsername() : sender.getEmail()) : "Bệnh nhân")
                         .title(notif.getTitle())
                         .content(notif.getContent())
                         .type(notif.getType())

@@ -72,7 +72,6 @@ import PatientAppointments from '../features/appointment/PatientAppointments.jsx
 import PatientMedicalRecords from '../features/medical-record/patient/PatientMedicalRecords.jsx'
 import PatientPrescriptions from '../features/prescriptions/dentist/PatientPrescriptions.jsx'
 import PatientInvoices from '../features/billing/patient/PatientInvoices.jsx'
-import PatientReviews from '../features/review/PatientReviews.jsx'
 import PatientNotifications from '../features/notification/PatientNotifications.jsx'
 import PatientProfile from '../features/user/PatientProfile.jsx'
 
@@ -177,7 +176,6 @@ export default function AppRouter() {
             <Route path="medical-records" element={<PatientMedicalRecords />} />
             <Route path="prescriptions" element={<PatientPrescriptions />} />
             <Route path="invoices" element={<PatientInvoices />} />
-            <Route path="reviews" element={<PatientReviews />} />
             <Route path="notifications" element={<PatientNotifications />} />
             <Route path="profile" element={<PatientProfile />} />
           </Route>

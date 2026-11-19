@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sơ Đồ Kiến Trúc Hệ Thống - Crown Dental Clinic</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    body {
+      background-color: #f8fafc;
+      color: #1e293b;
+      padding: 24px;
+    }
+    .header {
+      max-width: 1400px;
+      margin: 0 auto 20px auto;
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    }
+    .header h1 {
+      font-size: 22px;
+      color: #0f766e;
+      margin-bottom: 8px;
+    }
+    .header p {
+      font-size: 14px;
+      color: #64748b;
+    }
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background-color: #0f766e;
+      color: white;
+    }
+    .btn-primary:hover {
+      background-color: #115e59;
+    }
+    .btn-secondary {
+      background-color: #e2e8f0;
+      color: #334155;
+    }
+    .btn-secondary:hover {
+      background-color: #cbd5e1;
+    }
+    .diagram-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+      overflow-x: auto;
+      text-align: center;
+    }
+    #mermaid-raw {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>🦷 Sơ Đồ Kiến Trúc Hệ Thống Quản Lý Phòng Khám Nha Khoa (Crown Dental)</h1>
+    <p>Sơ đồ kiến trúc luồng chuẩn: <strong>Actor ➔ Web Client ➔ Nginx / HTTPS ➔ Spring Security ➔ Backend Modules ➔ CSDL & Broker ➔ Dịch vụ bên ngoài</strong>.</p>
+    
+    <div class="actions">
+      <button class="btn btn-primary" onclick="copyMermaidCode()">📋 Sao chép mã Mermaid (để dán vào Draw.io)</button>
+      <a class="btn btn-secondary" href="https://app.diagrams.net" target="_blank">🌐 Mở Draw.io (diagrams.net)</a>
+      <button class="btn btn-secondary" onclick="window.print()">🖨️ In / Lưu PDF</button>
+    </div>
+  </div>
+
+  <div class="diagram-container">
+    <div class="mermaid">
+flowchart LR
+    %% 1. CÁC ĐỐI TƯỢNG NGƯỜI DÙNG
+    subgraph K_Actors["1. CÁC ĐỐI TƯỢNG NGƯỜI DÙNG"]
+        A_Patient["Bệnh nhân"]
+        A_Staff["Nhân viên"]
+        A_Dentist["Bác sĩ"]
+        A_Admin["Quản trị viên"]
+    end
+
+    %% 2. GIAO DIỆN WEB
+    subgraph K_WebClient["2. GIAO DIỆN WEB — React / Vite"]
+        direction TB
+        UI_Patient["Cổng Bệnh nhân"]
+        UI_Staff["Cổng Nhân viên"]
+        UI_Dentist["Cổng Bác sĩ"]
+        UI_Admin["Cổng Quản trị"]
+    end
+
+    %% 3. HẠ TẦNG & BẢO MẬT
+    subgraph K_Infra["3. HẠ TẦNG & BẢO MẬT"]
+        direction TB
+        Sec_Nginx["Nginx / HTTPS"]
+        Sec_Security["Spring Security (JWT + CORS)"]
+    end
+
+    %% 4. MODULE NGHIỆP VỤ BACKEND
+    subgraph K_Backend["4. MODULE NGHIỆP VỤ — Spring Boot"]
+        direction TB
+        M_Auth["Auth & User Module"]
+        M_Patient["Patient Module"]
+        M_Appt["Appointment Module"]
+        M_EMR["Medical Record Module"]
+        M_Treatment["Treatment Plan Module"]
+        M_Prescription["Prescription Module"]
+        M_Billing["Billing & Payment Module"]
+        M_CustomerCare["Customer Care Module"]
+        M_Notification["Notification & Mail Module"]
+        M_AI["AI & RAG Module"]
+        M_Clinic["Clinic & Shift Module"]
+    end
+
+    %% 5. CƠ SỞ DỮ LIỆU & BỘ NHỚ ĐỆM & MESSAGE BROKER
+    subgraph K_Storage["5. CƠ SỞ DỮ LIỆU & MESSAGE BROKER"]
+        DB_Postgres[("PostgreSQL")]
+        MQ_Rabbit[("RabbitMQ")]
+        Cache_Caffeine[("Caffeine Cache")]
+    end
+
+    %% 6. DỊCH VỤ BÊN NGOÀI
+    subgraph K_External["6. DỊCH VỤ BÊN NGOÀI"]
+        Ext_Casso["Casso"]
+        Ext_Cloudinary["Cloudinary"]
+        Ext_SMTP["SMTP"]
+        Ext_Gemini["Google Gemini AI"]
+    end
+
+    %% KẾT NỐI ACTOR -> WEB CLIENT
+    A_Patient --> UI_Patient
+    A_Staff --> UI_Staff
+    A_Dentist --> UI_Dentist
+    A_Admin --> UI_Admin
+
+    %% KẾT NỐI WEB CLIENT -> HẠ TẦNG BẢO MẬT
+    UI_Patient & UI_Staff & UI_Dentist & UI_Admin --> Sec_Nginx
+    Sec_Nginx --> Sec_Security
+
+    %% KẾT NỐI BẢO MẬT -> BACKEND MODULES
+    Sec_Security --> M_Auth & M_Patient & M_Appt & M_EMR & M_Treatment & M_Prescription & M_Billing & M_CustomerCare & M_AI & M_Clinic
+
+    %% KẾT NỐI BACKEND MODULES -> POSTGRESQL
+    M_Auth & M_Patient & M_Appt & M_EMR & M_Treatment & M_Prescription & M_Billing & M_CustomerCare & M_Clinic --> DB_Postgres
+
+    %% KẾT NỐI CACHE
+    M_Patient & M_EMR & M_Treatment & M_Billing <--> Cache_Caffeine
+
+    %% KẾT NỐI CASSO WEBHOOK
+    Ext_Casso --> M_Billing
+
+    %% KẾT NỐI WEBSOCKET REALTIME (LỊCH HẸN, THANH TOÁN, THÔNG BÁO)
+    M_Appt -.->|WebSocket Realtime| UI_Staff
+    M_Billing -.->|WebSocket Realtime| UI_Staff
+    M_Notification -.->|WebSocket Realtime| UI_Patient & UI_Staff
+
+    %% KẾT NỐI CÁC MODULE DÙNG GỬI MAIL
+    M_Auth -->|OTP Đăng ký & Đổi mật khẩu| M_Notification
+    M_Patient -->|OTP Liên kết hồ sơ| M_Notification
+    M_Appt -->|Email xác nhận lịch hẹn| M_Notification
+    M_CustomerCare -->|Đẩy tin nhắn chăm sóc| MQ_Rabbit
+    MQ_Rabbit -->|Rút tin nhắn xử lý| M_Notification
+    M_Notification -->|Gửi mail| Ext_SMTP
+
+    %% KẾT NỐI ẢNH VÀ AI
+    M_EMR & M_Patient --> Ext_Cloudinary
+    M_AI --> Ext_Gemini
+    </div>
+  </div>
+
+  <textarea id="mermaid-raw">
+flowchart LR
+    %% 1. CÁC ĐỐI TƯỢNG NGƯỜI DÙNG
+    subgraph K_Actors["1. CÁC ĐỐI TƯỢNG NGƯỜI DÙNG"]
+        A_Patient["Bệnh nhân"]
+        A_Staff["Nhân viên"]
+        A_Dentist["Bác sĩ"]
+        A_Admin["Quản trị viên"]
+    end
+
+    %% 2. GIAO DIỆN WEB
+    subgraph K_WebClient["2. GIAO DIỆN WEB — React / Vite"]
+        direction TB
+        UI_Patient["Cổng Bệnh nhân"]
+        UI_Staff["Cổng Nhân viên"]
+        UI_Dentist["Cổng Bác sĩ"]
+        UI_Admin["Cổng Quản trị"]
+    end
+
+    %% 3. HẠ TẦNG & BẢO MẬT
+    subgraph K_Infra["3. HẠ TẦNG & BẢO MẬT"]
+        direction TB
+        Sec_Nginx["Nginx / HTTPS"]
+        Sec_Security["Spring Security (JWT + CORS)"]
+    end
+
+    %% 4. MODULE NGHIỆP VỤ BACKEND
+    subgraph K_Backend["4. MODULE NGHIỆP VỤ — Spring Boot"]
+        direction TB
+        M_Auth["Auth & User Module"]
+        M_Patient["Patient Module"]
+        M_Appt["Appointment Module"]
+        M_EMR["Medical Record Module"]
+        M_Treatment["Treatment Plan Module"]
+        M_Prescription["Prescription Module"]
+        M_Billing["Billing & Payment Module"]
+        M_CustomerCare["Customer Care Module"]
+        M_Notification["Notification & Mail Module"]
+        M_AI["AI & RAG Module"]
+        M_Clinic["Clinic & Shift Module"]
+    end
+
+    %% 5. CƠ SỞ DỮ LIỆU & BỘ NHỚ ĐỆM & MESSAGE BROKER
+    subgraph K_Storage["5. CƠ SỞ DỮ LIỆU & MESSAGE BROKER"]
+        DB_Postgres[("PostgreSQL")]
+        MQ_Rabbit[("RabbitMQ")]
+        Cache_Caffeine[("Caffeine Cache")]
+    end
+
+    %% 6. DỊCH VỤ BÊN NGOÀI
+    subgraph K_External["6. DỊCH VỤ BÊN NGOÀI"]
+        Ext_Casso["Casso"]
+        Ext_Cloudinary["Cloudinary"]
+        Ext_SMTP["SMTP"]
+        Ext_Gemini["Google Gemini AI"]
+    end
+
+    %% KẾT NỐI ACTOR -> WEB CLIENT
+    A_Patient --> UI_Patient
+    A_Staff --> UI_Staff
+    A_Dentist --> UI_Dentist
+    A_Admin --> UI_Admin
+
+    %% KẾT NỐI WEB CLIENT -> HẠ TẦNG BẢO MẬT
+    UI_Patient & UI_Staff & UI_Dentist & UI_Admin --> Sec_Nginx
+    Sec_Nginx --> Sec_Security
+
+    %% KẾT NỐI BẢO MẬT -> BACKEND MODULES
+    Sec_Security --> M_Auth & M_Patient & M_Appt & M_EMR & M_Treatment & M_Prescription & M_Billing & M_CustomerCare & M_AI & M_Clinic
+
+    %% KẾT NỐI BACKEND MODULES -> POSTGRESQL
+    M_Auth & M_Patient & M_Appt & M_EMR & M_Treatment & M_Prescription & M_Billing & M_CustomerCare & M_Clinic --> DB_Postgres
+
+    %% KẾT NỐI CACHE
+    M_Patient & M_EMR & M_Treatment & M_Billing <--> Cache_Caffeine
+
+    %% KẾT NỐI CASSO WEBHOOK
+    Ext_Casso --> M_Billing
+
+    %% KẾT NỐI WEBSOCKET REALTIME (LỊCH HẸN, THANH TOÁN, THÔNG BÁO)
+    M_Appt -.->|WebSocket Realtime| UI_Staff
+    M_Billing -.->|WebSocket Realtime| UI_Staff
+    M_Notification -.->|WebSocket Realtime| UI_Patient & UI_Staff
+
+    %% KẾT NỐI CÁC MODULE DÙNG GỬI MAIL
+    M_Auth -->|OTP Đăng ký & Đổi mật khẩu| M_Notification
+    M_Patient -->|OTP Liên kết hồ sơ| M_Notification
+    M_Appt -->|Email xác nhận lịch hẹn| M_Notification
+    M_CustomerCare -->|Đẩy tin nhắn chăm sóc| MQ_Rabbit
+    MQ_Rabbit -->|Rút tin nhắn xử lý| M_Notification
+    M_Notification -->|Gửi mail| Ext_SMTP
+
+    %% KẾT NỐI ẢNH VÀ AI
+    M_EMR & M_Patient --> Ext_Cloudinary
+    M_AI --> Ext_Gemini
+  </textarea>
+
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+
+    function copyMermaidCode() {
+      const code = document.getElementById('mermaid-raw').value.trim();
+      navigator.clipboard.writeText(code).then(() => {
+        alert('Đã sao chép mã Mermaid chuẩn thành công!\nBạn có thể dán vào Draw.io hoặc tài liệu báo cáo.');
+      }).catch(err => {
+        alert('Không thể sao chép tự động. Hãy mở file system_architecture_diagram.md nhé.');
+      });
+    }
+  </script>
+</body>
+</html>

@@ -92,7 +92,7 @@ export default function PatientInfoCard({
   const activeProfile = profiles.length > 0 ? profiles[selectedIdx] : (hasRealProfile ? patientInfo : null);
 
   return (
-    <div className="w-full lg:w-auto flex-[3] rounded-[4px] border border-slate-200 bg-white p-5 shadow-xs flex flex-col justify-between self-stretch min-w-[320px]">
+    <div className="w-full lg:w-auto flex-[3] rounded-lg border border-slate-200/90 bg-white p-4 sm:p-5 shadow-2xs flex flex-col justify-between self-stretch min-w-[320px]">
       <div>
         {/* Header Title & Code */}
         <div className="flex items-center justify-between mb-3 pb-2.5 border-b border-slate-100">

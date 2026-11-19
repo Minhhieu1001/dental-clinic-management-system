@@ -423,27 +423,43 @@ export default function DentistDashboard() {
     ? (dentistInfo.name || dentistInfo.fullName || formatDoctorTitle(user))
     : formatDoctorTitle(user);
 
+  const todayFormattedDate = useMemo(() => {
+    const now = new Date();
+    const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+    const dayName = days[now.getDay()];
+    const dd = String(now.getDate()).padStart(2, '0');
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const yyyy = now.getFullYear();
+    return `${dayName}, ngày ${dd}/${mm}/${yyyy}`;
+  }, []);
+
   return (
     <div className="w-full space-y-3 p-1 text-slate-800 font-sans">
       {/* 1. Header Greeting Section */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white px-4 py-3 rounded-lg border border-slate-200/90 shadow-2xs">
         <div>
-          <p className="text-xs sm:text-sm font-medium text-slate-500">Chào buổi sáng,</p>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight mt-0.5">
-            {doctorDisplayName}
-          </h1>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm sm:text-base font-semibold text-slate-600">Chào buổi sáng,</span>
+            <h1 className="text-base sm:text-lg font-extrabold text-teal-900 tracking-tight">
+              {doctorDisplayName}
+            </h1>
+          </div>
+          <p className="text-xs text-slate-500 font-medium mt-0.5 flex items-center gap-1.5">
+            <Calendar size={13} className="text-teal-600 shrink-0" />
+            <span>{todayFormattedDate}</span>
+            <span className="text-slate-300">•</span>
+            <span className="text-teal-700 font-semibold">Lịch trình khám & điều trị trong ngày</span>
+          </p>
         </div>
 
-
-
         {/* Refresh & Action */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={fetchDashboardData}
             disabled={loading}
-            className="flex items-center gap-2 rounded-[4px] bg-white px-4 py-2 text-xs font-bold text-teal-700 shadow-xs border border-slate-200 hover:bg-teal-50 transition-colors"
+            className="flex items-center gap-1.5 rounded-md bg-white px-3.5 py-1.5 text-xs font-bold text-teal-800 border border-slate-200 hover:bg-teal-50/70 hover:border-teal-300 transition-all shadow-2xs cursor-pointer"
           >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={13} className={loading ? 'animate-spin text-teal-600' : 'text-teal-600'} />
             Làm mới dữ liệu
           </button>
         </div>
@@ -452,72 +468,72 @@ export default function DentistDashboard() {
       {/* 2. Top 5 Stat Cards Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         {/* Ô 1: Lịch hẹn trong tuần */}
-        <div className="rounded-[4px] border border-slate-200 bg-white p-4 shadow-xs hover:shadow-md transition-all">
+        <div className="rounded-lg border border-teal-100 bg-gradient-to-br from-white via-white to-teal-50/40 p-3.5 shadow-2xs hover:shadow-md hover:border-teal-300 transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 truncate">Lịch hẹn trong tuần</span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-[4px] bg-teal-50 text-teal-600 border border-teal-100 shrink-0">
+            <span className="text-xs font-bold text-slate-600 truncate">Lịch hẹn trong tuần</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-teal-100/70 text-teal-800 shrink-0">
               <Calendar size={16} />
             </div>
           </div>
-          <p className="mt-2.5 text-2xl font-extrabold text-slate-800">{weekAppointmentsCount}</p>
-          <div className="mt-1.5 flex items-center gap-1 text-[11px] font-bold text-emerald-600">
-            <TrendingUp size={12} /> <span className="font-normal text-slate-400">Danh sách tuần này</span>
+          <p className="mt-2 text-2xl font-black text-slate-800">{weekAppointmentsCount}</p>
+          <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-teal-700">
+            <TrendingUp size={12} /> <span className="font-medium text-slate-500">Danh sách tuần này</span>
           </div>
         </div>
 
         {/* Ô 2: Lịch hẹn hôm nay */}
-        <div className="rounded-[4px] border border-slate-200 bg-white p-4 shadow-xs hover:shadow-md transition-all">
+        <div className="rounded-lg border border-sky-100 bg-gradient-to-br from-white via-white to-sky-50/40 p-3.5 shadow-2xs hover:shadow-md hover:border-sky-300 transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 truncate">Lịch hẹn hôm nay</span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-[4px] bg-teal-50 text-teal-600 border border-teal-100 shrink-0">
+            <span className="text-xs font-bold text-slate-600 truncate">Lịch hẹn hôm nay</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-sky-100/70 text-sky-800 shrink-0">
               <Clock size={16} />
             </div>
           </div>
-          <p className="mt-2.5 text-2xl font-extrabold text-slate-800">{totalTodayCount}</p>
-          <div className="mt-1.5 flex items-center gap-1 text-[11px] font-bold text-emerald-600">
-            <TrendingUp size={12} /> <span className="font-normal text-slate-400">Ca khám hôm nay</span>
+          <p className="mt-2 text-2xl font-black text-slate-800">{totalTodayCount}</p>
+          <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-sky-700">
+            <TrendingUp size={12} /> <span className="font-medium text-slate-500">Ca khám hôm nay</span>
           </div>
         </div>
 
         {/* Ô 3: Bệnh nhân chưa đến */}
-        <div className="rounded-[4px] border border-slate-200 bg-white p-4 shadow-xs hover:shadow-md transition-all">
+        <div className="rounded-lg border border-amber-100 bg-gradient-to-br from-white via-white to-amber-50/40 p-3.5 shadow-2xs hover:shadow-md hover:border-amber-300 transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 truncate">Bệnh nhân chưa đến</span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-[4px] bg-amber-50 text-amber-600 border border-amber-100 shrink-0">
+            <span className="text-xs font-bold text-slate-600 truncate">Bệnh nhân chưa đến</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-amber-100/70 text-amber-800 shrink-0">
               <UserX size={16} />
             </div>
           </div>
-          <p className="mt-2.5 text-2xl font-extrabold text-amber-700">{waitingCount}</p>
-          <div className="mt-1.5 flex items-center gap-1 text-[11px] font-bold text-amber-600">
-            <span className="font-medium text-slate-400">Chờ vào phòng khám</span>
+          <p className="mt-2 text-2xl font-black text-amber-700">{waitingCount}</p>
+          <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-amber-700">
+            <span className="font-medium text-slate-500">Chờ vào phòng khám</span>
           </div>
         </div>
 
         {/* Ô 4: Bệnh nhân đang điều trị */}
-        <div className="rounded-[4px] border border-slate-200 bg-white p-4 shadow-xs hover:shadow-md transition-all">
+        <div className="rounded-lg border border-indigo-100 bg-gradient-to-br from-white via-white to-indigo-50/40 p-3.5 shadow-2xs hover:shadow-md hover:border-indigo-300 transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 truncate">Bệnh nhân đang điều trị</span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-[4px] bg-blue-50 text-blue-600 border border-blue-100 shrink-0">
+            <span className="text-xs font-bold text-slate-600 truncate">Đang điều trị</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-indigo-100/70 text-indigo-800 shrink-0">
               <Stethoscope size={16} />
             </div>
           </div>
-          <p className="mt-2.5 text-2xl font-extrabold text-blue-700">{inProgressCount}</p>
-          <div className="mt-1.5 flex items-center gap-1 text-[11px] font-bold text-blue-600">
-            <span className="font-medium text-slate-400">Đang thực hiện</span>
+          <p className="mt-2 text-2xl font-black text-indigo-700">{inProgressCount}</p>
+          <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-indigo-700">
+            <span className="font-medium text-slate-500">Đang thực hiện</span>
           </div>
         </div>
 
-        {/* Ô 5: Bệnh nhân hoàn thành điều trị */}
-        <div className="rounded-[4px] border border-slate-200 bg-white p-4 shadow-xs hover:shadow-md transition-all">
+        {/* Ô 5: Hoàn thành điều trị */}
+        <div className="rounded-lg border border-emerald-100 bg-gradient-to-br from-white via-white to-emerald-50/40 p-3.5 shadow-2xs hover:shadow-md hover:border-emerald-300 transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 truncate">Hoàn thành điều trị</span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-[4px] bg-emerald-50 text-emerald-600 border border-emerald-100 shrink-0">
+            <span className="text-xs font-bold text-slate-600 truncate">Hoàn thành ca khám</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-emerald-100/70 text-emerald-800 shrink-0">
               <CheckCircle2 size={16} />
             </div>
           </div>
-          <p className="mt-2.5 text-2xl font-extrabold text-emerald-700">{completedCount}</p>
-          <div className="mt-1.5 flex items-center gap-1 text-[11px] font-bold text-emerald-600">
-            <span className="font-medium text-slate-400">Đã hoàn tất ca khám</span>
+          <p className="mt-2 text-2xl font-black text-emerald-700">{completedCount}</p>
+          <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
+            <span className="font-medium text-slate-500">Đã hoàn tất ca khám</span>
           </div>
         </div>
       </div>
@@ -545,121 +561,6 @@ export default function DentistDashboard() {
         />
       </div>
 
-      {/* 4. Bottom Row (Dynamic 3 Columns: Điều trị phổ biến + Tình trạng điều trị + Kho vật tư) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {/* Column 1: Dynamic Điều trị phổ biến */}
-        <div className="rounded-[4px] border border-slate-200 bg-white p-5 shadow-xs flex flex-col justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-slate-800 mb-4">Điều trị phổ biến</h3>
-            <div className="space-y-4">
-              {displayServices.map(([serviceName, count], idx) => {
-                const pct = Math.round((count / serviceTotalCount) * 100);
-                const colors = ['bg-teal-600', 'bg-teal-500', 'bg-teal-400'];
-
-                return (
-                  <div key={serviceName}>
-                    <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
-                      <span className="truncate max-w-[180px]">{serviceName}</span>
-                      <span className="font-bold text-teal-800">{pct}%</span>
-                    </div>
-                    <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${colors[idx % colors.length]}`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Column 2: Dynamic Tình trạng điều trị (Dynamic Semi-circle Donut Gauge) */}
-        <div className="rounded-[4px] border border-slate-200 bg-white p-5 shadow-xs flex flex-col justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-slate-800 mb-2">Tình trạng điều trị</h3>
-            <div className="relative flex flex-col items-center justify-center my-2">
-              {/* Semi-circle Donut SVG */}
-              <svg viewBox="0 0 160 90" className="w-36 h-20 overflow-visible">
-                {/* Background Arc */}
-                <path
-                  d="M 15,80 A 65,65 0 0,1 145,80"
-                  fill="none"
-                  stroke="#e2e8f0"
-                  strokeWidth="16"
-                  strokeLinecap="round"
-                />
-                {/* Active Dynamic Arc */}
-                <path
-                  d={dynamicArcD}
-                  fill="none"
-                  stroke="#00897B"
-                  strokeWidth="16"
-                  strokeLinecap="round"
-                />
-              </svg>
-
-              <div className="mt-3 flex items-center justify-center gap-6 text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#00897B]" />
-                  <span className="text-slate-500">Đang điều trị</span>
-                  <span className="font-extrabold text-slate-800">{activeTreatmentsCount}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
-                  <span className="text-slate-500">Hoàn thành</span>
-                  <span className="font-extrabold text-slate-800">{completedTreatmentsCount}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Column 3: Dynamic Kho vật tư */}
-        <div className="rounded-[4px] border border-slate-200 bg-white p-5 shadow-xs flex flex-col justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-slate-800 mb-3">Kho vật tư</h3>
-            <div className="space-y-3">
-              {inventoryList.length > 0 ? (
-                inventoryList.slice(0, 2).map((item) => (
-                  <div key={item.id || item.supplyName} className="flex items-center gap-3 p-2.5 rounded-[4px] bg-slate-50/80 border border-slate-200">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-[4px] bg-teal-100/70 text-teal-800 shrink-0">
-                      <Package size={18} />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-800">{item.supplyName || item.name}</p>
-                      <p className="text-[11px] text-slate-500">Còn <span className="font-bold text-teal-700">{item.quantity || item.stock || 45} {item.unit || 'gói'}</span></p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <>
-                  <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50/80 border border-slate-100">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-100/70 text-teal-800 shrink-0">
-                      <Package size={18} />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-800">Gạc y tế tiệt trùng</p>
-                      <p className="text-[11px] text-slate-500">Còn <span className="font-bold text-teal-700">45 gói</span></p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50/80 border border-slate-100">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-100/70 text-teal-800 shrink-0">
-                      <Package size={18} />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-800">Thuốc tê Lidocaine 2%</p>
-                      <p className="text-[11px] text-slate-500">Còn <span className="font-bold text-teal-700">18 lọ</span></p>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Modal chọn phòng khám & ghi chú khi gọi bệnh nhân vào khám */}
       <RoomNoteForm

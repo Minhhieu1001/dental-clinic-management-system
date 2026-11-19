@@ -184,24 +184,29 @@ public class AppointmentServiceImpl implements AppointmentService {
             }
         }
 
-        // 4.5 Resolve Employee from SecurityContext if available
+        // 4.5 Resolve Employee & Creator User from SecurityContext if available
         Employee employee = null;
+        User creatorUser = null;
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             if (auth != null && auth.getName() != null && !auth.getName().equalsIgnoreCase("anonymousUser")) {
                 String username = auth.getName();
-                User currentUser = userRepository.findByUsername(username)
+                creatorUser = userRepository.findByUsername(username)
                         .orElseGet(() -> userRepository.findByEmail(username).orElse(null));
-                if (currentUser != null) {
-                    if (currentUser.getEmployee() != null) {
-                        employee = currentUser.getEmployee();
-                    } else if (currentUser.getRole() == Role.EMPLOYEE) {
-                        employee = employeeRepository.findByUserId(currentUser.getId()).orElse(null);
+                if (creatorUser != null) {
+                    if (creatorUser.getEmployee() != null) {
+                        employee = creatorUser.getEmployee();
+                    } else if (creatorUser.getRole() == Role.EMPLOYEE) {
+                        employee = employeeRepository.findByUserId(creatorUser.getId()).orElse(null);
                     }
                 }
             }
         } catch (Exception e) {
             log.warn("Could not resolve logged-in employee: {}", e.getMessage());
+        }
+
+        if (creatorUser == null && employee != null && employee.getUser() != null) {
+            creatorUser = employee.getUser();
         }
 
         Branch branch = resolveBranch(dto);
@@ -280,6 +285,7 @@ public class AppointmentServiceImpl implements AppointmentService {
                         : "/employee/appointments";
                 Notification notif = Notification.builder()
                         .user(recipient)
+                        .sender(creatorUser)
                         .title("Lịch hẹn mới được xếp")
                         .content("Lịch khám của bệnh nhân " + appointment.getPatientName() + " ("
                                 + appointment.getPhone() + ") đã được tạo cho bác sĩ " + doctorNameStr + ".")
@@ -292,6 +298,8 @@ public class AppointmentServiceImpl implements AppointmentService {
                 NotificationResponseDTO notifDto = NotificationResponseDTO.builder()
                         .id(notif.getId())
                         .userId(recipient.getId())
+                        .senderId(creatorUser != null ? creatorUser.getId() : null)
+                        .senderName(creatorUser != null ? (creatorUser.getUsername() != null ? creatorUser.getUsername() : creatorUser.getEmail()) : "Hệ thống")
                         .title(notif.getTitle())
                         .content(notif.getContent())
                         .type(notif.getType())
@@ -324,6 +332,7 @@ public class AppointmentServiceImpl implements AppointmentService {
 
                 Notification pNotif = Notification.builder()
                         .user(patientUser)
+                        .sender(creatorUser)
                         .title("Đặt lịch khám thành công")
                         .content("Bạn đã đặt lịch khám (" + serviceStr + ") vào lúc " + timeStr + " ngày " + dateStr + " tại " + branchStr + ".")
                         .type(NotificationType.PATIENT_CHECKIN)
@@ -335,6 +344,8 @@ public class AppointmentServiceImpl implements AppointmentService {
                 NotificationResponseDTO pNotifDto = NotificationResponseDTO.builder()
                         .id(pNotif.getId())
                         .userId(patientUser.getId())
+                        .senderId(creatorUser != null ? creatorUser.getId() : null)
+                        .senderName(creatorUser != null ? (creatorUser.getUsername() != null ? creatorUser.getUsername() : creatorUser.getEmail()) : "Crown Dental")
                         .title(pNotif.getTitle())
                         .content(pNotif.getContent())
                         .type(pNotif.getType())
@@ -494,6 +505,27 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     private void notifyAppointmentStatusChanged(Appointment appointment) {
         StatusAppointment status = appointment.getStatus();
+        // Resolve operator who changed status from SecurityContext
+        User operatorUser = null;
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getName() != null && !auth.getName().equalsIgnoreCase("anonymousUser")) {
+                String username = auth.getName();
+                operatorUser = userRepository.findByUsername(username)
+                        .orElseGet(() -> userRepository.findByEmail(username).orElse(null));
+            }
+        } catch (Exception e) {
+            log.debug("Could not resolve current operator: {}", e.getMessage());
+        }
+
+        if (operatorUser == null) {
+            if (appointment.getDentist() != null && appointment.getDentist().getUser() != null) {
+                operatorUser = appointment.getDentist().getUser();
+            } else if (appointment.getEmployee() != null && appointment.getEmployee().getUser() != null) {
+                operatorUser = appointment.getEmployee().getUser();
+            }
+        }
+
         // Notify active Dentist and active Employees/Admins
         try {
             Set<User> recipients = new HashSet<>();
@@ -574,6 +606,7 @@ public class AppointmentServiceImpl implements AppointmentService {
                         : "/employee/appointments";
                 Notification notif = Notification.builder()
                         .user(recipient)
+                        .sender(operatorUser)
                         .title(title)
                         .content(content)
                         .type(notifType)
@@ -585,6 +618,8 @@ public class AppointmentServiceImpl implements AppointmentService {
                 NotificationResponseDTO notifDto = NotificationResponseDTO.builder()
                         .id(notif.getId())
                         .userId(recipient.getId())
+                        .senderId(operatorUser != null ? operatorUser.getId() : null)
+                        .senderName(operatorUser != null ? (operatorUser.getUsername() != null ? operatorUser.getUsername() : operatorUser.getEmail()) : "Hệ thống")
                         .title(notif.getTitle())
                         .content(notif.getContent())
                         .type(notif.getType())

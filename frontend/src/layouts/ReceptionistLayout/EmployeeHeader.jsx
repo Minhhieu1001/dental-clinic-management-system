@@ -78,7 +78,7 @@ export default function EmployeeHeader({ config }) {
   const avatarLetter = displayName.charAt(0).toUpperCase();
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 backdrop-blur-xl">
       <div className="flex h-16 items-center justify-between px-4 sm:px-6">
 
         {/* Left Side: Dynamic Clinic Branch Info for Employee */}

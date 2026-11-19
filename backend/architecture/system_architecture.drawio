@@ -1,0 +1,150 @@
+<mxfile host="app.diagrams.net" modified="2026-11-19T07:02:00.000Z" agent="Mozilla/5.0" version="24.0.0" type="device">
+  <diagram id="dental-arch-v2" name="System Architecture Clean">
+    <mxGraphModel dx="1600" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- 1. ACTORS -->
+        <mxCell id="g_actors" value="1. CÁC ĐỐI TƯỢNG NGƯỜI DÙNG" style="swimlane;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#64748b;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="180" height="340" as="geometry" />
+        </mxCell>
+        <mxCell id="a_patient" value="Bệnh nhân" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0f2fe;strokeColor=#0284c7;fontStyle=1;" vertex="1" parent="g_actors">
+          <mxGeometry x="20" y="45" width="140" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="a_staff" value="Nhân viên" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0f2fe;strokeColor=#0284c7;fontStyle=1;" vertex="1" parent="g_actors">
+          <mxGeometry x="20" y="115" width="140" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="a_dentist" value="Bác sĩ" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0f2fe;strokeColor=#0284c7;fontStyle=1;" vertex="1" parent="g_actors">
+          <mxGeometry x="20" y="185" width="140" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="a_admin" value="Quản trị viên" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0f2fe;strokeColor=#0284c7;fontStyle=1;" vertex="1" parent="g_actors">
+          <mxGeometry x="20" y="255" width="140" height="45" as="geometry" />
+        </mxCell>
+
+        <!-- 2. WEB CLIENT -->
+        <mxCell id="g_web" value="2. GIAO DIỆN WEB (React / Vite)" style="swimlane;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#16a34a;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="270" y="40" width="200" height="340" as="geometry" />
+        </mxCell>
+        <mxCell id="u_patient" value="Cổng Bệnh nhân" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;" vertex="1" parent="g_web">
+          <mxGeometry x="25" y="45" width="150" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="u_staff" value="Cổng Nhân viên" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;" vertex="1" parent="g_web">
+          <mxGeometry x="25" y="115" width="150" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="u_dentist" value="Cổng Bác sĩ" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;" vertex="1" parent="g_web">
+          <mxGeometry x="25" y="185" width="150" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="u_admin" value="Cổng Quản trị" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;" vertex="1" parent="g_web">
+          <mxGeometry x="25" y="255" width="150" height="45" as="geometry" />
+        </mxCell>
+
+        <!-- 3. INFRASTRUCTURE & SECURITY -->
+        <mxCell id="g_infra" value="3. HẠ TẦNG &amp; BẢO MẬT" style="swimlane;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="520" y="40" width="220" height="340" as="geometry" />
+        </mxCell>
+        <mxCell id="sec_nginx" value="Nginx&#xa;(Reverse Proxy &amp; HTTPS)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fde68a;strokeColor=#d97706;fontStyle=1;" vertex="1" parent="g_infra">
+          <mxGeometry x="20" y="70" width="180" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="sec_spring" value="Spring Security&#xa;(JWT Filter &amp; CORS)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fde68a;strokeColor=#d97706;fontStyle=1;" vertex="1" parent="g_infra">
+          <mxGeometry x="20" y="190" width="180" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- 4. BACKEND MODULES -->
+        <mxCell id="g_backend" value="4. CÁC MODULE NGHIỆP VỤ (Spring Boot)" style="swimlane;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#2563eb;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="790" y="40" width="370" height="660" as="geometry" />
+        </mxCell>
+        <mxCell id="m_auth" value="Auth &amp; User Module" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;" vertex="1" parent="g_backend">
+          <mxGeometry x="25" y="45" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="m_patient" value="Patient Module" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;" vertex="1" parent="g_backend">
+          <mxGeometry x="195" y="45" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="m_appt" value="Appointment Module" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;" vertex="1" parent="g_backend">
+          <mxGeometry x="25" y="105" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="m_emr" value="Medical Record (EMR)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;" vertex="1" parent="g_backend">
+          <mxGeometry x="195" y="105" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="m_treat" value="Treatment Plan Module" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;" vertex="1" parent="g_backend">
+          <mxGeometry x="25" y="165" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="m_pres" value="Prescription Module" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;" vertex="1" parent="g_backend">
+          <mxGeometry x="195" y="165" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="m_bill" value="Billing &amp; Payment Module" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;" vertex="1" parent="g_backend">
+          <mxGeometry x="25" y="225" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="m_care" value="Customer Care Module" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;" vertex="1" parent="g_backend">
+          <mxGeometry x="195" y="225" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="m_clinic" value="Clinic &amp; Shift Module" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;" vertex="1" parent="g_backend">
+          <mxGeometry x="25" y="285" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="m_notify" value="Notification &amp; Mail Module" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontStyle=1;" vertex="1" parent="g_backend">
+          <mxGeometry x="195" y="285" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="m_ai" value="AI &amp; RAG Module" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce7f3;strokeColor=#db2777;fontStyle=1;" vertex="1" parent="g_backend">
+          <mxGeometry x="25" y="350" width="320" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="resilience" value="Resilience4j&#xa;(CircuitBreaker, Retry, RateLimiter)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fee2e2;strokeColor=#ef4444;fontStyle=1;" vertex="1" parent="g_backend">
+          <mxGeometry x="25" y="430" width="320" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- 5. STORAGE & BROKER -->
+        <mxCell id="g_storage" value="5. LƯU TRỮ &amp; MESSAGE BROKER" style="swimlane;whiteSpace=wrap;html=1;fillColor=#faf5ff;strokeColor=#9333ea;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1210" y="40" width="220" height="340" as="geometry" />
+        </mxCell>
+        <mxCell id="s_db" value="PostgreSQL" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#f3e8ff;strokeColor=#9333ea;fontStyle=1;" vertex="1" parent="g_storage">
+          <mxGeometry x="40" y="45" width="140" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="s_rabbit" value="RabbitMQ" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffedd5;strokeColor=#ea580c;fontStyle=1;" vertex="1" parent="g_storage">
+          <mxGeometry x="40" y="145" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="s_cache" value="Caffeine Cache" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e8ff;strokeColor=#9333ea;" vertex="1" parent="g_storage">
+          <mxGeometry x="40" y="225" width="140" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- 6. EXTERNAL SERVICES -->
+        <mxCell id="g_ext" value="6. DỊCH VỤ BÊN NGOÀI" style="swimlane;whiteSpace=wrap;html=1;fillColor=#f1f5f9;strokeColor=#475569;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1210" y="410" width="220" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="ext_casso" value="Casso (VietQR Webhook)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e2e8f0;strokeColor=#475569;" vertex="1" parent="g_ext">
+          <mxGeometry x="25" y="40" width="170" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="ext_cloud" value="Cloudinary" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e2e8f0;strokeColor=#475569;" vertex="1" parent="g_ext">
+          <mxGeometry x="25" y="100" width="170" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="ext_smtp" value="SMTP Mail Service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e2e8f0;strokeColor=#475569;fontStyle=1;" vertex="1" parent="g_ext">
+          <mxGeometry x="25" y="160" width="170" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="ext_gemini" value="Google Gemini AI" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce7f3;strokeColor=#db2777;fontStyle=1;" vertex="1" parent="g_ext">
+          <mxGeometry x="25" y="220" width="170" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- EDGES -->
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="a_patient" target="u_patient" />
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="a_staff" target="u_staff" />
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="a_dentist" target="u_dentist" />
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="a_admin" target="u_admin" />
+        
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="g_web" target="sec_nginx" />
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="sec_nginx" target="sec_spring" />
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="sec_spring" target="g_backend" />
+
+        <mxCell id="e_db" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="g_backend" target="s_db" />
+        <mxCell id="e_care_rabbit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="m_care" target="s_rabbit" />
+        <mxCell id="e_rabbit_notify" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="s_rabbit" target="m_notify" />
+        
+        <mxCell id="e_notify_resil" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="m_notify" target="resilience" />
+        <mxCell id="e_resil_smtp" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="resilience" target="ext_smtp" />
+        <mxCell id="e_ai_resil" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="m_ai" target="resilience" />
+        <mxCell id="e_resil_gemini" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="resilience" target="ext_gemini" />
+        
+        <mxCell id="e_casso_bill" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="ext_casso" target="m_bill" />
+        <mxCell id="e_emr_cloud" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="m_emr" target="ext_cloud" />
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

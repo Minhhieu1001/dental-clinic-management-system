@@ -8,7 +8,7 @@ import {
   FileText,
   Pill,
   Receipt,
-  Star,
+  Newspaper,
   LogOut,
   Mail,
   User,
@@ -29,7 +29,7 @@ const navItems = [
   { label: 'Hồ sơ bệnh án', to: '/patient/medical-records', icon: FileText },
   { label: 'Đơn thuốc', to: '/patient/prescriptions', icon: Pill },
   { label: 'Hóa đơn', to: '/patient/invoices', icon: Receipt },
-  { label: 'Đánh giá', to: '/patient/reviews', icon: Star },
+  { label: 'Tin tức', to: '/patient/notifications', icon: Newspaper },
 ];
 
 export default function PatientHeader({ config }) {
@@ -113,11 +113,10 @@ export default function PatientHeader({ config }) {
                   <NavLink
                     key={item.to}
                     to={item.to}
-                    className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-semibold transition-all duration-200 ${
-                      isActive
-                        ? 'bg-white shadow-sm shadow-black/10 ring-1 ring-white/60'
-                        : 'text-teal-50 hover:bg-white/15 hover:text-white'
-                    }`}
+                    className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-semibold transition-all duration-200 ${isActive
+                      ? 'bg-white shadow-sm shadow-black/10 ring-1 ring-white/60'
+                      : 'text-teal-50 hover:bg-white/15 hover:text-white'
+                      }`}
                   >
                     <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-[#0f766e]' : 'text-teal-200'}`} />
                     <span className={isActive ? 'text-[#0f766e] font-bold' : 'text-teal-50'}>{item.label}</span>
@@ -354,11 +353,10 @@ export default function PatientHeader({ config }) {
                           key={item.to}
                           to={item.to}
                           onClick={() => setIsMobileMenuOpen(false)}
-                          className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all ${
-                            isActive
-                              ? 'bg-white shadow-md text-[#0d5c4d] font-bold'
-                              : 'text-white/90 hover:bg-white/10 hover:text-white'
-                          }`}
+                          className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all ${isActive
+                            ? 'bg-white shadow-md text-[#0d5c4d] font-bold'
+                            : 'text-white/90 hover:bg-white/10 hover:text-white'
+                            }`}
                         >
                           <Icon className={`h-4.5 w-4.5 shrink-0 ${isActive ? 'text-[#0d5c4d]' : 'text-emerald-200'}`} />
                           <span className={isActive ? 'text-[#0d5c4d] font-bold' : 'text-white'}>{item.label}</span>

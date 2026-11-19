@@ -14,6 +14,8 @@ import {
   Filter,
   Link2,
   Users,
+  ArrowUpDown,
+  RotateCcw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -36,6 +38,9 @@ export default function EmployeePatients() {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [genderFilter, setGenderFilter] = useState('ALL');
+  const [monthFilter, setMonthFilter] = useState('ALL');
+  const [yearFilter, setYearFilter] = useState('ALL');
+  const [sortOrder, setSortOrder] = useState('NEWEST'); // 'NEWEST' | 'OLDEST'
   const [currentPage, setCurrentPage] = useState(1);
 
   // Unified Modal State: { open: boolean, type: 'CREATE'|'EDIT'|'VIEW'|'DELETE', payload: object }
@@ -64,7 +69,7 @@ export default function EmployeePatients() {
         gender: p.gender || 'MALE',
         dateOfBirth: p.dateOfBirth ? p.dateOfBirth.split('T')[0] : '',
         address: p.address || 'Chưa cập nhật',
-        createdAt: p.createdAt ? p.createdAt.split('T')[0] : '',
+        createdAt: p.createdAt || '',
         systemicDisease: p.systemicDisease || '',
         allergies: p.allergies || '',
         currentMedications: p.currentMedications || '',
@@ -86,13 +91,22 @@ export default function EmployeePatients() {
 
   // Format date helper (DD/MM/YYYY)
   const formatDate = (dateStr) => {
-    if (!dateStr) return 'Chưa cập nhật';
-    const cleanDate = dateStr.split('T')[0];
-    const parts = cleanDate.split('-');
-    if (parts.length === 3) {
-      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    if (!dateStr) return '---';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) {
+        const cleanDate = dateStr.split('T')[0];
+        const parts = cleanDate.split('-');
+        if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        return dateStr;
+      }
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
+    } catch (e) {
+      return dateStr;
     }
-    return dateStr;
   };
 
   // Calculate age helper
@@ -104,10 +118,24 @@ export default function EmployeePatients() {
     return `(${age} tuổi)`;
   };
 
+  // Danh sách năm tạo có trong dữ liệu bệnh nhân
+  const availableYears = useMemo(() => {
+    const yearsSet = new Set([new Date().getFullYear()]);
+    patients.forEach((p) => {
+      if (p.createdAt) {
+        const d = new Date(p.createdAt);
+        if (!isNaN(d.getFullYear())) {
+          yearsSet.add(d.getFullYear());
+        }
+      }
+    });
+    return Array.from(yearsSet).sort((a, b) => b - a);
+  }, [patients]);
+
   // Filtered Patients List
   const filteredPatients = useMemo(() => {
-    return patients.filter((p) => {
-      // Search term (Tên, Mã BN, SĐT)
+    const list = patients.filter((p) => {
+      // 1. Search term (Tên, Mã BN, SĐT)
       if (searchTerm) {
         const term = searchTerm.toLowerCase().trim();
         const matchName = (p.fullName || '').toLowerCase().includes(term);
@@ -116,12 +144,42 @@ export default function EmployeePatients() {
         if (!matchName && !matchPhone && !matchCode) return false;
       }
 
-      // Gender Filter
+      // 2. Gender Filter
       if (genderFilter !== 'ALL' && p.gender !== genderFilter) return false;
+
+      // 3. Month Filter (createdAt)
+      if (monthFilter !== 'ALL') {
+        if (!p.createdAt) return false;
+        const d = new Date(p.createdAt);
+        if (isNaN(d.getTime())) return false;
+        const month = String(d.getMonth() + 1);
+        if (month !== String(monthFilter)) return false;
+      }
+
+      // 4. Year Filter (createdAt)
+      if (yearFilter !== 'ALL') {
+        if (!p.createdAt) return false;
+        const d = new Date(p.createdAt);
+        if (isNaN(d.getTime())) return false;
+        const year = String(d.getFullYear());
+        if (year !== String(yearFilter)) return false;
+      }
 
       return true;
     });
-  }, [patients, searchTerm, genderFilter]);
+
+    // 5. Sắp xếp theo ngày tạo (Mới nhất / Cũ nhất)
+    list.sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      if (sortOrder === 'OLDEST') {
+        return timeA - timeB; // Cũ nhất trước
+      }
+      return timeB - timeA; // Mới nhất trước (mặc định)
+    });
+
+    return list;
+  }, [patients, searchTerm, genderFilter, monthFilter, yearFilter, sortOrder]);
 
   // Pagination
   const totalPages = Math.ceil(filteredPatients.length / ROWS_PER_PAGE) || 1;
@@ -184,7 +242,7 @@ export default function EmployeePatients() {
   };
 
   return (
-    <div className="mx-auto max-w-[1400px] px-1 space-y-4">
+    <div className="w-full px-1 space-y-4">
       {/* 1. Header Toolbar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200">
         <div>
@@ -250,9 +308,9 @@ export default function EmployeePatients() {
       {activeTab === 'PATIENTS' && (
         <div className="space-y-4">
           {/* Filter & Search Controls */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 rounded-[4px] border border-slate-200 bg-white p-3 shadow-2xs">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 rounded-[4px] border border-slate-200 bg-white p-3 shadow-2xs">
             {/* Search Input */}
-            <div className="relative w-full sm:max-w-md">
+            <div className="relative w-full lg:max-w-xs">
               <input
                 type="text"
                 value={searchTerm}
@@ -266,21 +324,102 @@ export default function EmployeePatients() {
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             </div>
 
-            {/* Gender Filter Dropdown */}
-            <div className="flex items-center gap-2">
-              <Filter size={15} className="text-slate-400 shrink-0" />
-              <select
-                value={genderFilter}
-                onChange={(e) => {
-                  setGenderFilter(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="rounded border border-slate-300 bg-slate-50/50 px-3 py-2 text-xs font-semibold text-slate-700 focus:border-teal-600 focus:bg-white focus:outline-none cursor-pointer"
-              >
-                <option value="ALL">Tất cả giới tính</option>
-                <option value="MALE">Nam (MALE)</option>
-                <option value="FEMALE">Nữ (FEMALE)</option>
-              </select>
+            {/* Filter Toolbar: Tháng tạo, Năm tạo, Giới tính, Sắp xếp */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Lọc theo Tháng tạo */}
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-700">
+                <Calendar size={13} className="text-teal-700 shrink-0" />
+                <span className="text-[11px] font-semibold text-slate-500">Tháng:</span>
+                <select
+                  value={monthFilter}
+                  onChange={(e) => {
+                    setMonthFilter(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+                >
+                  <option value="ALL">Tất cả tháng</option>
+                  {Array.from({ length: 12 }, (_, i) => (
+                    <option key={i + 1} value={String(i + 1)}>
+                      Tháng {i + 1}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Lọc theo Năm tạo */}
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-700">
+                <span className="text-[11px] font-semibold text-slate-500">Năm:</span>
+                <select
+                  value={yearFilter}
+                  onChange={(e) => {
+                    setYearFilter(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+                >
+                  <option value="ALL">Tất cả năm</option>
+                  {availableYears.map((yr) => (
+                    <option key={yr} value={String(yr)}>
+                      Năm {yr}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Lọc theo Giới tính */}
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-700">
+                <Filter size={13} className="text-slate-400 shrink-0" />
+                <select
+                  value={genderFilter}
+                  onChange={(e) => {
+                    setGenderFilter(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+                >
+                  <option value="ALL">Tất cả giới tính</option>
+                  <option value="MALE">Nam (MALE)</option>
+                  <option value="FEMALE">Nữ (FEMALE)</option>
+                </select>
+              </div>
+
+              {/* Sắp xếp Ngày tạo mới nhất / trễ nhất (cũ nhất) */}
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-700">
+                <ArrowUpDown size={13} className="text-teal-700 shrink-0" />
+                <span className="text-[11px] font-semibold text-slate-500">Sắp xếp:</span>
+                <select
+                  value={sortOrder}
+                  onChange={(e) => {
+                    setSortOrder(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="bg-transparent text-xs font-bold text-teal-900 focus:outline-none cursor-pointer"
+                >
+                  <option value="NEWEST">Mới nhất trước</option>
+                  <option value="OLDEST">Trễ nhất (Cũ nhất)</option>
+                </select>
+              </div>
+
+              {/* Reset filter button if any active */}
+              {(searchTerm || monthFilter !== 'ALL' || yearFilter !== 'ALL' || genderFilter !== 'ALL' || sortOrder !== 'NEWEST') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setMonthFilter('ALL');
+                    setYearFilter('ALL');
+                    setGenderFilter('ALL');
+                    setSortOrder('NEWEST');
+                    setCurrentPage(1);
+                  }}
+                  className="flex items-center gap-1 text-[11px] font-bold text-rose-600 hover:text-rose-700 px-2 py-1.5 rounded hover:bg-rose-50 transition-colors cursor-pointer"
+                  title="Đặt lại bộ lọc"
+                >
+                  <RotateCcw size={12} />
+                  <span>Đặt lại</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -292,6 +431,7 @@ export default function EmployeePatients() {
                   <tr>
                     <th className="px-4 py-3">Mã Bệnh Nhân</th>
                     <th className="px-4 py-3">Họ Và Tên</th>
+                    <th className="px-4 py-3">Ngày Tạo</th>
                     <th className="px-4 py-3">Số Điện Thoại</th>
                     <th className="px-4 py-3">Giới Tính / Tuổi</th>
                     <th className="px-4 py-3">Địa Chỉ</th>
@@ -301,7 +441,7 @@ export default function EmployeePatients() {
                 <tbody className="divide-y divide-slate-100">
                   {loading ? (
                     <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                      <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
                         <div className="flex flex-col items-center justify-center gap-2">
                           <RefreshCw size={16} className="animate-spin text-teal-600" />
                           <span>Đang tải danh sách hồ sơ bệnh nhân từ hệ thống...</span>
@@ -321,6 +461,13 @@ export default function EmployeePatients() {
                               {(p.fullName || 'B').charAt(0)}
                             </div>
                             <span>{p.fullName}</span>
+                          </div>
+                        </td>
+
+                        <td className="px-4 py-3 text-slate-700 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5 font-medium">
+                            <Calendar size={13} className="text-teal-600 shrink-0" />
+                            <span>{formatDate(p.createdAt)}</span>
                           </div>
                         </td>
 

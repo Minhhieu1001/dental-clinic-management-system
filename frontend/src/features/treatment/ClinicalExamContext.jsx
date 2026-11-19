@@ -391,9 +391,6 @@ export function ClinicalExamProvider({ children }) {
           }
         }
         setPatient(currentPatient);
-        if (currentPatient.symptoms) {
-          setExamReason(currentPatient.symptoms);
-        }
         if (currentPatient.phone || currentPatient.phoneNumber) {
           setPhoneSearchQuery(currentPatient.phone || currentPatient.phoneNumber);
         }
@@ -418,7 +415,7 @@ export function ClinicalExamProvider({ children }) {
               patientId: currentPatient.id,
               patientCode: currentPatient.patientCode,
               recordDate: new Date().toISOString(),
-              symptoms: currentPatient.symptoms || 'Khám răng hàm mặt định kỳ',
+              symptoms: currentPatient.symptoms || '',
               diagnosis: 'Thăm khám răng miệng',
               treatmentNotes: 'Khởi tạo hồ sơ khám bệnh',
             });
@@ -430,9 +427,6 @@ export function ClinicalExamProvider({ children }) {
         const activeMrId = fetchedRecord?.id || targetMrId || (records.length > 0 ? records[0].id : null);
         if (fetchedRecord) {
           setMedicalRecord(fetchedRecord);
-          if (fetchedRecord.symptoms) {
-            setExamReason(fetchedRecord.symptoms);
-          }
         }
 
         // 3. TẢI TOÀN BỘ DANH SÁCH ĐỢT KHÁM (ExaminationResult) CỦA BỆNH NHÂN NÀY TỪ CSDL
@@ -514,6 +508,7 @@ export function ClinicalExamProvider({ children }) {
           setDiagnosisNotes('');
           setTeethMap({});
           setExaminedTeeth([]);
+          setExamReason('');
         } else {
           setTreatmentSessions(realSessions);
 
@@ -539,6 +534,10 @@ export function ClinicalExamProvider({ children }) {
             setExaminationResult(activeSession.examinationResult);
             if (activeSession.examinationResult.chiefComplaint) {
               setExamReason(activeSession.examinationResult.chiefComplaint);
+            } else if (activeSession.symptoms) {
+              setExamReason(activeSession.symptoms);
+            } else {
+              setExamReason('');
             }
             if (activeSession.examinationResult.dentistName) {
               setTreatingDoctor(activeSession.examinationResult.dentistName);

@@ -73,7 +73,7 @@ export default function CreateTreatmentSessionModal({
     if (isOpen) {
       setExaminationDate(new Date().toISOString().split('T')[0]);
       setDoctorName(currentDoctor || 'BS. Nha khoa Crown');
-      setChiefComplaint(initialReason || patient?.symptoms || 'Khám răng hàm mặt');
+      setChiefComplaint(initialReason || '');
       setNotes('');
       setIsSubmitting(false);
     }
@@ -89,7 +89,7 @@ export default function CreateTreatmentSessionModal({
         examinationDate,
         branchId: branch.branchId,
         doctorName: doctorName.trim(),
-        chiefComplaint: chiefComplaint.trim() || 'Khám răng hàm mặt',
+        chiefComplaint: chiefComplaint.trim(),
         notes: notes.trim(),
       });
       onClose();

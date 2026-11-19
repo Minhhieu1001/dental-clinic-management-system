@@ -316,11 +316,11 @@ export default function DoctorDiagnosisTab() {
       </div>
 
       {/* =========================================================================
-       * KHỐI TRÊN: 2 BẢNG THÔNG TIN LÂM SÀNG & KẾT QUẢ PHÂN TÍCH AI (TỈ LỆ 60% : 40%, CHIỀU CAO ĐỒNG BỘ)
+       * KHỐI TRÊN: 2 BẢNG THÔNG TIN LÂM SÀNG & KẾT QUẢ PHÂN TÍCH AI (TỈ LỆ CÂN BẰNG 50% : 50%, ĐẸP ĐỀU)
        * ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-10 gap-5 items-stretch">
-        {/* BẢNG 1 (CỘT TRÁI - 60% DIỆN TÍCH): Danh sách hồ sơ răng lâm sàng đã ghi nhận */}
-        <div className="lg:col-span-6 rounded-2xl border border-slate-200/90 bg-white shadow-2xs overflow-hidden flex flex-col h-[330px]">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+        {/* BẢNG 1 (CỘT TRÁI - 50% DIỆN TÍCH): Danh sách hồ sơ răng lâm sàng đã ghi nhận */}
+        <div className="rounded-2xl border border-slate-200/90 bg-white shadow-2xs overflow-hidden flex flex-col h-[340px]">
           {/* Header Bảng 1 */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 px-4 py-2.5 bg-slate-50 gap-2 shrink-0 z-20">
             <div className="flex items-center gap-2.5">
@@ -379,12 +379,12 @@ export default function DoctorDiagnosisTab() {
               <table className="w-full text-left border-collapse text-xs">
                 <thead className="sticky top-0 bg-slate-100 z-10 shadow-xs border-b border-slate-200">
                   <tr className="text-[10.5px] font-bold text-slate-600 uppercase tracking-wider">
-                    <th className="py-2.5 px-3 text-center w-8 bg-slate-100">#</th>
-                    <th className="py-2.5 px-3 bg-slate-100">Răng</th>
-                    <th className="py-2.5 px-3 bg-slate-100">Tình trạng</th>
-                    <th className="py-2.5 px-3 bg-slate-100">Tổn thương & Mức độ</th>
-                    <th className="py-2.5 px-2 bg-slate-100">Triệu chứng đau</th>
-                    <th className="py-2.5 px-3 text-center w-24 bg-slate-100">Thao tác</th>
+                    <th className="py-2.5 px-2 text-center w-8 bg-slate-100 whitespace-nowrap">#</th>
+                    <th className="py-2.5 px-2 w-14 bg-slate-100 whitespace-nowrap">Răng</th>
+                    <th className="py-2.5 px-2.5 w-32 bg-slate-100 whitespace-nowrap">Tình trạng</th>
+                    <th className="py-2.5 px-2.5 min-w-[110px] bg-slate-100 whitespace-nowrap">Tổn thương</th>
+                    <th className="py-2.5 px-2 w-28 bg-slate-100 whitespace-nowrap">Triệu chứng</th>
+                    <th className="py-2.5 px-2 text-center w-12 bg-slate-100 whitespace-nowrap">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -393,15 +393,15 @@ export default function DoctorDiagnosisTab() {
 
                     return (
                       <tr key={t.toothNumber || idx} className="hover:bg-slate-50 transition-colors">
-                        <td className="py-2 px-3 font-mono text-slate-400 text-center text-[10.5px]">
+                        <td className="py-2 px-2 font-mono text-slate-400 text-center text-[10.5px] whitespace-nowrap">
                           {idx + 1}
                         </td>
-                        <td className="py-2 px-3">
+                        <td className="py-2 px-2 whitespace-nowrap">
                           <span className="inline-flex items-center gap-1 font-black text-teal-900 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md font-mono text-xs shadow-2xs">
                             R{t.toothNumber}
                           </span>
                         </td>
-                        <td className="py-2 px-3">
+                        <td className="py-2 px-2.5 whitespace-nowrap">
                           {(() => {
                             const cond = toothConditions?.find(
                               (c) => c.key === t.toothStatus || c.label === t.toothStatus || c.code === t.toothStatus
@@ -412,7 +412,7 @@ export default function DoctorDiagnosisTab() {
 
                             return (
                               <span
-                                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[10.5px] font-bold border shadow-2xs"
+                                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[10.5px] font-bold border shadow-2xs whitespace-nowrap"
                                 style={{
                                   backgroundColor: isNormal ? '#F1F5F9' : `${color}18`,
                                   borderColor: isNormal ? '#E2E8F0' : `${color}45`,
@@ -423,21 +423,21 @@ export default function DoctorDiagnosisTab() {
                                   className="w-1.5 h-1.5 rounded-full shrink-0 border border-black/15"
                                   style={{ backgroundColor: color }}
                                 />
-                                {statusText}
+                                <span className="whitespace-nowrap">{statusText}</span>
                               </span>
                             );
                           })()}
                         </td>
-                        <td className="py-2 px-3 text-slate-700 text-[11px]">
+                        <td className="py-2 px-2.5 text-slate-700 text-[11px] whitespace-nowrap">
                           {hasCaries ? (
-                            <span className="text-slate-900">
+                            <span className="text-slate-900 font-medium">
                               Sâu răng{t.cariesLocation && t.cariesLocation !== 'Bình thường' ? ` · ${t.cariesLocation}` : ''}
                             </span>
                           ) : (
                             <span className="text-slate-400">Không sâu</span>
                           )}
                         </td>
-                        <td className="py-2 px-2 text-slate-600 text-[10.5px]">
+                        <td className="py-2 px-2 text-slate-600 text-[10.5px] whitespace-nowrap">
                           {t.painLevel === 'STIMULATED' ? (
                             <span className="text-amber-800 font-semibold">Khi kích thích</span>
                           ) : t.painLevel === 'SPONTANEOUS' ? (
@@ -446,20 +446,18 @@ export default function DoctorDiagnosisTab() {
                             <span className="text-slate-400">Không đau</span>
                           )}
                         </td>
-                        <td className="py-2 px-2 text-center">
+                        <td className="py-2 px-2 text-center whitespace-nowrap">
                           <button
                             type="button"
                             disabled={isHistoricalSession}
                             onClick={() => handleDiagnoseFromExaminedTooth(t)}
-                            className={`inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded text-xs font-medium transition-colors border ${
-                              isHistoricalSession
+                            className={`inline-flex items-center justify-center h-7 w-7 rounded-md transition-all border shadow-2xs mx-auto ${isHistoricalSession
                                 ? 'cursor-not-allowed opacity-40 bg-slate-50 text-slate-400 border-slate-200'
-                                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-400 cursor-pointer shadow-2xs'
-                            }`}
-                            title={isHistoricalSession ? 'Đợt khám đã kết thúc / đã khóa kết quả' : `Mở modal lập chẩn đoán cho Răng ${t.toothNumber}`}
+                                : 'bg-teal-50 text-teal-800 border-teal-200 hover:bg-teal-700 hover:text-white hover:border-teal-700 cursor-pointer active:scale-95'
+                              }`}
+                            title={isHistoricalSession ? 'Đợt khám đã kết thúc / đã khóa kết quả' : `Lập chẩn đoán cho Răng ${t.toothNumber}`}
                           >
-                            {isHistoricalSession ? <Lock size={12} /> : <Plus size={12} />}
-                            {!isHistoricalSession && <span>Thêm</span>}
+                            {isHistoricalSession ? <Lock size={12} /> : <Plus size={14} strokeWidth={2.5} />}
                           </button>
                         </td>
                       </tr>
@@ -471,8 +469,8 @@ export default function DoctorDiagnosisTab() {
           </div>
         </div>
 
-        {/* BẢNG 2 (CỘT PHẢI - 40% DIỆN TÍCH): Kết quả phân tích & Đề xuất AI Copilot */}
-        <div className="lg:col-span-4 rounded-2xl border border-purple-200/90 bg-white shadow-2xs overflow-hidden flex flex-col h-[330px]">
+        {/* BẢNG 2 (CỘT PHẢI - 50% DIỆN TÍCH): Kết quả phân tích & Đề xuất AI Copilot */}
+        <div className="rounded-2xl border border-purple-200/90 bg-white shadow-2xs overflow-hidden flex flex-col h-[340px]">
           {/* Header Bảng 2 */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-purple-200 px-4 py-2.5 bg-purple-50/60 gap-2 shrink-0 z-20">
             <div className="flex items-center gap-2">
@@ -523,29 +521,29 @@ export default function DoctorDiagnosisTab() {
               <table className="w-full text-left border-collapse text-xs">
                 <thead className="sticky top-0 bg-purple-50/95 backdrop-blur-xs z-10 shadow-xs border-b border-purple-100">
                   <tr className="text-[10.5px] font-bold text-slate-600 uppercase tracking-wider">
-                    <th className="py-2.5 px-3 w-14 bg-purple-50">Vị trí</th>
-                    <th className="py-2.5 px-3 bg-purple-50">Tổn thương AI nhận diện</th>
-                    <th className="py-2.5 px-2 text-center w-20 bg-purple-50">Độ tin cậy</th>
-                    <th className="py-2.5 px-3 bg-purple-50">Khuyến nghị xử lý</th>
-                    <th className="py-2.5 px-2 text-center w-16 bg-purple-50">Lập chẩn đoán</th>
+                    <th className="py-2.5 px-3 w-14 bg-purple-50 whitespace-nowrap">Vị trí</th>
+                    <th className="py-2.5 px-3 min-w-[140px] bg-purple-50 whitespace-nowrap">Tổn thương AI nhận diện</th>
+                    <th className="py-2.5 px-2 text-center w-24 bg-purple-50 whitespace-nowrap">Độ tin cậy</th>
+                    <th className="py-2.5 px-3 min-w-[140px] bg-purple-50 whitespace-nowrap">Khuyến nghị xử lý</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-purple-50">
                   {aiDetections.map((item) => (
                     <tr
                       key={item.id}
-                      className={`transition-colors ${
-                        item.isAccepted
-                          ? 'bg-emerald-50/30 hover:bg-emerald-50/50'
-                          : 'hover:bg-purple-50/40'
-                      }`}
+                      onClick={() => handleDiagnoseFromAiFinding(item)}
+                      title="Nhấp vào dòng để lập kết luận chẩn đoán từ đề xuất AI này"
+                      className={`transition-colors cursor-pointer ${item.isAccepted
+                        ? 'bg-emerald-50/30 hover:bg-emerald-50/60'
+                        : 'hover:bg-purple-50/50'
+                        }`}
                     >
-                      <td className="py-2 px-3">
+                      <td className="py-2.5 px-3">
                         <span className="inline-block font-mono font-bold px-2 py-0.5 rounded text-xs text-slate-800 bg-slate-100 border border-slate-200">
                           R{item.toothNumber}
                         </span>
                       </td>
-                      <td className="py-2 px-3">
+                      <td className="py-2.5 px-3">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-semibold text-xs leading-tight text-slate-900">
                             {item.finding}
@@ -560,41 +558,23 @@ export default function DoctorDiagnosisTab() {
                           {item.location}
                         </div>
                       </td>
-                      <td className="py-2 px-2 text-center">
+                      <td className="py-2.5 px-2 text-center">
                         <div className="inline-flex flex-col items-center">
                           <span className="font-bold text-[11px] text-slate-700 font-mono">
                             {item.confidence}%
                           </span>
-                          <div className="w-14 h-1.5 bg-slate-100 rounded-sm overflow-hidden mt-0.5 border border-slate-200">
+                          <div className="w-16 h-1.5 bg-slate-100 rounded-sm overflow-hidden mt-0.5 border border-slate-200">
                             <div
-                              className="h-full bg-slate-500 rounded-sm"
+                              className="h-full bg-purple-600 rounded-sm"
                               style={{ width: `${item.confidence}%` }}
                             />
                           </div>
                         </div>
                       </td>
-                      <td className="py-2 px-3 text-slate-700 text-[11px]">
-                        <div className="font-normal line-clamp-2">
+                      <td className="py-2.5 px-3 text-slate-700 text-[11px]">
+                        <div className="font-normal line-clamp-2 leading-relaxed">
                           {item.recommendation}
                         </div>
-                      </td>
-                      <td className="py-2 px-2 text-center">
-                        <button
-                          type="button"
-                          disabled={isHistoricalSession}
-                          onClick={() => handleDiagnoseFromAiFinding(item)}
-                          className={`inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded text-xs font-medium transition-colors border ${
-                            isHistoricalSession
-                              ? 'cursor-not-allowed opacity-40 bg-slate-50 text-slate-400 border-slate-200'
-                              : item.isAccepted
-                                ? 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700 cursor-pointer shadow-2xs'
-                                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-400 cursor-pointer shadow-2xs'
-                          }`}
-                          title={`Lập kết luận chẩn đoán từ đề xuất AI cho Răng ${item.toothNumber}`}
-                        >
-                          <Plus size={12} />
-                          <span>Thêm</span>
-                        </button>
                       </td>
                     </tr>
                   ))}
@@ -618,7 +598,7 @@ export default function DoctorDiagnosisTab() {
             <div>
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <h4 className="font-black text-slate-900 text-sm sm:text-base leading-tight">
-                  KẾT LUẬN CHUẨN ĐOÁN ĐỢT KHÁM
+                  KẾT LUẬN CHẨN ĐOÁN ĐỢT KHÁM
                 </h4>
                 <span className="rounded-md bg-teal-100 text-teal-900 text-xs font-black px-2.5 py-1 border border-teal-300">
                   {diagnosisList.length} chẩn đoán chính thức

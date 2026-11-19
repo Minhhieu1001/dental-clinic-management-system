@@ -54,6 +54,15 @@ body {
   scrollbar-color: #cbd5e1 transparent;
 }
 
+/* Hide scrollbar completely while maintaining scrolling */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 a {
   color: inherit;
   text-decoration: none;
