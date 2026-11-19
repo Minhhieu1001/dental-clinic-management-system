@@ -32,6 +32,9 @@ public class EmailServiceImpl implements EmailService {
     @Value("${app.mail.resend.from:Crown Dental <onboarding@resend.dev>}")
     private String resendFrom;
 
+    @Value("${app.mail.resend.test-redirect:hieuminhpham1001@gmail.com}")
+    private String resendTestRedirect;
+
     public EmailServiceImpl(JavaMailSender mailSender, RestClient.Builder restClientBuilder) {
         this.mailSender = mailSender;
         this.restClient = restClientBuilder.baseUrl("https://api.resend.com").build();
@@ -62,10 +65,21 @@ public class EmailServiceImpl implements EmailService {
     }
 
     private void sendViaResendApi(String to, String subject, String content) {
+        String recipient = to.trim();
+        String finalSubject = subject;
+
+        // Nếu là tài khoản Resend test và email người nhận khác email đăng ký Resend:
+        // Tự động chuyển hướng về email test của bạn để tránh lỗi Resend 403 Forbidden
+        if (StringUtils.hasText(resendTestRedirect) && !recipient.equalsIgnoreCase(resendTestRedirect.trim())) {
+            finalSubject = "[Gửi tới: " + recipient + "] " + subject;
+            recipient = resendTestRedirect.trim();
+            log.info("Resend Test Mode: Tự động chuyển hướng email vốn gửi tới '{}' về '{}'", to, recipient);
+        }
+
         Map<String, Object> body = new HashMap<>();
         body.put("from", resendFrom);
-        body.put("to", List.of(to.trim()));
-        body.put("subject", subject);
+        body.put("to", List.of(recipient));
+        body.put("subject", finalSubject);
         if (content != null && (content.contains("<html") || content.contains("<div") || content.contains("<p>"))) {
             body.put("html", content);
         } else {
