@@ -22,6 +22,7 @@ import PatientLogin from '../pages/PatientLogin.jsx'
 import PatientRegister from '../pages/PatientRegister.jsx'
 import PatientActivate from '../pages/PatientActivate.jsx'
 import ForgotPassword from '../pages/ForgotPassword.jsx'
+import PatientCheckin from '../pages/PatientCheckin.jsx'
 import NotFound from '../pages/NotFound.jsx'
 
 // Feature Components - Admin
@@ -103,6 +104,8 @@ export default function AppRouter() {
         <Route path="/patient/activate" element={<PatientActivate />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
 
+        {/* Self Check-in Route cho Bệnh nhân quét mã QR tại phòng khám */}
+        <Route path="/checkin" element={<PatientCheckin />} />
         {/* Protected routes - Admin */}
         <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
           <Route path="/admin" element={<AdminLayout />}>

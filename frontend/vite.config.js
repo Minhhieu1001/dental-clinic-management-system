@@ -19,6 +19,7 @@ export default defineConfig({
   },
   plugins: [react(), tailwindcss()],
   server: {
+    host: true, // Cho phép điện thoại cùng mạng Wi-Fi truy cập qua IP máy tính (VD: http://192.168.2.25:5173)
     port: 5173,
     proxy: {
       '/api': {

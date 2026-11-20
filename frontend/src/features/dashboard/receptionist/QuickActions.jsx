@@ -1,6 +1,7 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarPlus, UserCheck, FilePlus, Receipt, Zap } from 'lucide-react';
+import { CalendarPlus, UserCheck, FilePlus, Receipt, Zap, QrCode } from 'lucide-react';
+import CheckinQrModal from './action/CheckinQrModal';
 
 const actions = [
   {
@@ -12,10 +13,10 @@ const actions = [
   },
   {
     key: 'checkin',
-    icon: UserCheck,
+    icon: QrCode,
     shortcut: '2',
     title: 'Tiếp nhận',
-    desc: 'Check-in bệnh nhân',
+    desc: 'Mã QR check-in',
   },
   {
     key: 'record',
@@ -35,6 +36,7 @@ const actions = [
 
 export default function QuickActions({ onOpenCreateModal }) {
   const navigate = useNavigate();
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
 
   const handleActionClick = useCallback((key) => {
     switch (key) {
@@ -42,7 +44,7 @@ export default function QuickActions({ onOpenCreateModal }) {
         if (onOpenCreateModal) onOpenCreateModal();
         break;
       case 'checkin':
-        navigate('/employee/appointments');
+        setIsQrModalOpen(true);
         break;
       case 'record':
         navigate('/employee/patients');
@@ -141,6 +143,12 @@ export default function QuickActions({ onOpenCreateModal }) {
           );
         })}
       </div>
+
+      {/* Modal hiển thị mã QR tự tiếp nhận */}
+      <CheckinQrModal
+        open={isQrModalOpen}
+        onClose={() => setIsQrModalOpen(false)}
+      />
     </div>
   );
 }
