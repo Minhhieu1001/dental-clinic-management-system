@@ -167,6 +167,50 @@ export const getFollowUpStatusInfo = (rawStatus) => {
   };
 };
 
+// Tính toán trạng thái lịch hẹn so với ngày hiện tại: Đã qua, Hôm nay, Chưa đến
+export const getAppointmentRelativeStatus = (rawDateTime) => {
+  if (!rawDateTime) return null;
+  const target = new Date(rawDateTime);
+  if (isNaN(target.getTime())) return null;
+
+  const now = new Date();
+  const targetDay = new Date(target.getFullYear(), target.getMonth(), target.getDate()).getTime();
+  const todayDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+  const diffTime = targetDay - todayDay;
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) {
+    return {
+      status: 'TODAY',
+      badgeText: 'Hôm nay',
+      detailText: 'Diễn ra hôm nay',
+      badgeClass: 'bg-amber-50 text-amber-800 border-amber-300 font-bold',
+      dotClass: 'bg-amber-500 animate-pulse',
+      textColor: 'text-amber-800',
+    };
+  } else if (diffDays < 0) {
+    const absDays = Math.abs(diffDays);
+    return {
+      status: 'PAST',
+      badgeText: 'Đã qua',
+      detailText: `${absDays} ngày trước`,
+      badgeClass: 'bg-slate-100 text-slate-700 border-slate-300 font-semibold',
+      dotClass: 'bg-slate-400',
+      textColor: 'text-slate-600',
+    };
+  } else {
+    return {
+      status: 'FUTURE',
+      badgeText: 'Chưa đến',
+      detailText: diffDays === 1 ? 'Ngày mai' : `Còn ${diffDays} ngày nữa`,
+      badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-300 font-bold',
+      dotClass: 'bg-emerald-500',
+      textColor: 'text-emerald-800',
+    };
+  }
+};
+
 export default function PatientDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -686,7 +730,31 @@ export default function PatientDashboard() {
     return list;
   }, [upcomingAppointments, appointmentFilterTab, appointmentTimeRange, appointmentSearchQuery]);
 
-  const latestAppointment = upcomingAppointments[0] || null;
+  // Lấy lịch hẹn sắp tới (từ hôm nay trở đi) gần nhất so với ngày hiện tại; nếu đã qua hoặc đã hoàn tất thì bỏ trống (không lấy lịch cũ)
+  const latestAppointment = useMemo(() => {
+    if (!upcomingAppointments || upcomingAppointments.length === 0) return null;
+
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+    const upcoming = upcomingAppointments.find((apt) => {
+      if (!apt.rawDateTime) return false;
+      const targetDate = new Date(apt.rawDateTime);
+      if (isNaN(targetDate.getTime())) return false;
+
+      const targetDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate()).getTime();
+      const isFromToday = targetDay >= startOfToday;
+      const isCancelledOrDone =
+        apt.rawStatus === 'CANCELLED' ||
+        apt.rawStatus === 'COMPLETED' ||
+        apt.status === 'Đã hủy' ||
+        apt.status === 'Hoàn thành';
+
+      return isFromToday && !isCancelledOrDone;
+    });
+
+    return upcoming || null;
+  }, [upcomingAppointments]);
 
   // 5 Thẻ tóm tắt chỉ số (Dữ liệu từ API fetchPatientStatistics, tự động đồng bộ theo lịch hẹn thực tế)
   const stats = [
@@ -724,8 +792,8 @@ export default function PatientDashboard() {
       id: 'debt',
       title: 'Công nợ hiện tại',
       count: patientStatistics?.totalOutstandingDebt != null
-        ? `${Number(patientStatistics.totalOutstandingDebt).toLocaleString('vi-VN')} đ`
-        : '0 đ',
+        ? `${Number(patientStatistics.totalOutstandingDebt).toLocaleString('vi-VN')}\u00A0đ`
+        : '0\u00A0đ',
       icon: Coins,
       color: 'text-amber-600',
       bgColor: 'bg-amber-50 border border-amber-100',
@@ -948,15 +1016,39 @@ export default function PatientDashboard() {
                       {/* Appointment Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
-                          <h3 className="text-base font-bold text-slate-900 truncate">
+                          <h3 className="text-base font-bold text-slate-900 truncate" title={latestAppointment.title}>
                             {latestAppointment.title}
                           </h3>
-                          <span className={`inline-flex rounded-md px-2.5 py-0.5 text-[11px] font-bold border shrink-0 ${latestAppointment.statusColor}`}>
-                            {latestAppointment.status}
-                          </span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10.5px] font-bold border shrink-0 ${
+                                latestAppointment.type === 'FOLLOW_UP'
+                                  ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                  : 'bg-teal-50 text-teal-700 border-teal-200'
+                              }`}
+                            >
+                              {latestAppointment.type === 'FOLLOW_UP' ? (
+                                <>
+                                  <RefreshCw className="h-2.5 w-2.5 text-indigo-600" />
+                                  Tái khám
+                                </>
+                              ) : (
+                                <>
+                                  <Calendar className="h-2.5 w-2.5 text-teal-600" />
+                                  Lịch hẹn
+                                </>
+                              )}
+                            </span>
+
+                            {latestAppointment.status ? (
+                              <span className={`inline-flex rounded-md px-2 py-0.5 text-[10.5px] font-bold border shrink-0 ${latestAppointment.statusColor}`}>
+                                {latestAppointment.status}
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
 
-                        <div className="mt-2 space-y-1 text-xs text-slate-600 font-medium">
+                        <div className="mt-2 space-y-1.5 text-xs text-slate-600 font-medium">
                           <div className="flex items-center gap-1.5 truncate">
                             <User className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                             <span className="truncate">{latestAppointment.doctor}</span>
@@ -967,9 +1059,21 @@ export default function PatientDashboard() {
                               <span className="truncate">{latestAppointment.branch}</span>
                             </div>
                           ) : null}
-                          <div className="flex items-center gap-1.5">
-                            <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                            <span>{latestAppointment.time}</span>
+                          <div className="flex items-center justify-between gap-2 pt-0.5">
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                              <span>{latestAppointment.time}</span>
+                            </div>
+                            {(() => {
+                              const rel = getAppointmentRelativeStatus(latestAppointment.rawDateTime);
+                              if (!rel) return null;
+                              return (
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[3px] text-[10.5px] border ${rel.badgeClass}`}>
+                                  <span className={`h-1.5 w-1.5 rounded-full ${rel.dotClass}`} />
+                                  {rel.badgeText} ({rel.detailText})
+                                </span>
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -1087,22 +1191,27 @@ export default function PatientDashboard() {
               <Link
                 key={item.id}
                 to={item.to}
-                className="group relative flex h-full min-h-[84px] flex-row items-center gap-3 rounded-2xl bg-white p-4.5 border border-slate-100/90 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-md hover:border-slate-200/90 hover:-translate-y-0.5 transition-all duration-200"
+                className="group relative flex h-full min-h-[84px] flex-row items-center gap-2.5 xl:gap-3 rounded-2xl bg-white p-3.5 xl:p-4 border border-slate-100/90 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-md hover:border-slate-200/90 hover:-translate-y-0.5 transition-all duration-200"
               >
                 <div className="flex shrink-0">
                   <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${item.bgColor} ${item.color}`}>
                     <Icon className="h-5 w-5" />
                   </div>
-                  <ChevronRight className="absolute right-4 top-4 h-4 w-4 text-slate-300 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all" />
+                  <ChevronRight className="absolute right-3.5 top-3.5 h-4 w-4 text-slate-300 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all" />
                 </div>
 
-                <div className="min-w-0 flex-1 pr-3 text-left">
-                  <div className="flex items-baseline justify-start gap-1.5 flex-wrap">
-                    <p className="text-xl font-black text-slate-900 tracking-tight leading-none">
+                <div className="min-w-0 flex-1 pr-2 text-left">
+                  <div className="flex items-baseline justify-start gap-1 flex-nowrap overflow-hidden">
+                    <p
+                      className={`font-black text-slate-900 tracking-tight leading-none whitespace-nowrap truncate ${
+                        item.id === 'debt' ? 'text-base xl:text-lg' : 'text-xl'
+                      }`}
+                      title={String(item.count)}
+                    >
                       {item.count}
                     </p>
                     {item.badge && (
-                      <span className="text-[10px] font-bold text-teal-700 bg-teal-50 border border-teal-100/80 px-1.5 py-0.5 rounded-md leading-none">
+                      <span className="text-[10px] font-bold text-teal-700 bg-teal-50 border border-teal-100/80 px-1.5 py-0.5 rounded-md leading-none whitespace-nowrap shrink-0">
                         {item.badge}
                       </span>
                     )}
@@ -1254,10 +1363,11 @@ export default function PatientDashboard() {
               </div>
 
               {/* Appointment List (Hiển thị trọn vẹn đúng 3 card không lòi card 4, các card còn lại cuộn scroll) */}
-              <div className="mt-3 space-y-2.5 max-h-[308px] overflow-y-auto pr-1.5 custom-scrollbar">
+              <div className="mt-3 space-y-2.5 max-h-[355px] overflow-y-auto pr-1.5 custom-scrollbar">
                 {displayedUpcomingAppointments.length > 0 ? (
                   displayedUpcomingAppointments.map((apt) => {
                     const isFollowUp = apt.type === 'FOLLOW_UP';
+                    const relativeStatus = getAppointmentRelativeStatus(apt.rawDateTime);
                     return (
                       <div
                         key={apt.id}
@@ -1339,6 +1449,19 @@ export default function PatientDashboard() {
                               </span>
                             ) : null}
                           </div>
+
+                          {/* Dòng so với ngày hiện tại: Đã qua / Hôm nay / Chưa đến */}
+                          {relativeStatus && (
+                            <div className="flex items-center gap-1.5 text-[11px] pt-0.5">
+                              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[3px] text-[10px] border ${relativeStatus.badgeClass}`}>
+                                <span className={`h-1.5 w-1.5 rounded-full ${relativeStatus.dotClass}`} />
+                                {relativeStatus.badgeText}
+                              </span>
+                              <span className="text-slate-500 font-medium text-[11px]">
+                                • {relativeStatus.detailText}
+                              </span>
+                            </div>
+                          )}
                         </div>
 
                         {/* Chevron right button */}

@@ -88,7 +88,7 @@ export default function AppointmentRequestModal({ isOpen, onClose }) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-2.5 sm:p-6 overflow-y-auto">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -104,36 +104,36 @@ export default function AppointmentRequestModal({ isOpen, onClose }) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="relative w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-900/5 z-10 my-auto"
+            className="relative w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-900/5 z-10 my-auto max-h-[92vh] flex flex-col"
           >
             {/* Modal Header */}
-            <div className="relative bg-gradient-to-r from-[#1f4fb2] to-[#00a859] px-6 py-3.5 sm:py-4 text-white">
+            <div className="relative bg-gradient-to-r from-[#1f4fb2] to-[#00a859] px-4 sm:px-6 py-3.5 sm:py-4 text-white shrink-0">
               <button
                 type="button"
                 onClick={handleResetAndClose}
-                className="absolute right-4 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-lg bg-white/15 text-white/90 backdrop-blur-md transition hover:bg-white/25 hover:text-white cursor-pointer"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-lg bg-white/15 text-white/90 backdrop-blur-md transition hover:bg-white/25 hover:text-white cursor-pointer"
               >
                 <X size={18} />
               </button>
 
               <div className="pr-10">
                 <div className="flex flex-wrap items-center gap-2.5">
-                  <h3 className="text-lg sm:text-xl font-bold leading-tight text-white">
+                  <h3 className="text-base sm:text-xl font-bold leading-tight text-white">
                     Đăng Ký Yêu Cầu Lịch Hẹn
                   </h3>
-                  <span className="inline-flex items-center gap-1 rounded-md bg-white/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-md">
+                  <span className="inline-flex items-center gap-1 rounded-md bg-white/20 px-2 py-0.5 text-[9.5px] sm:text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-md">
                     <Sparkles size={11} className="text-yellow-300" />
                     Crown Dental
                   </span>
                 </div>
-                <p className="mt-0.5 text-xs text-white/85 font-normal">
+                <p className="mt-0.5 text-[11.5px] sm:text-xs text-white/85 font-normal">
                   Vui lòng nhập thông tin bên dưới, lễ tân phòng khám sẽ sớm liên hệ xác nhận xếp lịch hẹn.
                 </p>
               </div>
             </div>
 
             {/* Form Content */}
-            <div className="p-6 sm:p-8">
+            <div className="p-4 sm:p-8 overflow-y-auto flex-1">
               <div className="grid gap-8 md:grid-cols-[0.95fr_1.05fr] md:items-stretch">
                 {/* Left Column: Doctor Team Showcase (Full view, neat & professional) */}
                 <div className="hidden md:flex md:flex-col justify-between rounded-xl bg-slate-50/70 border border-slate-200/80 p-5 shadow-xs">

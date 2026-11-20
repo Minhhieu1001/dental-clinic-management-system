@@ -11,6 +11,11 @@ export const getDentistsList = async () => {
   return response.data;
 };
 
+export const getDentistsByBranch = async (branchId) => {
+  const response = await api.get(`/dentists/branch/${branchId}`);
+  return response.data;
+};
+
 export const getDentistStats = async () => {
   const response = await api.get('/dentists/stats');
   return response.data;

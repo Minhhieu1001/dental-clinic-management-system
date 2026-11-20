@@ -63,14 +63,14 @@ export function SpecialtyBadge({ label, labels, className = '' }) {
         return (
           <span
             key={idx}
-            className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap ${style}`}
+            className={`inline-flex items-center rounded-[2px] border px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap ${style}`}
           >
             {lbl}
           </span>
         );
       })}
       {hiddenCount > 0 && (
-        <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[11px] font-semibold text-slate-500">
+        <span className="inline-flex items-center rounded-[2px] border border-slate-300 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
           +{hiddenCount}
         </span>
       )}
@@ -84,7 +84,7 @@ export function DentistStatusDot({ status, compact = false }) {
   if (compact) {
     return (
       <span className={`inline-flex items-center gap-1.5 text-[13px] font-medium ${statusTextColors[status]}`}>
-        <span className={`h-2 w-2 rounded-full ${statusDotColors[status]}`} />
+        <span className={`h-2 w-2 rounded-[2px] ${statusDotColors[status]}`} />
         {statusLabels[status]}
       </span>
     );
@@ -92,7 +92,7 @@ export function DentistStatusDot({ status, compact = false }) {
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${badgeStyle}`}
+      className={`inline-flex items-center gap-1.5 rounded-[2px] border px-2 py-0.5 text-xs font-semibold ${badgeStyle}`}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${statusDotColors[status]}`} />
       {statusLabels[status]}

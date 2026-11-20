@@ -117,6 +117,7 @@ export default function AddEmployeeModal({ isOpen, onClose, onSuccess }) {
       // 3. Create Employee Profile
       const employeeRequest = {
         userId: userId,
+        fullName: formData.username,
         position: formData.position,
         salary: formData.salary,
         hireDate: formData.hireDate + "T00:00:00",

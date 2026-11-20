@@ -17,6 +17,7 @@ import ClinicalHistoryTab from './tabs/ClinicalHistoryTab';
 import TreatmentPlanTab from './tabs/TreatmentPlanTab';
 import PrescriptionTab from './tabs/PrescriptionTab';
 import DentalImagesTab from './tabs/DentalImagesTab';
+import PrintMedicalRecordModal from './PrintMedicalRecordModal';
 import { formatDateDisplay } from './medicalRecordDictionaries';
 
 export default function MedicalRecordDetailModal({
@@ -30,6 +31,7 @@ export default function MedicalRecordDetailModal({
 }) {
     const [activeTab, setActiveTab] = useState('clinical_history'); // 'clinical_history' | 'treatment_plan' | 'prescriptions' | 'images'
     const [isFullscreen, setIsFullscreen] = useState(true);
+    const [showPrintModal, setShowPrintModal] = useState(false);
 
     if (!open) return null;
 
@@ -87,7 +89,7 @@ export default function MedicalRecordDetailModal({
                     </button>
 
                     <button
-                        onClick={() => window.print()}
+                        onClick={() => setShowPrintModal(true)}
                         className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-white/15 hover:bg-white/25 text-white font-bold text-xs transition-colors cursor-pointer border border-white/20"
                         title="In hồ sơ bệnh án"
                     >
@@ -211,6 +213,16 @@ export default function MedicalRecordDetailModal({
                     </div>
                 </div>
             </DialogContent>
+
+            {/* Print Medical Record Booklet Modal */}
+            <PrintMedicalRecordModal
+                open={showPrintModal}
+                onClose={() => setShowPrintModal(false)}
+                selectedRecord={selectedRecord}
+                detailExams={detailExams}
+                detailPlans={detailPlans}
+                detailPrescriptions={detailPrescriptions}
+            />
         </Dialog>
     );
 }

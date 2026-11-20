@@ -65,7 +65,8 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Transactional
     public EmployeeListResponse getEmployeeWithBranchById(UUID id) {
         Employee employee = findEmployee(id);
-        if (employee != null && employee.getUser() != null && "employee02".equalsIgnoreCase(employee.getUser().getUsername())) {
+        if (employee != null && employee.getUser() != null
+                && "employee02".equalsIgnoreCase(employee.getUser().getUsername())) {
             boolean modified = false;
             if (employee.getPosition() != Position.RECEPTIONIST) {
                 employee.setPosition(Position.RECEPTIONIST);
@@ -149,7 +150,21 @@ public class EmployeeServiceImpl implements EmployeeService {
             employee.setDateOfBirth(request.dateOfBirth());
         }
         validateEmployeeUserIsAvailable(request.userId(), currentEmployeeId);
-        employee.setUser(resolveUser(request.userId()));
+        User user = resolveUser(request.userId());
+        employee.setUser(user);
+
+        // Đồng bộ fullName: ưu tiên request.fullName(), nếu không có thì lấy
+        // user.username
+        String name = request.fullName();
+        if (name == null || name.isBlank()) {
+            if (user != null && user.getUsername() != null && !user.getUsername().isBlank()) {
+                name = user.getUsername();
+            }
+        }
+        if (name != null && !name.isBlank()) {
+            employee.setFullName(name.trim());
+        }
+
         employee.setPosition(request.position());
         employee.setSalary(request.salary());
         employee.setHireDate(request.hireDate());
@@ -213,9 +228,11 @@ public class EmployeeServiceImpl implements EmployeeService {
                 employee.getBranch() != null ? employee.getBranch().getAddress() : null,
                 employee.getBranch() != null ? employee.getBranch().getImageBranch() : null,
                 employee.getBranch() != null && employee.getBranch().getClinic() != null
-                        ? employee.getBranch().getClinic().getLogoUrl() : null,
+                        ? employee.getBranch().getClinic().getLogoUrl()
+                        : null,
                 employee.getBranch() != null && employee.getBranch().getClinic() != null
-                        ? employee.getBranch().getClinic().getRegisteredAddress() : null,
+                        ? employee.getBranch().getClinic().getRegisteredAddress()
+                        : null,
                 user != null ? user.getCodeName() : null,
                 employee.getDateOfBirth());
     }
@@ -244,11 +261,14 @@ public class EmployeeServiceImpl implements EmployeeService {
                 employee.getBranch() != null ? employee.getBranch().getAddress() : null,
                 employee.getBranch() != null ? employee.getBranch().getImageBranch() : null,
                 employee.getBranch() != null && employee.getBranch().getClinic() != null
-                        ? employee.getBranch().getClinic().getLogoUrl() : null,
+                        ? employee.getBranch().getClinic().getLogoUrl()
+                        : null,
                 employee.getBranch() != null && employee.getBranch().getClinic() != null
-                        ? employee.getBranch().getClinic().getRegisteredAddress() : null,
+                        ? employee.getBranch().getClinic().getRegisteredAddress()
+                        : null,
                 employee.getBranch() != null && employee.getBranch().getClinic() != null
-                        ? employee.getBranch().getClinic().getLegalName() : null,
+                        ? employee.getBranch().getClinic().getLegalName()
+                        : null,
                 user != null ? user.getCodeName() : null,
                 employee.getDateOfBirth());
     }

@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Ban,
+  Building2,
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
   Eye,
+  Loader2,
   LockKeyhole,
   MoreVertical,
   Pencil,
   Plus,
+  RotateCcw,
   Search,
   ShieldCheck,
   Users,
@@ -17,36 +21,79 @@ import toast from 'react-hot-toast';
 import AddEmployeeModal from '../../components/ui/AddEmployeeModal';
 import EditEmployeeModal from '../../components/ui/EditEmployeeModal';
 import { getEmployeesList, getEmployeeStats } from '../../services/employee.service';
+import { getBranches } from '../../services/clinic.service';
+import { lockUser, unlockUser } from '../../services/user.service';
 import { RoleBadge, StatusDot } from './EmployeeBadges';
 import EmployeeDetailPanel from './EmployeeDetailPanel';
-import { mapEmployeeFromApi, calcStatsFromEmployees } from './employeeHelpers';
+import { mapEmployeeFromApi, calcStatsFromEmployees, ROLE_OPTIONS } from './employeeHelpers';
 
 const USE_MOCK_DATA = false;
 
-function StatCard({ title, value, subtitle, icon: Icon, iconBg, iconColor, valueColor }) {
+function StatCard({ title, value, subtitle, icon: Icon, gradient, border, iconBg, iconColor, valueColor, badge }) {
   return (
-    <div className="flex-1 rounded-lg border border-slate-200 bg-white p-4 shadow-2xs">
-      <div className="flex items-center gap-3.5">
-        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${iconBg}`}>
-          <Icon className={`h-5 w-5 ${iconColor}`} />
+    <div className={`flex-1 rounded-[4px] border ${border} bg-gradient-to-br ${gradient} p-4 sm:p-4.5 shadow-2xs relative overflow-hidden transition-all duration-150 hover:shadow-xs`}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[3px] ${iconBg} shadow-2xs`}>
+            <Icon className={`h-5 w-5 ${iconColor}`} />
+          </div>
+          <div>
+            <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">{title}</p>
+            <p className={`text-xl sm:text-2xl font-black ${valueColor} tracking-tight`}>{value}</p>
+            <p className="text-[11px] text-slate-500 font-medium mt-0.5">{subtitle}</p>
+          </div>
         </div>
-        <div>
-          <p className="text-[12px] text-slate-500 font-medium">{title}</p>
-          <p className={`text-xl font-extrabold ${valueColor}`}>{value}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">{subtitle}</p>
-        </div>
+        {badge && (
+          <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-[2px] text-[10.5px] font-bold bg-white/90 border border-slate-300 text-slate-700 shadow-2xs">
+            {badge}
+          </span>
+        )}
       </div>
+    </div>
+  );
+}
+
+function EmployeeAvatar({ employee }) {
+  const [imgError, setImgError] = useState(false);
+  const initials = useMemo(() => {
+    const raw = (employee.name || employee.fullName || '').trim();
+    const parts = raw.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+    }
+    return (raw[0] || 'NV').toUpperCase();
+  }, [employee.name, employee.fullName]);
+
+  const hasAvatar = employee.avatar && !employee.avatar.includes('ui-avatars.com');
+
+  if (!imgError && hasAvatar) {
+    return (
+      <img
+        src={employee.avatar}
+        alt=""
+        onError={() => setImgError(true)}
+        className="h-9 w-9 rounded-full object-cover ring-2 ring-slate-100 shadow-2xs shrink-0"
+      />
+    );
+  }
+
+  return (
+    <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-teal-800 via-teal-700 to-emerald-600 text-white font-black text-xs flex items-center justify-center ring-2 ring-teal-100 shadow-2xs shrink-0 tracking-wider select-none">
+      {initials}
     </div>
   );
 }
 
 export default function EmployeeManagement() {
   const [employees, setEmployees] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [stats, setStats] = useState({ total: 0, active: 0, locked: 0, inactive: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [branchFilter, setBranchFilter] = useState('all');
+  const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -59,7 +106,7 @@ export default function EmployeeManagement() {
   const [editEmployee, setEditEmployee] = useState(null);
   const [processingId, setProcessingId] = useState(null);
 
-  // MUI Menu State (Cho nút 3 chấm)
+  // MUI Menu State
   const [anchorEl, setAnchorEl] = useState(null);
   const [menuEmployee, setMenuEmployee] = useState(null);
 
@@ -78,27 +125,33 @@ export default function EmployeeManagement() {
     if (showLoading) setLoading(true);
     setError(null);
     try {
-      let mappedEmployees;
-      let statsData;
+      let mappedEmployees = [];
+      let statsData = null;
 
       if (USE_MOCK_DATA) {
         mappedEmployees = [];
         statsData = calcStatsFromEmployees(mappedEmployees);
       } else {
-        const [listData, apiStats] = await Promise.all([getEmployeesList(), getEmployeeStats()]);
-        mappedEmployees = listData.map((emp) => mapEmployeeFromApi(emp));
+        const [listData, apiStats, branchData] = await Promise.all([
+          getEmployeesList(),
+          getEmployeeStats().catch(() => null),
+          getBranches().catch(() => []),
+        ]);
+        mappedEmployees = (listData || []).map((emp) => mapEmployeeFromApi(emp));
         statsData = apiStats;
+        if (Array.isArray(branchData)) {
+          setBranches(branchData);
+        }
       }
 
       setEmployees(mappedEmployees);
       setStats({
-        total: statsData?.total || 0,
-        active: statsData?.active || 0,
-        locked: statsData?.blocked || statsData?.locked || 0,
-        inactive: statsData?.inactive || 0,
+        total: statsData?.total ?? mappedEmployees.length,
+        active: statsData?.active ?? mappedEmployees.filter((e) => e.displayStatus === 'active' || e.displayStatus === 'Hoạt động').length,
+        locked: statsData?.blocked ?? statsData?.locked ?? mappedEmployees.filter((e) => e.displayStatus === 'locked' || e.displayStatus === 'Bị khóa').length,
+        inactive: statsData?.inactive ?? 0,
       });
 
-      // Cập nhật dữ liệu nhân viên đang xem chi tiết (nếu có)
       setSelectedEmployee((prev) => {
         if (!prev) return prev;
         const updatedSelected = mappedEmployees.find((e) => e.id === prev.id);
@@ -116,6 +169,37 @@ export default function EmployeeManagement() {
     fetchData();
   }, [fetchData]);
 
+  // Danh sách chi nhánh duy nhất từ API + từ danh sách nhân viên
+  const branchOptions = useMemo(() => {
+    const map = new Map();
+    branches.forEach((b) => {
+      const id = b.branchId || b.id;
+      const name = b.branchName || b.name;
+      if (id && name) {
+        map.set(String(id), { branchId: String(id), branchName: name });
+      }
+    });
+
+    employees.forEach((emp) => {
+      if (emp.branchId && emp.branchName && !map.has(String(emp.branchId))) {
+        map.set(String(emp.branchId), {
+          branchId: String(emp.branchId),
+          branchName: emp.branchName,
+        });
+      } else if (emp.branchName && emp.branchName !== 'Chưa phân chi nhánh') {
+        const exists = Array.from(map.values()).some((item) => item.branchName === emp.branchName);
+        if (!exists) {
+          map.set(emp.branchName, {
+            branchId: emp.branchName,
+            branchName: emp.branchName,
+          });
+        }
+      }
+    });
+
+    return Array.from(map.values());
+  }, [branches, employees]);
+
   const filteredEmployees = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
     return employees.filter((emp) => {
@@ -123,13 +207,28 @@ export default function EmployeeManagement() {
         !normalizedSearch ||
         (emp.name && emp.name.toLowerCase().includes(normalizedSearch)) ||
         (emp.email && emp.email.toLowerCase().includes(normalizedSearch)) ||
+        (emp.employeeCode && emp.employeeCode.toLowerCase().includes(normalizedSearch)) ||
         (emp.phone && emp.phone.replace(/\s/g, '').includes(normalizedSearch.replace(/\s/g, '')));
 
-      const matchesStatus = statusFilter === 'all' || emp.displayStatus === statusFilter;
+      const matchesStatus =
+        statusFilter === 'all' ||
+        emp.displayStatus === statusFilter ||
+        (statusFilter === 'active' && (emp.displayStatus === 'active' || emp.displayStatus === 'Hoạt động')) ||
+        (statusFilter === 'locked' && (emp.displayStatus === 'locked' || emp.displayStatus === 'Bị khóa'));
 
-      return matchesSearch && matchesStatus;
+      const matchesBranch =
+        branchFilter === 'all' ||
+        String(emp.branchId) === String(branchFilter) ||
+        emp.branchName === branchFilter;
+
+      const matchesRole =
+        roleFilter === 'all' ||
+        emp.displayRole === roleFilter ||
+        emp.originalRole === roleFilter;
+
+      return matchesSearch && matchesStatus && matchesBranch && matchesRole;
     });
-  }, [employees, searchTerm, statusFilter]);
+  }, [employees, searchTerm, statusFilter, branchFilter, roleFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredEmployees.length / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -148,7 +247,6 @@ export default function EmployeeManagement() {
       const isLocked = emp.displayStatus === 'locked' || emp.displayStatus === 'Bị khóa';
 
       if (!USE_MOCK_DATA) {
-        const { lockUser, unlockUser } = await import('../../services/user.service');
         if (isLocked) {
           await unlockUser(emp.userId);
         } else {
@@ -156,12 +254,11 @@ export default function EmployeeManagement() {
         }
       }
 
-      // Optimistic update
       const updatedList = employees.map((e) => {
         if (e.id === emp.id) {
           return {
             ...e,
-            displayStatus: isLocked ? 'Hoạt động' : 'Bị khóa',
+            displayStatus: isLocked ? 'active' : 'locked',
             statusUser: isLocked ? 'ACTIVE' : 'BLOCK',
           };
         }
@@ -170,16 +267,14 @@ export default function EmployeeManagement() {
 
       setEmployees(updatedList);
 
-      // Update selectedEmployee state if currently open
       if (selectedEmployee?.id === emp.id) {
         setSelectedEmployee((prev) => ({
           ...prev,
-          displayStatus: isLocked ? 'Hoạt động' : 'Bị khóa',
+          displayStatus: isLocked ? 'active' : 'locked',
           statusUser: isLocked ? 'ACTIVE' : 'BLOCK',
         }));
       }
 
-      // Update stats optimistically
       setStats((prev) => {
         const isNowLocked = !isLocked;
         return {
@@ -204,121 +299,197 @@ export default function EmployeeManagement() {
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return '-';
+    if (!dateString) return '—';
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '—';
     return date.toLocaleDateString('vi-VN');
   };
 
+  const activePercent = stats.total > 0 ? `${Math.round((stats.active / stats.total) * 100)}% tổng số` : '0%';
+  const lockedPercent = stats.total > 0 ? `${Math.round((stats.locked / stats.total) * 100)}% tổng số` : '0%';
+
   return (
     <div className="space-y-5">
-      {/* Stat Cards */}
+      {/* Thống kê chuẩn thương hiệu Crown Dental ERP */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard
           title="Tổng số tài khoản"
           value={stats.total}
-          subtitle="Nhân viên"
+          subtitle="Nhân sự toàn hệ thống"
           icon={Users}
-          iconBg="bg-blue-50"
-          iconColor="text-blue-500"
-          valueColor="text-slate-900"
+          gradient="from-teal-500/10 via-white to-emerald-50/20"
+          border="border-teal-200/80"
+          iconBg="bg-gradient-to-tr from-teal-800 to-teal-600 text-white"
+          iconColor="text-white"
+          valueColor="text-teal-950"
+          badge="Nhân sự ERP"
         />
         <StatCard
           title="Đang hoạt động"
           value={stats.active}
-          subtitle="Nhân viên"
+          subtitle={activePercent}
           icon={ShieldCheck}
-          iconBg="bg-emerald-50"
-          iconColor="text-emerald-500"
-          valueColor="text-emerald-600"
+          gradient="from-emerald-500/10 via-white to-teal-50/20"
+          border="border-emerald-200/80"
+          iconBg="bg-gradient-to-tr from-emerald-600 to-teal-600 text-white"
+          iconColor="text-white"
+          valueColor="text-emerald-700"
+          badge="Khả dụng"
         />
         <StatCard
           title="Bị khóa"
           value={stats.locked}
-          subtitle="Nhân viên"
+          subtitle={lockedPercent}
           icon={Ban}
-          iconBg="bg-amber-50"
-          iconColor="text-amber-500"
-          valueColor="text-amber-600"
+          gradient="from-rose-500/10 via-white to-orange-50/20"
+          border="border-rose-200/80"
+          iconBg="bg-gradient-to-tr from-rose-600 to-red-500 text-white"
+          iconColor="text-white"
+          valueColor="text-rose-700"
+          badge="Tạm ngưng"
         />
       </div>
 
-      {/* Bộ lọc và Nút Thêm */}
-      <div className="flex flex-wrap items-center gap-3">
+      {/* Thanh lọc & Nút Thêm mới */}
+      <div className="rounded-[4px] border border-slate-300 bg-white p-3 shadow-2xs flex flex-wrap items-center gap-2.5">
         <div className="relative flex-1 min-w-[240px] max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Tìm kiếm theo tên, số điện thoại hoặc email..."
+            placeholder="Tìm kiếm theo tên, SĐT, email, mã nhân viên..."
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full h-10 pl-10 pr-4 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all"
+            className="w-full h-9 pl-9 pr-3.5 rounded-[3px] border border-slate-300 bg-slate-50/50 text-xs text-slate-800 placeholder:text-slate-400 outline-none focus:bg-white focus:border-teal-600 focus:ring-1 focus:ring-teal-600 transition-all font-medium"
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-slate-500 hidden sm:inline-block">Lọc theo trạng thái</span>
+        {/* Lọc theo Chi nhánh */}
+        <div className="relative">
+          <Building2 className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
           <select
-            value={statusFilter}
+            value={branchFilter}
             onChange={(e) => {
-              setStatusFilter(e.target.value);
+              setBranchFilter(e.target.value);
               setCurrentPage(1);
             }}
-            className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-700 outline-none focus:border-blue-400 cursor-pointer"
+            className="h-9 pl-8 pr-7 rounded-[3px] border border-slate-300 bg-slate-50/50 hover:bg-white text-xs font-semibold text-slate-700 outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600 cursor-pointer transition-all"
           >
-            <option value="all">Tất cả trạng thái</option>
-            <option value="Hoạt động">Đang hoạt động</option>
-            <option value="Bị khóa">Bị khóa</option>
+            <option value="all">Tất cả chi nhánh ({branchOptions.length})</option>
+            {branchOptions.map((b) => (
+              <option key={b.branchId} value={b.branchId}>
+                {b.branchName}
+              </option>
+            ))}
           </select>
         </div>
+
+        {/* Lọc theo Trạng thái */}
+        <select
+          value={statusFilter}
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            setCurrentPage(1);
+          }}
+          className="h-9 px-3 rounded-[3px] border border-slate-300 bg-slate-50/50 hover:bg-white text-xs font-semibold text-slate-700 outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600 cursor-pointer transition-all"
+        >
+          <option value="all">Tất cả trạng thái</option>
+          <option value="active">Đang hoạt động</option>
+          <option value="locked">Bị khóa</option>
+        </select>
+
+        {/* Lọc theo Vai trò */}
+        <select
+          value={roleFilter}
+          onChange={(e) => {
+            setRoleFilter(e.target.value);
+            setCurrentPage(1);
+          }}
+          className="h-9 px-3 rounded-[3px] border border-slate-300 bg-slate-50/50 hover:bg-white text-xs font-semibold text-slate-700 outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600 cursor-pointer transition-all"
+        >
+          <option value="all">Tất cả vai trò</option>
+          {ROLE_OPTIONS.map((item) => (
+            <option key={item.value} value={item.value}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+
+        {/* Reset filter nếu có chọn */}
+        {(searchTerm || branchFilter !== 'all' || statusFilter !== 'all' || roleFilter !== 'all') && (
+          <button
+            type="button"
+            onClick={() => {
+              setSearchTerm('');
+              setBranchFilter('all');
+              setStatusFilter('all');
+              setRoleFilter('all');
+              setCurrentPage(1);
+            }}
+            className="h-9 px-2.5 rounded-[3px] border border-slate-300 bg-white hover:bg-slate-100 text-xs font-semibold text-slate-600 flex items-center gap-1 transition-colors cursor-pointer"
+            title="Xóa bộ lọc"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Đặt lại</span>
+          </button>
+        )}
 
         <div className="flex-1" />
 
         <button
           type="button"
           onClick={() => setIsAddModalOpen(true)}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-xs font-semibold text-white shadow-xs transition-all hover:bg-blue-700 active:scale-[0.98] cursor-pointer"
+          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-[3px] bg-teal-800 hover:bg-teal-900 px-3.5 text-xs font-bold text-white shadow-xs transition-all active:scale-[0.98] cursor-pointer"
         >
           <Plus className="h-4 w-4" />
           Thêm nhân viên
         </button>
       </div>
 
-      {/* Main Content Area - Full-width Table */}
-      <div className="rounded-lg border border-slate-200 bg-white shadow-2xs overflow-hidden">
-        <div className="px-5 py-3 border-b border-slate-100 bg-white">
-          <h2 className="text-sm font-bold text-slate-800">Danh sách nhân viên</h2>
+      {/* Main Content Area - Full-width ERP Table */}
+      <div className="rounded-[4px] border border-slate-300 bg-white shadow-2xs overflow-hidden">
+        <div className="px-5 py-3 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-teal-800" />
+            <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Danh sách nhân viên</h2>
+          </div>
+          <span className="text-[11px] font-bold text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded-[2px]">
+            {filteredEmployees.length} nhân viên
+          </span>
         </div>
 
-        {/* Table container với scroll dọc cố định height */}
+        {/* Table container */}
         <div className="overflow-x-auto max-h-[calc(100vh-310px)] overflow-y-auto">
           <table className="w-full text-left border-collapse">
-            <thead className="sticky top-0 bg-white shadow-xs z-10 border-b border-slate-100">
+            <thead className="sticky top-0 bg-slate-100 shadow-xs z-10 border-b border-slate-300">
               <tr>
-                <th className="px-5 py-3 text-left text-[12px] font-semibold text-slate-600 w-12">#</th>
-                <th className="px-5 py-3 text-left text-[12px] font-semibold text-slate-600">Mã nhân viên</th>
-                <th className="px-5 py-3 text-left text-[12px] font-semibold text-slate-600">Nhân viên</th>
-                <th className="px-5 py-3 text-left text-[12px] font-semibold text-slate-600">Số điện thoại</th>
-                <th className="px-5 py-3 text-left text-[12px] font-semibold text-slate-600">Ngày vào làm</th>
-                <th className="px-5 py-3 text-left text-[12px] font-semibold text-slate-600">Vai trò</th>
-                <th className="px-5 py-3 text-left text-[12px] font-semibold text-slate-600">Chi nhánh</th>
-                <th className="px-5 py-3 text-left text-[12px] font-semibold text-slate-600">Trạng thái tài khoản</th>
-                <th className="px-5 py-3 text-center text-[12px] font-semibold text-slate-600">Thao tác</th>
+                <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-800 uppercase tracking-wide border-r border-slate-200 w-12">#</th>
+                <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-800 uppercase tracking-wide border-r border-slate-200">Mã nhân viên</th>
+                <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-800 uppercase tracking-wide border-r border-slate-200">Nhân viên</th>
+                <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-800 uppercase tracking-wide border-r border-slate-200">Số điện thoại</th>
+                <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-800 uppercase tracking-wide border-r border-slate-200">Ngày vào làm</th>
+                <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-800 uppercase tracking-wide border-r border-slate-200">Vai trò</th>
+                <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-800 uppercase tracking-wide border-r border-slate-200">Chi nhánh</th>
+                <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-800 uppercase tracking-wide border-r border-slate-200">Trạng thái tài khoản</th>
+                <th className="px-4 py-3 text-center text-[11px] font-bold text-slate-800 uppercase tracking-wide w-20">Thao tác</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-200">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-16 text-center text-slate-400">
-                    Đang tải dữ liệu...
+                  <td colSpan={9} className="px-6 py-16 text-center text-slate-500 font-semibold">
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 className="h-5 w-5 animate-spin text-teal-800" />
+                      <span>Đang tải danh sách nhân viên...</span>
+                    </div>
                   </td>
                 </tr>
               ) : paginatedEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-16 text-center text-slate-400">
-                    Không tìm thấy nhân viên phù hợp.
+                  <td colSpan={9} className="px-6 py-16 text-center text-slate-500 font-medium">
+                    Không tìm thấy nhân viên phù hợp với bộ lọc hiện tại.
                   </td>
                 </tr>
               ) : (
@@ -326,46 +497,52 @@ export default function EmployeeManagement() {
                   return (
                     <tr
                       key={emp.id}
-                      onClick={() => handleViewDetail(emp)}
-                      className="transition-colors hover:bg-slate-50/80 bg-white cursor-pointer"
+                      onDoubleClick={() => handleViewDetail(emp)}
+                      className="transition-colors hover:bg-teal-50/40 bg-white cursor-pointer select-none"
+                      title="Nhấp đúp để xem chi tiết nhân viên"
                     >
-                      <td className="px-5 py-3 text-[13px] text-slate-500 font-medium">
+                      <td className="px-4 py-3 text-xs text-slate-500 font-bold border-r border-slate-100">
                         {startIndex + index + 1}
                       </td>
-                      <td className="px-5 py-3">
-                        <span className="font-mono text-xs font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200 inline-block">
+                      <td className="px-4 py-3 border-r border-slate-100">
+                        <span className="font-mono text-xs font-bold text-teal-900 bg-teal-50 px-2 py-0.5 rounded-[2px] border border-teal-300 inline-block shadow-2xs">
                           {emp.employeeCode || '—'}
                         </span>
                       </td>
-                      <td className="px-5 py-3">
+                      <td className="px-4 py-3 border-r border-slate-100">
                         <div className="flex items-center gap-3">
-                          <img
-                            src={emp.avatar}
-                            alt={emp.name}
-                            className="h-9 w-9 rounded-full object-cover ring-2 ring-white shadow-2xs shrink-0"
-                          />
+                          <EmployeeAvatar employee={emp} />
                           <div className="min-w-0 flex-1">
-                            <p className="font-semibold text-slate-900 text-xs truncate">{emp.name || 'Chưa cập nhật'}</p>
-                            <p className="text-[11px] text-slate-400 truncate mt-0.5">{emp.email || '—'}</p>
+                            <p className="font-bold text-slate-900 text-xs truncate">{emp.name || 'Chưa cập nhật'}</p>
+                            <p className="text-[11px] text-slate-500 truncate mt-0.5">{emp.email || '—'}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-5 py-3 text-xs text-slate-600 font-medium">{emp.phone || '—'}</td>
-                      <td className="px-5 py-3 text-xs text-slate-600 font-medium">{formatDate(emp.createdAt)}</td>
-                      <td className="px-5 py-3">
+                      <td className="px-4 py-3 text-xs text-slate-700 font-semibold border-r border-slate-100">{emp.phone || '—'}</td>
+                      <td className="px-4 py-3 text-xs text-slate-700 font-medium border-r border-slate-100">
+                        <span className="inline-flex items-center gap-1">
+                          <CalendarDays className="h-3 w-3 text-slate-400" />
+                          {formatDate(emp.createdAt || emp.hireDate)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 border-r border-slate-100">
                         <RoleBadge role={emp.displayRole} />
                       </td>
-                      <td className="px-5 py-3 text-xs text-slate-600 font-medium whitespace-nowrap">
-                        {emp.branchName || 'Chưa phân chi nhánh'}
+                      <td className="px-4 py-3 text-xs text-slate-700 font-semibold border-r border-slate-100 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1.5 text-slate-800">
+                          <Building2 className="h-3.5 w-3.5 text-teal-700 shrink-0" />
+                          <span>{emp.branchName || 'Chưa phân chi nhánh'}</span>
+                        </span>
                       </td>
-                      <td className="px-5 py-3">
+                      <td className="px-4 py-3 border-r border-slate-100">
                         <StatusDot status={emp.displayStatus} />
                       </td>
-                      <td className="px-5 py-3 text-center">
+                      <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           onClick={(e) => handleOpenMenu(e, emp)}
-                          className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                          className="h-7 w-7 inline-flex items-center justify-center rounded-[3px] text-slate-500 hover:text-slate-800 hover:bg-slate-100 border border-transparent hover:border-slate-300 transition-colors cursor-pointer"
+                          title="Tùy chọn"
                         >
                           <MoreVertical className="h-4 w-4" />
                         </button>
@@ -378,66 +555,64 @@ export default function EmployeeManagement() {
           </table>
         </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3 bg-white">
-            <p className="text-xs text-slate-500">
-              Hiển thị <span className="font-semibold text-slate-700">{startIndex + 1}</span> đến{' '}
-              <span className="font-semibold text-slate-700">
-                {Math.min(startIndex + pageSize, filteredEmployees.length)}
-              </span>{' '}
-              của <span className="font-semibold text-slate-700">{filteredEmployees.length}</span> nhân viên
-            </p>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="p-1.5 text-slate-400 hover:text-slate-600 disabled:opacity-30 transition-colors cursor-pointer"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: totalPages }).map((_, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setCurrentPage(idx + 1)}
-                    className={`h-7 w-7 rounded-md text-xs font-medium transition-colors cursor-pointer ${currentPage === idx + 1
-                      ? 'bg-blue-600 text-white shadow-2xs'
-                      : 'text-slate-600 hover:bg-slate-100'
-                      }`}
-                  >
-                    {idx + 1}
-                  </button>
-                ))}
-              </div>
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="p-1.5 text-slate-400 hover:text-slate-600 disabled:opacity-30 transition-colors cursor-pointer"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-              <div className="h-4 w-px bg-slate-200 mx-1" />
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="h-7 rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-600 outline-none cursor-pointer"
-              >
-                <option value={10}>10 / trang</option>
-                <option value={20}>20 / trang</option>
-                <option value={50}>50 / trang</option>
-              </select>
+        {/* Phân trang ERP góc nhọn */}
+        <div className="flex flex-wrap items-center justify-between border-t border-slate-200 px-4 py-3 bg-slate-50/60 gap-3">
+          <p className="text-xs text-slate-600 font-medium">
+            Hiển thị <span className="font-bold text-slate-800">{filteredEmployees.length === 0 ? 0 : startIndex + 1}</span> đến{' '}
+            <span className="font-bold text-slate-800">
+              {Math.min(startIndex + pageSize, filteredEmployees.length)}
+            </span>{' '}
+            của <span className="font-bold text-teal-800">{filteredEmployees.length}</span> nhân viên
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="p-1.5 rounded-[3px] border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 transition-colors cursor-pointer"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }).map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentPage(idx + 1)}
+                  className={`h-7 w-7 rounded-[3px] text-xs font-bold transition-colors cursor-pointer border ${currentPage === idx + 1
+                      ? 'bg-teal-800 text-white border-teal-800 shadow-2xs'
+                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                    }`}
+                >
+                  {idx + 1}
+                </button>
+              ))}
             </div>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="p-1.5 rounded-[3px] border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 transition-colors cursor-pointer"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+            <div className="h-4 w-px bg-slate-300 mx-1" />
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="h-7 rounded-[3px] border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-700 outline-none cursor-pointer"
+            >
+              <option value={10}>10 / trang</option>
+              <option value={20}>20 / trang</option>
+              <option value={50}>50 / trang</option>
+            </select>
           </div>
-        )}
+        </div>
       </div>
 
-      {/* Action Menu (Render bằng MUI Portal giúp không bị overflow clipping) */}
+      {/* Action Menu (Render qua MUI Portal) */}
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
@@ -446,11 +621,11 @@ export default function EmployeeManagement() {
           paper: {
             elevation: 2,
             sx: {
-              borderRadius: '8px',
+              borderRadius: '3px',
               mt: 0.5,
-              minWidth: 160,
-              border: '1px solid #e2e8f0',
-              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+              minWidth: 170,
+              border: '1px solid #cbd5e1',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.08)',
             },
           },
         }}
@@ -462,9 +637,9 @@ export default function EmployeeManagement() {
             handleViewDetail(menuEmployee);
             handleCloseMenu();
           }}
-          className="flex items-center gap-2 text-xs font-medium text-slate-700 py-2 px-3 hover:bg-slate-50"
+          className="flex items-center gap-2 text-xs font-semibold text-slate-700 py-2 px-3 hover:bg-slate-50"
         >
-          <Eye className="w-4 h-4 text-blue-500" />
+          <Eye className="w-4 h-4 text-teal-700" />
           Xem chi tiết
         </MenuItem>
         <MenuItem
@@ -473,9 +648,9 @@ export default function EmployeeManagement() {
             setIsEditModalOpen(true);
             handleCloseMenu();
           }}
-          className="flex items-center gap-2 text-xs font-medium text-slate-700 py-2 px-3 hover:bg-slate-50"
+          className="flex items-center gap-2 text-xs font-semibold text-slate-700 py-2 px-3 hover:bg-slate-50"
         >
-          <Pencil className="w-4 h-4 text-emerald-500" />
+          <Pencil className="w-4 h-4 text-emerald-600" />
           Cập nhật thông tin
         </MenuItem>
         <MenuItem
@@ -484,9 +659,9 @@ export default function EmployeeManagement() {
             handleCloseMenu();
           }}
           disabled={processingId === menuEmployee?.id}
-          className="flex items-center gap-2 text-xs font-medium text-red-600 py-2 px-3 hover:bg-red-50"
+          className="flex items-center gap-2 text-xs font-semibold text-rose-600 py-2 px-3 hover:bg-rose-50"
         >
-          <LockKeyhole className="w-4 h-4 text-red-500" />
+          <LockKeyhole className="w-4 h-4 text-rose-500" />
           {menuEmployee?.displayStatus === 'locked' || menuEmployee?.displayStatus === 'Bị khóa'
             ? 'Mở khóa tài khoản'
             : 'Khóa tài khoản'}

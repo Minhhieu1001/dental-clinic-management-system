@@ -41,9 +41,17 @@ export default function EmployeeDashboard() {
         loading={loading}
       />
 
-      {/* Stats row */}
-      <div>
-        <StatsRow stats={stats} loading={loading} />
+      {/* Stats row & Quick Actions trên cùng 1 hàng */}
+      <div className="flex flex-col lg:flex-row gap-3 items-stretch w-full">
+        {/* 5 khối thống kê tổng quan */}
+        <div className="min-w-0 w-full lg:flex-[73]">
+          <StatsRow stats={stats} loading={loading} />
+        </div>
+
+        {/* Khối thao tác nhanh */}
+        <div className="w-full lg:flex-[27] min-w-0">
+          <QuickActions onOpenCreateModal={() => handleOpenModal('add', null)} />
+        </div>
       </div>
 
       {/* Main content: 2 columns */}
@@ -58,7 +66,7 @@ export default function EmployeeDashboard() {
           />
         </div>
 
-        {/* Right column — Requests + Quick actions */}
+        {/* Right column — Requests */}
         <div className="flex w-full lg:flex-[27] flex-col gap-3">
           <AppointmentRequests
             requests={requests}
@@ -66,7 +74,6 @@ export default function EmployeeDashboard() {
             onRefresh={refetch}
             onOpenCreateModal={(reqData) => handleOpenModal('add', reqData)}
           />
-          <QuickActions onOpenCreateModal={() => handleOpenModal('add', null)} />
         </div>
       </div>
 

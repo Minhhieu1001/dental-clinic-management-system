@@ -2,12 +2,13 @@ import api from './axios';
 
 
 // lấy tất cả hóa đơn sắp xếp mới nhất theo ngày 
-export const getAllInvoiceDateDesc = async ({ year, month, status, search } = {}) => {
+export const getAllInvoiceDateDesc = async ({ year, month, status, search, branchId } = {}) => {
   const params = {};
   if (year && year !== 'ALL') params.year = year;
   if (month && month !== 'ALL') params.month = Number(month);
   if (status && status !== 'ALL') params.status = status;
   if (search && search.trim()) params.search = search.trim();
+  if (branchId && branchId !== 'ALL') params.branchId = branchId;
 
   const response = await api.get('/invoices', { params });
   const data = response.data?.data || {};

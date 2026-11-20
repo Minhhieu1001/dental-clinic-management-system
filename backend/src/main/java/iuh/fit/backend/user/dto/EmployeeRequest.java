@@ -16,6 +16,21 @@ public record EmployeeRequest(
         String gender,
         String address,
         String branchId,
-        LocalDate dateOfBirth
+        LocalDate dateOfBirth,
+        String fullName
 ) {
+    public EmployeeRequest(
+            UUID userId,
+            Position position,
+            BigDecimal salary,
+            LocalDateTime hireDate,
+            Boolean status,
+            String gender,
+            String address,
+            String branchId,
+            LocalDate dateOfBirth
+    ) {
+        this(userId, position, salary, hireDate, status, gender, address, branchId, dateOfBirth, null);
+    }
 }
+

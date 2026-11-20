@@ -35,6 +35,7 @@ import {
 } from '@mui/material';
 import toast from 'react-hot-toast';
 import { getAllInvoiceDateDesc } from '../../../services/invoice.service';
+import { getBranches } from '../../../services/clinic.service';
 import InvoiceDetailModal from './action/InvoiceDetailModal';
 import PaymentModal from './action/PaymentModal';
 import PrintInvoiceModal from './action/PrintInvoiceModal';
@@ -58,6 +59,17 @@ export default function EmployeeBilling() {
   const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR);
   const [selectedMonth, setSelectedMonth] = useState('ALL'); // 'ALL' or '01'..'12'
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [branches, setBranches] = useState([]);
+  const [branchFilter, setBranchFilter] = useState('ALL');
+
+  useEffect(() => {
+    getBranches()
+      .then((res) => {
+        const list = Array.isArray(res) ? res : (res?.data || []);
+        setBranches(list);
+      })
+      .catch((err) => console.warn('Lỗi lấy danh sách chi nhánh:', err));
+  }, []);
 
   // Search input state with DEBOUNCE setTimeout
   const [searchInput, setSearchInput] = useState('');
@@ -105,6 +117,7 @@ export default function EmployeeBilling() {
         month: selectedMonth,
         status: statusFilter,
         search: debouncedSearch,
+        branchId: branchFilter,
       });
       if (requestId !== requestIdRef.current) return;
       setInvoices(list.map(mapBackendInvoiceToUi));
@@ -118,7 +131,7 @@ export default function EmployeeBilling() {
     } finally {
       if (requestId === requestIdRef.current) setLoading(false);
     }
-  }, [selectedYear, selectedMonth, statusFilter, debouncedSearch]);
+  }, [selectedYear, selectedMonth, statusFilter, debouncedSearch, branchFilter]);
 
   useEffect(() => {
     fetchInvoicesData();
@@ -148,6 +161,7 @@ export default function EmployeeBilling() {
     setSelectedYear(CURRENT_YEAR);
     setSelectedMonth('ALL');
     setStatusFilter('ALL');
+    setBranchFilter('ALL');
     setSearchInput('');
     setDebouncedSearch('');
     setPage(0);
@@ -308,6 +322,25 @@ export default function EmployeeBilling() {
                 setPage(0);
               }}
             />
+
+            {/* 2. Lọc theo Chi nhánh */}
+            <div className="w-[190px]">
+              <select
+                value={branchFilter}
+                onChange={(e) => {
+                  setBranchFilter(e.target.value);
+                  setPage(0);
+                }}
+                className="w-full bg-slate-50 border border-slate-300 px-2.5 py-1.5 text-xs font-bold text-slate-800 rounded-md focus:bg-white focus:ring-1 focus:ring-teal-500 focus:outline-none cursor-pointer"
+              >
+                <option value="ALL">Tất cả chi nhánh</option>
+                {branches.map((b) => (
+                  <option key={b.branchId || b.id} value={b.branchId || b.id}>
+                    {b.branchName || b.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             {/* 3. Lọc theo Trạng thái */}
             <div className="w-[155px]">

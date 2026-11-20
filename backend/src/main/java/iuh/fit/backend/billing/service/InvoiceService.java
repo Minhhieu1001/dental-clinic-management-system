@@ -12,7 +12,10 @@ import java.util.List;
 public interface InvoiceService {
 
     long countOutstandingInvoices();
-    InvoiceListResponse getAllInvoiceDateDesc(Integer year, Integer month, PaymentStatus status, String search);
+    InvoiceListResponse getAllInvoiceDateDesc(Integer year, Integer month, PaymentStatus status, String search, String branchId);
+    default InvoiceListResponse getAllInvoiceDateDesc(Integer year, Integer month, PaymentStatus status, String search) {
+        return getAllInvoiceDateDesc(year, month, status, search, null);
+    }
     InvoiceResponse getInvoiceById(UUID id);
     List<InvoiceResponse> getInvoicesByPatientId(UUID patientId);
     InvoiceResponse createInvoice(CreateInvoiceRequest request);

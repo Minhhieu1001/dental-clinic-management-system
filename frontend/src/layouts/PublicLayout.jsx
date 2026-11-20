@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink, Outlet, Link } from 'react-router-dom'
-import { Bot, CalendarCheck, Sparkles } from 'lucide-react'
+import { Bot, CalendarCheck, Sparkles, Phone, Calendar } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import AppointmentRequestModal from '../components/ui/AppointmentRequestModal'
 import Chatbot from '../features/ai/Chatbot'
@@ -27,31 +27,41 @@ export default function PublicLayout() {
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
   const [isChatOpen, setIsChatOpen] = useState(false)
 
+  const handleOpenRequestModal = () => {
+    setIsChatOpen(false) // Tự động đóng chatbot khi mở modal để không che chắn form
+    setIsRequestModalOpen(true)
+  }
+
+  const handleOpenChat = () => {
+    setIsRequestModalOpen(false)
+    setIsChatOpen(true)
+  }
+
   return (
-    <div className="min-h-screen bg-white text-slate-900 flex flex-col">
+    <div className="min-h-screen bg-white text-slate-900 flex flex-col w-full overflow-x-hidden">
       <header className="sticky top-0 z-40 bg-white shadow-sm">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
           
-          {/* Main header row - items-center toàn diện ép tất cả đồng tâm */}
-          <div className="flex items-center justify-between gap-4 pt-5 pb-4">
+          {/* Main header row */}
+          <div className="flex items-center justify-between gap-2 sm:gap-4 pt-3 sm:pt-5 pb-3 sm:pb-4">
 
             {/* Logo CROWN Dental */}
-            <NavLink to="/" className="flex items-center gap-3 flex-shrink-0 select-none">
+            <NavLink to="/" className="flex items-center gap-2 sm:gap-3 flex-shrink-0 select-none">
               <img
                 src="/logo.png"
                 alt="Crown Dental Logo"
-                className="h-14 w-14 object-contain rounded-xl"
+                className="h-10 w-10 sm:h-14 sm:w-14 object-contain rounded-xl"
               />
               <div className="leading-tight">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">NHA KHOA</p>
-                <h1 className="text-2xl font-black tracking-tight text-[#1f4fb2] leading-none my-0.5">
+                <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest">NHA KHOA</p>
+                <h1 className="text-lg sm:text-2xl font-black tracking-tight text-[#1f4fb2] leading-none my-0.5">
                   CROWN Dental
                 </h1>
-                <p className="text-[8px] text-slate-400 uppercase tracking-wider font-semibold">NGƯỜI BẠN TRỌN ĐỜI</p>
+                <p className="text-[7.5px] sm:text-[8px] text-slate-400 uppercase tracking-wider font-semibold">NGƯỜI BẠN TRỌN ĐỜI</p>
               </div>
             </NavLink>
 
-            {/* Khu vực ở giữa: Thanh tìm kiếm + Nhóm link phụ */}
+            {/* Khu vực ở giữa: Thanh tìm kiếm + Nhóm link phụ (Ẩn trên mobile) */}
             <div className="hidden lg:flex flex-col flex-1 max-w-xl px-4 justify-center">
               {/* Ô tìm kiếm bo nhẹ nhàng */}
               <div className="w-full flex items-center gap-3 rounded-xl bg-[#f4f6fa]/80 border border-transparent px-4 py-2.5 focus-within:border-slate-200 transition">
@@ -80,37 +90,33 @@ export default function PublicLayout() {
             </div>
 
             {/* Bên phải: Cặp nút bấm hành động */}
-            <div className="flex items-center gap-3 flex-shrink-0 h-full self-center">
+            <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
               
               {/* Nút Hotline */}
               <a
                 href="tel:19008059"
-                className="flex items-center justify-center gap-2 rounded-xl bg-[#ebf3ff] px-5 h-[42px] text-[14px] font-black text-[#1f64f2] hover:bg-[#dfeaff] transition duration-200"
+                className="flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl bg-[#ebf3ff] px-2.5 sm:px-5 h-[36px] sm:h-[42px] text-xs sm:text-[14px] font-black text-[#1f64f2] hover:bg-[#dfeaff] transition duration-200"
               >
-                <svg className="h-5 w-5 mr-1" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.57a1 1 0 00-1.01.24l-2.2 2.2a15.045 15.045 0 01-6.59-6.59l2.2-2.21a.96.96 0 00.25-1C9.17 6.36 8.97 5.17 8.97 3.94c0-.55-.45-1-1-1H4.42c-.55 0-1 .45-1 1C3.42 14.17 10.33 21 19.42 21c.55 0 1-.45 1-1v-3.62c0-.55-.45-1-1-1z" />
-                </svg>
-                1900 8059
+                <Phone className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden xs:inline">1900 8059</span>
               </a>
               
               {/* Nút Đặt lịch hẹn - Mở modal trực tiếp */}
               <button
                 type="button"
-                onClick={() => setIsRequestModalOpen(true)}
-                className="flex items-center justify-center gap-2.5 rounded-xl px-5.5 h-[42px] text-[14px] font-bold text-white transition duration-200 shadow-sm hover:opacity-95 cursor-pointer active:scale-95"
+                onClick={handleOpenRequestModal}
+                className="flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl px-3 sm:px-5.5 h-[36px] sm:h-[42px] text-xs sm:text-[14px] font-bold text-white transition duration-200 shadow-sm hover:opacity-95 cursor-pointer active:scale-95 whitespace-nowrap"
                 style={{ background: 'linear-gradient(90deg, #1f4fb2 0%, #00a859 100%)' }}
               >
-                <svg className="h-5 w-5 mr-1" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 002 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2zm-7 5H7v2h5v-2zm4 0h-3v2h3v-2zm-4 4H7v2h5v-2zm4 0h-3v2h3v-2z" />
-                </svg>
-                Đặt lịch hẹn
+                <CalendarCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span>Đặt lịch hẹn</span>
               </button>
             </div>
           </div>
 
-          {/* Primary Navigation */}
-          <div className="flex justify-center border-t border-slate-100">
-            <nav className="flex items-center gap-1 overflow-visible py-1 no-scrollbar">
+          {/* Primary Navigation - Vuốt ngang mượt mà trên mobile, căn giữa trên desktop */}
+          <div className="border-t border-slate-100 overflow-x-auto no-scrollbar scroll-smooth">
+            <nav className="flex items-center justify-start lg:justify-center gap-1 py-1 px-1 sm:px-4 min-w-max">
               {navItems.map((item) => {
                 if (item.hasDropdown) {
                   return (
@@ -302,9 +308,9 @@ export default function PublicLayout() {
         onClose={() => setIsRequestModalOpen(false)}
       />
 
-      {/* AI Chatbot Assistant */}
+      {/* AI Chatbot Assistant - Tự động ẩn khi mở modal yêu cầu lịch hẹn */}
       <Chatbot
-        isOpen={isChatOpen}
+        isOpen={isChatOpen && !isRequestModalOpen}
         onClose={() => setIsChatOpen(false)}
       />
 
@@ -326,26 +332,26 @@ export default function PublicLayout() {
               damping: 20, 
               stiffness: 300 
             }}
-            className="fixed bottom-6 right-6 z-40 flex flex-col items-center gap-3"
+            className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 flex flex-col items-center gap-2.5 sm:gap-3"
           >
             {/* Nút 1: Trợ lý AI (Nút tròn) */}
             <div className="relative group">
               <button
                 type="button"
-                onClick={() => setIsChatOpen(true)}
-                className="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-[#1f4fb2] to-[#00a859] text-white shadow-xl shadow-blue-500/30 transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer"
+                onClick={handleOpenChat}
+                className="relative flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-gradient-to-r from-[#1f4fb2] to-[#00a859] text-white shadow-xl shadow-blue-500/30 transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer"
                 title="Trợ lý ảo AI tư vấn"
               >
-                <Bot className="w-7 h-7" />
+                <Bot className="w-6 h-6 sm:w-7 sm:h-7" />
                 {/* Chấm xanh trạng thái trực tuyến */}
-                <span className="absolute top-0.5 right-0.5 flex h-3.5 w-3.5">
+                <span className="absolute top-0.5 right-0.5 flex h-3 w-3 sm:h-3.5 sm:w-3.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-400 border-2 border-white"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 sm:h-3.5 sm:w-3.5 bg-emerald-400 border-2 border-white"></span>
                 </span>
               </button>
 
               {/* Tooltip khi hover */}
-              <div className="absolute right-full top-1/2 -translate-y-1/2 mr-3 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+              <div className="absolute right-full top-1/2 -translate-y-1/2 mr-3 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap hidden sm:block">
                 <div className="rounded-lg bg-slate-900/90 text-white text-xs font-semibold px-3 py-1.5 shadow-lg backdrop-blur-sm flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                   <span>Trợ lý AI tư vấn 24/7</span>
@@ -357,15 +363,15 @@ export default function PublicLayout() {
             <div className="relative group">
               <button
                 type="button"
-                onClick={() => setIsRequestModalOpen(true)}
-                className="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-[#1f4fb2] to-[#00a859] text-white shadow-xl shadow-blue-500/30 transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer"
+                onClick={handleOpenRequestModal}
+                className="relative flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-gradient-to-r from-[#1f4fb2] to-[#00a859] text-white shadow-xl shadow-blue-500/30 transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer"
                 title="Tạo yêu cầu lịch hẹn"
               >
-                <CalendarCheck className="w-7 h-7" />
+                <CalendarCheck className="w-6 h-6 sm:w-7 sm:h-7" />
               </button>
 
               {/* Tooltip khi hover */}
-              <div className="absolute right-full top-1/2 -translate-y-1/2 mr-3 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+              <div className="absolute right-full top-1/2 -translate-y-1/2 mr-3 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap hidden sm:block">
                 <div className="rounded-lg bg-slate-900/90 text-white text-xs font-semibold px-3 py-1.5 shadow-lg backdrop-blur-sm flex items-center gap-1.5">
                   <CalendarCheck className="w-3.5 h-3.5 text-emerald-300" />
                   <span>Tạo yêu cầu lịch hẹn</span>

@@ -190,17 +190,15 @@ export default function EditEmployeeModal({ isOpen, onClose, onSuccess, employee
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-300 ${
-          active ? 'opacity-100' : 'opacity-0'
-        }`}
+        className={`fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-300 ${active ? 'opacity-100' : 'opacity-0'
+          }`}
         onClick={!loading ? onClose : undefined}
       />
 
       {/* Modal Content */}
       <div
-        className={`relative w-full max-w-4xl rounded-lg bg-white shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh] transition-all duration-300 ease-out transform ${
-          active ? 'scale-100 opacity-100 translate-y-0' : 'scale-95 opacity-0 -translate-y-3'
-        }`}
+        className={`relative w-full max-w-4xl rounded-lg bg-white shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh] transition-all duration-300 ease-out transform ${active ? 'scale-100 opacity-100 translate-y-0' : 'scale-95 opacity-0 -translate-y-3'
+          }`}
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-white z-10">

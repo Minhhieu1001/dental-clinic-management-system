@@ -148,7 +148,7 @@ export default function Chatbot({ isOpen, onClose }) {
                         damping: 24,
                         stiffness: 320
                     }}
-                    className="fixed bottom-4 sm:bottom-6 right-4 sm:right-6 z-50 w-[92vw] sm:w-[400px] h-[550px] max-h-[85vh] flex flex-col rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden"
+                    className="fixed inset-x-2.5 bottom-2.5 sm:inset-x-auto sm:bottom-6 sm:right-6 z-50 w-auto sm:w-[400px] max-w-[calc(100vw-20px)] h-[520px] max-h-[85vh] flex flex-col rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden"
                 >
                     {/* Header */}
                     <div className="flex items-center justify-between px-4 py-3.5 bg-gradient-to-r from-[#1f4fb2] to-[#00a859] text-white shadow-sm select-none">

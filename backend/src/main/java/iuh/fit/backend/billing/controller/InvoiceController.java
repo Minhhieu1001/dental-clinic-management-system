@@ -27,9 +27,10 @@ public class InvoiceController {
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer month,
             @RequestParam(required = false) PaymentStatus status,
-            @RequestParam(required = false) String search
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String branchId
     ) {
-        InvoiceListResponse result = invoiceService.getAllInvoiceDateDesc(year, month, status, search);
+        InvoiceListResponse result = invoiceService.getAllInvoiceDateDesc(year, month, status, search, branchId);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách hóa đơn thành công", result));
     }
 

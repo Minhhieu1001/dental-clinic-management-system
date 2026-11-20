@@ -142,6 +142,12 @@ SET branch_id = 'branch-hn-01'
 WHERE id = 'b1111111-1111-1111-1111-111111111111'::uuid
   AND branch_id IS NULL;
 
+-- Tự động sửa các bản ghi employee trong DB đang bị full_name = NULL
+UPDATE employees e
+SET full_name = u.username
+FROM users u
+WHERE e.user_id = u.id AND (e.full_name IS NULL OR TRIM(e.full_name) = '');
+
 INSERT INTO patients (id, user_id, full_name, patient_code, nationality, hometown, job, phone_number, cccd, email, gender, date_of_birth, address, systemic_disease, allergies, current_medications, surgical_history, created_at, version)
 VALUES
   ('c1111111-1111-1111-1111-111111111111', '55555555-5555-5555-5555-555555555555', 'Tâm Thành Nguyễn', 'PA-839092', 'Việt Nam', 'Hà Nội', 'Kỹ sư', '0343632524', '001088000001', 'tamthanh@patient.clinic.vn', 'MALE', TIMESTAMP '1990-04-10 00:00:00', '328 Phố Huế, Hà Nội', 'Không', 'Không', 'Không', 'Không', NOW(), 0),

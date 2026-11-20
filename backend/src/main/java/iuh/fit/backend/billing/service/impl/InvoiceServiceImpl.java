@@ -61,18 +61,23 @@ public class InvoiceServiceImpl implements InvoiceService {
 
     @Override
     @Transactional(readOnly = true)
-    public InvoiceListResponse getAllInvoiceDateDesc(Integer year, Integer month, PaymentStatus status, String search) {
+    public InvoiceListResponse getAllInvoiceDateDesc(Integer year, Integer month, PaymentStatus status, String search,
+            String branchId) {
         String keyword = search != null ? search.trim() : "";
+        String cleanBranchId = (branchId != null && !branchId.trim().isEmpty()
+                && !branchId.trim().equalsIgnoreCase("ALL"))
+                        ? branchId.trim()
+                        : null;
 
         List<InvoiceResponse> invoices = invoiceRepository
-                .findAllByFilterOrderByInvoiceDateDesc(year, month, status, keyword)
+                .findAllByFilterOrderByInvoiceDateDesc(year, month, status, keyword, cleanBranchId)
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
 
         return InvoiceListResponse.builder()
                 .invoices(invoices)
-                .summary(invoiceRepository.summarizeByYearAndMonth(year, month))
+                .summary(invoiceRepository.summarizeByYearAndMonth(year, month, cleanBranchId))
                 .build();
     }
 
@@ -244,8 +249,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         LocalDateTime paymentTime = LocalDateTime.now();
         Branch branch = resolveBranch(
                 request.getBranchId(),
-                invoice.getBranch() != null ? invoice.getBranch() : (employee != null ? employee.getBranch() : null)
-        );
+                invoice.getBranch() != null ? invoice.getBranch() : (employee != null ? employee.getBranch() : null));
 
         PaymentTransactions tx = PaymentTransactions.builder()
                 .branch(branch)
