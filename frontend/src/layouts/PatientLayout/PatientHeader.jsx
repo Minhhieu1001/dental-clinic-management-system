@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   Home,
   PhoneCall,
+  MessageSquare,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
@@ -31,6 +32,8 @@ const navItems = [
   { label: 'Đơn thuốc', to: '/patient/prescriptions', icon: Pill },
   { label: 'Hóa đơn', to: '/patient/invoices', icon: Receipt },
   { label: 'Thông báo', to: '/patient/notifications', icon: Bell },
+  { label: 'Tư vấn', to: '/patient/consultation', icon: MessageSquare },
+  { label: 'Tin tức', to: '/patient/notifications', icon: Newspaper },
 ];
 
 export default function PatientHeader({ config }) {

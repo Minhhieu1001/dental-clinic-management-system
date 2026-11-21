@@ -284,6 +284,7 @@ export default function EmployeeManagement() {
         };
       });
 
+      if (!USE_MOCK_DATA) await fetchData(false);
       toast.success(isLocked ? 'Đã mở khóa tài khoản' : 'Đã khóa tài khoản');
     } catch (err) {
       console.error(err);
@@ -684,8 +685,8 @@ export default function EmployeeManagement() {
       <AddEmployeeModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        onSuccess={() => {
-          fetchData(false);
+        onSuccess={async () => {
+          await fetchData(false);
           setIsAddModalOpen(false);
         }}
       />
@@ -696,8 +697,8 @@ export default function EmployeeManagement() {
           setIsEditModalOpen(false);
           setEditEmployee(null);
         }}
-        onSuccess={() => {
-          fetchData(false);
+        onSuccess={async () => {
+          await fetchData(false);
           setIsEditModalOpen(false);
         }}
         employee={editEmployee}

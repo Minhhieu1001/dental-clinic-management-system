@@ -29,6 +29,7 @@ import {
   Building,
   SlidersHorizontal,
   Calculator,
+  MessageSquare,
   X,
   Menu,
 } from 'lucide-react';
@@ -47,6 +48,7 @@ const getTabIcon = (to, label, customIcon) => {
   if (key.includes('medicine') || key.includes('prescription') || lbl.includes('thuốc')) return Pill;
   if (key.includes('xray') || lbl.includes('x-quang')) return ImageIcon;
   if (key.includes('patient') || lbl.includes('bệnh nhân')) return Users;
+  if (key.includes('consultation') || lbl.includes('tư vấn')) return MessageSquare;
   if (key.includes('customer-care') || key.includes('care') || lbl.includes('chăm sóc')) return HeartHandshake;
   if (key.includes('notification') || lbl.includes('thông báo')) return Bell;
   if (key.includes('invoice-lookup') || lbl.includes('tra cứu hóa đơn') || lbl.includes('tra cứu')) return FileSearch;

@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { getAppointmentRequestToday } from '../services/appointmentRequest.service';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { getAppointmentRequestsByDate } from '../services/appointmentRequest.service';
 import { getAppointmentsByDay, getAppointmentsByWeek } from '../services/appointment.service';
 import { useWebSocket } from './useWebSocket';
 
@@ -19,6 +19,44 @@ export function useReceptionistDashboard() {
   });
   const [appointments, setAppointments] = useState([]);
   const [requests, setRequests] = useState([]);
+  const [requestDate, setRequestDate] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  });
+  const [requestsLoading, setRequestsLoading] = useState(false);
+  const [requestsError, setRequestsError] = useState(null);
+  const requestSequence = useRef(0);
+
+  const changeRequestDate = useCallback((date) => {
+    if (!date) return;
+    ++requestSequence.current;
+    setRequests([]);
+    setRequestsError(null);
+    setRequestsLoading(true);
+    setRequestDate(date);
+  }, []);
+
+  const refreshRequests = useCallback(async () => {
+    const sequence = ++requestSequence.current;
+    setRequestsLoading(true);
+    setRequestsError(null);
+    try {
+      const data = await getAppointmentRequestsByDate(requestDate);
+      if (sequence === requestSequence.current) setRequests(Array.isArray(data) ? data : []);
+    } catch (error) {
+      if (sequence === requestSequence.current) {
+        setRequests([]);
+        setRequestsError(error);
+      }
+    } finally {
+      if (sequence === requestSequence.current) setRequestsLoading(false);
+    }
+  }, [requestDate]);
+
+  useEffect(() => {
+    refreshRequests();
+    return () => { ++requestSequence.current; };
+  }, [refreshRequests]);
 
   const formatAppointment = (dto) => {
     let timeStr = '09:00';
@@ -86,17 +124,14 @@ export function useReceptionistDashboard() {
       const date = String(now.getDate()).padStart(2, '0');
       const todayStr = `${year}-${month}-${date}`;
 
-      const [requestsRes, weekAppointmentsRes, dayAppointmentsRes] = await Promise.allSettled([
-        getAppointmentRequestToday(),
+      const [weekAppointmentsRes, dayAppointmentsRes] = await Promise.allSettled([
         getAppointmentsByWeek(todayStr),
         getAppointmentsByDay(todayStr),
       ]);
 
-      const requestsData = requestsRes.status === 'fulfilled' && Array.isArray(requestsRes.value) ? requestsRes.value : [];
       const weekData = weekAppointmentsRes.status === 'fulfilled' && Array.isArray(weekAppointmentsRes.value) ? weekAppointmentsRes.value : [];
       const dayData = dayAppointmentsRes.status === 'fulfilled' && Array.isArray(dayAppointmentsRes.value) ? dayAppointmentsRes.value : [];
 
-      setRequests(requestsData);
 
       // Gộp các lịch hẹn tuần & ngày của chi nhánh
       const mapById = new Map();
@@ -222,12 +257,11 @@ export function useReceptionistDashboard() {
   }, [updateAppointmentInState]);
 
   const handleRealtimeRequest = useCallback((newReq) => {
-    if (!newReq || !newReq.id) return;
-    setRequests((prev) => {
-      if (prev.some((r) => r.id === newReq.id)) return prev;
-      return [newReq, ...prev];
-    });
-  }, []);
+    if (newReq?.id) refreshRequests();
+  }, [refreshRequests]);
+
+  const refetch = useCallback(() => Promise.all([fetchDashboardData(), refreshRequests()]),
+    [fetchDashboardData, refreshRequests]);
 
   useWebSocket(handleRealtimeAppointment, null, handleRealtimeRequest);
 
@@ -237,7 +271,12 @@ export function useReceptionistDashboard() {
     requests,
     loading,
     error,
-    refetch: fetchDashboardData,
+    refetch,
+    requestDate,
+    changeRequestDate,
+    requestsLoading,
+    requestsError,
+    refreshRequests,
     updateAppointmentInState,
   };
 }

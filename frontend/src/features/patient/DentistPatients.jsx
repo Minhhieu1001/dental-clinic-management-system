@@ -75,6 +75,9 @@ export default function DentistPatients() {
           currentMedications: p.currentMedications || '',
           surgicalHistory: p.surgicalHistory || '',
           notes: p.notes || p.systemicDisease || p.allergies || '',
+          contactName: p.contactName || '',
+          contactPhone: p.contactPhone || '',
+          contactRelationship: p.contactRelationship || '',
         }));
         setPatients(formatted);
       }

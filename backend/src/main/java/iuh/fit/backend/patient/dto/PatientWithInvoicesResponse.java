@@ -22,6 +22,9 @@ public class PatientWithInvoicesResponse {
     private String fullName;
     private String phone;
     private String email;
+    private String contactName;
+    private String contactPhone;
+    private String contactRelationship;
     private Gender gender;
     private LocalDateTime dateOfBirth;
     private String address;

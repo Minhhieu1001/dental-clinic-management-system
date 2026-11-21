@@ -19,6 +19,9 @@ public class PatientCreateDTO {
     private String nationality;
     private String hometown;
     private String job;
+    private String contactName;
+    private String contactPhone;
+    private String contactRelationship;
     private Gender gender;
     private LocalDateTime dateOfBirth;
     private String address;

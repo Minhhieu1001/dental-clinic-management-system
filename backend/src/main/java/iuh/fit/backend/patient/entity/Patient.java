@@ -6,6 +6,8 @@ import iuh.fit.backend.appointment.entity.AppointmentRequest;
 import iuh.fit.backend.appointment.entity.Appointment;
 import iuh.fit.backend.billing.entity.Invoice;
 import iuh.fit.backend.billing.entity.PaymentTransactions;
+import iuh.fit.backend.customercare.entity.ChatMessage;
+import iuh.fit.backend.customercare.entity.ChatRoom;
 import iuh.fit.backend.medicalrecord.entity.MedicalRecord;
 import iuh.fit.backend.patient.enums.Gender;
 import iuh.fit.backend.inforclinic.entity.Branch;
@@ -55,6 +57,15 @@ public class Patient {
 
     @Column(length = 255)
     private String hometown;
+
+    @Column(length = 255)
+    private String contactName;
+
+    @Column(length = 50)
+    private String contactPhone;
+
+    @Column(length = 100)
+    private String contactRelationship;
 
     @Column(length = 255)
     private String job;
@@ -120,6 +131,18 @@ public class Patient {
     @Builder.Default
     @OneToMany(mappedBy = "patient", fetch = FetchType.LAZY)
     private List<CareStrategy> careStrategies = new ArrayList<>();
+
+
+    @JsonIgnore
+    @Builder.Default
+    @OneToMany(mappedBy = "patient", fetch = FetchType.LAZY)
+    private List<ChatRoom> chatRooms = new ArrayList<>();
+
+    @JsonIgnore
+    @Builder.Default
+    @OneToMany(mappedBy = "senderPatient", fetch = FetchType.LAZY)
+    private List<ChatMessage> sentChatMessages = new ArrayList<>();
+
 
     @Version
     @Builder.Default

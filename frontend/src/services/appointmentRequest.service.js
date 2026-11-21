@@ -1,5 +1,10 @@
 import api from './axios';
 
+export const getAppointmentRequestsByDate = async (date) => {
+    const response = await api.get('/appointmentrequest/by-date', { params: { date } });
+    return response.data;
+};
+
 export const getTodayPendingAppointmentRequests = async () => {
     const response = await api.get('/appointmentrequest/today/pending');
     return response.data;
