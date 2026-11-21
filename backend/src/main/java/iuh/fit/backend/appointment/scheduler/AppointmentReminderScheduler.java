@@ -166,13 +166,13 @@ public class AppointmentReminderScheduler {
         if (apt.getDentist() != null && apt.getDentist().getUser() != null) {
             User docUser = apt.getDentist().getUser();
             String notifTitle = "1HOUR".equalsIgnoreCase(type) ? "Nhắc lịch hẹn khám sắp diễn ra (1h)" : "Nhắc lịch hẹn khám ngày mai";
-            String notifContent = "Lịch tái khám của bệnh nhân " + apt.getPatientName() + " (" + timeStr + ") sắp diễn ra.";
+            String notifContent = "Lịch khám của bệnh nhân " + apt.getPatientName() + " (" + timeStr + ") sắp diễn ra.";
 
             Notification notif = Notification.builder()
                     .user(docUser)
                     .title(notifTitle)
                     .content(notifContent)
-                    .type(NotificationType.PATIENT_CHECKIN)
+                    .type(NotificationType.FOLLOW_UP)
                     .targetUrl("/dentist/appointments")
                     .isRead(false)
                     .build();
@@ -244,7 +244,7 @@ public class AppointmentReminderScheduler {
                     .user(docUser)
                     .title(notifTitle)
                     .content(notifContent)
-                    .type(NotificationType.PATIENT_CHECKIN)
+                    .type(NotificationType.FOLLOW_UP)
                     .targetUrl("/dentist/follow-up")
                     .isRead(false)
                     .build();

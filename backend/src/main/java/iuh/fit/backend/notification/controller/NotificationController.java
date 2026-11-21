@@ -90,6 +90,14 @@ public class NotificationController {
         return ResponseEntity.ok().build();
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteNotification(@PathVariable UUID id) {
+        if (notificationRepo.existsById(id)) {
+            notificationRepo.deleteById(id);
+        }
+        return ResponseEntity.noContent().build();
+    }
+
     private NotificationResponseDTO mapToDTO(Notification n) {
         return NotificationResponseDTO.builder()
                 .id(n.getId())

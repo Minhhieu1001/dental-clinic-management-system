@@ -9,6 +9,7 @@ import {
   Pill,
   Receipt,
   Newspaper,
+  Bell,
   LogOut,
   Mail,
   User,
@@ -29,7 +30,7 @@ const navItems = [
   { label: 'Hồ sơ bệnh án', to: '/patient/medical-records', icon: FileText },
   { label: 'Đơn thuốc', to: '/patient/prescriptions', icon: Pill },
   { label: 'Hóa đơn', to: '/patient/invoices', icon: Receipt },
-  { label: 'Tin tức', to: '/patient/notifications', icon: Newspaper },
+  { label: 'Thông báo', to: '/patient/notifications', icon: Bell },
 ];
 
 export default function PatientHeader({ config }) {

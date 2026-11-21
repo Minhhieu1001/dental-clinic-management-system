@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom'
 import Header from './Header.jsx'
 import TabBar from './TabBar.jsx'
+import ErrorBoundary from './ErrorBoundary.jsx'
 
 export default function RoleShell({ config, CustomHeader }) {
   return (
@@ -18,8 +19,11 @@ export default function RoleShell({ config, CustomHeader }) {
       )}
 
       <main className="w-full px-1.5 py-1.5 sm:px-2 sm:py-2 lg:px-2.5 lg:py-2">
-        <Outlet />
+        <ErrorBoundary>
+          <Outlet />
+        </ErrorBoundary>
       </main>
     </div>
   )
 }
+

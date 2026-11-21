@@ -34,6 +34,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     List<User> findByRoleAndStatus(Role role, StatusUser status);
     List<User> findByRoleAndStatusAndEmployee_Branch_BranchId(Role role, StatusUser status, String branchId);
     Optional<User> findByPhone(String phone);
+    List<User> findAllByUsername(String username);
     Optional<User> findByUsername(String username);
     Optional<User> findByCodeName(String codeName);
     boolean existsByCodeName(String codeName);

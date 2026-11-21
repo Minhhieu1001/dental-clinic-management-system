@@ -89,7 +89,7 @@ export default function AppointmentTable({
       time: timeStr,
       service: apt.service || apt.reason || 'Tư vấn nha khoa',
       dentist: apt.dentist || apt.dentistName || 'Bác sĩ điều trị',
-      roomName: formatRoomDisplay(apt.roomName || apt.room || apt.roomNumber || 'Phòng 101'),
+      roomName: formatRoomDisplay(apt.roomName || apt.room || apt.roomNumber),
     });
     setIsDetailOpen(true);
   };
@@ -491,7 +491,7 @@ export default function AppointmentTable({
                       {/* Room */}
                       <td className="w-[115px] py-3 whitespace-nowrap text-center">
                         <span className="inline-flex items-center justify-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 border border-slate-200">
-                          {formatRoomDisplay(apt.roomName || apt.room || apt.roomNumber || 'Phòng 101')}
+                          {formatRoomDisplay(apt.roomName || apt.room || apt.roomNumber)}
                         </span>
                       </td>
 

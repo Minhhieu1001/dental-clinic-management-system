@@ -7,6 +7,20 @@
 -- Dọn dẹp ràng buộc khóa ngoại không tương thích kiểu dữ liệu nếu có
 ALTER TABLE IF EXISTS invoice_details DROP CONSTRAINT IF EXISTS fk6olubg9il8wjve6h3dql5wpi;
 
+-- Cập nhật check constraint promotion_type cho promotions
+ALTER TABLE IF EXISTS promotions DROP CONSTRAINT IF EXISTS promotions_promotion_type_check;
+ALTER TABLE IF EXISTS promotions ADD CONSTRAINT promotions_promotion_type_check
+    CHECK (promotion_type IS NULL OR promotion_type IN ('VOUCHER', 'EVENT', 'DISCOUNT_PERCENT', 'FIXED_AMOUNT'));
+
+-- Xử lý trùng lặp username Admin/admin trong database cũ bằng cách đổi tên thay vì xoá để tránh lỗi khóa ngoại
+UPDATE users 
+SET username = 'admin_' || SUBSTRING(id::text FROM 1 FOR 8)
+WHERE username IN ('Admin', 'admin') 
+  AND id != '11111111-1111-1111-1111-111111111111'::uuid;
+
+
+
+
 -- Tự động bổ sung cột version cho Optimistic Locking
 ALTER TABLE patients ADD COLUMN IF NOT EXISTS version BIGINT DEFAULT 0;
 ALTER TABLE appointments ADD COLUMN IF NOT EXISTS version BIGINT DEFAULT 0;

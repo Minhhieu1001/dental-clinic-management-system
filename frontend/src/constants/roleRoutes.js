@@ -154,7 +154,7 @@ export const roleRoutes = {
       { path: 'medical-records', title: 'Hồ sơ bệnh án cá nhân' },
       { path: 'prescriptions', title: 'Đơn thuốc của tôi' },
       { path: 'invoices', title: 'Hóa đơn của tôi' },
-      { path: 'notifications', title: 'Tin tức' },
+      { path: 'notifications', title: 'Thông báo & Nhắc lịch' },
       { path: 'profile', title: 'Thông tin tài khoản' },
     ],
   },

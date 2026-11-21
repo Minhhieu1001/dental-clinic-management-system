@@ -289,7 +289,7 @@ public class AppointmentServiceImpl implements AppointmentService {
                         .title("Lịch hẹn mới được xếp")
                         .content("Lịch khám của bệnh nhân " + appointment.getPatientName() + " ("
                                 + appointment.getPhone() + ") đã được tạo cho bác sĩ " + doctorNameStr + ".")
-                        .type(NotificationType.PATIENT_CHECKIN)
+                        .type(NotificationType.STATUS_CHANGE)
                         .targetUrl(targetUrl)
                         .isRead(false)
                         .build();
@@ -335,7 +335,7 @@ public class AppointmentServiceImpl implements AppointmentService {
                         .sender(creatorUser)
                         .title("Đặt lịch khám thành công")
                         .content("Bạn đã đặt lịch khám (" + serviceStr + ") vào lúc " + timeStr + " ngày " + dateStr + " tại " + branchStr + ".")
-                        .type(NotificationType.PATIENT_CHECKIN)
+                        .type(NotificationType.STATUS_CHANGE)
                         .targetUrl("/patient/appointments")
                         .isRead(false)
                         .build();

@@ -1256,7 +1256,7 @@ export default function PatientAppointments() {
                             {dt.time}
                           </span>
                           <span className="text-[11px] text-slate-500 font-medium truncate">
-                            {apt.roomName || 'Phòng khám tổng quát'}
+                            {apt.roomName || 'Chưa xếp phòng'}
                           </span>
                         </div>
 
@@ -1601,7 +1601,7 @@ export default function PatientAppointments() {
                   </span>
                   <div className="min-w-0">
                     <p className="font-bold text-slate-900 text-xs truncate" title={selectedAppointment.roomName}>
-                      {selectedAppointment.roomName || 'Phòng khám tổng quát'}
+                      {selectedAppointment.roomName || 'Chưa xếp phòng'}
                     </p>
                     <p className="text-[10px] text-slate-500 font-medium truncate" title={selectedAppointment.branchName}>
                       {selectedAppointment.branchName}
