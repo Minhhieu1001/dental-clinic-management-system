@@ -25,7 +25,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { getBranches } from '../../services/clinic.service';
 import { getDentistsList } from '../../services/dentist.service';
-import { getServices } from '../../services/service.service';
+import { APPOINTMENT_REASONS } from '../../constants/appointmentReasons';
 import {
   createAppointment,
   updateAppointment,
@@ -230,34 +230,23 @@ export default function CreateAppointmentModal({
 
     const initData = async () => {
       try {
-        // 0. Fetch real services from Database
+        // 0. Sử dụng danh mục lý do khám tĩnh chuẩn (APPOINTMENT_REASONS)
         setLoadingServices(true);
-        let fetchedServices = [];
-        try {
-          const rawServices = await getServices();
-          const sList = Array.isArray(rawServices) ? rawServices : rawServices?.data || [];
-          if (sList.length > 0) {
-            fetchedServices = sList
-              .filter((s) => s.isActive !== false)
-              .map((s) => ({
-                id: s.id,
-                serviceCode: s.serviceCode,
-                serviceName: s.serviceName,
-                category: s.category || 'KHAM_DIEU_TRI',
-                categoryLabel: getCategoryLabel(s.category),
-                price: Number(s.price || 0),
-                discountedPrice: s.discountedPrice ? Number(s.discountedPrice) : null,
-                estimatedDuration: s.estimatedDuration || 30,
-                description: s.description || 'Dịch vụ khám & điều trị chuyên sâu',
-                imageUrl: s.imageUrl || '',
-                iconType: getIconTypeByCategory(s.category),
-              }));
-          }
-        } catch (sErr) {
-          console.warn('Lỗi tải danh sách dịch vụ từ DB:', sErr);
-        }
+        const mappedReasons = APPOINTMENT_REASONS.map((r) => ({
+          id: r.id,
+          serviceCode: r.id,
+          serviceName: r.reasonName,
+          category: r.category || 'KHAM_DIEU_TRI',
+          categoryLabel: getCategoryLabel(r.category),
+          price: 0,
+          discountedPrice: null,
+          estimatedDuration: r.estimatedDuration || 30,
+          description: r.description || 'Lý do khám và tư vấn điều trị',
+          imageUrl: '',
+          iconType: getIconTypeByCategory(r.category),
+        }));
 
-        setServices(fetchedServices);
+        setServices(mappedReasons);
         setLoadingServices(false);
 
         // 1. Fetch Branches directly from DB
@@ -945,7 +934,7 @@ export default function CreateAppointmentModal({
                 <div className="flex items-center justify-between pb-1.5 border-b border-slate-200">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
                     <FileText size={14} className="text-teal-700" />
-                    Dịch vụ / Lý do khám bệnh <span className="text-rose-500">*</span>
+                    Lý do khám bệnh <span className="text-rose-500">*</span>
                   </h3>
                   <span className="text-[11px] text-teal-800 font-semibold bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
                     Đã chọn: {selectedService?.serviceName || 'Chưa chọn'}
