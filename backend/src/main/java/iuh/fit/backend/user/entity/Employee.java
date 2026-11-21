@@ -7,6 +7,7 @@ import iuh.fit.backend.appointment.entity.AppointmentRequest;
 import iuh.fit.backend.appointment.entity.Shift;
 import iuh.fit.backend.billing.entity.Invoice;
 import iuh.fit.backend.billing.entity.PaymentTransactions;
+import iuh.fit.backend.customercare.entity.ChatMessage;
 import iuh.fit.backend.inforclinic.entity.Branch;
 import iuh.fit.backend.user.enums.Position;
 import iuh.fit.backend.inventory.entity.InventoryTransaction;
@@ -89,4 +90,10 @@ public class Employee {
     @Builder.Default
     @OneToMany(mappedBy = "employee", fetch = FetchType.LAZY)
     private List<CareStrategy> careStrategies = new ArrayList<>();
+
+    @JsonIgnore
+    @Builder.Default
+    @OneToMany(mappedBy = "senderEmployee", fetch = FetchType.LAZY)
+    private List<ChatMessage> sentChatMessages = new ArrayList<>();
+
 }

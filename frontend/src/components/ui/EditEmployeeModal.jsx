@@ -176,7 +176,7 @@ export default function EditEmployeeModal({ isOpen, onClose, onSuccess, employee
       await updateEmployee(employee.id, employeeRequest);
 
       toast.success('Cập nhật nhân viên thành công!');
-      onSuccess();
+      await onSuccess?.();
       onClose();
     } catch (err) {
       console.error(err);

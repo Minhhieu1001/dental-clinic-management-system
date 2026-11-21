@@ -61,6 +61,7 @@ import EmployeeBilling from '../features/billing/employee/EmployeeBilling.jsx'
 import InvoiceLookup from '../features/billing/employee/InvoiceLookup.jsx'
 import CustomerCare from '../features/customer-care/employee/CustomerCare.jsx'
 import CustomerCareDetail from '../features/customer-care/employee/action/CustomerCareDetail.jsx'
+import Consultation from '../features/chat/employee/Consultation.jsx'
 import EmployeeInventory from '../features/prescriptions/EmployeeInventory.jsx'
 import ShiftClosing from '../features/shift-closing/ShiftClosing.jsx'
 import EmployeeReport from '../features/report/EmployeeReport.jsx'
@@ -72,6 +73,7 @@ import PatientDashboard from '../features/dashboard/patient/PatientDashboard.jsx
 import PatientAppointments from '../features/appointment/PatientAppointments.jsx'
 import PatientMedicalRecords from '../features/medical-record/patient/PatientMedicalRecords.jsx'
 import PatientPrescriptions from '../features/prescriptions/dentist/PatientPrescriptions.jsx'
+import PatientChatPage from '../features/chat/patient/PatientChatPage.jsx'
 import PatientInvoices from '../features/billing/patient/PatientInvoices.jsx'
 import PatientNotifications from '../features/notification/PatientNotifications.jsx'
 import PatientProfile from '../features/user/PatientProfile.jsx'
@@ -160,6 +162,7 @@ export default function AppRouter() {
             <Route path="invoice-lookup" element={<InvoiceLookup />} />
             <Route path="customer-care" element={<CustomerCare />} />
             <Route path="customer-care/:id" element={<CustomerCareDetail />} />
+            <Route path="consultation" element={<Consultation />} />
             <Route path="inventory" element={<EmployeeInventory />} />
             <Route path="shift-closing" element={<ShiftClosing />} />
             <Route path="import-export" element={<ShiftClosing />} />
@@ -180,6 +183,7 @@ export default function AppRouter() {
             <Route path="prescriptions" element={<PatientPrescriptions />} />
             <Route path="invoices" element={<PatientInvoices />} />
             <Route path="notifications" element={<PatientNotifications />} />
+            <Route path="consultation" element={<PatientChatPage />} />
             <Route path="profile" element={<PatientProfile />} />
           </Route>
         </Route>

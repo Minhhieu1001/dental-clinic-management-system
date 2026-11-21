@@ -48,7 +48,10 @@ const EMPTY_PATIENT = {
   surgicalHistory: '',
   createdAt: null,
   patientInsurances: [],
-  // Người liên hệ khẩn cấp mặc định chuỗi rỗng (bổ sung thuộc tính BE sau)
+  contactName: '',
+  contactPhone: '',
+  contactRelationship: '',
+  // Người liên hệ khẩn cấp mặc định chuỗi rỗng
   emergencyContact: {
     fullName: '',
     relationship: '',
@@ -111,10 +114,13 @@ export default function InforPatient() {
           surgicalHistory: res.surgicalHistory || '',
           createdAt: res.createdAt || null,
           patientInsurances: Array.isArray(res.patientInsurances) ? res.patientInsurances : [],
+          contactName: res.contactName || '',
+          contactPhone: res.contactPhone || '',
+          contactRelationship: res.contactRelationship || '',
           emergencyContact: {
-            fullName: res.emergencyContact?.fullName || '',
-            relationship: res.emergencyContact?.relationship || '',
-            phoneNumber: res.emergencyContact?.phoneNumber || ''
+            fullName: res.contactName || res.emergencyContact?.fullName || '',
+            relationship: res.contactRelationship || res.emergencyContact?.relationship || '',
+            phoneNumber: res.contactPhone || res.emergencyContact?.phoneNumber || ''
           },
           stats: {
             totalVisits: res.stats?.totalVisits ?? 0,
@@ -236,7 +242,10 @@ export default function InforPatient() {
           systemicDisease: formData.systemicDisease?.trim() || null,
           allergies: formData.allergies?.trim() || null,
           currentMedications: formData.currentMedications?.trim() || null,
-          surgicalHistory: formData.surgicalHistory?.trim() || null
+          surgicalHistory: formData.surgicalHistory?.trim() || null,
+          contactName: (formData.emergencyContact?.fullName || formData.contactName)?.trim() || null,
+          contactPhone: (formData.emergencyContact?.phoneNumber || formData.contactPhone)?.trim() || null,
+          contactRelationship: (formData.emergencyContact?.relationship || formData.contactRelationship)?.trim() || null
         };
 
         const updated = await updatePatient(patientId, payload);
@@ -247,7 +256,14 @@ export default function InforPatient() {
             phone: updated.phone || updated.phoneNumber || phoneVal,
             phoneNumber: updated.phone || updated.phoneNumber || phoneVal,
             avatarUrl,
-            emergencyContact: formData.emergencyContact || patientData.emergencyContact
+            contactName: updated.contactName || formData.contactName || formData.emergencyContact?.fullName || '',
+            contactPhone: updated.contactPhone || formData.contactPhone || formData.emergencyContact?.phoneNumber || '',
+            contactRelationship: updated.contactRelationship || formData.contactRelationship || formData.emergencyContact?.relationship || '',
+            emergencyContact: {
+              fullName: updated.contactName || formData.emergencyContact?.fullName || '',
+              phoneNumber: updated.contactPhone || formData.emergencyContact?.phoneNumber || '',
+              relationship: updated.contactRelationship || formData.emergencyContact?.relationship || ''
+            }
           };
           setPatientData(merged);
           setFormData(merged);

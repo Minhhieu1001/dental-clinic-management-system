@@ -242,6 +242,7 @@ export default function DentistManagement() {
             setDentists(updatedDentists);
             setStats(calcStatsFromDentists(updatedDentists));
 
+            if (!USE_MOCK_DATA) await fetchData(false);
             toast.success(isLocked ? 'Mở khóa tài khoản thành công' : 'Khóa tài khoản thành công');
         } catch (err) {
             toast.error('Thao tác thất bại');
@@ -675,7 +676,7 @@ export default function DentistManagement() {
                         });
                         return;
                     }
-                    fetchData(false);
+                    return fetchData(false);
                 }}
                 dentist={editDentist}
             />

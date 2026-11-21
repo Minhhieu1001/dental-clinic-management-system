@@ -159,7 +159,15 @@ public class AppointmentRequestServiceImpl implements AppointmentRequestService 
 
     @Override
     public List<AppointmentResponseDTO> getAppointmentRequestsToday() {
-        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+        return getAppointmentRequestsByDate(LocalDate.now());
+    }
+
+    @Override
+    public List<AppointmentResponseDTO> getAppointmentRequestsByDate(LocalDate date) {
+        if (date == null) {
+            throw new IllegalArgumentException("Date is required");
+        }
+        LocalDateTime startOfDay = date.atStartOfDay();
         LocalDateTime startOfNextDay = startOfDay.plusDays(1);
 
         String branchId = getCurrentEmployeeBranchId();

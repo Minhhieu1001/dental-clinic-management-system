@@ -146,6 +146,20 @@ export default function PatientInfoTab({ selectedRecord }) {
                 <span>{selectedRecord?.address || 'Chưa cập nhật địa chỉ'}</span>
               </div>
             </div>
+
+            {/* Thông tin người liên hệ khẩn cấp */}
+            <div className="sm:col-span-2 pt-2 border-t border-slate-100">
+              <span className="text-slate-400 font-semibold block mb-1">Người liên hệ khẩn cấp:</span>
+              <div className="flex items-center gap-3 text-sm text-slate-900 font-medium flex-wrap">
+                <span className="font-bold">{selectedRecord?.contactName || 'Chưa cập nhật'}</span>
+                {selectedRecord?.contactRelationship && (
+                  <span className="text-slate-600">({selectedRecord.contactRelationship})</span>
+                )}
+                {selectedRecord?.contactPhone && (
+                  <span className="font-mono font-bold text-teal-800">SĐT: {selectedRecord.contactPhone}</span>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Khung Bác sĩ & Ngày mở hồ sơ */}

@@ -20,6 +20,9 @@ export const toPatientPayload = (formData, doctorId = null) => ({
   nationality: formData.nationality,
   hometown: formData.hometown,
   job: formData.job,
+  contactName: formData.contactName || null,
+  contactPhone: formData.contactPhone || null,
+  contactRelationship: formData.contactRelationship || null,
   systemicDisease: Array.isArray(formData.systemicDisease)
     ? formData.systemicDisease.join(', ')
     : formData.systemicDisease,

@@ -30,6 +30,9 @@ public class MedicalRecordDTO {
     private LocalDateTime patientDob;
     private String patientCccd;
     private String patientAddress;
+    private String contactName;
+    private String contactPhone;
+    private String contactRelationship;
     private String systemicDisease;
     private String allergies;
     private String currentMedications;

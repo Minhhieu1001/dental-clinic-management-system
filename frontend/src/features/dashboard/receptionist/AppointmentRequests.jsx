@@ -14,6 +14,8 @@ import {
   AlertTriangle,
   X,
   FileText,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
@@ -38,6 +40,10 @@ export default function AppointmentRequests({
   requests: propRequests,
   appointments: propAppointments,
   onRefresh,
+  requestDate,
+  onRequestDateChange,
+  requestsLoading = false,
+  requestsError = null,
 }) {
   const { user } = useAuth();
   const currentUserDisplayName = user?.fullName || user?.username || user?.email?.split('@')[0] || 'Lễ tân';
@@ -314,6 +320,54 @@ export default function AppointmentRequests({
     }
   };
 
+  const isLoading = loading || requestsLoading;
+
+  const todayStr = (() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  })();
+
+  const activeDate = requestDate || todayStr;
+  const isToday = activeDate === todayStr;
+
+  const handleDateChange = (newDate) => {
+    if (!newDate) return;
+    if (onRequestDateChange) {
+      onRequestDateChange(newDate);
+    }
+  };
+
+  const handlePrevDay = () => {
+    const d = new Date(activeDate);
+    d.setDate(d.getDate() - 1);
+    const prev = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    handleDateChange(prev);
+  };
+
+  const handleNextDay = () => {
+    const d = new Date(activeDate);
+    d.setDate(d.getDate() + 1);
+    const next = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    handleDateChange(next);
+  };
+
+  const handleSetToday = () => {
+    handleDateChange(todayStr);
+  };
+
+  const formatDisplayDateLabel = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+      return dateStr;
+    } catch {
+      return dateStr;
+    }
+  };
+
   const pendingCount = requestList.filter((r) => !r.isScheduled && r.status !== 'rejected').length;
   const scheduledCount = requestList.filter((r) => r.isScheduled).length;
 
@@ -328,7 +382,7 @@ export default function AppointmentRequests({
               <Calendar size={15} />
             </div>
             <h3 className="text-sm font-bold text-slate-800 tracking-tight">
-              Yêu cầu đặt lịch hôm nay
+              {isToday ? 'Yêu cầu đặt lịch hôm nay' : `Yêu cầu ngày ${formatDisplayDateLabel(activeDate)}`}
             </h3>
           </div>
           <div className="flex items-center gap-2">
@@ -338,13 +392,61 @@ export default function AppointmentRequests({
             <button
               type="button"
               onClick={handleRefreshClick}
-              disabled={loading}
+              disabled={isLoading}
               title="Làm mới danh sách"
               className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-white hover:text-slate-800 transition-colors border border-slate-200/80 disabled:opacity-50 shadow-2xs"
             >
-              <RefreshCw size={13} strokeWidth={2} className={loading ? 'animate-spin' : ''} />
+              <RefreshCw size={13} strokeWidth={2} className={isLoading ? 'animate-spin' : ''} />
             </button>
           </div>
+        </div>
+
+        {/* Row 2: Thanh lọc theo ngày (Date Filter Bar) */}
+        <div className="flex items-center justify-between gap-2 px-3.5 py-2 bg-white border-b border-slate-100">
+          <div className="flex items-center gap-1.5 flex-1 max-w-[240px]">
+            <button
+              type="button"
+              onClick={handlePrevDay}
+              disabled={isLoading}
+              title="Ngày trước"
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 border border-slate-200/80 transition-colors cursor-pointer shrink-0 disabled:opacity-40"
+            >
+              <ChevronLeft size={15} />
+            </button>
+
+            <div className="relative flex-1">
+              <input
+                type="date"
+                value={activeDate}
+                onChange={(e) => handleDateChange(e.target.value)}
+                disabled={isLoading}
+                className="w-full h-7 rounded-lg border border-slate-200 bg-slate-50/80 px-2 text-xs font-bold text-slate-700 outline-none focus:bg-white focus:border-teal-600 focus:ring-1 focus:ring-teal-500/20 transition-all cursor-pointer"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleNextDay}
+              disabled={isLoading}
+              title="Ngày tiếp theo"
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 border border-slate-200/80 transition-colors cursor-pointer shrink-0 disabled:opacity-40"
+            >
+              <ChevronRight size={15} />
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleSetToday}
+            disabled={isToday || isLoading}
+            className={`h-7 px-3 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              isToday
+                ? 'bg-teal-50 text-teal-800 border border-teal-200/80 font-extrabold cursor-default'
+                : 'bg-white hover:bg-teal-50 text-slate-600 hover:text-teal-700 border border-slate-200/80 active:scale-95 shadow-2xs'
+            }`}
+          >
+            Hôm nay
+          </button>
         </div>
 
         {/* Row 2: Balanced Counter Cards */}
@@ -367,7 +469,7 @@ export default function AppointmentRequests({
 
       {/* Scrollable Card List with Distinct Separation */}
       <div className="max-h-[460px] overflow-y-auto p-3 space-y-2.5 bg-slate-50/50">
-        {loading && requestList.length === 0 ? (
+        {isLoading ? (
           <div className="py-8 text-center text-xs font-medium text-slate-400">
             Đang tải dữ liệu yêu cầu đặt lịch...
           </div>
