@@ -183,7 +183,7 @@ export default function AppointmentDetail({
                 <span className="text-xs text-slate-500 font-semibold flex items-center gap-1">
                   <Building size={13} className="text-teal-700" /> Phòng khám
                 </span>
-                <p className="font-bold text-slate-900 text-sm mt-0.5">{appointment.roomName || 'Phòng 101'}</p>
+                <p className="font-bold text-slate-900 text-sm mt-0.5">{appointment.roomName || 'Chưa xếp phòng'}</p>
               </div>
             </div>
 

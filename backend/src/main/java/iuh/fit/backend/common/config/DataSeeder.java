@@ -22,8 +22,8 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        boolean exists = userRepository.findByUsername("Admin").isPresent()
-                || userRepository.findByUsername("admin").isPresent()
+        boolean exists = !userRepository.findAllByUsername("Admin").isEmpty()
+                || !userRepository.findAllByUsername("admin").isEmpty()
                 || userRepository.findByEmail("admin@dental.com").isPresent();
 
         if (!exists) {

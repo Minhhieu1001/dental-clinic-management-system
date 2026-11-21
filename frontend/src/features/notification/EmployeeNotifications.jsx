@@ -1,8 +1,12 @@
-﻿export default function EmployeeNotifications() {
+import React from 'react';
+import NotificationCenter from './NotificationCenter';
+
+export default function EmployeeNotifications() {
   return (
-    <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-      <h2 className="text-xl font-bold text-slate-800">EmployeeNotifications</h2>
-      <p className="mt-2 text-slate-500">Giao diá»‡n cá»§a tÃ­nh nÄƒng EmployeeNotifications sáº½ náº±m á»Ÿ Ä‘Ã¢y.</p>
-    </div>
+    <NotificationCenter
+      role="EMPLOYEE"
+      pageTitle="Thông báo nhân viên & Lễ tân"
+      pageDescription="Theo dõi diễn biến lịch hẹn, yêu cầu đặt lịch mới, tiếp nhận bệnh nhân và các thông báo vận hành phòng khám."
+    />
   );
 }

@@ -39,3 +39,12 @@ export const markAllNotificationsAsRead = async (userId) => {
     console.warn('Lỗi khi đánh dấu tất cả đã đọc:', err);
   }
 };
+
+export const deleteNotification = async (id) => {
+  if (!id) return;
+  try {
+    await api.delete(`/notifications/${id}`);
+  } catch (err) {
+    console.warn('Lỗi khi xóa thông báo:', err);
+  }
+};

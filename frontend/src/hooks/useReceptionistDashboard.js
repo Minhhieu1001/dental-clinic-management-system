@@ -83,9 +83,9 @@ export function useReceptionistDashboard() {
 
     // Generate call info string when status is CALLED
     const calledTimeStr = dto.updatedAt ? new Date(dto.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : timeStr;
-    const roomStr = dto.roomName || 'Phòng 101';
+    const roomStr = dto.roomName || null;
     const dentistStr = dto.dentistName ? (dto.dentistName.startsWith('BS.') ? dto.dentistName : `BS. ${dto.dentistName}`) : 'BS. Nguyễn Thị Phương';
-    const calledInfo = `${calledTimeStr} - ${dentistStr} - ${roomStr}`;
+    const calledInfo = roomStr ? `${calledTimeStr} - ${dentistStr} - ${roomStr}` : `${calledTimeStr} - ${dentistStr}`;
 
     return {
       id: dto.id,
