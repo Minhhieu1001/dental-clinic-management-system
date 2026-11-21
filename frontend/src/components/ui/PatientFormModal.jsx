@@ -50,6 +50,9 @@ export default function PatientFormModal({
     gender: 'MALE',
     dateOfBirth: '',
     address: '',
+    contactName: '',
+    contactPhone: '',
+    contactRelationship: '',
     systemicDisease: [],
     allergies: '',
     currentMedications: '',
@@ -71,6 +74,9 @@ export default function PatientFormModal({
         gender: patient.gender || 'MALE',
         dateOfBirth: patient.dateOfBirth ? patient.dateOfBirth.split('T')[0] : '',
         address: patient.address || '',
+        contactName: patient.contactName || '',
+        contactPhone: patient.contactPhone || '',
+        contactRelationship: patient.contactRelationship || '',
         systemicDisease: Array.isArray(patient.systemicDisease)
           ? patient.systemicDisease
           : typeof patient.systemicDisease === 'string'
@@ -93,6 +99,9 @@ export default function PatientFormModal({
         gender: 'MALE',
         dateOfBirth: '',
         address: '',
+        contactName: '',
+        contactPhone: '',
+        contactRelationship: '',
         systemicDisease: [],
         allergies: '',
         currentMedications: '',
@@ -347,6 +356,46 @@ export default function PatientFormModal({
                     placeholder="Nhập nghề nghiệp..."
                     className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
                   />
+                </div>
+              </div>
+
+              {/* Thông tin người liên hệ / Người thân khẩn cấp */}
+              <div className="mt-4 pt-4 border-t border-slate-200">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-teal-800 mb-3 flex items-center gap-1.5">
+                  <UserCheck size={14} className="text-teal-700" />
+                  Thông tin người liên hệ (Người thân / Khẩn cấp)
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Họ tên người liên hệ</label>
+                    <input
+                      type="text"
+                      value={formData.contactName}
+                      onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
+                      placeholder="VD: Nguyễn Văn B (Bố / Mẹ / Vợ)..."
+                      className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Số điện thoại người liên hệ</label>
+                    <input
+                      type="tel"
+                      value={formData.contactPhone}
+                      onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
+                      placeholder="VD: 0987654321"
+                      className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-mono font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Mối quan hệ</label>
+                    <input
+                      type="text"
+                      value={formData.contactRelationship}
+                      onChange={(e) => setFormData({ ...formData, contactRelationship: e.target.value })}
+                      placeholder="VD: Bố mẹ, Vợ chồng, Con..."
+                      className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

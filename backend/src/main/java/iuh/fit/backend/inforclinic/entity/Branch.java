@@ -5,6 +5,7 @@ import iuh.fit.backend.appointment.entity.AppointmentRequest;
 import iuh.fit.backend.appointment.entity.FollowUpAppointment;
 import iuh.fit.backend.billing.entity.Invoice;
 import iuh.fit.backend.billing.entity.PaymentTransactions;
+import iuh.fit.backend.customercare.entity.ChatRoom;
 import iuh.fit.backend.inforclinic.enums.BranchStatus;
 import iuh.fit.backend.medicalrecord.entity.ExaminationResult;
 import iuh.fit.backend.medicalrecord.entity.MedicalRecord;
@@ -108,5 +109,10 @@ public class Branch {
     @Builder.Default
     @OneToMany(mappedBy = "branch", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<ExaminationResult> examinationResults = new ArrayList<>();
+
+    @JsonIgnore
+    @Builder.Default
+    @OneToMany(mappedBy = "branch", fetch = FetchType.LAZY)
+    private List<ChatRoom> chatRooms = new ArrayList<>();
 
 }

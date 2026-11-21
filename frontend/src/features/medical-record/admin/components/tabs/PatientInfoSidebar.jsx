@@ -82,6 +82,30 @@ export default function PatientInfoSidebar({ selectedRecord }) {
                             {selectedRecord?.address || 'Chưa cập nhật'}
                         </span>
                     </div>
+
+                    {/* Thông tin người liên hệ / Người thân khẩn cấp */}
+                    <div className="pt-2 border-t border-teal-100 space-y-1 text-xs">
+                        <div className="flex items-center justify-between">
+                            <span className="text-slate-500 font-medium flex items-center gap-1">
+                                Người liên hệ:
+                            </span>
+                            <strong className="text-slate-900 font-bold">
+                                {selectedRecord?.contactName || 'Chưa cập nhật'}
+                            </strong>
+                        </div>
+                        {selectedRecord?.contactRelationship && (
+                            <div className="flex items-center justify-between">
+                                <span className="text-slate-500 font-medium">Mối quan hệ:</span>
+                                <span className="text-slate-800 font-semibold">{selectedRecord.contactRelationship}</span>
+                            </div>
+                        )}
+                        {selectedRecord?.contactPhone && (
+                            <div className="flex items-center justify-between">
+                                <span className="text-slate-500 font-medium">SĐT liên hệ:</span>
+                                <strong className="text-slate-900 font-bold font-mono">{selectedRecord.contactPhone}</strong>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 

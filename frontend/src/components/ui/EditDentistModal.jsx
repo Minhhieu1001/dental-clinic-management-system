@@ -827,7 +827,7 @@ export default function EditDentistModal({ isOpen, onClose, onSuccess, mockMode 
             });
 
             toast.success('Cập nhật thông tin thành công!');
-            onSuccess();
+            await onSuccess?.();
             onClose();
         } catch (err) {
             console.error(err);

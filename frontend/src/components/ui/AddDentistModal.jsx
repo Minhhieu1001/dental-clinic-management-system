@@ -810,7 +810,7 @@ export default function AddDentistModal({ isOpen, onClose, onSuccess, mockMode =
       await createDentist(payload);
 
       toast.success('Thêm bác sĩ thành công!');
-      onSuccess();
+      await onSuccess?.();
       onClose();
     } catch (err) {
       console.error(err);

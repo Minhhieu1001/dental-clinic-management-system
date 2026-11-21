@@ -131,7 +131,7 @@ export default function AddEmployeeModal({ isOpen, onClose, onSuccess }) {
       await createEmployee(employeeRequest);
 
       toast.success('Thêm nhân viên thành công!');
-      onSuccess();
+      await onSuccess?.();
       onClose();
     } catch (err) {
       console.error(err);

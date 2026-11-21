@@ -4,6 +4,7 @@ import iuh.fit.backend.appointment.dto.AppointmentRequestDTO;
 import iuh.fit.backend.appointment.dto.AppointmentResponseDTO;
 import iuh.fit.backend.appointment.enums.StatustAppointmentRequest;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -16,6 +17,8 @@ public interface AppointmentRequestService {
     AppointmentResponseDTO updateAppointmentRequestStatus(UUID id, StatustAppointmentRequest status);
 
     List<AppointmentResponseDTO> getAppointmentRequestsToday();
+
+    List<AppointmentResponseDTO> getAppointmentRequestsByDate(LocalDate date);
 
     List<AppointmentResponseDTO> getPendingAppointmentRequestsToday();
 

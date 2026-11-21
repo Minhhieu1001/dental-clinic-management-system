@@ -54,6 +54,14 @@ public class AppointmentRequestController {
         return appointmentRequestService.getAppointmentRequestsToday();
     }
 
+    @GetMapping("/by-date")
+    @PreAuthorize("hasRole('EMPLOYEE')")
+    public List<AppointmentResponseDTO> getAppointmentRequestsByDate(
+            @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+            java.time.LocalDate date) {
+        return appointmentRequestService.getAppointmentRequestsByDate(date);
+    }
+
     @GetMapping("/today/pending")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public List<AppointmentResponseDTO> getPendingAppointmentRequestsToday() {

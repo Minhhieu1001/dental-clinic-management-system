@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { NavLink, Outlet, Link } from 'react-router-dom'
-import { Bot, CalendarCheck, Sparkles, Phone, Calendar } from 'lucide-react'
+import { Bot, CalendarCheck, Sparkles, Phone, Calendar, User } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import AppointmentRequestModal from '../components/ui/AppointmentRequestModal'
 import Chatbot from '../features/ai/Chatbot'
+import { useAuth } from '../hooks/useAuth'
 
 const topLinks = [
   { label: 'Ưu đãi', to: '/promotions' },
@@ -26,6 +27,23 @@ const navItems = [
 export default function PublicLayout() {
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
   const [isChatOpen, setIsChatOpen] = useState(false)
+  const { user, isAuthenticated } = useAuth()
+
+  const getDashboardPath = () => {
+    if (!user) return '/patient/login'
+    switch (user.role) {
+      case 'ADMIN':
+        return '/admin/dashboard'
+      case 'DENTIST':
+        return '/dentist/dashboard'
+      case 'EMPLOYEE':
+        return '/employee/dashboard'
+      case 'PATIENT':
+        return '/patient/dashboard'
+      default:
+        return '/patient/dashboard'
+    }
+  }
 
   const handleOpenRequestModal = () => {
     setIsChatOpen(false) // Tự động đóng chatbot khi mở modal để không che chắn form
@@ -90,27 +108,39 @@ export default function PublicLayout() {
             </div>
 
             {/* Bên phải: Cặp nút bấm hành động */}
-            <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0">
               
               {/* Nút Hotline */}
               <a
                 href="tel:19008059"
-                className="flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl bg-[#ebf3ff] px-2.5 sm:px-5 h-[36px] sm:h-[42px] text-xs sm:text-[14px] font-black text-[#1f64f2] hover:bg-[#dfeaff] transition duration-200"
+                className="flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl bg-[#ebf3ff] px-2.5 sm:px-4 h-[36px] sm:h-[42px] text-xs sm:text-[14px] font-black text-[#1f64f2] hover:bg-[#dfeaff] transition duration-200"
               >
                 <Phone className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                <span className="hidden xs:inline">1900 8059</span>
+                <span className="hidden md:inline">1900 8059</span>
               </a>
               
-              {/* Nút Đặt lịch hẹn - Mở modal trực tiếp */}
+              {/* Nút Đặt lịch hẹn - Mở modal trực tiếp (Desktop/Tablet hiển thị, Mobile ẨN) */}
               <button
                 type="button"
                 onClick={handleOpenRequestModal}
-                className="flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl px-3 sm:px-5.5 h-[36px] sm:h-[42px] text-xs sm:text-[14px] font-bold text-white transition duration-200 shadow-sm hover:opacity-95 cursor-pointer active:scale-95 whitespace-nowrap"
+                className="hidden sm:flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl px-3 sm:px-4.5 h-[36px] sm:h-[42px] text-xs sm:text-[13.5px] font-bold text-white transition duration-200 shadow-sm hover:opacity-95 cursor-pointer active:scale-95 whitespace-nowrap"
                 style={{ background: 'linear-gradient(90deg, #1f4fb2 0%, #00a859 100%)' }}
               >
                 <CalendarCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 <span>Đặt lịch hẹn</span>
               </button>
+
+              {/* Nút Đăng nhập - Đồng bộ màu gradient và chữ trắng tinh giống hệt nút Đặt lịch */}
+              <Link
+                to={isAuthenticated ? getDashboardPath() : '/patient/login'}
+                className="flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl px-3 sm:px-4.5 h-[36px] sm:h-[42px] text-xs sm:text-[13.5px] font-bold !text-white transition duration-200 shadow-sm hover:opacity-95 cursor-pointer active:scale-95 whitespace-nowrap"
+                style={{ background: 'linear-gradient(90deg, #1f4fb2 0%, #00a859 100%)', color: '#ffffff' }}
+              >
+                <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 !text-white" color="#ffffff" />
+                <span className="!text-white" style={{ color: '#ffffff' }}>
+                  {isAuthenticated ? (user?.fullName || user?.username || 'Tài khoản') : 'Đăng nhập'}
+                </span>
+              </Link>
             </div>
           </div>
 

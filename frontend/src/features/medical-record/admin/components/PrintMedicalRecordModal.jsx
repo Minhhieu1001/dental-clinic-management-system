@@ -19,9 +19,9 @@ export default function PrintMedicalRecordModal({
 
   const patientName = selectedRecord?.patientName || 'CHƯA CẬP NHẬT';
   const patientCode = selectedRecord?.patientCode || '-';
-  const recordCode = selectedRecord?.recordCode || selectedRecord?.medicalRecordCode || '-';
+  const recordCode = selectedRecord?.recordCode || '-';
   const dentistName = selectedRecord?.dentistName || 'BS. Nguyễn Thị Phương';
-  const createdAtFormatted = formatDateDisplay(selectedRecord?.createdAt || new Date());
+  const createdAtFormatted = formatDateDisplay(selectedRecord?.createdAt);
   const genderDisplay = selectedRecord?.gender === 'FEMALE' ? 'Nữ' : selectedRecord?.gender === 'MALE' ? 'Nam' : 'Khác';
   const ageDisplay = calculateAge(selectedRecord?.dateOfBirth);
   const dobFormatted = formatDateDisplay(selectedRecord?.dateOfBirth);
@@ -29,6 +29,9 @@ export default function PrintMedicalRecordModal({
   const cccd = selectedRecord?.cccd || '-';
   const address = selectedRecord?.address || 'Chưa cập nhật';
   const email = selectedRecord?.email || '-';
+  const contactName = selectedRecord?.contactName || '';
+  const contactPhone = selectedRecord?.contactPhone || '';
+  const contactRelationship = selectedRecord?.contactRelationship || '';
 
   // Medical History string extraction
   const systemicDiseases = Array.isArray(selectedRecord?.systemicDiseases) && selectedRecord.systemicDiseases.length > 0
@@ -65,6 +68,10 @@ export default function PrintMedicalRecordModal({
   return (
     <>
       <style>{`
+        #printable-medical-record,
+        #printable-medical-record * {
+          font-family: 'Times New Roman', Times, serif !important;
+        }
         @media print {
           @page {
             size: A4 portrait;
@@ -75,6 +82,7 @@ export default function PrintMedicalRecordModal({
           }
           #printable-medical-record, #printable-medical-record * {
             visibility: visible !important;
+            font-family: 'Times New Roman', Times, serif !important;
           }
           #printable-medical-record {
             position: absolute !important;
@@ -88,7 +96,6 @@ export default function PrintMedicalRecordModal({
             border: none !important;
             background: white !important;
             color: #000 !important;
-            font-family: "Times New Roman", Times, serif !important;
           }
           .MuiDialog-paper, .MuiDialog-container, .MuiDialog-root {
             position: static !important;
@@ -166,8 +173,8 @@ export default function PrintMedicalRecordModal({
         <DialogContent sx={{ p: { xs: 1.5, sm: 3 }, overflowY: 'auto', display: 'flex', justifyContent: 'center' }}>
           <div
             id="printable-medical-record"
-            className="w-full max-w-[794px] bg-white text-slate-900 p-8 sm:p-10 shadow-lg border border-slate-300 rounded-xs font-serif leading-relaxed"
-            style={{ minHeight: '1120px' }}
+            className="w-full max-w-[794px] bg-white text-slate-900 p-8 sm:p-10 shadow-lg border border-slate-300 rounded-xs leading-relaxed"
+            style={{ minHeight: '1120px', fontFamily: '"Times New Roman", Times, serif' }}
           >
             {/* BOOKLET BORDER FRAME */}
             <div className="border border-slate-900/80 p-5 sm:p-6 relative">
@@ -243,6 +250,14 @@ export default function PrintMedicalRecordModal({
                   <div className="col-span-12">
                     6. Địa chỉ cư trú: <span>{address}</span>
                   </div>
+
+                  {(contactName || contactPhone) && (
+                    <div className="col-span-12">
+                      7. Người liên hệ khẩn cấp: <strong>{contactName || '-'}</strong>
+                      {contactRelationship && <span> ({contactRelationship})</span>}
+                      {contactPhone && <span> - SĐT: <strong className="font-mono">{contactPhone}</strong></span>}
+                    </div>
+                  )}
                 </div>
               </div>
 

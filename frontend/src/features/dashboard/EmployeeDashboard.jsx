@@ -10,7 +10,7 @@ import { useReceptionistDashboard } from '../../hooks/useReceptionistDashboard';
 import { staffName } from './receptionist/receptionistData';
 
 export default function EmployeeDashboard() {
-  const { stats, appointments, requests, loading, refetch, updateAppointmentInState } = useReceptionistDashboard();
+  const { stats, appointments, requests, loading, refetch, updateAppointmentInState, requestDate, changeRequestDate, requestsLoading, requestsError, refreshRequests } = useReceptionistDashboard();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState('add'); // 'add' | 'edit'
   const [modalPayload, setModalPayload] = useState(null);
@@ -69,9 +69,13 @@ export default function EmployeeDashboard() {
         {/* Right column — Requests */}
         <div className="flex w-full lg:flex-[27] flex-col gap-3">
           <AppointmentRequests
+            requestDate={requestDate}
+            onRequestDateChange={changeRequestDate}
+            requestsLoading={requestsLoading}
+            requestsError={requestsError}
             requests={requests}
             appointments={appointments}
-            onRefresh={refetch}
+            onRefresh={refreshRequests}
             onOpenCreateModal={(reqData) => handleOpenModal('add', reqData)}
           />
         </div>

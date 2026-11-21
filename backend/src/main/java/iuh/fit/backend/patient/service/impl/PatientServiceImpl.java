@@ -115,6 +115,9 @@ public class PatientServiceImpl implements PatientService {
                             .fullName(patient.getFullName())
                             .phone(patient.getPhoneNumber())
                             .email(patient.getEmail())
+                            .contactName(patient.getContactName())
+                            .contactPhone(patient.getContactPhone())
+                            .contactRelationship(patient.getContactRelationship())
                             .gender(patient.getGender())
                             .dateOfBirth(patient.getDateOfBirth())
                             .address(patient.getAddress())
@@ -290,6 +293,9 @@ public class PatientServiceImpl implements PatientService {
                 .nationality(dto.getNationality())
                 .hometown(normalize(dto.getHometown()))
                 .job(normalize(dto.getJob()))
+                .contactName(normalize(dto.getContactName()))
+                .contactPhone(normalize(dto.getContactPhone()))
+                .contactRelationship(normalize(dto.getContactRelationship()))
                 .fullName(dto.getFullName() != null ? dto.getFullName().trim() : "Bệnh nhân mới")
                 .gender(dto.getGender())
                 .dateOfBirth(dto.getDateOfBirth())
@@ -379,6 +385,15 @@ public class PatientServiceImpl implements PatientService {
         }
         if (dto.getJob() != null) {
             patient.setJob(normalize(dto.getJob()));
+        }
+        if (dto.getContactName() != null) {
+            patient.setContactName(normalize(dto.getContactName()));
+        }
+        if (dto.getContactPhone() != null) {
+            patient.setContactPhone(normalize(dto.getContactPhone()));
+        }
+        if (dto.getContactRelationship() != null) {
+            patient.setContactRelationship(normalize(dto.getContactRelationship()));
         }
         if (dto.getDateOfBirth() != null) {
             patient.setDateOfBirth(dto.getDateOfBirth());
@@ -594,6 +609,9 @@ public class PatientServiceImpl implements PatientService {
                 .nationality(patient.getNationality())
                 .hometown(patient.getHometown())
                 .job(patient.getJob())
+                .contactName(patient.getContactName())
+                .contactPhone(patient.getContactPhone())
+                .contactRelationship(patient.getContactRelationship())
                 .gender(patient.getGender())
                 .dateOfBirth(patient.getDateOfBirth())
                 .address(patient.getAddress())

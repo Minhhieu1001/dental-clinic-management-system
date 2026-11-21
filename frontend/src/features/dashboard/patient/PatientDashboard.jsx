@@ -404,10 +404,10 @@ export default function PatientDashboard() {
       const list = Array.isArray(res?.data)
         ? res.data
         : Array.isArray(res?.result)
-        ? res.result
-        : Array.isArray(res)
-        ? res
-        : [];
+          ? res.result
+          : Array.isArray(res)
+            ? res
+            : [];
       setFollowUpAppointments(list);
     } catch (error) {
       console.error("Lỗi lấy lịch tái khám trong tháng của bệnh nhân:", error);
@@ -959,7 +959,7 @@ export default function PatientDashboard() {
       bgColor: 'bg-cyan-50 border border-cyan-100',
       textColor: 'text-cyan-800',
       hoverColor: 'hover:bg-cyan-100/70',
-      onClick: handleOpenSupportModal,
+      onClick: () => navigate('/patient/consultation'),
     },
   ];
 
@@ -999,13 +999,13 @@ export default function PatientDashboard() {
               <div className="rounded-xl bg-white p-4 sm:p-5 shadow-lg shadow-teal-950/15 border border-white/90 text-slate-800">
                 {latestAppointment ? (
                   <>
-                    <div className="flex items-start gap-4">
+                    <div className="flex items-start gap-3 sm:gap-4">
                       {/* Date Badge in Emerald theme */}
-                      <div className="rounded-lg bg-teal-50 border border-teal-100/90 px-3.5 py-3 text-center min-w-[76px] shrink-0 flex flex-col justify-center">
-                        <span className="text-[11px] font-bold text-teal-700 uppercase tracking-tight">
+                      <div className="rounded-lg bg-teal-50 border border-teal-100/90 px-2.5 sm:px-3.5 py-2.5 sm:py-3 text-center min-w-[64px] sm:min-w-[76px] shrink-0 flex flex-col justify-center">
+                        <span className="text-[10px] sm:text-[11px] font-bold text-teal-700 uppercase tracking-tight">
                           {latestAppointment.dayOfWeek}
                         </span>
-                        <span className="text-3xl font-black text-teal-900 leading-none my-1">
+                        <span className="text-2xl sm:text-3xl font-black text-teal-900 leading-none my-1">
                           {latestAppointment.dayNumber}
                         </span>
                         <span className="text-[10px] text-slate-400 font-medium">
@@ -1015,17 +1015,16 @@ export default function PatientDashboard() {
 
                       {/* Appointment Info */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <h3 className="text-base font-bold text-slate-900 truncate" title={latestAppointment.title}>
+                        <div className="flex flex-wrap items-center justify-between gap-1.5">
+                          <h3 className="text-sm sm:text-base font-bold text-slate-900 truncate max-w-[170px] sm:max-w-none" title={latestAppointment.title}>
                             {latestAppointment.title}
                           </h3>
                           <div className="flex items-center gap-1.5 shrink-0">
                             <span
-                              className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10.5px] font-bold border shrink-0 ${
-                                latestAppointment.type === 'FOLLOW_UP'
+                              className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10.5px] font-bold border shrink-0 ${latestAppointment.type === 'FOLLOW_UP'
                                   ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
                                   : 'bg-teal-50 text-teal-700 border-teal-200'
-                              }`}
+                                }`}
                             >
                               {latestAppointment.type === 'FOLLOW_UP' ? (
                                 <>
@@ -1132,21 +1131,21 @@ export default function PatientDashboard() {
             </div>
 
             {/* Right Banner: Greeting & Doctor Banner with Dental Slogan */}
-            <div className="lg:col-span-7 xl:col-span-7 flex flex-col md:flex-row items-center justify-between gap-6 pl-0 lg:pl-3">
+            <div className="lg:col-span-7 xl:col-span-7 flex flex-col md:flex-row items-center justify-between gap-5 sm:gap-6 pl-0 lg:pl-3 text-center md:text-left">
               {/* Greeting & CTA */}
-              <div className="max-w-md text-left space-y-2.5">
-                <h2 className="text-2xl sm:text-3xl font-black text-white leading-tight">
+              <div className="max-w-md space-y-2 sm:space-y-2.5">
+                <h2 className="text-xl sm:text-3xl font-black text-white leading-tight">
                   Xin chào,<br />
                   <span className="text-emerald-100 font-black">{displayName}!</span>
                 </h2>
                 <p className="text-xs sm:text-sm text-teal-100 leading-relaxed font-medium">
                   Cảm ơn bạn đã tin tưởng đồng hành cùng Crown Dental. Chúc bạn luôn có nụ cười khỏe mạnh!
                 </p>
-                <div className="pt-2">
+                <div className="pt-1.5 sm:pt-2">
                   <button
                     type="button"
                     onClick={handleOpenNewBookingModal}
-                    className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-xs sm:text-sm font-bold text-teal-900 shadow-md hover:bg-emerald-50 transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
+                    className="inline-flex items-center gap-2 rounded-xl bg-white px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-teal-900 shadow-md hover:bg-emerald-50 transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
                   >
                     Đặt lịch khám ngay
                     <ArrowRight className="h-4 w-4 text-teal-700" />
@@ -1155,9 +1154,9 @@ export default function PatientDashboard() {
               </div>
 
               {/* Model Face & Slogan Image Visual */}
-              <div className="relative shrink-0 flex items-center justify-center">
+              <div className="relative shrink-0 flex items-center justify-center mt-2 md:mt-0">
                 {/* Photo of model */}
-                <div className="relative h-44 w-44 sm:h-52 sm:w-52 rounded-full overflow-hidden border-4 border-white/60 shadow-xl shadow-teal-950/20 ring-4 ring-white/20">
+                <div className="relative h-28 w-28 sm:h-44 sm:w-44 lg:h-52 lg:w-52 rounded-full overflow-hidden border-3 sm:border-4 border-white/60 shadow-xl shadow-teal-950/20 ring-2 sm:ring-4 ring-white/20">
                   <img
                     src="/patient-banner.jpg"
                     alt="Nụ cười khỏe đẹp"
@@ -1203,9 +1202,8 @@ export default function PatientDashboard() {
                 <div className="min-w-0 flex-1 pr-2 text-left">
                   <div className="flex items-baseline justify-start gap-1 flex-nowrap overflow-hidden">
                     <p
-                      className={`font-black text-slate-900 tracking-tight leading-none whitespace-nowrap truncate ${
-                        item.id === 'debt' ? 'text-base xl:text-lg' : 'text-xl'
-                      }`}
+                      className={`font-black text-slate-900 tracking-tight leading-none whitespace-nowrap truncate ${item.id === 'debt' ? 'text-base xl:text-lg' : 'text-xl'
+                        }`}
                       title={String(item.count)}
                     >
                       {item.count}
@@ -1233,291 +1231,290 @@ export default function PatientDashboard() {
           {/* Left Column: Lịch hẹn sắp tới */}
           <div className="lg:col-span-6 rounded-2xl bg-white p-5 sm:p-6 border border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col">
             {/* Header: Title + Link to All + Đặt lịch mới */}
-              <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
-                    Lịch hẹn sắp tới
-                  </h3>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                    appointmentSearchQuery || appointmentTimeRange !== 'ALL'
-                      ? 'bg-teal-50 text-teal-700 border border-teal-200'
-                      : 'bg-slate-100 text-slate-700'
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-3.5 border-b border-slate-100">
+              <div className="flex items-center gap-2 min-w-0">
+                <h3 className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight truncate">
+                  Lịch hẹn sắp tới
+                </h3>
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ${appointmentSearchQuery || appointmentTimeRange !== 'ALL'
+                    ? 'bg-teal-50 text-teal-700 border border-teal-200'
+                    : 'bg-slate-100 text-slate-700'
                   }`}>
-                    {appointmentSearchQuery || appointmentTimeRange !== 'ALL'
-                      ? `${displayedUpcomingAppointments.length} / ${upcomingAppointments.length}`
-                      : upcomingAppointments.length}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsBookingModalOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 shadow-xs hover:shadow transition-all cursor-pointer shrink-0"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    <span>Đặt lịch mới</span>
-                  </button>
-
-                  <Link
-                    to="/patient/appointments"
-                    className="text-xs font-bold text-teal-700 hover:text-teal-800 flex items-center gap-0.5 transition-colors group shrink-0"
-                  >
-                    <span>Xem tất cả</span>
-                    <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                  </Link>
-                </div>
+                  {appointmentSearchQuery || appointmentTimeRange !== 'ALL'
+                    ? `${displayedUpcomingAppointments.length} / ${upcomingAppointments.length}`
+                    : upcomingAppointments.length}
+                </span>
               </div>
 
-              {/* Filter Tabs Segmented Control */}
-              <div className="mt-3.5 flex items-center gap-1 p-1 bg-slate-100/80 rounded-xl text-xs font-semibold">
+              <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
-                  onClick={() => setAppointmentFilterTab('ALL')}
-                  className={`flex-1 py-1.5 px-2.5 rounded-lg text-center transition-all cursor-pointer ${appointmentFilterTab === 'ALL'
-                    ? 'bg-white text-slate-900 font-bold shadow-xs'
-                    : 'text-slate-500 hover:text-slate-800'
-                    }`}
+                  onClick={() => setIsBookingModalOpen(true)}
+                  className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 shadow-xs hover:shadow transition-all cursor-pointer shrink-0"
                 >
-                  Tất cả ({upcomingAppointments.length})
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Đặt lịch mới</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setAppointmentFilterTab('APPOINTMENT')}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg transition-all cursor-pointer ${appointmentFilterTab === 'APPOINTMENT'
-                    ? 'bg-white text-teal-700 font-bold shadow-xs'
-                    : 'text-slate-500 hover:text-slate-800'
-                    }`}
+
+                <Link
+                  to="/patient/appointments"
+                  className="text-xs font-bold text-teal-700 hover:text-teal-800 flex items-center gap-0.5 transition-colors group shrink-0"
                 >
-                  <Calendar className="h-3.5 w-3.5" />
-                  <span>Lịch hẹn ({upcomingAppointments.filter((x) => x.type === 'APPOINTMENT').length})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAppointmentFilterTab('FOLLOW_UP')}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg transition-all cursor-pointer ${appointmentFilterTab === 'FOLLOW_UP'
-                    ? 'bg-white text-indigo-700 font-bold shadow-xs'
-                    : 'text-slate-500 hover:text-slate-800'
-                    }`}
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  <span>Tái khám ({upcomingAppointments.filter((x) => x.type === 'FOLLOW_UP').length})</span>
-                </button>
+                  <span>Xem tất cả</span>
+                  <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                </Link>
               </div>
+            </div>
 
-              {/* Modern Secondary Filter Toolbar: Search + Time Horizon Selector */}
-              <div className="mt-2.5 flex items-center gap-2">
-                {/* Search Box */}
-                <div className="relative flex-1 min-w-0">
-                  <Search className="h-3.5 w-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <input
-                    type="text"
-                    value={appointmentSearchQuery}
-                    onChange={(e) => setAppointmentSearchQuery(e.target.value)}
-                    placeholder="Tìm theo bác sĩ, dịch vụ, cơ sở..."
-                    className="w-full pl-8 pr-7 py-1.5 rounded-xl border border-slate-200/80 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all bg-slate-50/60 focus:bg-white shadow-2xs"
-                  />
-                  {appointmentSearchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setAppointmentSearchQuery('')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer transition-colors"
-                      title="Xóa tìm kiếm"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  )}
-                </div>
+            {/* Filter Tabs Segmented Control */}
+            <div className="mt-3.5 flex items-center gap-1 p-1 bg-slate-100/80 rounded-xl text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setAppointmentFilterTab('ALL')}
+                className={`flex-1 py-1.5 px-2.5 rounded-lg text-center transition-all cursor-pointer ${appointmentFilterTab === 'ALL'
+                  ? 'bg-white text-slate-900 font-bold shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800'
+                  }`}
+              >
+                Tất cả ({upcomingAppointments.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setAppointmentFilterTab('APPOINTMENT')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg transition-all cursor-pointer ${appointmentFilterTab === 'APPOINTMENT'
+                  ? 'bg-white text-teal-700 font-bold shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800'
+                  }`}
+              >
+                <Calendar className="h-3.5 w-3.5" />
+                <span>Lịch hẹn ({upcomingAppointments.filter((x) => x.type === 'APPOINTMENT').length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAppointmentFilterTab('FOLLOW_UP')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg transition-all cursor-pointer ${appointmentFilterTab === 'FOLLOW_UP'
+                  ? 'bg-white text-indigo-700 font-bold shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800'
+                  }`}
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                <span>Tái khám ({upcomingAppointments.filter((x) => x.type === 'FOLLOW_UP').length})</span>
+              </button>
+            </div>
 
-                {/* Time Range Selector */}
-                <div className="relative shrink-0">
-                  <select
-                    value={appointmentTimeRange}
-                    onChange={(e) => setAppointmentTimeRange(e.target.value)}
-                    className="appearance-none pl-7.5 pr-7 py-1.5 rounded-xl border border-slate-200/80 text-xs font-semibold text-slate-700 bg-slate-50/60 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all cursor-pointer shadow-2xs"
-                  >
-                    <option value="ALL">Tất cả thời gian</option>
-                    <option value="TODAY">Hôm nay</option>
-                    <option value="WEEK">7 ngày tới</option>
-                    <option value="MONTH">Tháng này</option>
-                  </select>
-                  <CalendarDays className="h-3.5 w-3.5 text-teal-600 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <ChevronDown className="h-3 w-3 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-
-                {/* Reset Filter Button */}
-                {(appointmentSearchQuery.trim() !== '' || appointmentTimeRange !== 'ALL') && (
+            {/* Modern Secondary Filter Toolbar: Search + Time Horizon Selector */}
+            <div className="mt-2.5 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              {/* Search Box */}
+              <div className="relative flex-1 min-w-0">
+                <Search className="h-3.5 w-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  value={appointmentSearchQuery}
+                  onChange={(e) => setAppointmentSearchQuery(e.target.value)}
+                  placeholder="Tìm theo bác sĩ, dịch vụ, cơ sở..."
+                  className="w-full pl-8 pr-7 py-1.5 rounded-xl border border-slate-200/80 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all bg-slate-50/60 focus:bg-white shadow-2xs"
+                />
+                {appointmentSearchQuery && (
                   <button
                     type="button"
-                    onClick={() => {
-                      setAppointmentSearchQuery('');
-                      setAppointmentTimeRange('ALL');
-                    }}
-                    className="h-7 px-2 rounded-xl border border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer shrink-0 shadow-2xs"
-                    title="Đặt lại bộ lọc"
+                    onClick={() => setAppointmentSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer transition-colors"
+                    title="Xóa tìm kiếm"
                   >
-                    <RotateCcw className="h-3 w-3 text-teal-600" />
-                    <span className="hidden sm:inline text-[11px]">Đặt lại</span>
+                    <X className="h-3 w-3" />
                   </button>
                 )}
               </div>
 
-              {/* Appointment List (Hiển thị trọn vẹn đúng 3 card không lòi card 4, các card còn lại cuộn scroll) */}
-              <div className="mt-3 space-y-2.5 max-h-[355px] overflow-y-auto pr-1.5 custom-scrollbar">
-                {displayedUpcomingAppointments.length > 0 ? (
-                  displayedUpcomingAppointments.map((apt) => {
-                    const isFollowUp = apt.type === 'FOLLOW_UP';
-                    const relativeStatus = getAppointmentRelativeStatus(apt.rawDateTime);
-                    return (
+              {/* Time Range Selector */}
+              <div className="relative w-full sm:w-auto shrink-0">
+                <select
+                  value={appointmentTimeRange}
+                  onChange={(e) => setAppointmentTimeRange(e.target.value)}
+                  className="w-full sm:w-auto appearance-none pl-7.5 pr-7 py-1.5 rounded-xl border border-slate-200/80 text-xs font-semibold text-slate-700 bg-slate-50/60 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all cursor-pointer shadow-2xs"
+                >
+                  <option value="ALL">Tất cả thời gian</option>
+                  <option value="TODAY">Hôm nay</option>
+                  <option value="WEEK">7 ngày tới</option>
+                  <option value="MONTH">Tháng này</option>
+                </select>
+                <CalendarDays className="h-3.5 w-3.5 text-teal-600 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <ChevronDown className="h-3 w-3 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+
+              {/* Reset Filter Button */}
+              {(appointmentSearchQuery.trim() !== '' || appointmentTimeRange !== 'ALL') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAppointmentSearchQuery('');
+                    setAppointmentTimeRange('ALL');
+                  }}
+                  className="h-7 px-2 rounded-xl border border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer shrink-0 shadow-2xs"
+                  title="Đặt lại bộ lọc"
+                >
+                  <RotateCcw className="h-3 w-3 text-teal-600" />
+                  <span className="hidden sm:inline text-[11px]">Đặt lại</span>
+                </button>
+              )}
+            </div>
+
+            {/* Appointment List (Hiển thị trọn vẹn đúng 3 card không lòi card 4, các card còn lại cuộn scroll) */}
+            <div className="mt-3 space-y-2.5 max-h-[355px] overflow-y-auto pr-1.5 custom-scrollbar">
+              {displayedUpcomingAppointments.length > 0 ? (
+                displayedUpcomingAppointments.map((apt) => {
+                  const isFollowUp = apt.type === 'FOLLOW_UP';
+                  const relativeStatus = getAppointmentRelativeStatus(apt.rawDateTime);
+                  return (
+                    <div
+                      key={apt.id}
+                      onClick={() => handleOpenDetailModal(apt)}
+                      className={`group flex items-center justify-between gap-3 p-3 rounded-xl border transition-all cursor-pointer ${isFollowUp
+                        ? 'border-slate-200/80 hover:border-indigo-300 hover:bg-indigo-50/20 bg-white hover:shadow-xs'
+                        : 'border-slate-200/80 hover:border-teal-300 hover:bg-teal-50/20 bg-white hover:shadow-xs'
+                        }`}
+                    >
+                      {/* Date badge: Cân đối, tinh tế, không bao giờ rớt dòng */}
                       <div
-                        key={apt.id}
-                        onClick={() => handleOpenDetailModal(apt)}
-                        className={`group flex items-center justify-between gap-3 p-3 rounded-xl border transition-all cursor-pointer ${isFollowUp
-                          ? 'border-slate-200/80 hover:border-indigo-300 hover:bg-indigo-50/20 bg-white hover:shadow-xs'
-                          : 'border-slate-200/80 hover:border-teal-300 hover:bg-teal-50/20 bg-white hover:shadow-xs'
+                        className={`flex flex-col items-center justify-center rounded-xl min-w-[56px] w-[56px] h-[52px] shrink-0 border transition-all gap-1 ${isFollowUp
+                          ? 'bg-indigo-50/70 border-indigo-100/90 text-indigo-700'
+                          : 'bg-teal-50/70 border-teal-100/90 text-teal-700'
                           }`}
                       >
-                        {/* Date badge: Cân đối, tinh tế, không bao giờ rớt dòng */}
-                        <div
-                          className={`flex flex-col items-center justify-center rounded-xl min-w-[56px] w-[56px] h-[52px] shrink-0 border transition-all gap-1 ${isFollowUp
-                            ? 'bg-indigo-50/70 border-indigo-100/90 text-indigo-700'
-                            : 'bg-teal-50/70 border-teal-100/90 text-teal-700'
+                        <span className="text-[10px] font-bold uppercase tracking-wide leading-none text-slate-500 whitespace-nowrap">
+                          {apt.dayOfWeek}
+                        </span>
+                        <span
+                          className={`text-[13px] font-black leading-none whitespace-nowrap tracking-tight ${isFollowUp ? 'text-indigo-950' : 'text-teal-950'
                             }`}
                         >
-                          <span className="text-[10px] font-bold uppercase tracking-wide leading-none text-slate-500 whitespace-nowrap">
-                            {apt.dayOfWeek}
-                          </span>
-                          <span
-                            className={`text-[13px] font-black leading-none whitespace-nowrap tracking-tight ${isFollowUp ? 'text-indigo-950' : 'text-teal-950'
-                              }`}
-                          >
-                            {apt.dayNumber}/{apt.monthNumber}
-                          </span>
-                        </div>
+                          {apt.dayNumber}/{apt.monthNumber}
+                        </span>
+                      </div>
 
-                        {/* Content */}
-                        <div className="flex-1 min-w-0 space-y-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <h4 className="text-[13px] font-bold text-slate-900 truncate group-hover:text-teal-700 transition-colors" title={apt.title}>
-                              {apt.title}
-                            </h4>
+                      {/* Content */}
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <h4 className="text-[13px] font-bold text-slate-900 truncate group-hover:text-teal-700 transition-colors" title={apt.title}>
+                            {apt.title}
+                          </h4>
 
-                            <div className="flex items-center gap-1.5 shrink-0">
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold border shrink-0 ${isFollowUp
+                                ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                : 'bg-teal-50 text-teal-700 border-teal-200'
+                                }`}
+                            >
+                              {isFollowUp ? (
+                                <>
+                                  <RefreshCw className="h-2.5 w-2.5 text-indigo-600" />
+                                  Tái khám
+                                </>
+                              ) : (
+                                <>
+                                  <Calendar className="h-2.5 w-2.5 text-teal-600" />
+                                  Lịch hẹn
+                                </>
+                              )}
+                            </span>
+
+                            {/* Trạng thái từ API hiển thị chuẩn theo Employee cho cả Lịch hẹn và Tái khám */}
+                            {apt.status ? (
                               <span
-                                className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold border shrink-0 ${isFollowUp
-                                  ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                                  : 'bg-teal-50 text-teal-700 border-teal-200'
-                                  }`}
+                                className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-bold border shrink-0 ${apt.statusColor}`}
                               >
-                                {isFollowUp ? (
-                                  <>
-                                    <RefreshCw className="h-2.5 w-2.5 text-indigo-600" />
-                                    Tái khám
-                                  </>
-                                ) : (
-                                  <>
-                                    <Calendar className="h-2.5 w-2.5 text-teal-600" />
-                                    Lịch hẹn
-                                  </>
-                                )}
-                              </span>
-
-                              {/* Trạng thái từ API hiển thị chuẩn theo Employee cho cả Lịch hẹn và Tái khám */}
-                              {apt.status ? (
-                                <span
-                                  className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-bold border shrink-0 ${apt.statusColor}`}
-                                >
-                                  {apt.status}
-                                </span>
-                              ) : null}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500 font-medium">
-                            <span className="inline-flex items-center gap-1 font-bold text-teal-800 bg-teal-50 px-1.5 py-0.5 rounded text-[11px] shrink-0 border border-teal-100/60">
-                              <Clock className="h-3 w-3 text-teal-600" />
-                              {apt.time}
-                            </span>
-                            <span className="flex items-center gap-1 text-slate-700 truncate max-w-[140px] sm:max-w-[180px]" title={apt.doctor}>
-                              <User className="h-3 w-3 text-slate-400 shrink-0" />
-                              <span className="truncate">{apt.doctor}</span>
-                            </span>
-                            {apt.branch ? (
-                              <span className="flex items-center gap-1 text-slate-400 truncate max-w-[140px] sm:max-w-[200px]" title={apt.branch}>
-                                <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
-                                <span className="truncate">{apt.branch}</span>
+                                {apt.status}
                               </span>
                             ) : null}
                           </div>
-
-                          {/* Dòng so với ngày hiện tại: Đã qua / Hôm nay / Chưa đến */}
-                          {relativeStatus && (
-                            <div className="flex items-center gap-1.5 text-[11px] pt-0.5">
-                              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[3px] text-[10px] border ${relativeStatus.badgeClass}`}>
-                                <span className={`h-1.5 w-1.5 rounded-full ${relativeStatus.dotClass}`} />
-                                {relativeStatus.badgeText}
-                              </span>
-                              <span className="text-slate-500 font-medium text-[11px]">
-                                • {relativeStatus.detailText}
-                              </span>
-                            </div>
-                          )}
                         </div>
 
-                        {/* Chevron right button */}
-                        <div
-                          className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-50 text-slate-400 group-hover:text-teal-700 group-hover:bg-slate-100 transition-colors shrink-0"
-                        >
-                          <ChevronRight className="h-3.5 w-3.5" />
+                        <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500 font-medium">
+                          <span className="inline-flex items-center gap-1 font-bold text-teal-800 bg-teal-50 px-1.5 py-0.5 rounded text-[11px] shrink-0 border border-teal-100/60">
+                            <Clock className="h-3 w-3 text-teal-600" />
+                            {apt.time}
+                          </span>
+                          <span className="flex items-center gap-1 text-slate-700 truncate max-w-[140px] sm:max-w-[180px]" title={apt.doctor}>
+                            <User className="h-3 w-3 text-slate-400 shrink-0" />
+                            <span className="truncate">{apt.doctor}</span>
+                          </span>
+                          {apt.branch ? (
+                            <span className="flex items-center gap-1 text-slate-400 truncate max-w-[140px] sm:max-w-[200px]" title={apt.branch}>
+                              <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
+                              <span className="truncate">{apt.branch}</span>
+                            </span>
+                          ) : null}
                         </div>
+
+                        {/* Dòng so với ngày hiện tại: Đã qua / Hôm nay / Chưa đến */}
+                        {relativeStatus && (
+                          <div className="flex items-center gap-1.5 text-[11px] pt-0.5">
+                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[3px] text-[10px] border ${relativeStatus.badgeClass}`}>
+                              <span className={`h-1.5 w-1.5 rounded-full ${relativeStatus.dotClass}`} />
+                              {relativeStatus.badgeText}
+                            </span>
+                            <span className="text-slate-500 font-medium text-[11px]">
+                              • {relativeStatus.detailText}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    );
-                  })
-                ) : (
-                  <div className="py-10 text-center">
-                    <div className="h-10 w-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2">
-                      <Search className="h-5 w-5" />
-                    </div>
-                    <p className="text-xs font-bold text-slate-700">
-                      Không tìm thấy lịch hẹn phù hợp
-                    </p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      Vui lòng thử từ khóa khác hoặc điều chỉnh lại bộ lọc mốc thời gian.
-                    </p>
-                    {(appointmentSearchQuery || appointmentTimeRange !== 'ALL') && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAppointmentSearchQuery('');
-                          setAppointmentTimeRange('ALL');
-                        }}
-                        className="mt-3 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-teal-700 bg-teal-50 border border-teal-200 hover:bg-teal-100 transition-colors cursor-pointer"
+
+                      {/* Chevron right button */}
+                      <div
+                        className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-50 text-slate-400 group-hover:text-teal-700 group-hover:bg-slate-100 transition-colors shrink-0"
                       >
-                        <RotateCcw className="h-3 w-3" />
-                        Xóa bộ lọc
-                      </button>
-                    )}
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="py-10 text-center">
+                  <div className="h-10 w-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2">
+                    <Search className="h-5 w-5" />
                   </div>
-                )}
-              </div>
+                  <p className="text-xs font-bold text-slate-700">
+                    Không tìm thấy lịch hẹn phù hợp
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Vui lòng thử từ khóa khác hoặc điều chỉnh lại bộ lọc mốc thời gian.
+                  </p>
+                  {(appointmentSearchQuery || appointmentTimeRange !== 'ALL') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAppointmentSearchQuery('');
+                        setAppointmentTimeRange('ALL');
+                      }}
+                      className="mt-3 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-teal-700 bg-teal-50 border border-teal-200 hover:bg-teal-100 transition-colors cursor-pointer"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                      Xóa bộ lọc
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Right Column: Kế hoạch điều trị (Hỗ trợ nhiều bản ghi dạng Tabs) */}
           <div className="lg:col-span-6 rounded-2xl bg-white p-5 sm:p-6 border border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between">
             <div>
               {/* Header */}
-              <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-3.5 border-b border-slate-100">
+                <div className="flex items-center gap-2 min-w-0">
+                  <h3 className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight truncate">
                     Kế hoạch điều trị
                   </h3>
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-100">
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-100 shrink-0 whitespace-nowrap">
                     {treatmentPlans.length} kế hoạch
                   </span>
                 </div>
                 <Link
                   to="/patient/medical-records"
-                  className="text-xs font-bold text-teal-700 hover:text-teal-800 flex items-center gap-0.5 transition-colors group"
+                  className="text-xs font-bold text-teal-700 hover:text-teal-800 flex items-center gap-0.5 transition-colors group shrink-0"
                 >
                   <span>Xem tất cả</span>
                   <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
@@ -2191,7 +2188,6 @@ export default function PatientDashboard() {
           }
         }}
       />
-
     </div>
   );
 }

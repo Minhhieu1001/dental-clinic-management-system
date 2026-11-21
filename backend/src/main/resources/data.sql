@@ -7,8 +7,18 @@
 -- Dọn dẹp ràng buộc khóa ngoại không tương thích kiểu dữ liệu nếu có
 ALTER TABLE IF EXISTS invoice_details DROP CONSTRAINT IF EXISTS fk6olubg9il8wjve6h3dql5wpi;
 
+-- Đồng bộ CHECK với MessageType, bổ sung STICKER cho bảng chat đã tồn tại.
+-- Gộp DROP/ADD trong một lệnh để thay thế ràng buộc nguyên tử khi chạy lại.
+ALTER TABLE IF EXISTS chat_messages
+    DROP CONSTRAINT IF EXISTS chat_messages_message_type_check,
+    ADD CONSTRAINT chat_messages_message_type_check
+        CHECK (message_type IN ('TEXT', 'IMAGE', 'VIDEO', 'FILE', 'AUDIO', 'SYSTEM', 'STICKER'));
+
 -- Tự động bổ sung cột version cho Optimistic Locking
 ALTER TABLE patients ADD COLUMN IF NOT EXISTS version BIGINT DEFAULT 0;
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS contact_name VARCHAR(255);
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS contact_phone VARCHAR(50);
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS contact_relationship VARCHAR(100);
 ALTER TABLE appointments ADD COLUMN IF NOT EXISTS version BIGINT DEFAULT 0;
 ALTER TABLE appointment_requests ADD COLUMN IF NOT EXISTS version BIGINT DEFAULT 0;
 UPDATE patients SET version = 0 WHERE version IS NULL;

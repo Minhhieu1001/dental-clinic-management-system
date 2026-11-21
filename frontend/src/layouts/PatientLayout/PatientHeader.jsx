@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Home,
   PhoneCall,
+  MessageSquare,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
@@ -29,6 +30,7 @@ const navItems = [
   { label: 'Hồ sơ bệnh án', to: '/patient/medical-records', icon: FileText },
   { label: 'Đơn thuốc', to: '/patient/prescriptions', icon: Pill },
   { label: 'Hóa đơn', to: '/patient/invoices', icon: Receipt },
+  { label: 'Tư vấn', to: '/patient/consultation', icon: MessageSquare },
   { label: 'Tin tức', to: '/patient/notifications', icon: Newspaper },
 ];
 

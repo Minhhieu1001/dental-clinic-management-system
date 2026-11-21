@@ -131,7 +131,8 @@ public class SecurityConfig {
                                                                 "/ws/**",
                                                                 "/ws",
                                                                 "/api/v1/ai/**",
-                                                                "/api/v1/ocr/**")
+                                                                "/api/v1/ocr/**",
+                                                                "/api/v1/chat/**")
                                                 .permitAll()
                                                 .requestMatchers(HttpMethod.GET,
                                                                 "/api/v1/clinics",
