@@ -315,7 +315,7 @@ export default function NotificationCenter({
   }, [notifications]);
 
   return (
-    <div className="w-full space-y-4 font-sans text-slate-800 max-w-7xl mx-auto pb-8">
+    <div className="w-full space-y-3.5 sm:space-y-4 font-sans text-slate-800 pb-8 transition-all">
       {/* 1. Header Banner Thiết kế Nhẹ Nhàng, Thanh Lịch & Bo Góc Vừa Vặn */}
       <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5">
@@ -700,7 +700,7 @@ export default function NotificationCenter({
                         <span className="h-1.5 w-1.5 rounded-full bg-teal-600 ring-2 ring-teal-100 shrink-0" />
                       )}
                     </div>
-                    <p className="text-xs text-slate-500 truncate max-w-3xl font-medium">
+                    <p className="text-xs text-slate-500 line-clamp-1 font-medium">
                       {item.content}
                     </p>
                   </div>
