@@ -1,5 +1,7 @@
 package iuh.fit.backend.appointment.service;
 
+import iuh.fit.backend.appointment.dto.AppointmentCheckinRequest;
+import iuh.fit.backend.appointment.dto.AppointmentCheckinResponse;
 import iuh.fit.backend.appointment.dto.AppointmentCreateDTO;
 import iuh.fit.backend.appointment.dto.AppointmentDetailDTO;
 import iuh.fit.backend.appointment.entity.Room;
@@ -11,11 +13,13 @@ import java.util.List;
 import java.util.UUID;
 
 public interface AppointmentService {
+    AppointmentCheckinResponse checkIn(AppointmentCheckinRequest request);
     AppointmentDetailDTO createAppointment(AppointmentCreateDTO dto);
 
     List<AppointmentDetailDTO> getAllAppointments(UUID dentistId, String date, StatusAppointment status);
 
     List<AppointmentDetailDTO> getAppointmentsByDay(LocalDate date);
+    List<AppointmentDetailDTO> searchAppointmentsByPhone(String phone, LocalDate date);
 
     List<AppointmentDetailDTO> getAppointmentsByWeek(LocalDate date);
 

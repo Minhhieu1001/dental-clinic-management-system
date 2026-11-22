@@ -10,7 +10,7 @@ import { useReceptionistDashboard } from '../../hooks/useReceptionistDashboard';
 import { staffName } from './receptionist/receptionistData';
 
 export default function EmployeeDashboard() {
-  const { stats, appointments, requests, loading, refetch, updateAppointmentInState, requestDate, changeRequestDate, requestsLoading, requestsError, refreshRequests } = useReceptionistDashboard();
+  const { appointmentSearch, searchAppointments, appointmentDate, changeAppointmentDate, dayAppointments, appointmentsLoading, appointmentsError, refreshAppointments, stats, appointments, requests, loading, refetch, updateAppointmentInState, requestDate, changeRequestDate, requestsLoading, requestsError, refreshRequests } = useReceptionistDashboard();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState('add'); // 'add' | 'edit'
   const [modalPayload, setModalPayload] = useState(null);
@@ -59,8 +59,14 @@ export default function EmployeeDashboard() {
         {/* Left column — Appointment table */}
         <div className="min-w-0 w-full lg:flex-[73]">
           <AppointmentTable
-            appointments={appointments}
-            onRefresh={refetch}
+            appointments={dayAppointments}
+            appointmentDate={appointmentDate}
+            appointmentSearch={appointmentSearch}
+            onSearchAppointments={searchAppointments}
+            onAppointmentDateChange={changeAppointmentDate}
+            appointmentsLoading={appointmentsLoading}
+            appointmentsError={appointmentsError}
+            onRefresh={refreshAppointments}
             onUpdateAppointment={updateAppointmentInState}
             onOpenEditModal={(apt) => handleOpenModal('edit', apt)}
           />

@@ -7,6 +7,12 @@
 -- Dọn dẹp ràng buộc khóa ngoại không tương thích kiểu dữ liệu nếu có
 ALTER TABLE IF EXISTS invoice_details DROP CONSTRAINT IF EXISTS fk6olubg9il8wjve6h3dql5wpi;
 
+-- Mã lịch hẹn và trạng thái tiếp nhận cho dữ liệu cũ.
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS appointment_code VARCHAR(40);
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS is_check BOOLEAN DEFAULT FALSE;
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS email VARCHAR(254);
+
+
 -- Cập nhật check constraint promotion_type cho promotions
 ALTER TABLE IF EXISTS promotions DROP CONSTRAINT IF EXISTS promotions_promotion_type_check;
 ALTER TABLE IF EXISTS promotions ADD CONSTRAINT promotions_promotion_type_check
@@ -716,3 +722,13 @@ ON medicines (code);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_patient_relationships_active_target
 ON patient_relationships (related_patient_id)
 WHERE status = true;
+
+-- Backfill appointment codes after seed inserts as well.
+UPDATE appointments SET appointment_code = 'APT-' || UPPER(REPLACE(id::text, '-', ''))
+WHERE appointment_code IS NULL OR appointment_code = '';
+UPDATE appointments SET is_check = TRUE
+WHERE status IN ('WAITING', 'CALLED', 'IN_PROGRESS', 'COMPLETED');
+UPDATE appointments SET is_check = FALSE WHERE is_check IS NULL;
+ALTER TABLE appointments ALTER COLUMN is_check SET DEFAULT FALSE;
+ALTER TABLE appointments ALTER COLUMN is_check SET NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uk_appointments_code ON appointments (appointment_code);

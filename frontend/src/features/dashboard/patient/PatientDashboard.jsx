@@ -1016,14 +1016,14 @@ export default function PatientDashboard() {
                       {/* Appointment Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-wrap items-center justify-between gap-1.5">
-                          <h3 className="text-sm sm:text-base font-bold text-slate-900 truncate max-w-[170px] sm:max-w-none" title={latestAppointment.title}>
+                          <h3 className="text-sm sm:text-base font-bold text-slate-900 leading-snug line-clamp-1" title={latestAppointment.title}>
                             {latestAppointment.title}
                           </h3>
                           <div className="flex items-center gap-1.5 shrink-0">
                             <span
                               className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10.5px] font-bold border shrink-0 ${latestAppointment.type === 'FOLLOW_UP'
-                                  ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                                  : 'bg-teal-50 text-teal-700 border-teal-200'
+                                ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                : 'bg-teal-50 text-teal-700 border-teal-200'
                                 }`}
                             >
                               {latestAppointment.type === 'FOLLOW_UP' ? (
@@ -1181,20 +1181,20 @@ export default function PatientDashboard() {
       {/* ======================================================== */}
       {/* NỘI DUNG BÊN DƯỚI BANNER: Cách lề trái và phải cân đối  */}
       {/* ======================================================== */}
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 pb-12">
+      <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-4 sm:space-y-6 pb-12">
         {/* 2. STATS SUMMARY ROW: 5 Cards (Minimalist, modern, cohesive)  */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3.5">
           {stats.map((item) => {
             const Icon = item.icon;
             return (
               <Link
                 key={item.id}
                 to={item.to}
-                className="group relative flex h-full min-h-[84px] flex-row items-center gap-2.5 xl:gap-3 rounded-2xl bg-white p-3.5 xl:p-4 border border-slate-100/90 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-md hover:border-slate-200/90 hover:-translate-y-0.5 transition-all duration-200"
+                className="group relative flex h-full min-h-[76px] sm:min-h-[84px] flex-row items-center gap-2 sm:gap-2.5 xl:gap-3 rounded-2xl bg-white p-3 sm:p-3.5 xl:p-4 border border-slate-100/90 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-md hover:border-slate-200/90 hover:-translate-y-0.5 transition-all duration-200"
               >
                 <div className="flex shrink-0">
-                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${item.bgColor} ${item.color}`}>
-                    <Icon className="h-5 w-5" />
+                  <div className={`flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl ${item.bgColor} ${item.color}`}>
+                    <Icon className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
                   </div>
                   <ChevronRight className="absolute right-3.5 top-3.5 h-4 w-4 text-slate-300 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all" />
                 </div>
@@ -1202,7 +1202,7 @@ export default function PatientDashboard() {
                 <div className="min-w-0 flex-1 pr-2 text-left">
                   <div className="flex items-baseline justify-start gap-1 flex-nowrap overflow-hidden">
                     <p
-                      className={`font-black text-slate-900 tracking-tight leading-none whitespace-nowrap truncate ${item.id === 'debt' ? 'text-base xl:text-lg' : 'text-xl'
+                      className={`font-black text-slate-900 tracking-tight leading-none whitespace-nowrap truncate ${item.id === 'debt' ? 'text-base xl:text-lg' : 'text-lg sm:text-xl'
                         }`}
                       title={String(item.count)}
                     >
@@ -1214,7 +1214,7 @@ export default function PatientDashboard() {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-slate-500 font-medium mt-1.5 truncate">
+                  <p className="text-[11px] sm:text-xs text-slate-500 font-medium mt-1 sm:mt-1.5 truncate">
                     {item.title}
                   </p>
                 </div>
@@ -1226,27 +1226,27 @@ export default function PatientDashboard() {
         {/* ======================================================== */}
         {/* 3. MIDDLE ROW: Lịch hẹn sắp tới & Kế hoạch điều trị      */}
         {/* ======================================================== */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
 
           {/* Left Column: Lịch hẹn sắp tới */}
-          <div className="lg:col-span-6 rounded-2xl bg-white p-5 sm:p-6 border border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col">
+          <div className="lg:col-span-6 rounded-2xl bg-white p-3.5 sm:p-6 border border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col">
             {/* Header: Title + Link to All + Đặt lịch mới */}
-            <div className="flex flex-wrap items-center justify-between gap-2 pb-3.5 border-b border-slate-100">
+            <div className="flex items-center justify-between gap-2 pb-3.5 border-b border-slate-100">
               <div className="flex items-center gap-2 min-w-0">
                 <h3 className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight truncate">
                   Lịch hẹn sắp tới
                 </h3>
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ${appointmentSearchQuery || appointmentTimeRange !== 'ALL'
-                    ? 'bg-teal-50 text-teal-700 border border-teal-200'
-                    : 'bg-slate-100 text-slate-700'
+                <span className={`text-[11px] sm:text-xs font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ${appointmentSearchQuery || appointmentTimeRange !== 'ALL'
+                  ? 'bg-teal-50 text-teal-700 border border-teal-200'
+                  : 'bg-slate-100 text-slate-700'
                   }`}>
                   {appointmentSearchQuery || appointmentTimeRange !== 'ALL'
-                    ? `${displayedUpcomingAppointments.length} / ${upcomingAppointments.length}`
+                    ? `${displayedUpcomingAppointments.length}/${upcomingAppointments.length}`
                     : upcomingAppointments.length}
                 </span>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsBookingModalOpen(true)}
@@ -1267,11 +1267,11 @@ export default function PatientDashboard() {
             </div>
 
             {/* Filter Tabs Segmented Control */}
-            <div className="mt-3.5 flex items-center gap-1 p-1 bg-slate-100/80 rounded-xl text-xs font-semibold">
+            <div className="mt-3 flex items-center gap-1 p-1 bg-slate-100/80 rounded-xl text-[11px] sm:text-xs font-semibold">
               <button
                 type="button"
                 onClick={() => setAppointmentFilterTab('ALL')}
-                className={`flex-1 py-1.5 px-2.5 rounded-lg text-center transition-all cursor-pointer ${appointmentFilterTab === 'ALL'
+                className={`flex-1 py-1.5 px-1.5 sm:px-2.5 rounded-lg text-center transition-all cursor-pointer whitespace-nowrap ${appointmentFilterTab === 'ALL'
                   ? 'bg-white text-slate-900 font-bold shadow-xs'
                   : 'text-slate-500 hover:text-slate-800'
                   }`}
@@ -1281,23 +1281,23 @@ export default function PatientDashboard() {
               <button
                 type="button"
                 onClick={() => setAppointmentFilterTab('APPOINTMENT')}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg transition-all cursor-pointer ${appointmentFilterTab === 'APPOINTMENT'
+                className={`flex-1 flex items-center justify-center gap-1 sm:gap-1.5 py-1.5 px-1.5 sm:px-2.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${appointmentFilterTab === 'APPOINTMENT'
                   ? 'bg-white text-teal-700 font-bold shadow-xs'
                   : 'text-slate-500 hover:text-slate-800'
                   }`}
               >
-                <Calendar className="h-3.5 w-3.5" />
+                <Calendar className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0" />
                 <span>Lịch hẹn ({upcomingAppointments.filter((x) => x.type === 'APPOINTMENT').length})</span>
               </button>
               <button
                 type="button"
                 onClick={() => setAppointmentFilterTab('FOLLOW_UP')}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg transition-all cursor-pointer ${appointmentFilterTab === 'FOLLOW_UP'
+                className={`flex-1 flex items-center justify-center gap-1 sm:gap-1.5 py-1.5 px-1.5 sm:px-2.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${appointmentFilterTab === 'FOLLOW_UP'
                   ? 'bg-white text-indigo-700 font-bold shadow-xs'
                   : 'text-slate-500 hover:text-slate-800'
                   }`}
               >
-                <RefreshCw className="h-3.5 w-3.5" />
+                <RefreshCw className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0" />
                 <span>Tái khám ({upcomingAppointments.filter((x) => x.type === 'FOLLOW_UP').length})</span>
               </button>
             </div>
@@ -1360,7 +1360,7 @@ export default function PatientDashboard() {
             </div>
 
             {/* Appointment List (Hiển thị trọn vẹn đúng 3 card không lòi card 4, các card còn lại cuộn scroll) */}
-            <div className="mt-3 space-y-2.5 max-h-[355px] overflow-y-auto pr-1.5 custom-scrollbar">
+            <div className="mt-3 space-y-2.5 max-h-[355px] overflow-y-auto pr-1 custom-scrollbar">
               {displayedUpcomingAppointments.length > 0 ? (
                 displayedUpcomingAppointments.map((apt) => {
                   const isFollowUp = apt.type === 'FOLLOW_UP';
@@ -1369,23 +1369,23 @@ export default function PatientDashboard() {
                     <div
                       key={apt.id}
                       onClick={() => handleOpenDetailModal(apt)}
-                      className={`group flex items-center justify-between gap-3 p-3 rounded-xl border transition-all cursor-pointer ${isFollowUp
+                      className={`group flex items-start sm:items-center justify-between gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer ${isFollowUp
                         ? 'border-slate-200/80 hover:border-indigo-300 hover:bg-indigo-50/20 bg-white hover:shadow-xs'
                         : 'border-slate-200/80 hover:border-teal-300 hover:bg-teal-50/20 bg-white hover:shadow-xs'
                         }`}
                     >
-                      {/* Date badge: Cân đối, tinh tế, không bao giờ rớt dòng */}
+                      {/* Date badge: Cân đối, tinh tế, tỷ lệ hài hòa trên mobile */}
                       <div
-                        className={`flex flex-col items-center justify-center rounded-xl min-w-[56px] w-[56px] h-[52px] shrink-0 border transition-all gap-1 ${isFollowUp
+                        className={`flex flex-col items-center justify-center rounded-xl min-w-[48px] w-[48px] sm:min-w-[56px] sm:w-[56px] h-[46px] sm:h-[52px] shrink-0 border transition-all gap-0.5 sm:gap-1 ${isFollowUp
                           ? 'bg-indigo-50/70 border-indigo-100/90 text-indigo-700'
                           : 'bg-teal-50/70 border-teal-100/90 text-teal-700'
                           }`}
                       >
-                        <span className="text-[10px] font-bold uppercase tracking-wide leading-none text-slate-500 whitespace-nowrap">
+                        <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wide leading-none text-slate-500 whitespace-nowrap">
                           {apt.dayOfWeek}
                         </span>
                         <span
-                          className={`text-[13px] font-black leading-none whitespace-nowrap tracking-tight ${isFollowUp ? 'text-indigo-950' : 'text-teal-950'
+                          className={`text-xs sm:text-[13px] font-black leading-none whitespace-nowrap tracking-tight ${isFollowUp ? 'text-indigo-950' : 'text-teal-950'
                             }`}
                         >
                           {apt.dayNumber}/{apt.monthNumber}
@@ -1393,54 +1393,45 @@ export default function PatientDashboard() {
                       </div>
 
                       {/* Content */}
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <h4 className="text-[13px] font-bold text-slate-900 truncate group-hover:text-teal-700 transition-colors" title={apt.title}>
+                      <div className="flex-1 min-w-0 space-y-1 sm:space-y-1.5">
+                        <div className="flex items-start justify-between gap-1.5">
+                          <h4 className="text-xs sm:text-[13px] font-bold text-slate-900 group-hover:text-teal-700 transition-colors leading-snug line-clamp-1 sm:line-clamp-2" title={apt.title}>
                             {apt.title}
                           </h4>
 
-                          <div className="flex items-center gap-1.5 shrink-0">
+                          <div className="flex items-center gap-1.5 shrink-0 ml-1">
                             <span
-                              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold border shrink-0 ${isFollowUp
+                              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9.5px] sm:text-[10px] font-bold border shrink-0 ${isFollowUp
                                 ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
                                 : 'bg-teal-50 text-teal-700 border-teal-200'
                                 }`}
                             >
                               {isFollowUp ? (
                                 <>
-                                  <RefreshCw className="h-2.5 w-2.5 text-indigo-600" />
-                                  Tái khám
+                                  <RefreshCw className="h-2.5 w-2.5 text-indigo-600 shrink-0" />
+                                  <span className="whitespace-nowrap">Tái khám</span>
                                 </>
                               ) : (
                                 <>
-                                  <Calendar className="h-2.5 w-2.5 text-teal-600" />
-                                  Lịch hẹn
+                                  <Calendar className="h-2.5 w-2.5 text-teal-600 shrink-0" />
+                                  <span className="whitespace-nowrap">Lịch hẹn</span>
                                 </>
                               )}
                             </span>
-
-                            {/* Trạng thái từ API hiển thị chuẩn theo Employee cho cả Lịch hẹn và Tái khám */}
-                            {apt.status ? (
-                              <span
-                                className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-bold border shrink-0 ${apt.statusColor}`}
-                              >
-                                {apt.status}
-                              </span>
-                            ) : null}
                           </div>
                         </div>
 
-                        <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500 font-medium">
-                          <span className="inline-flex items-center gap-1 font-bold text-teal-800 bg-teal-50 px-1.5 py-0.5 rounded text-[11px] shrink-0 border border-teal-100/60">
-                            <Clock className="h-3 w-3 text-teal-600" />
+                        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] sm:text-xs text-slate-500 font-medium">
+                          <span className="inline-flex items-center gap-1 font-bold text-teal-800 bg-teal-50 px-1.5 py-0.5 rounded text-[10.5px] sm:text-[11px] shrink-0 border border-teal-100/60">
+                            <Clock className="h-3 w-3 text-teal-600 shrink-0" />
                             {apt.time}
                           </span>
-                          <span className="flex items-center gap-1 text-slate-700 truncate max-w-[140px] sm:max-w-[180px]" title={apt.doctor}>
+                          <span className="inline-flex items-center gap-1 text-slate-700 max-w-[150px] sm:max-w-none truncate" title={apt.doctor}>
                             <User className="h-3 w-3 text-slate-400 shrink-0" />
                             <span className="truncate">{apt.doctor}</span>
                           </span>
                           {apt.branch ? (
-                            <span className="flex items-center gap-1 text-slate-400 truncate max-w-[140px] sm:max-w-[200px]" title={apt.branch}>
+                            <span className="inline-flex items-center gap-1 text-slate-500 max-w-[160px] sm:max-w-none truncate" title={apt.branch}>
                               <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
                               <span className="truncate">{apt.branch}</span>
                             </span>
@@ -1449,21 +1440,21 @@ export default function PatientDashboard() {
 
                         {/* Dòng so với ngày hiện tại: Đã qua / Hôm nay / Chưa đến */}
                         {relativeStatus && (
-                          <div className="flex items-center gap-1.5 text-[11px] pt-0.5">
-                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[3px] text-[10px] border ${relativeStatus.badgeClass}`}>
+                          <div className="flex items-center gap-1.5 text-[10.5px] sm:text-[11px] pt-0.5">
+                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[3px] text-[9.5px] sm:text-[10px] font-semibold border ${relativeStatus.badgeClass}`}>
                               <span className={`h-1.5 w-1.5 rounded-full ${relativeStatus.dotClass}`} />
                               {relativeStatus.badgeText}
                             </span>
-                            <span className="text-slate-500 font-medium text-[11px]">
+                            <span className="text-slate-500 font-medium text-[10.5px] sm:text-[11px]">
                               • {relativeStatus.detailText}
                             </span>
                           </div>
                         )}
                       </div>
 
-                      {/* Chevron right button */}
+                      {/* Chevron right button (Ẩn trên mobile để tối ưu diện tích cho nội dung) */}
                       <div
-                        className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-50 text-slate-400 group-hover:text-teal-700 group-hover:bg-slate-100 transition-colors shrink-0"
+                        className="hidden sm:flex h-7 w-7 items-center justify-center rounded-lg bg-slate-50 text-slate-400 group-hover:text-teal-700 group-hover:bg-slate-100 transition-colors shrink-0"
                       >
                         <ChevronRight className="h-3.5 w-3.5" />
                       </div>
@@ -1500,10 +1491,10 @@ export default function PatientDashboard() {
           </div>
 
           {/* Right Column: Kế hoạch điều trị (Hỗ trợ nhiều bản ghi dạng Tabs) */}
-          <div className="lg:col-span-6 rounded-2xl bg-white p-5 sm:p-6 border border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between">
+          <div className="lg:col-span-6 rounded-2xl bg-white p-3.5 sm:p-6 border border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between">
             <div>
               {/* Header */}
-              <div className="flex flex-wrap items-center justify-between gap-2 pb-3.5 border-b border-slate-100">
+              <div className="flex items-center justify-between gap-2 pb-3.5 border-b border-slate-100">
                 <div className="flex items-center gap-2 min-w-0">
                   <h3 className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight truncate">
                     Kế hoạch điều trị
@@ -1554,27 +1545,27 @@ export default function PatientDashboard() {
                   )}
 
                   {/* Plan Card Banner */}
-                  <div className="mt-4 p-4 rounded-xl bg-slate-50/70 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center text-white shadow-xs shrink-0">
-                        <Activity className="h-5 w-5 stroke-[2.2]" />
+                  <div className="mt-3.5 p-3.5 sm:p-4 rounded-xl bg-slate-50/70 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+                    <div className="flex items-start sm:items-center gap-3 min-w-0">
+                      <div className="h-9 w-9 sm:h-11 sm:w-11 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center text-white shadow-xs shrink-0">
+                        <Activity className="h-4 w-4 sm:h-5 sm:w-5 stroke-[2.2]" />
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="text-sm font-extrabold text-slate-900 truncate">
+                          <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 leading-snug">
                             {activeTreatmentPlan.title}
                           </h4>
-                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold border ${activeTreatmentPlan.statusColor || 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold border shrink-0 ${activeTreatmentPlan.statusColor || 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
                             {activeTreatmentPlan.status}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-600 font-medium mt-1 truncate">
-                          Bác sĩ phụ trách: <span className="font-bold text-slate-800">{activeTreatmentPlan.doctor}</span>
+                        <p className="text-[11px] sm:text-xs text-slate-600 font-medium mt-1">
+                          Bác sĩ phụ trách: <span className="font-bold text-slate-800 whitespace-nowrap">{activeTreatmentPlan.doctor}</span>
                         </p>
                       </div>
                     </div>
 
-                    <div className="text-left sm:text-right text-[11px] text-slate-500 font-medium space-y-0.5 sm:shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/60">
+                    <div className="flex items-center justify-between sm:flex-col sm:items-end text-[11px] text-slate-500 font-medium sm:space-y-0.5 sm:shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/60">
                       <p className="flex items-center sm:justify-end gap-1">
                         <span className="text-slate-400">Bắt đầu:</span>
                         <span className="font-bold text-slate-700">{activeTreatmentPlan.startDate}</span>
@@ -1711,13 +1702,13 @@ export default function PatientDashboard() {
         {/* ======================================================== */}
         {/* 4. BOTTOM ROW: Lịch sử điều trị (Table) & Thao tác nhanh */}
         {/* ======================================================== */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
 
           {/* Left Column: Lịch sử điều trị (Table) */}
-          <div className="lg:col-span-8 rounded-xl bg-white p-5 sm:p-6 shadow-sm ring-1 ring-slate-100 flex flex-col justify-between">
+          <div className="lg:col-span-8 rounded-2xl bg-white p-3.5 sm:p-6 shadow-sm ring-1 ring-slate-100 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 className="text-base font-extrabold text-slate-900">
+                <h3 className="text-sm sm:text-base font-extrabold text-slate-900">
                   Lịch sử điều trị
                 </h3>
                 <Link
@@ -1825,9 +1816,9 @@ export default function PatientDashboard() {
           </div>
 
           {/* Right Column: Thao tác nhanh (6 Emerald / Teal Unified Tiles) */}
-          <div className="lg:col-span-4 rounded-xl bg-white p-5 sm:p-6 shadow-sm ring-1 ring-slate-100 flex flex-col justify-between">
+          <div className="lg:col-span-4 rounded-2xl bg-white p-3.5 sm:p-6 shadow-sm ring-1 ring-slate-100 flex flex-col justify-between">
             <div>
-              <h3 className="text-base font-extrabold text-slate-900 border-b border-slate-100 pb-3">
+              <h3 className="text-sm sm:text-base font-extrabold text-slate-900 border-b border-slate-100 pb-3">
                 Thao tác nhanh
               </h3>
 

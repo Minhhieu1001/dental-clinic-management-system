@@ -473,9 +473,13 @@ export default function AppointmentRequests({
           <div className="py-8 text-center text-xs font-medium text-slate-400">
             Đang tải dữ liệu yêu cầu đặt lịch...
           </div>
+        ) : requestsError ? (
+          <div className="py-8 text-center text-xs font-medium text-red-600">
+            Không thể tải yêu cầu đặt lịch. Vui lòng bấm làm mới để thử lại.
+          </div>
         ) : requestList.length === 0 ? (
           <div className="py-8 text-center text-xs font-medium text-slate-400">
-            Không có yêu cầu đặt lịch nào hôm nay.
+            Không có yêu cầu đặt lịch trong ngày đã chọn.
           </div>
         ) : (
           requestList.map((req) => {

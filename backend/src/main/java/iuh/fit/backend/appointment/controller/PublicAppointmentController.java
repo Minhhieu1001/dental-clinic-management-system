@@ -32,6 +32,7 @@ public class PublicAppointmentController {
             AppointmentCreateDTO dto = AppointmentCreateDTO.builder()
                     .fullName(request.getFullName())
                     .phone(request.getPhone())
+                    .email(request.getEmail())
                     .branchName(request.getBranchName())
                     .appointmentDate(request.getDate())
                     .appointmentTime(request.getTime())
@@ -45,6 +46,7 @@ public class PublicAppointmentController {
             response.put("success", true);
             response.put("message", "Đặt lịch hẹn thành công!");
             response.put("appointmentId", created.getId());
+            response.put("appointmentCode", created.getAppointmentCode());
             response.put("patientCode", created.getPatientCode());
 
             return ResponseEntity.ok(response);
@@ -60,6 +62,7 @@ public class PublicAppointmentController {
     public static class LegacyAppointmentRequest {
         private String fullName;
         private String phone;
+        private String email;
         private String serviceName;
         private String branchName;
         private String message;

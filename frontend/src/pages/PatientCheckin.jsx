@@ -1,3 +1,5 @@
+import { checkInAppointment } from '../services/appointment.service';
+import { getBranches } from '../services/clinic.service';
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
@@ -8,15 +10,11 @@ import {
   CheckCircle2,
   Clock,
   MapPin,
-  Stethoscope,
   Sparkles,
-  Camera,
   ArrowLeft,
   RefreshCw,
   AlertCircle,
   FileText,
-  Printer,
-  Share2,
   Info,
   ChevronRight,
   ShieldCheck,
@@ -33,12 +31,21 @@ export default function PatientCheckin() {
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [appointmentCode, setAppointmentCode] = useState('');
-  const [branchName, setBranchName] = useState('Crown Dental Nam Kỳ Khởi Nghĩa - TP.HCM');
+  const [branchName, setBranchName] = useState('');
 
-  // UI state machine: 'FORM' | 'SCANNING' | 'SUBMITTING' | 'SUCCESS'
+  // UI state machine: 'FORM' | 'SUBMITTING' | 'SUCCESS'
   const [currentStep, setCurrentStep] = useState('FORM');
   const [ticketData, setTicketData] = useState(null);
-  const [cameraActive, setCameraActive] = useState(false);
+  const branchId = searchParams.get('branchId') || '';
+  const [submitError, setSubmitError] = useState('');
+  const submittingRef = React.useRef(false);
+  useEffect(() => {
+    let active = true;
+    getBranches().then((branches) => {
+      if (active) setBranchName(branches.find((b) => b.branchId === branchId)?.branchName || '');
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [branchId]);
   const [formErrors, setFormErrors] = useState({});
 
   // Đọc params từ QR code trên URL (nếu có: ?code=APT-xxx&phone=09xxx&name=xxx)
@@ -46,27 +53,17 @@ export default function PatientCheckin() {
     const codeParam = searchParams.get('code') || searchParams.get('appointmentCode') || '';
     const phoneParam = searchParams.get('phone') || searchParams.get('sdt') || '';
     const nameParam = searchParams.get('name') || searchParams.get('fullName') || '';
-    const branchParam = searchParams.get('branch') || '';
 
     if (codeParam) setAppointmentCode(codeParam.toUpperCase());
     if (phoneParam) setPhoneNumber(phoneParam);
     if (nameParam) setFullName(nameParam);
-    if (branchParam) setBranchName(branchParam);
+
 
     // Nếu URL có đủ cả 3 thông số từ mã QR cá nhân, gợi ý tự động xác nhận
     if (codeParam && phoneParam && nameParam) {
       toast.success('Đã nhận diện thông tin lịch hẹn từ mã QR!', { icon: '✨' });
     }
   }, [searchParams]);
-
-  // Demo auto-fill data
-  const handleFillDemoData = () => {
-    setFullName('Lê Băng Châu');
-    setPhoneNumber('0378995152');
-    setAppointmentCode('APT-20261120-008');
-    setFormErrors({});
-    toast.success('Đã nạp thông tin lịch hẹn mẫu demo!');
-  };
 
   // Validate form
   const validate = () => {
@@ -76,11 +73,11 @@ export default function PatientCheckin() {
     }
     if (!phoneNumber.trim()) {
       errors.phoneNumber = 'Vui lòng nhập số điện thoại';
-    } else if (!/^(0|\+84)[3|5|7|8|9][0-9]{8}$/.test(phoneNumber.trim().replace(/\s+/g, ''))) {
+    } else if (!/^(0|\+84)[35789][0-9]{8}$/.test(phoneNumber.trim().replace(/\s+/g, ''))) {
       errors.phoneNumber = 'Số điện thoại không đúng định dạng (10 số)';
     }
     if (!appointmentCode.trim()) {
-      errors.appointmentCode = 'Vui lòng nhập mã lịch hẹn (VD: APT-20261120-008)';
+      errors.appointmentCode = 'Vui lòng nhập mã lịch hẹn (VD: APT-123456)';
     }
 
     setFormErrors(errors);
@@ -88,61 +85,39 @@ export default function PatientCheckin() {
   };
 
   // Submit check-in
-  const handleCheckinSubmit = (e) => {
-    e?.preventDefault();
-    if (!validate()) {
-      toast.error('Vui lòng kiểm tra lại thông tin nhập!');
+  const handleCheckinSubmit = async (event) => {
+    event?.preventDefault();
+    if (!validate() || submittingRef.current) return;
+    if (!branchId) {
+      setSubmitError('Vui lòng quét mã QR tại chi nhánh để check-in.');
       return;
     }
-
+    submittingRef.current = true;
+    setSubmitError('');
     setCurrentStep('SUBMITTING');
-
-    // Giả lập đối soát dữ liệu lịch hẹn và tạo số thứ tự tiếp nhận
-    setTimeout(() => {
-      // Mock ticket data
-      const randomTicketNum = Math.floor(Math.random() * 20) + 5;
-      const now = new Date();
-      const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-      const dateStr = now.toLocaleDateString('vi-VN');
-
-      setTicketData({
-        ticketNumber: `A-${String(randomTicketNum).padStart(2, '0')}`,
-        appointmentCode: appointmentCode.toUpperCase(),
-        patientName: fullName.trim(),
-        patientPhone: phoneNumber.trim(),
-        doctorName: 'BS. CKI Nguyễn Thị Phương',
-        room: 'Phòng Khám 102 - Ghế 02',
-        serviceName: 'Khám tổng quát & Tư vấn điều trị',
-        branchName: branchName,
-        checkinTime: `${timeStr} - ${dateStr}`,
-        estimatedWaitTime: 'Khoảng 5 - 10 phút',
-        status: 'WAITING'
+    try {
+      const result = await checkInAppointment({
+        appointmentCode: appointmentCode.trim().toUpperCase(),
+        fullName: fullName.trim(), phone: phoneNumber.trim(), branchId,
       });
-
+      setTicketData(result);
       setCurrentStep('SUCCESS');
-      toast.success('Check-in tiếp nhận thành công!');
-    }, 1200);
-  };
-
-  // Giả lập quét camera QR
-  const handleSimulateScan = () => {
-    setCameraActive(true);
-    setCurrentStep('SCANNING');
-
-    // Giả lập quét thành công sau 2.5s
-    setTimeout(() => {
-      setCameraActive(false);
-      setAppointmentCode('APT-20261120-008');
-      setFullName('Lê Băng Châu');
-      setPhoneNumber('0378995152');
+    } catch (error) {
+      setSubmitError(error.response?.data?.message || 'Không thể check-in. Vui lòng thử lại.');
       setCurrentStep('FORM');
-      toast.success('Quét mã QR phiếu hẹn thành công!');
-    }, 2500);
+    } finally {
+      submittingRef.current = false;
+    }
   };
 
   const handleReset = () => {
     setCurrentStep('FORM');
     setTicketData(null);
+    setFullName('');
+    setPhoneNumber('');
+    setAppointmentCode('');
+    setSubmitError('');
+    setFormErrors({});
   };
 
   return (
@@ -211,23 +186,8 @@ export default function PatientCheckin() {
               </div>
             </div>
 
-            {/* Quick Demo Fill & Scan Bar */}
-            <div className="bg-teal-50/70 border-b border-teal-100 px-5 py-3 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2 text-teal-800 font-medium">
-                <Info className="w-4 h-4 text-teal-600 flex-shrink-0" />
-                <span>Bạn có phiếu hẹn giấy hoặc mã QR?</span>
-              </div>
-              <button
-                type="button"
-                onClick={handleSimulateScan}
-                className="inline-flex items-center gap-1 font-bold text-teal-700 hover:text-teal-800 bg-white px-2.5 py-1 rounded-lg border border-teal-200 shadow-xs hover:bg-teal-50 transition active:scale-95"
-              >
-                <Camera className="w-3.5 h-3.5 text-teal-600" />
-                <span>Quét mã</span>
-              </button>
-            </div>
-
             {/* Form Fields */}
+            {submitError && <p role="alert" className="px-5 pt-4 text-sm text-red-600">{submitError}</p>}
             <form onSubmit={handleCheckinSubmit} className="p-5 sm:p-7 space-y-4 sm:space-y-5">
 
               {/* Field 1: Mã lịch hẹn */}
@@ -246,21 +206,13 @@ export default function PatientCheckin() {
                       setAppointmentCode(e.target.value.toUpperCase());
                       if (formErrors.appointmentCode) setFormErrors(prev => ({ ...prev, appointmentCode: null }));
                     }}
-                    placeholder="VD: APT-20261120-008"
+                    placeholder="VD: APT-123456"
                     className={`w-full pl-10 pr-24 py-3 bg-slate-50/80 border rounded-xl text-sm font-semibold tracking-wide text-slate-800 placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:ring-2 transition ${formErrors.appointmentCode
                         ? 'border-red-400 focus:ring-red-200 bg-red-50/20'
                         : 'border-slate-200 focus:border-teal-500 focus:ring-teal-100 focus:bg-white'
                       }`}
                   />
-                  <div className="absolute inset-y-0 right-1.5 flex items-center">
-                    <button
-                      type="button"
-                      onClick={handleSimulateScan}
-                      className="px-2 py-1 text-[11px] font-semibold text-teal-700 bg-teal-100/70 hover:bg-teal-100 rounded-lg transition"
-                    >
-                      Quét QR
-                    </button>
-                  </div>
+
                 </div>
                 {formErrors.appointmentCode && (
                   <p className="text-[11px] text-red-500 mt-1 flex items-center gap-1 font-medium">
@@ -269,7 +221,7 @@ export default function PatientCheckin() {
                   </p>
                 )}
                 <p className="text-[11px] text-slate-400 mt-1">
-                  * Mã được gửi qua tin nhắn SMS hoặc phiếu hẹn lúc quý khách đặt lịch.
+                  * Mã lịch hẹn được gửi đến email đã nhập khi quý khách đặt lịch.
                 </p>
               </div>
 
@@ -353,18 +305,11 @@ export default function PatientCheckin() {
                   className="w-full py-3.5 px-4 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white rounded-xl font-bold text-sm sm:text-base shadow-lg shadow-teal-600/25 flex items-center justify-center gap-2 transition active:scale-[0.99] cursor-pointer"
                 >
                   <CheckCircle2 className="w-5 h-5 text-teal-200" />
-                  <span>Xác Nhận & Lấy Số Khám Ngay</span>
+                  <span>Xác nhận check-in</span>
                 </button>
 
                 <div className="flex items-center justify-between pt-1">
-                  <button
-                    type="button"
-                    onClick={handleFillDemoData}
-                    className="text-xs font-semibold text-teal-700 hover:text-teal-800 hover:underline flex items-center gap-1 transition"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Điền mẫu demo nhanh</span>
-                  </button>
+
 
                   <a
                     href="tel:19008059"
@@ -381,43 +326,6 @@ export default function PatientCheckin() {
         )}
 
         {/* STEP 2: CAMERA SCANNER SIMULATION */}
-        {currentStep === 'SCANNING' && (
-          <div className="bg-slate-900 rounded-3xl shadow-2xl p-6 sm:p-8 text-white text-center flex flex-col items-center justify-center min-h-[420px] relative overflow-hidden">
-            {/* Background scanning laser effect */}
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-teal-500/10 to-transparent pointer-events-none animate-pulse" />
-
-            <div className="relative w-56 h-56 sm:w-64 sm:h-64 border-2 border-teal-400/80 rounded-2xl flex items-center justify-center mb-6 overflow-hidden bg-black/40 shadow-inner">
-              {/* Corner markers */}
-              <div className="absolute top-2 left-2 w-6 h-6 border-t-4 border-l-4 border-teal-400" />
-              <div className="absolute top-2 right-2 w-6 h-6 border-t-4 border-r-4 border-teal-400" />
-              <div className="absolute bottom-2 left-2 w-6 h-6 border-b-4 border-l-4 border-teal-400" />
-              <div className="absolute bottom-2 right-2 w-6 h-6 border-b-4 border-r-4 border-teal-400" />
-
-              {/* Animated scanning bar */}
-              <div className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-teal-400 to-transparent shadow-lg shadow-teal-400 animate-bounce top-1/2 -translate-y-1/2" />
-
-              <QrCode className="w-32 h-32 text-teal-400/30" />
-              <div className="absolute bottom-3 text-[11px] font-medium text-teal-300 bg-black/60 px-3 py-1 rounded-full backdrop-blur-xs">
-                Đang nhận diện mã QR...
-              </div>
-            </div>
-
-            <h3 className="text-base sm:text-lg font-bold text-white mb-1">
-              Đưa mã QR trên phiếu hẹn vào khung quét
-            </h3>
-            <p className="text-xs text-slate-400 max-w-xs mb-5">
-              Hệ thống sẽ tự động quét và điền thông tin đặt lịch của bạn vào form xác minh.
-            </p>
-
-            <button
-              onClick={() => setCurrentStep('FORM')}
-              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-semibold backdrop-blur-md transition"
-            >
-              Hủy quét / Nhập tay
-            </button>
-          </div>
-        )}
-
         {/* STEP 3: SUBMITTING / VERIFYING ANIMATION */}
         {currentStep === 'SUBMITTING' && (
           <div className="bg-white rounded-3xl shadow-xl p-8 sm:p-12 text-center flex flex-col items-center justify-center min-h-[380px]">
@@ -431,7 +339,7 @@ export default function PatientCheckin() {
               Đang xác minh lịch hẹn...
             </h3>
             <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
-              Hệ thống đang kết nối với cơ sở dữ liệu phòng khám, sắp xếp phòng khám và chuẩn bị số thứ tự cho bạn.
+              Hệ thống đang kiểm tra thông tin lịch hẹn và xác nhận tiếp nhận.
             </p>
           </div>
         )}
@@ -439,10 +347,10 @@ export default function PatientCheckin() {
         {/* STEP 4: CHECK-IN THÀNH CÔNG (CHỈ THÔNG BÁO TIẾP NHẬN & CHỜ GỌI KHÁM, KHÔNG HIỆN BẤT KỲ THÔNG TIN LỊCH HẸN NÀO) */}
         {currentStep === 'SUCCESS' && (
           <div className="w-full max-w-md mx-auto bg-white rounded-3xl shadow-xl shadow-teal-950/10 border border-slate-100 overflow-hidden text-center animate-in fade-in zoom-in-95 duration-300">
-            
+
             {/* Header Thành Công */}
             <div className="bg-gradient-to-b from-teal-50/90 via-emerald-50/40 to-white px-6 pt-10 pb-6 flex flex-col items-center">
-              
+
               {/* Icon Checkmark lớn với hiệu ứng lan tỏa */}
               <div className="relative mb-5">
                 <div className="absolute inset-0 rounded-full bg-emerald-400/20 animate-ping opacity-60 pointer-events-none" />
@@ -459,7 +367,7 @@ export default function PatientCheckin() {
 
               {/* Tiêu đề chính */}
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mb-3">
-                Check-in Thành Công!
+                {ticketData?.alreadyCheckedIn ? 'Lịch hẹn đã được tiếp nhận' : 'Check-in thành công!'}
               </h2>
 
               {/* Banner Xin Vui Lòng Chờ Gọi Khám */}
@@ -468,19 +376,21 @@ export default function PatientCheckin() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-600"></span>
                 </span>
-                <span>Xin Vui Lòng Chờ Gọi Khám</span>
+                <span>{({ WAITING: 'Xin vui lòng chờ gọi khám', CALLED: 'Đã được gọi vào phòng khám', IN_PROGRESS: 'Đang khám', COMPLETED: 'Đã hoàn tất khám' })[ticketData?.status] || 'Đã tiếp nhận'}</span>
               </div>
             </div>
 
             {/* Nội dung hướng dẫn nhẹ nhàng */}
             <div className="px-6 pb-8 pt-2 space-y-5">
-              
+
               <div className="bg-slate-50/90 rounded-2xl p-5 border border-slate-200/70 text-xs sm:text-sm text-slate-600 leading-relaxed text-center space-y-2">
                 <p className="font-bold text-slate-800 text-sm">
                   Hệ thống đã ghi nhận quý khách có mặt tại phòng khám.
                 </p>
                 <p>
-                  Quý khách vui lòng ngồi thư giãn tại sảnh chờ. Nhân viên y tế sẽ gọi tên quý khách vào phòng khám theo thứ tự tiếp nhận.
+                  {ticketData?.status === 'WAITING'
+                    ? 'Quý khách vui lòng ngồi tại sảnh chờ. Nhân viên y tế sẽ gọi tên quý khách vào phòng khám theo thứ tự tiếp nhận.'
+                    : 'Lịch hẹn đã được check-in trước đó. Quý khách vui lòng theo hướng dẫn của nhân viên tại phòng khám.'}
                 </p>
               </div>
 

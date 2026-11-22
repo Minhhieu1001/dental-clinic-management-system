@@ -259,7 +259,18 @@ public class TreatmentPlanServiceImpl implements TreatmentPlanService {
                     && a.getStatus() != StatusAppointment.CANCELLED);
 
             if (!exists) {
+                String appointmentCode;
+                java.security.SecureRandom random = new java.security.SecureRandom();
+                int attempts = 0;
+                do {
+                    if (++attempts > 100) {
+                        throw new AppException(ErrorCode.VALIDATION_ERROR, "Không thể cấp mã lịch hẹn mới. Vui lòng thử lại.");
+                    }
+                    appointmentCode = String.format(java.util.Locale.ROOT, "APT-%06d", random.nextInt(1_000_000));
+                } while (appointmentRepository.existsByAppointmentCode(appointmentCode));
+
                 Appointment appt = Appointment.builder()
+                        .appointmentCode(appointmentCode)
                         .patientName(patientName)
                         .phone(phone)
                         .dentist(dentist)

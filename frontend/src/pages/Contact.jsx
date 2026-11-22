@@ -118,6 +118,7 @@ export default function Contact() {
   // Form State
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
+  const [bookingEmail, setBookingEmail] = useState('')
   const [selectedService, setSelectedService] = useState('')
   const [date, setDate] = useState('')
   const [time, setTime] = useState('09:00')
@@ -231,6 +232,7 @@ export default function Contact() {
 
       // Secondary legacy appointment record if needed
       await createAppointment({
+        email: bookingEmail.trim(),
         fullName: fullName.trim(),
         phone: phone.trim(),
         serviceName: selectedService,
@@ -558,6 +560,10 @@ export default function Contact() {
                         onChange={(e) => setFullName(e.target.value)}
                         className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-3 pl-10 pr-4 text-sm text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-[#1f4fb2] focus:bg-white focus:ring-4 focus:ring-[#1f4fb2]/10 font-medium"
                       />
+                  <input type="email" required maxLength={254} aria-label="Email nhận lịch hẹn"
+                    placeholder="Email nhận lịch hẹn" value={bookingEmail}
+                    onChange={(event) => setBookingEmail(event.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white text-slate-800" />
                     </div>
                   </div>
 

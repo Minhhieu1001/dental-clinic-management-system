@@ -76,8 +76,7 @@ const isWithinOneHourOfCreation = (createdAt) => {
   }
 };
 
-export default function AppointmentTable({ appointments, onRefresh, onUpdateAppointment, onOpenEditModal, onOpenCreateModal }) {
-  const [dateScope, setDateScope] = useState('today'); // 'today' | 'week'
+export default function AppointmentTable({ appointments, onRefresh, onUpdateAppointment, onOpenEditModal, onOpenCreateModal, appointmentDate, onAppointmentDateChange, appointmentsLoading = false, appointmentsError = null, appointmentSearch, onSearchAppointments }) {
   const [activeFilter, setActiveFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [actionLoadingId, setActionLoadingId] = useState(null);
@@ -86,6 +85,39 @@ export default function AppointmentTable({ appointments, onRefresh, onUpdateAppo
 
   // Selected row state for header reschedule action
   const [selectedAptId, setSelectedAptId] = useState(null);
+  const [phoneInput, setPhoneInput] = useState('');
+  const submitPhoneSearch = (event) => {
+    event.preventDefault();
+    const phone = phoneInput.trim();
+    const normalized = phone.replace(/[^0-9]/g, '').replace(/^84/, '0');
+    if (phone && (!/^[+0-9\s().-]+$/.test(phone) || !/^0[0-9]{9,10}$/.test(normalized))) {
+      toast.error('Vui lòng nhập đầy đủ số điện thoại hợp lệ.');
+      return;
+    }
+    setCurrentPage(1);
+    setSelectedAptId(null);
+    setActiveFilter('all');
+    onSearchAppointments(phone, false);
+  };
+  const clearPhoneSearch = () => {
+    setPhoneInput('');
+    setCurrentPage(1);
+    setSelectedAptId(null);
+    onSearchAppointments('', false);
+  };
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const changeDate = (date) => {
+    if (!date || (date === appointmentDate && !appointmentSearch.allDates)) return;
+    setCurrentPage(1);
+    setSelectedAptId(null);
+    onAppointmentDateChange(date);
+  };
+  const shiftDate = (offset) => {
+    const date = new Date(`${appointmentDate}T00:00:00`);
+    date.setDate(date.getDate() + offset);
+    changeDate(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`);
+  };
 
   // Detail Modal state
   const [detailApt, setDetailApt] = useState(null);
@@ -255,7 +287,7 @@ export default function AppointmentTable({ appointments, onRefresh, onUpdateAppo
   const handleCheckin = async (apt) => {
     setActionLoadingId(apt.id);
     try {
-      let updatedData = { ...apt, status: 'WAITING', rawStatus: 'WAITING' };
+      let updatedData = { ...apt, status: 'WAITING', rawStatus: 'WAITING', isCheck: true };
       if (apt.id && !String(apt.id).startsWith('mock-')) {
         const res = await updateAppointment(apt.id, { status: 'WAITING' });
         if (res) {
@@ -264,7 +296,7 @@ export default function AppointmentTable({ appointments, onRefresh, onUpdateAppo
       }
 
       setLocalAppointments((prev) =>
-        prev.map((item) => (item.id === apt.id ? { ...item, status: 'WAITING', rawStatus: 'WAITING' } : item))
+        prev.map((item) => (item.id === apt.id ? { ...item, ...updatedData, rawStatus: updatedData.status } : item))
       );
 
       // Cập nhật trực tiếp lên State Dashboard cha (không cần gọi lại API refresh)
@@ -282,59 +314,7 @@ export default function AppointmentTable({ appointments, onRefresh, onUpdateAppo
   };
 
   const filtered = useMemo(() => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const date = String(now.getDate()).padStart(2, '0');
-    const todayStr = `${year}-${month}-${date}`;
-
-    const day = now.getDay();
-    const diffToMonday = day === 0 ? -6 : 1 - day;
-    const monday = new Date(now);
-    monday.setDate(now.getDate() + diffToMonday);
-    monday.setHours(0, 0, 0, 0);
-
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    sunday.setHours(23, 59, 59, 999);
-
-    const extractYYYYMMDD = (val) => {
-      if (!val) return null;
-      if (typeof val === 'string') {
-        if (val.includes('T')) return val.split('T')[0];
-        if (val.includes(' ')) return val.split(' ')[0];
-        if (val.length >= 10) return val.substring(0, 10);
-      }
-      try {
-        const d = new Date(val);
-        if (isNaN(d.getTime())) return null;
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const dt = String(d.getDate()).padStart(2, '0');
-        return `${y}-${m}-${dt}`;
-      } catch (e) {
-        return null;
-      }
-    };
-
     return localAppointments.filter((apt) => {
-      const dateVal = apt.appointmentDate || apt.appointmentTime;
-      const aptDateStr = extractYYYYMMDD(dateVal);
-
-      // 1. Date Scope Filter
-      if (dateScope === 'today') {
-        if (aptDateStr && aptDateStr !== todayStr) {
-          return false;
-        }
-      } else if (dateScope === 'week') {
-        if (dateVal) {
-          const d = new Date(dateVal);
-          if (!isNaN(d.getTime()) && (d < monday || d > sunday)) {
-            return false;
-          }
-        }
-      }
-
       // 2. Status Filter
       if (activeFilter === 'all') return true;
       if (activeFilter === 'confirmed')
@@ -345,7 +325,7 @@ export default function AppointmentTable({ appointments, onRefresh, onUpdateAppo
         return apt.status === 'CALLED' || apt.status === 'called';
       return true;
     });
-  }, [localAppointments, activeFilter, dateScope]);
+  }, [localAppointments, activeFilter]);
 
   // Reset page when filter changes
   const totalPages = Math.max(1, Math.ceil(filtered.length / ROWS_PER_PAGE));
@@ -424,34 +404,32 @@ export default function AppointmentTable({ appointments, onRefresh, onUpdateAppo
       {/* Header with filter tabs & action buttons */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-2.5">
         <div className="flex items-center gap-3">
-          {/* Date Scope Toggle Pill */}
-          <div className="flex items-center gap-1 rounded-[4px] bg-slate-100/90 p-0.5 border border-slate-200/80">
-            <button
-              type="button"
-              onClick={() => {
-                setDateScope('today');
-                setCurrentPage(1);
-              }}
-              className={`rounded-[3px] px-2.5 py-1 text-[12px] font-bold transition-all ${dateScope === 'today'
-                ? 'bg-teal-700 text-white shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900'
-                }`}
-            >
-              Hôm nay
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setDateScope('week');
-                setCurrentPage(1);
-              }}
-              className={`rounded-[3px] px-2.5 py-1 text-[12px] font-bold transition-all ${dateScope === 'week'
-                ? 'bg-teal-700 text-white shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900'
-                }`}
-            >
-              Tuần này
-            </button>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {appointmentSearch.allDates ? (
+              <>
+                <span className="rounded-lg bg-teal-50 px-3 py-1 text-xs font-bold text-teal-800">Tất cả ngày</span>
+                <button type="button" onClick={() => changeDate(appointmentDate)} className="text-xs text-teal-700 underline">
+                  Về ngày {formatDisplayDate(appointmentDate)}
+                </button>
+              </>
+            ) : <>
+              <label htmlFor="appointment-date" className="mr-1 text-xs font-semibold text-slate-600">Ngày hẹn</label>
+              <button type="button" onClick={() => shiftDate(-1)} title="Ngày trước" aria-label="Ngày trước"
+                className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100">
+                <ChevronLeft size={15} />
+              </button>
+              <input id="appointment-date" type="date" value={appointmentDate}
+                onChange={(e) => changeDate(e.target.value)}
+                className="h-7 rounded-lg border border-slate-200 bg-slate-50 px-2 text-xs font-bold text-slate-700 outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-500/20" />
+              <button type="button" onClick={() => shiftDate(1)} title="Ngày tiếp theo" aria-label="Ngày tiếp theo"
+                className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100">
+                <ChevronRight size={15} />
+              </button>
+              <button type="button" onClick={() => changeDate(todayStr)} disabled={appointmentDate === todayStr}
+                className="h-7 rounded-lg border border-slate-200 px-3 text-xs font-bold text-slate-600 hover:bg-teal-50 disabled:bg-teal-50 disabled:text-teal-800">
+                Hôm nay
+              </button>
+            </>}
           </div>
         </div>
 
@@ -477,13 +455,12 @@ export default function AppointmentTable({ appointments, onRefresh, onUpdateAppo
             type="button"
             disabled={isRescheduleDisabled}
             onClick={handleHeaderRescheduleClick}
-            className={`flex items-center gap-1 rounded-[4px] border px-3 py-1 text-[11px] font-bold transition-all shadow-2xs ${
-              isRescheduleDisabled
-                ? 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
-                : selectedAptId
-                  ? 'border-amber-500 bg-amber-500 text-white hover:bg-amber-600 cursor-pointer'
-                  : 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 cursor-pointer'
-            }`}
+            className={`flex items-center gap-1 rounded-[4px] border px-3 py-1 text-[11px] font-bold transition-all shadow-2xs ${isRescheduleDisabled
+              ? 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
+              : selectedAptId
+                ? 'border-amber-500 bg-amber-500 text-white hover:bg-amber-600 cursor-pointer'
+                : 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 cursor-pointer'
+              }`}
             title={
               isSelectedCheckedIn
                 ? 'Lịch hẹn đã check-in (Đang chờ khám), không thể đổi lịch'
@@ -549,6 +526,28 @@ export default function AppointmentTable({ appointments, onRefresh, onUpdateAppo
         </div>
       </div>
 
+      <form onSubmit={submitPhoneSearch} className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-2.5">
+        <label htmlFor="appointment-phone" className="text-xs font-semibold text-slate-600">Số điện thoại</label>
+        <input id="appointment-phone" type="tel" maxLength={50} value={phoneInput}
+          placeholder="Nhập SĐT đã đặt lịch"
+          onChange={(event) => {
+            setPhoneInput(event.target.value);
+            if (!event.target.value.trim()) clearPhoneSearch();
+          }}
+          className="h-8 w-48 rounded-lg border border-slate-200 px-3 text-xs outline-none focus:border-teal-600" />
+        <button type="submit" className="h-8 rounded-lg bg-teal-700 px-3 text-xs font-semibold text-white hover:bg-teal-800">Tìm kiếm</button>
+        {(phoneInput || appointmentSearch.phone) && <button type="button" onClick={clearPhoneSearch}
+          className="h-8 rounded-lg border border-slate-200 px-3 text-xs text-slate-600">Xóa tìm kiếm</button>}
+        {appointmentSearch.phone && <span className="text-xs text-slate-500">Kết quả cho SĐT: {appointmentSearch.phone}</span>}
+        {appointmentSearch.phone && !appointmentSearch.allDates && <button type="button"
+          onClick={() => {
+            setCurrentPage(1);
+            setSelectedAptId(null);
+            setActiveFilter('all');
+            onSearchAppointments(appointmentSearch.phone, true);
+          }} className="text-xs font-semibold text-teal-700 underline">Tìm tất cả ngày</button>}
+      </form>
+
       {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full table-fixed min-w-[720px]">
@@ -603,6 +602,11 @@ export default function AppointmentTable({ appointments, onRefresh, onUpdateAppo
                       <p className="mt-0.5 text-[11px] text-slate-400 leading-tight truncate">
                         {apt.phone}
                       </p>
+                      {(apt.appointmentCode || apt.code) && (
+                        <p className="mt-0.5 text-[10.5px] font-mono font-bold text-teal-700 leading-tight truncate">
+                          {apt.appointmentCode || apt.code}
+                        </p>
+                      )}
                     </div>
                   </td>
 
@@ -668,9 +672,13 @@ export default function AppointmentTable({ appointments, onRefresh, onUpdateAppo
       </div>
 
       {/* Empty state */}
-      {filtered.length === 0 && (
+      {appointmentsLoading && <p role="status" className="px-4 py-6 text-center text-sm text-slate-500">Đang tải lịch hẹn...</p>}
+      {!appointmentsLoading && appointmentsError && <p role="alert" className="px-4 py-6 text-center text-sm text-red-600">Không thể tải lịch hẹn. Vui lòng bấm làm mới để thử lại.</p>}
+      {!appointmentsLoading && !appointmentsError && filtered.length === 0 && (
         <div className="px-4 py-8 text-center text-[13px] text-slate-400">
-          Không có lịch hẹn phù hợp với bộ lọc.
+          {appointmentSearch.phone
+            ? `Không có lịch hẹn phù hợp với SĐT ${appointmentSearch.phone}${appointmentSearch.allDates ? '' : ` trong ngày ${formatDisplayDate(appointmentDate)}`}.`
+            : 'Không có lịch hẹn phù hợp với bộ lọc.'}
         </div>
       )}
 

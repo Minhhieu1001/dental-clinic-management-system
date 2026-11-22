@@ -13,6 +13,22 @@ import java.util.UUID;
 
 @Repository
 public interface AppointmentRepository extends JpaRepository<Appointment, UUID> {
+  boolean existsByAppointmentCode(String appointmentCode);
+  @Query(value = """
+      SELECT a.* FROM appointments a
+      WHERE a.branch_id = :branchId
+        AND regexp_replace(regexp_replace(coalesce(a.phone, ''), '[^0-9]', '', 'g'), '^84', '0') = :phone
+      ORDER BY a.appointment_date DESC, a.appointment_time ASC
+      """, nativeQuery = true)
+  List<Appointment> findByBranchAndNormalizedPhone(@Param("branchId") String branchId,
+      @Param("phone") String phone);
+  @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT a FROM Appointment a WHERE a.appointmentCode = :code")
+  java.util.Optional<Appointment> findForCheckin(@Param("code") String code);
+
+  @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT a FROM Appointment a WHERE a.id = :id")
+  java.util.Optional<Appointment> findByIdForUpdate(@Param("id") UUID id);
   List<Appointment> findByPatient_IdOrderByAppointmentDateDescAppointmentTimeDesc(UUID patientId);
 
   @Query("""

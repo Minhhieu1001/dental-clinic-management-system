@@ -15,6 +15,9 @@ import java.util.UUID;
 @AllArgsConstructor
 public class AppointmentDetailDTO {
     private UUID id;
+    private String appointmentCode;
+    private Boolean isCheck;
+    private String email;
     private UUID patientId;
     private String patientName;
     private String patientCode;
