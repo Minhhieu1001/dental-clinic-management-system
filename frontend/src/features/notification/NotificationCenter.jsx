@@ -30,6 +30,7 @@ import {
   markAllNotificationsAsRead,
   deleteNotification,
 } from '../../services/notification.service';
+import NotificationDetailModal from './NotificationDetailModal';
 
 // Phân loại thông báo thông minh & hiện đại theo nghiệp vụ phòng khám nha khoa
 const resolveNotificationType = (item) => {
@@ -185,6 +186,8 @@ export default function NotificationCenter({
   const [viewMode, setViewMode] = useState(() => {
     return localStorage.getItem('notification_view_mode') || 'COMPACT';
   });
+  const [selectedNotification, setSelectedNotification] = useState(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   const handleToggleViewMode = (mode) => {
     setViewMode(mode);
@@ -267,9 +270,8 @@ export default function NotificationCenter({
     if (!item.isRead) {
       handleMarkAsRead(item);
     }
-    if (item.targetUrl) {
-      navigate(item.targetUrl);
-    }
+    setSelectedNotification(item);
+    setIsDetailOpen(true);
   };
 
   // Filter thông báo
@@ -752,6 +754,16 @@ export default function NotificationCenter({
           })}
         </div>
       )}
+
+      {/* Notification Detail Modal mượt mà */}
+      <NotificationDetailModal
+        isOpen={isDetailOpen}
+        onClose={() => setIsDetailOpen(false)}
+        notification={selectedNotification}
+        onDelete={(id) => handleDeleteNotification(id)}
+        resolvedType={selectedNotification ? resolveNotificationType(selectedNotification) : 'SYSTEM'}
+        meta={selectedNotification ? getNotificationMeta(resolveNotificationType(selectedNotification)) : {}}
+      />
     </div>
   );
 }
