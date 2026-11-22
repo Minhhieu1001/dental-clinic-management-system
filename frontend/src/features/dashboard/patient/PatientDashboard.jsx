@@ -604,6 +604,7 @@ export default function PatientDashboard() {
         mergedList.push({
           id: apt.id || Math.random().toString(),
           type: 'APPOINTMENT',
+          appointmentCode: apt.appointmentCode,
           typeLabel: 'Lịch hẹn khám',
           dayOfWeek: dateParsed.dayOfWeek,
           dayNumber: dateParsed.dayNumber,
@@ -1880,6 +1881,14 @@ export default function PatientDashboard() {
             </div>
 
             <div className="mt-4 space-y-3.5 text-sm">
+              {selectedAppointment.type === 'APPOINTMENT' && (
+                <div className="flex items-start justify-between gap-3">
+                  <span className="shrink-0 text-slate-500 font-medium">Mã lịch hẹn:</span>
+                  <span className="font-mono font-bold text-teal-700 text-right break-all select-all">
+                    {selectedAppointment.appointmentCode || 'Chưa có mã'}
+                  </span>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <span className="text-slate-500 font-medium">Loại phiếu:</span>
                 <span

@@ -351,7 +351,7 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
             setReasonNotes(initialAppointment.notes);
           }
         } else {
-          setSelectedService(fetchedServices[0] || null);
+          setSelectedService(mappedReasons[0] || null);
         }
 
         // Initialize patient info from auth / localStorage
@@ -411,7 +411,7 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
         patientLookup();
 
         // 1. Fetch Branches directly from DB
-        const bRes = await getBranches().catch(() => []);
+        const bRes = await getBranches();
         let bList = Array.isArray(bRes) ? bRes : (bRes?.data || []);
         bList = bList.map((b) => ({
           branchId: b.branchId || b.id,
@@ -425,7 +425,7 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
         setSelectedBranch(bList[0] || null);
 
         // 2. Fetch Dentists directly from DB
-        const dRes = await getDentistsList().catch(() => []);
+        const dRes = await getDentistsList();
         let dList = Array.isArray(dRes) ? dRes : (dRes?.data || []);
         dList = dList.map((d) => {
           const rawName = d.fullName || d.name || d.user?.fullName || d.user?.username || 'Bác sĩ chuyên khoa';
@@ -470,6 +470,7 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
         }
       } catch (err) {
         console.warn('Lỗi khi tải dữ liệu modal:', err);
+        toast.error('Không thể tải dữ liệu đặt lịch. Vui lòng đóng form và mở lại để thử lại.');
       }
     };
 

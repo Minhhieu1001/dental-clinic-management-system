@@ -392,7 +392,7 @@ export default function CreateAppointmentModal({
 
           // Reason / Service
           const targetReason = targetData.service || targetData.reason || targetData.title || targetData.note || '';
-          const foundService = fetchedServices.find(
+          const foundService = mappedReasons.find(
             (s) => s.serviceName.toLowerCase() === targetReason.toLowerCase()
           );
           if (foundService) {
@@ -411,7 +411,7 @@ export default function CreateAppointmentModal({
               description: targetReason,
             });
           } else {
-            setSelectedService(fetchedServices[0] || null);
+            setSelectedService(mappedReasons[0] || null);
           }
 
           // Dentist pre-selection
@@ -458,7 +458,7 @@ export default function CreateAppointmentModal({
           setSelectedTime(timeStr);
         } else {
           // Fresh appointment defaults
-          setSelectedService(fetchedServices[0] || null);
+          setSelectedService(mappedReasons[0] || null);
           setIsCustomReason(false);
           setCustomReasonText('');
           setPatientInfo({
