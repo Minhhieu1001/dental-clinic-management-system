@@ -365,7 +365,7 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
         setPatientInfo({
           fullName: initialName || user?.username || '',
           phone: savedPhone,
-          email: user?.email || '',
+          email: initialAppointment?.id ? (initialAppointment.email || '') : '',
           dob: user?.dateOfBirth ? String(user.dateOfBirth).split('T')[0] : '2000-08-15',
           gender: user?.gender === 'FEMALE' ? 'Nữ' : 'Nam',
         });
@@ -402,7 +402,7 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
             setPatientInfo({
               fullName: pName,
               phone: pPhone,
-              email: p.email || user?.email || '',
+              email: initialAppointment?.id ? (initialAppointment.email || '') : '',
               dob: p.dateOfBirth ? String(p.dateOfBirth).split('T')[0] : (user?.dateOfBirth ? String(user.dateOfBirth).split('T')[0] : '2000-08-15'),
               gender: (p.gender === 'FEMALE' || p.gender === 'Nữ' || user?.gender === 'FEMALE') ? 'Nữ' : 'Nam',
             });
@@ -674,6 +674,11 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
       return;
     }
 
+    if (!initialAppointment?.id && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(patientInfo.email.trim())) {
+      toast.error('Vui lòng nhập email nhận lịch hẹn hợp lệ.');
+      setIsEditingPatient(true);
+      return;
+    }
     setSubmitting(true);
     try {
       const pId = isValidUUID(user?.patientId)
@@ -691,6 +696,7 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
         branchName: selectedBranch?.branchName || null,
         fullName: patientInfo.fullName.trim(),
         phone: patientInfo.phone.trim(),
+        email: patientInfo.email.trim(),
         dentistId: dId,
         roomId: null,
         appointmentDate: selectedDate,
@@ -1677,9 +1683,12 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">Email</label>
+                        <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">Email nhận lịch hẹn</label>
                         <input
                           type="email"
+                          required={!initialAppointment?.id}
+                          disabled={!!initialAppointment?.id}
+                          maxLength={254}
                           value={patientInfo.email}
                           onChange={(e) => setPatientInfo({ ...patientInfo, email: e.target.value })}
                           className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#009766] focus:border-[#009766]"
@@ -1742,9 +1751,15 @@ export default function PatientBookingModal({ isOpen, onClose, onSuccess, initia
                           <Mail size={12} className="text-[#009766]" />
                           Email
                         </span>
-                        <p className="font-bold text-slate-900 mt-0.5 truncate text-xs" title={patientInfo.email}>
-                          {patientInfo.email || 'Chưa cập nhật'}
-                        </p>
+                        {initialAppointment?.id ? (
+                          <p className="font-bold text-slate-900 mt-0.5 truncate text-xs">{patientInfo.email || 'Chưa cập nhật'}</p>
+                        ) : (
+                          <input type="email" required maxLength={254}
+                            aria-label="Email nhận lịch hẹn" placeholder="Nhập email nhận lịch hẹn"
+                            value={patientInfo.email}
+                            onChange={(e) => setPatientInfo({ ...patientInfo, email: e.target.value })}
+                            className="w-full mt-1 px-2 py-1.5 rounded border border-slate-300 text-xs" />
+                        )}
                       </div>
 
                       {/* Ngày sinh & Giới tính */}

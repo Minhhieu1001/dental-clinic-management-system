@@ -7,9 +7,14 @@ export const getAppointments = async (params = {}) => {
 };
 
 // Get appointments for employee's branch by day (optional date: YYYY-MM-DD)
-export const getAppointmentsByDay = async (date) => {
-  const params = date ? { date } : {};
+export const getAppointmentsByDay = async (date, phone) => {
+  const params = { ...(date ? { date } : {}), ...(phone ? { phone } : {}) };
   const response = await api.get('/appointments/day', { params });
+  return response.data;
+};
+
+export const searchAppointmentsByPhone = async (phone) => {
+  const response = await api.get('/appointments/search', { params: { phone } });
   return response.data;
 };
 
@@ -104,4 +109,9 @@ export const getDentistBookedTimesByDate = async (dentistId, date, excludeId) =>
       appointments.some(({ id }) => !excludeId || String(id) !== String(excludeId))
     )
     .map(([time]) => time);
+};
+
+export const checkInAppointment = async (data) => {
+  const response = await api.post('/appointments/check-in', data);
+  return response.data;
 };

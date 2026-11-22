@@ -19,6 +19,7 @@ public class AppointmentCreateDTO {
     private String branchName; // Fallback for legacy clients
     private String fullName; // Patient full name
     private String phone; // Patient phone number
+    private String email; // Recipient entered on the appointment form only
     private UUID dentistId; // Selected dentist ID
     private String appointmentDate; // YYYY-MM-DD
     private String appointmentTime; // HH:mm

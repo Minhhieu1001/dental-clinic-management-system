@@ -165,7 +165,6 @@ export const roleRoutes = {
       { path: 'invoices', title: 'Hóa đơn của tôi' },
       { path: 'notifications', title: 'Thông báo & Nhắc lịch' },
       { path: 'consultation', title: 'Tư vấn trực tuyến' },
-      { path: 'notifications', title: 'Tin tức' },
       { path: 'profile', title: 'Thông tin tài khoản' },
     ],
   },

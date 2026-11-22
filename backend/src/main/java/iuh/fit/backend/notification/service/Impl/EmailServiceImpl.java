@@ -65,12 +65,28 @@ public class EmailServiceImpl implements EmailService {
     }
 
     private void sendViaResendApi(String to, String subject, String content) {
+        sendViaResendApi(to, subject, content, true);
+    }
+
+    @Override
+    @Retry(name = "emailService")
+    public void sendToRecipient(String to, String subject, String content) {
+        if (!StringUtils.hasText(to)) throw new IllegalArgumentException("Recipient is required");
+        try {
+            if (StringUtils.hasText(resendApiKey)) sendViaResendApi(to, subject, content, false);
+            else sendViaSmtp(to.trim(), subject, content);
+        } catch (Exception ex) {
+            throw new IllegalStateException("Could not send appointment email", ex);
+        }
+    }
+
+    private void sendViaResendApi(String to, String subject, String content, boolean allowTestRedirect) {
         String recipient = to.trim();
         String finalSubject = subject;
 
         // Nếu là tài khoản Resend test và email người nhận khác email đăng ký Resend:
         // Tự động chuyển hướng về email test của bạn để tránh lỗi Resend 403 Forbidden
-        if (StringUtils.hasText(resendTestRedirect) && !recipient.equalsIgnoreCase(resendTestRedirect.trim())) {
+        if (allowTestRedirect && StringUtils.hasText(resendTestRedirect) && !recipient.equalsIgnoreCase(resendTestRedirect.trim())) {
             finalSubject = "[Gửi tới: " + recipient + "] " + subject;
             recipient = resendTestRedirect.trim();
             log.info("Resend Test Mode: Tự động chuyển hướng email vốn gửi tới '{}' về '{}'", to, recipient);

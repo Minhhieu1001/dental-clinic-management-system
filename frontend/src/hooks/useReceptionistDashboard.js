@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getAppointmentRequestsByDate } from '../services/appointmentRequest.service';
-import { getAppointmentsByDay, getAppointmentsByWeek } from '../services/appointment.service';
+import { getAppointmentsByDay, getAppointmentsByWeek, searchAppointmentsByPhone } from '../services/appointment.service';
 import { useWebSocket } from './useWebSocket';
 
 /**
@@ -18,6 +18,33 @@ export function useReceptionistDashboard() {
     cancelledAppointments: { value: 0 },
   });
   const [appointments, setAppointments] = useState([]);
+  const [appointmentDate, setAppointmentDate] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  });
+  const [dayAppointments, setDayAppointments] = useState([]);
+  const [appointmentsLoading, setAppointmentsLoading] = useState(false);
+  const [appointmentsError, setAppointmentsError] = useState(null);
+  const appointmentSequence = useRef(0);
+  const [appointmentSearch, setAppointmentSearch] = useState({ phone: '', allDates: false });
+  const searchAppointments = useCallback((phone, allDates = false) => {
+    const next = { phone: phone.trim(), allDates: Boolean(phone.trim()) && allDates };
+    if (next.phone === appointmentSearch.phone && next.allDates === appointmentSearch.allDates) return;
+    ++appointmentSequence.current;
+    setDayAppointments([]);
+    setAppointmentsError(null);
+    setAppointmentsLoading(true);
+    setAppointmentSearch(next);
+  }, [appointmentSearch]);
+  const changeAppointmentDate = useCallback((date) => {
+    if (!date || (date === appointmentDate && !appointmentSearch.allDates)) return;
+    ++appointmentSequence.current;
+    setDayAppointments([]);
+    setAppointmentsError(null);
+    setAppointmentsLoading(true);
+    setAppointmentDate(date);
+    setAppointmentSearch((previous) => ({ ...previous, allDates: false }));
+  }, [appointmentDate, appointmentSearch.allDates]);
   const [requests, setRequests] = useState([]);
   const [requestDate, setRequestDate] = useState(() => {
     const now = new Date();
@@ -28,13 +55,13 @@ export function useReceptionistDashboard() {
   const requestSequence = useRef(0);
 
   const changeRequestDate = useCallback((date) => {
-    if (!date) return;
+    if (!date || date === requestDate) return;
     ++requestSequence.current;
     setRequests([]);
     setRequestsError(null);
     setRequestsLoading(true);
     setRequestDate(date);
-  }, []);
+  }, [requestDate]);
 
   const refreshRequests = useCallback(async () => {
     const sequence = ++requestSequence.current;
@@ -58,7 +85,7 @@ export function useReceptionistDashboard() {
     return () => { ++requestSequence.current; };
   }, [refreshRequests]);
 
-  const formatAppointment = (dto) => {
+  const formatAppointment = useCallback((dto) => {
     let timeStr = '09:00';
     if (dto.appointmentTime) {
       try {
@@ -89,6 +116,9 @@ export function useReceptionistDashboard() {
 
     return {
       id: dto.id,
+      appointmentCode: dto.appointmentCode,
+      isCheck: dto.isCheck,
+      email: dto.email,
       time: timeStr,
       appointmentDate: dto.appointmentDate,
       appointmentTime: dto.appointmentTime,
@@ -112,7 +142,33 @@ export function useReceptionistDashboard() {
       requestId: dto.requestId || dto.requestIdStr || dto.attribute || null,
       createdAt: dto.createdAt || null,
     };
-  };
+  }, []);
+
+  const refreshAppointments = useCallback(async () => {
+    const sequence = ++appointmentSequence.current;
+    setAppointmentsLoading(true);
+    setAppointmentsError(null);
+    try {
+      const data = appointmentSearch.allDates
+        ? await searchAppointmentsByPhone(appointmentSearch.phone)
+        : await getAppointmentsByDay(appointmentDate, appointmentSearch.phone);
+      if (sequence === appointmentSequence.current) {
+        setDayAppointments(Array.isArray(data) ? data.map(formatAppointment) : []);
+      }
+    } catch (error) {
+      if (sequence === appointmentSequence.current) {
+        setDayAppointments([]);
+        setAppointmentsError(error);
+      }
+    } finally {
+      if (sequence === appointmentSequence.current) setAppointmentsLoading(false);
+    }
+  }, [appointmentDate, appointmentSearch, formatAppointment]);
+
+  useEffect(() => {
+    refreshAppointments();
+    return () => { ++appointmentSequence.current; };
+  }, [refreshAppointments]);
 
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
@@ -237,6 +293,7 @@ export function useReceptionistDashboard() {
   // Callback cập nhật trực tiếp trên State (không cần gọi lại API refresh)
   const updateAppointmentInState = useCallback((updatedApt) => {
     if (!updatedApt || !updatedApt.id) return;
+    refreshAppointments();
     const formattedItem = formatAppointment(updatedApt);
     setAppointments((prev) => {
       const exists = prev.some((item) => item.id === formattedItem.id);
@@ -249,7 +306,7 @@ export function useReceptionistDashboard() {
       setStats(computeStats(nextList));
       return nextList;
     });
-  }, []);
+  }, [refreshAppointments, formatAppointment]);
 
   // Realtime updates via WebSocket for Receptionist Dashboard (Cập nhật trực tiếp State, không gọi lại API)
   const handleRealtimeAppointment = useCallback((updatedApt) => {
@@ -260,13 +317,21 @@ export function useReceptionistDashboard() {
     if (newReq?.id) refreshRequests();
   }, [refreshRequests]);
 
-  const refetch = useCallback(() => Promise.all([fetchDashboardData(), refreshRequests()]),
-    [fetchDashboardData, refreshRequests]);
+  const refetch = useCallback(() => Promise.all([fetchDashboardData(), refreshRequests(), refreshAppointments()]),
+    [fetchDashboardData, refreshRequests, refreshAppointments]);
 
   useWebSocket(handleRealtimeAppointment, null, handleRealtimeRequest);
 
   return {
     stats,
+    appointmentDate,
+    appointmentSearch,
+    searchAppointments,
+    changeAppointmentDate,
+    dayAppointments,
+    appointmentsLoading,
+    appointmentsError,
+    refreshAppointments,
     appointments,
     requests,
     loading,

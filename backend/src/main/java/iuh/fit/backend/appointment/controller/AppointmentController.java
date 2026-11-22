@@ -34,6 +34,13 @@ public class AppointmentController {
     private final UserRepository userRepository;
     private final PatientRepository patientRepository;
 
+    @PostMapping("/check-in")
+    @RateLimiter(name = "appointmentCheckinLimiter")
+    public iuh.fit.backend.appointment.dto.AppointmentCheckinResponse checkIn(
+            @jakarta.validation.Valid @RequestBody iuh.fit.backend.appointment.dto.AppointmentCheckinRequest request) {
+        return appointmentService.checkIn(request);
+    }
+
     @RateLimiter(name = "appointmentBookingLimiter")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -56,8 +63,19 @@ public class AppointmentController {
 
     @GetMapping("/day")
     public List<AppointmentDetailDTO> getAppointmentsByDay(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) String phone) {
+        if (phone != null && !phone.isBlank()) {
+            return appointmentService.searchAppointmentsByPhone(phone,
+                    date != null ? date : LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh")));
+        }
         return appointmentService.getAppointmentsByDay(date);
+    }
+
+    @GetMapping("/search")
+    public List<AppointmentDetailDTO> searchAppointmentsByPhone(@RequestParam String phone,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return appointmentService.searchAppointmentsByPhone(phone, date);
     }
 
     @GetMapping("/week")

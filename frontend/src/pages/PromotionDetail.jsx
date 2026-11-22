@@ -47,6 +47,7 @@ export default function PromotionDetail() {
   // Booking Form states
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
+  const [bookingEmail, setBookingEmail] = useState('')
   const [selectedServiceId, setSelectedServiceId] = useState('')
   const [formStatus, setFormStatus] = useState({ loading: false, success: false, error: null })
 
@@ -93,6 +94,7 @@ export default function PromotionDetail() {
     setFormStatus({ loading: true, success: false, error: null })
     try {
       await createAppointment({
+        email: bookingEmail.trim(),
         fullName: fullName,
         phone: phone,
         serviceName: serviceNameForBooking,
@@ -469,6 +471,10 @@ export default function PromotionDetail() {
                     onChange={(e) => setFullName(e.target.value)}
                     className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-xs text-slate-800 focus:border-[#1f4fb2] focus:bg-white focus:outline-none transition duration-200"
                   />
+                  <input type="email" required maxLength={254} aria-label="Email nhận lịch hẹn"
+                    placeholder="Email nhận lịch hẹn" value={bookingEmail}
+                    onChange={(event) => setBookingEmail(event.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white text-slate-800" />
                 </div>
 
                 <div>

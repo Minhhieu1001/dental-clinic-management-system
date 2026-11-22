@@ -26,6 +26,17 @@ public class Appointment {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Column(name = "appointment_code", unique = true, length = 40)
+    private String appointmentCode;
+
+    @Builder.Default
+    @Column(name = "is_check", nullable = false)
+    @org.hibernate.annotations.ColumnDefault("false")
+    private Boolean isCheck = false;
+
+    @Column(length = 254)
+    private String email;
+
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "patient_id", foreignKey = @ForeignKey(name = "fk_appointments_patient"))

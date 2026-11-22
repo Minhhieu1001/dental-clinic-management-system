@@ -33,7 +33,6 @@ const navItems = [
   { label: 'Hóa đơn', to: '/patient/invoices', icon: Receipt },
   { label: 'Thông báo', to: '/patient/notifications', icon: Bell },
   { label: 'Tư vấn', to: '/patient/consultation', icon: MessageSquare },
-  { label: 'Tin tức', to: '/patient/notifications', icon: Newspaper },
 ];
 
 export default function PatientHeader({ config }) {

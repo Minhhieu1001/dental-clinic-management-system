@@ -145,13 +145,16 @@ export default function NotificationDropdown({ role = 'DENTIST', buttonClassName
     }
 
     // High Impact Toast Popup with Accent Left Border
+    const isStaffOrDoctor = role === 'EMPLOYEE' || role === 'DENTIST';
     toast(
       (t) => (
         <div
-          className="flex flex-col gap-1 cursor-pointer pr-2"
+          className={`flex flex-col gap-1 pr-2 ${isStaffOrDoctor ? '' : 'cursor-pointer'}`}
           onClick={() => {
             toast.dismiss(t.id);
-            if (newNotif.targetUrl) navigate(newNotif.targetUrl);
+            if (!isStaffOrDoctor && newNotif.targetUrl) {
+              navigate(newNotif.targetUrl);
+            }
           }}
         >
           <div className="flex items-center gap-1.5">
@@ -184,7 +187,7 @@ export default function NotificationDropdown({ role = 'DENTIST', buttonClassName
       }
       return [{ ...newNotif, isRead: false }, ...prev];
     });
-  }, [user?.id, navigate]);
+  }, [user?.id, navigate, role]);
 
   // Connect WebSocket STOMP
   useWebSocket(null, handleRealtimeNotification);
@@ -212,14 +215,20 @@ export default function NotificationDropdown({ role = 'DENTIST', buttonClassName
     toast.success('Đã đánh dấu tất cả thông báo là đã đọc');
   };
 
+  const isStaffOrDoctor = role === 'EMPLOYEE' || role === 'DENTIST';
+
   const handleItemClick = async (item) => {
     setNotifications((prev) =>
       prev.map((n) => (n.id === item.id ? { ...n, isRead: true } : n))
     );
-    setIsOpen(false);
     if (item.id && typeof item.id === 'string' && !item.id.startsWith('mock-')) {
       await markNotificationAsRead(item.id);
     }
+    // Nhân viên và bác sĩ: không gắn sự kiện click router đến lịch hẹn, chỉ để xem thông báo
+    if (isStaffOrDoctor) {
+      return;
+    }
+    setIsOpen(false);
     if (item.targetUrl) {
       navigate(item.targetUrl);
     }
@@ -323,9 +332,11 @@ export default function NotificationDropdown({ role = 'DENTIST', buttonClassName
                             {item.createdAt ? formatTimeAgo(item.createdAt) : item.time || 'Vừa xong'}
                           </span>
 
-                          <span className="text-teal-700 font-extrabold hover:underline flex items-center gap-0.5">
-                            Chi tiết <ArrowRight className="h-2.5 w-2.5" />
-                          </span>
+                          {!isStaffOrDoctor && item.targetUrl && (
+                            <span className="text-teal-700 font-extrabold hover:underline flex items-center gap-0.5">
+                              Chi tiết <ArrowRight className="h-2.5 w-2.5" />
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

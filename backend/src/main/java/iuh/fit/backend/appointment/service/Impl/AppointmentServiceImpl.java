@@ -1,6 +1,12 @@
 package iuh.fit.backend.appointment.service.Impl;
 
 import iuh.fit.backend.appointment.dto.AppointmentCreateDTO;
+import iuh.fit.backend.appointment.dto.AppointmentCheckinRequest;
+import iuh.fit.backend.appointment.dto.AppointmentCheckinResponse;
+import iuh.fit.backend.appointment.service.AppointmentConfirmation;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import iuh.fit.backend.appointment.dto.AppointmentDetailDTO;
 import iuh.fit.backend.appointment.entity.Appointment;
 import iuh.fit.backend.appointment.entity.AppointmentRequest;
@@ -38,6 +44,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.DayOfWeek;
 import java.time.ZoneId;
@@ -54,11 +61,14 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static java.util.Locale.ROOT;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AppointmentServiceImpl implements AppointmentService {
 
+    private final ApplicationEventPublisher eventPublisher;
     private final AppointmentRepository appointmentRepository;
     private final AppointmentRequestRepository appointmentRequestRepository;
     private final PatientRepository patientRepository;
@@ -69,6 +79,67 @@ public class AppointmentServiceImpl implements AppointmentService {
     private final RoomRepository roomRepository;
     private final notificationRepository notificationRepository;
     private final SimpMessagingTemplate simpMessagingTemplate;
+
+    @Override
+    @Transactional
+    public AppointmentCheckinResponse checkIn(AppointmentCheckinRequest request) {
+        Appointment appointment = appointmentRepository.findForCheckin(request.appointmentCode().trim().toUpperCase(ROOT))
+                .orElseThrow(() -> new AppException(ErrorCode.VALIDATION_ERROR, "Mã lịch hẹn, họ tên, SĐT hoặc chi nhánh không khớp."));
+        if (!normalizeName(appointment.getPatientName()).equals(normalizeName(request.fullName()))
+                || !normalizePhone(appointment.getPhone()).equals(normalizePhone(request.phone()))
+                || appointment.getBranch() == null
+                || !appointment.getBranch().getBranchId().equals(request.branchId().trim())) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Mã lịch hẹn, họ tên, SĐT hoặc chi nhánh không khớp.");
+        }
+        boolean changed = markArrived(appointment);
+        if (changed) {
+            appointmentRepository.saveAndFlush(appointment);
+            notifyAppointmentStatusChanged(appointment);
+            broadcastAppointmentAfterCommit(mapToDTO(appointment));
+        }
+        return new AppointmentCheckinResponse(appointment.getAppointmentCode(), appointment.getStatus(),
+                Boolean.TRUE.equals(appointment.getIsCheck()), !changed);
+    }
+
+    private boolean markArrived(Appointment appointment) {
+        if (appointment.getStatus() == StatusAppointment.CANCELLED) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Lịch hẹn đã bị hủy, không thể check-in.");
+        }
+        if (appointment.getAppointmentDate() == null || !appointment.getAppointmentDate().toLocalDate()
+                .equals(LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")))) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Chỉ có thể check-in trong đúng ngày hẹn khám.");
+        }
+        if (Boolean.TRUE.equals(appointment.getIsCheck())) return false;
+        if (appointment.getStatus() != StatusAppointment.CONFIRMED) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Lịch hẹn chưa được xác nhận để check-in.");
+        }
+        appointment.setStatus(StatusAppointment.WAITING);
+        appointment.setIsCheck(true);
+        return true;
+    }
+
+    private String normalizeName(String value) {
+        return value == null ? "" : java.text.Normalizer.normalize(value.trim(), java.text.Normalizer.Form.NFC)
+                .replaceAll("\\s+", " ").toLowerCase(ROOT);
+    }
+
+    private String normalizePhone(String value) {
+        String phone = value == null ? "" : value.replaceAll("[^0-9]", "");
+        return phone.startsWith("84") ? "0" + phone.substring(2) : phone;
+    }
+
+    private void broadcastAppointmentAfterCommit(AppointmentDetailDTO dto) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    simpMessagingTemplate.convertAndSend("/topic/appointments", dto);
+                } catch (Exception ex) {
+                    log.warn("Failed to broadcast appointment update", ex);
+                }
+            }
+        });
+    }
 
     private Patient resolveAppointmentPatient(UUID patientId) {
         if (patientId != null) {
@@ -106,6 +177,21 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<AppointmentDetailDTO> searchAppointmentsByPhone(String phone, LocalDate date) {
+        String branchId = getCurrentEmployeeBranchId();
+        String normalizedPhone = normalizePhone(phone);
+        if (phone == null || phone.length() > 50 || !phone.matches("[+0-9\\s().-]+")
+                || !normalizedPhone.matches("0[0-9]{9,10}")) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Vui lòng nhập đầy đủ số điện thoại hợp lệ.");
+        }
+        return appointmentRepository.findByBranchAndNormalizedPhone(branchId, normalizedPhone).stream()
+                .filter(appointment -> date == null || (appointment.getAppointmentDate() != null
+                        && appointment.getAppointmentDate().toLocalDate().equals(date)))
+                .map(this::mapToDTO).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<AppointmentDetailDTO> getAppointmentsByWeek(LocalDate date) {
         String branchId = getCurrentEmployeeBranchId();
         LocalDate selectedDate = date != null ? date : LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
@@ -133,6 +219,11 @@ public class AppointmentServiceImpl implements AppointmentService {
     @Override
     @Transactional
     public AppointmentDetailDTO createAppointment(AppointmentCreateDTO dto) {
+        String recipientEmail = dto.getEmail() == null ? "" : dto.getEmail().trim();
+        if (recipientEmail.isBlank() || recipientEmail.length() > 254
+                || !recipientEmail.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Vui lòng nhập email nhận lịch hẹn hợp lệ.");
+        }
         Patient patient = resolveAppointmentPatient(dto.getPatientId());
         log.info("Creating appointment for dentistId: {}, patientName: {}, phone: {}", dto.getDentistId(),
                 dto.getFullName(), dto.getPhone());
@@ -228,11 +319,23 @@ public class AppointmentServiceImpl implements AppointmentService {
             appointmentRequestRepository.saveAndFlush(request);
         }
 
+        String appointmentCode;
+        SecureRandom random = new java.security.SecureRandom();
+        int attempts = 0;
+        do {
+            if (++attempts > 100) {
+                throw new AppException(ErrorCode.VALIDATION_ERROR, "Không thể cấp mã lịch hẹn mới. Vui lòng thử lại.");
+            }
+            appointmentCode = String.format(ROOT, "APT-%06d", random.nextInt(1_000_000));
+        } while (appointmentRepository.existsByAppointmentCode(appointmentCode));
+
         // 5. Build Appointment entity with direct patientName and phone
         Appointment appointment = Appointment.builder()
+                .appointmentCode(appointmentCode)
                 .patient(patient)
                 .patientName(patientName)
                 .phone(phone)
+                .email(recipientEmail)
                 .dentist(dentist)
                 .employee(employee)
                 .branch(branch)
@@ -247,6 +350,12 @@ public class AppointmentServiceImpl implements AppointmentService {
 
         appointment = appointmentRepository.save(appointment);
 
+        eventPublisher.publishEvent(new AppointmentConfirmation(
+                recipientEmail, appointment.getAppointmentCode(), appointment.getPatientName(),
+                appointment.getAppointmentTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")),
+                dentist != null ? dentist.getFullName() : "",
+                appointment.getReason(), branch != null ? branch.getBranchName() : "",
+                branch != null ? branch.getAddress() : ""));
         AppointmentDetailDTO resultDto = mapToDTO(appointment);
 
         // 6.5 Notify assigned dentist and active receptionists about the newly created
@@ -643,7 +752,7 @@ public class AppointmentServiceImpl implements AppointmentService {
     @Override
     @Transactional
     public AppointmentDetailDTO updateAppointment(UUID appointmentId, AppointmentCreateDTO dto) {
-        Appointment appointment = appointmentRepository.findById(appointmentId)
+        Appointment appointment = appointmentRepository.findByIdForUpdate(appointmentId)
                 .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND,
                         "Không tìm thấy lịch hẹn ID: " + appointmentId));
 
@@ -723,7 +832,13 @@ public class AppointmentServiceImpl implements AppointmentService {
             appointment.setNotes(dto.getNotes());
         }
 
-        if (dto.getStatus() != null) {
+        if (dto.getStatus() == StatusAppointment.WAITING) {
+            markArrived(appointment);
+        } else if (dto.getStatus() != null) {
+            if (Boolean.TRUE.equals(appointment.getIsCheck())
+                    && (dto.getStatus() == StatusAppointment.CONFIRMED || dto.getStatus() == StatusAppointment.PENDING)) {
+                throw new AppException(ErrorCode.VALIDATION_ERROR, "Không thể đưa lịch đã check-in về trạng thái chưa tiếp nhận.");
+            }
             appointment.setStatus(dto.getStatus());
         }
         appointment = appointmentRepository.save(appointment);
@@ -731,11 +846,7 @@ public class AppointmentServiceImpl implements AppointmentService {
         if (appointment.getStatus() != previousStatus) {
             notifyAppointmentStatusChanged(appointment);
         }
-        try {
-            simpMessagingTemplate.convertAndSend("/topic/appointments", resultDto);
-        } catch (Exception e) {
-            log.warn("Realtime WebSocket broadcast failed in updateAppointment: {}", e.getMessage());
-        }
+        broadcastAppointmentAfterCommit(resultDto);
         return resultDto;
     }
 
@@ -773,6 +884,9 @@ public class AppointmentServiceImpl implements AppointmentService {
         Branch branch = apt.getBranch();
         return AppointmentDetailDTO.builder()
                 .id(apt.getId())
+                .appointmentCode(apt.getAppointmentCode())
+                .isCheck(apt.getIsCheck())
+                .email(apt.getEmail())
                 .patientId(apt.getPatient() != null ? apt.getPatient().getId() : null)
                 .patientName(apt.getPatientName() != null ? apt.getPatientName() : "N/A")
                 .patientCode(apt.getPatient() != null ? apt.getPatient().getPatientCode() : "N/A")

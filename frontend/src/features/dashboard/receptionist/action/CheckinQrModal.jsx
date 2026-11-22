@@ -1,15 +1,26 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useAuth } from '../../../../hooks/useAuth';
+import { getEmployeeById } from '../../../../services/employee.service';
 import { Dialog, DialogContent } from '@mui/material';
 import { X, Printer, Smartphone, Building2, Phone } from 'lucide-react';
 
 export default function CheckinQrModal({ open, onClose }) {
+  const { user } = useAuth();
+  const [employeeBranchId, setEmployeeBranchId] = useState('');
+  useEffect(() => {
+    setEmployeeBranchId('');
+    if (!open || !user?.employeeId) return;
+    let active = true;
+    getEmployeeById(user.employeeId).then((employee) => {
+      if (active) setEmployeeBranchId(employee.branchId || '');
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [open, user?.employeeId]);
+  const branchId = employeeBranchId || user?.branchId;
   // Tự động phát hiện URL: Nếu mở bằng localhost thì đổi sang IP Wi-Fi máy tính để điện thoại quét được
   const getCheckinUrl = () => {
-    if (typeof window === 'undefined') return '/checkin';
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      return `${window.location.protocol}//192.168.2.25:${window.location.port || 5173}/checkin`;
-    }
-    return `${window.location.origin}/checkin`;
+    const baseUrl = import.meta.env.VITE_PUBLIC_WEB_URL || window.location.origin;
+    return `${baseUrl.replace(/\/$/, '')}/checkin?branchId=${encodeURIComponent(branchId || '')}`;
   };
 
   const checkinUrl = getCheckinUrl();
@@ -56,11 +67,11 @@ export default function CheckinQrModal({ open, onClose }) {
           {/* Body: Chỉ hiện mã QR */}
           <div className="p-6 text-center space-y-4">
             <div className="inline-block p-3 bg-white rounded-2xl border-2 border-teal-500/20 shadow-sm">
-              <img
+              {branchId ? <img
                 src={qrImageUrl}
                 alt="Mã QR Check-in"
                 className="w-60 h-60 object-contain mx-auto rounded-lg"
-              />
+              /> : <p className="text-sm text-slate-500">Chưa xác định được chi nhánh của nhân viên.</p>}
               <p className="mt-2 text-xs font-semibold text-slate-500 flex items-center justify-center gap-1.5">
                 <Smartphone className="w-4 h-4 text-teal-600" />
                 <span>Quét bằng Camera hoặc Zalo</span>
@@ -71,6 +82,7 @@ export default function CheckinQrModal({ open, onClose }) {
             <div>
               <button
                 type="button"
+                disabled={!branchId}
                 onClick={handlePrint}
                 className="w-full py-3 px-4 bg-teal-700 hover:bg-teal-800 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-teal-700/20 transition active:scale-[0.99] cursor-pointer"
               >

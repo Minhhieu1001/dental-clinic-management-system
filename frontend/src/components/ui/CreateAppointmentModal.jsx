@@ -16,6 +16,7 @@ import {
   Stethoscope,
   FileText,
   Phone,
+  Mail,
   ShieldCheck,
   Sparkles,
   AlertCircle,
@@ -203,6 +204,7 @@ export default function CreateAppointmentModal({
   const [patientInfo, setPatientInfo] = useState({
     fullName: '',
     phone: '',
+    email: '',
     gender: 'Nam',
   });
   const [appointmentNotes, setAppointmentNotes] = useState('');
@@ -379,6 +381,7 @@ export default function CreateAppointmentModal({
           setPatientInfo({
             fullName: pName,
             phone: pPhone,
+            email: isEditMode ? (targetData.email || '') : '',
             gender: pGender,
           });
 
@@ -461,6 +464,7 @@ export default function CreateAppointmentModal({
           setPatientInfo({
             fullName: '',
             phone: '',
+    email: '',
             gender: 'Nam',
           });
           setAppointmentNotes('');
@@ -681,6 +685,12 @@ export default function CreateAppointmentModal({
       return;
     }
 
+    if (!isEditMode && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(patientInfo.email?.trim() || '')) {
+      toast.error('Vui lòng nhập email nhận lịch hẹn hợp lệ.');
+      setStep(1);
+      return;
+    }
+
     setSubmitting(true);
     try {
       const aptId = targetData?.appointmentId || targetData?.id || null;
@@ -694,6 +704,7 @@ export default function CreateAppointmentModal({
         branchName: selectedBranch?.branchName || null,
         fullName: patientInfo.fullName.trim(),
         phone: patientInfo.phone.trim(),
+        email: patientInfo.email?.trim() || '',
         gender: patientInfo.gender || 'Nam',
         dentistId: isValidUUID(selectedDentist?.id) ? selectedDentist.id : null,
         roomId: null, // Đã bỏ trường phòng khám theo yêu cầu
@@ -865,7 +876,7 @@ export default function CreateAppointmentModal({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 text-xs">
                   {/* Họ và tên */}
-                  <div className="sm:col-span-1 lg:col-span-5">
+                  <div className="col-span-1 sm:col-span-1 lg:col-span-5">
                     <label className="block text-[11px] font-bold text-slate-700 mb-1">
                       Họ và tên bệnh nhân <span className="text-rose-500">*</span>
                     </label>
@@ -883,7 +894,7 @@ export default function CreateAppointmentModal({
                   </div>
 
                   {/* Số điện thoại */}
-                  <div className="sm:col-span-1 lg:col-span-4">
+                  <div className="col-span-1 sm:col-span-1 lg:col-span-4">
                     <label className="block text-[11px] font-bold text-slate-700 mb-1">
                       Số điện thoại <span className="text-rose-500">*</span>
                     </label>
@@ -901,12 +912,14 @@ export default function CreateAppointmentModal({
                   </div>
 
                   {/* Giới tính */}
-                  <div className="sm:col-span-1 lg:col-span-3">
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Giới tính</label>
+                  <div className="col-span-1 sm:col-span-1 lg:col-span-3">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Giới tính
+                    </label>
                     <select
                       value={patientInfo.gender}
                       onChange={(e) => setPatientInfo({ ...patientInfo, gender: e.target.value })}
-                      className="w-full px-3 py-2 rounded-md border border-slate-300 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-teal-700 focus:border-teal-700 bg-white cursor-pointer shadow-2xs"
+                      className="w-full px-3 py-2 rounded-md border border-slate-300 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-teal-700 focus:border-teal-700 bg-white cursor-pointer shadow-2xs h-[36px]"
                     >
                       <option value="Nam">Nam</option>
                       <option value="Nữ">Nữ</option>
@@ -914,16 +927,47 @@ export default function CreateAppointmentModal({
                     </select>
                   </div>
 
-                  {/* Chi nhánh tiếp nhận khám */}
-                  <div className="col-span-1 sm:col-span-2 lg:col-span-12">
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Chi nhánh tiếp nhận khám</label>
-                    <div className="p-2 rounded-md bg-teal-50/70 border border-teal-200/80 flex items-center justify-between text-xs text-teal-900 font-medium">
-                      <div className="flex items-center gap-2 truncate">
-                        <Building size={14} className="text-teal-700 shrink-0" />
-                        <span className="font-bold truncate">{selectedBranch?.branchName || 'Chi nhánh Crown Dental'}</span>
-                        <span className="text-[11px] text-slate-500 truncate hidden sm:inline">({selectedBranch?.address})</span>
-                      </div>
+                  {/* Email nhận lịch hẹn */}
+                  <div className="col-span-1 sm:col-span-1 lg:col-span-5">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1" htmlFor="appointment-email">
+                      Email nhận lịch hẹn <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="appointment-email"
+                        type="email"
+                        maxLength={254}
+                        required={!isEditMode}
+                        value={patientInfo.email || ''}
+                        disabled={isEditMode}
+                        onChange={(event) => setPatientInfo({ ...patientInfo, email: event.target.value })}
+                        placeholder="ban@example.com"
+                        className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-teal-700 focus:border-teal-700 shadow-2xs disabled:bg-slate-50 disabled:text-slate-500"
+                      />
+                      <Mail className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                    </div>
+                  </div>
 
+                  {/* Chi nhánh tiếp nhận khám */}
+                  <div className="col-span-1 sm:col-span-2 lg:col-span-7">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Chi nhánh tiếp nhận khám
+                    </label>
+                    <div className="h-[36px] px-3 rounded-md bg-teal-50/70 border border-teal-200/80 flex items-center justify-between text-xs text-teal-900 font-medium">
+                      <div className="flex items-center gap-2 truncate min-w-0">
+                        <Building size={14} className="text-teal-700 shrink-0" />
+                        <span className="font-bold truncate text-slate-800">
+                          {selectedBranch?.branchName || 'Chi nhánh Crown Dental'}
+                        </span>
+                        {selectedBranch?.address && (
+                          <span className="text-[11px] text-slate-500 truncate hidden sm:inline">
+                            • {selectedBranch?.address}
+                          </span>
+                        )}
+                      </div>
+                      <span className="shrink-0 text-[10px] font-bold text-teal-700 bg-teal-100/90 px-1.5 py-0.5 rounded ml-2">
+                        Cố định
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -1679,6 +1723,17 @@ export default function CreateAppointmentModal({
                       </div>
                     </div>
 
+                    {/* Email nhận lịch hẹn */}
+                    <div className="p-2.5 rounded-md bg-slate-50 border border-slate-100 flex flex-col justify-between">
+                      <span className="flex items-center gap-1 text-[10px] text-slate-400 font-medium">
+                        <Mail size={12} className="text-teal-700" />
+                        Email nhận lịch hẹn
+                      </span>
+                      <p className="font-bold text-slate-900 mt-0.5 truncate text-xs sm:text-[13px]" title={patientInfo.email}>
+                        {patientInfo.email || 'Chưa cung cấp'}
+                      </p>
+                    </div>
+
                     {/* Giới tính */}
                     <div className="p-2.5 rounded-md bg-slate-50 border border-slate-100 flex items-center justify-between">
                       <span className="text-[10px] text-slate-400 font-medium">Giới tính</span>
@@ -1688,11 +1743,11 @@ export default function CreateAppointmentModal({
                     </div>
 
                     {/* Chi nhánh tiếp nhận */}
-                    <div className="p-2.5 rounded-md bg-teal-50/70 border border-teal-200/80 flex items-center gap-2">
+                    <div className="sm:col-span-2 p-2.5 rounded-md bg-teal-50/70 border border-teal-200/80 flex items-center gap-2">
                       <Building size={14} className="text-teal-700 shrink-0" />
                       <div className="min-w-0">
-                        <span className="text-[10px] text-teal-800 font-semibold block uppercase">Cơ sở khám</span>
-                        <p className="font-bold text-teal-950 truncate text-[11px]">{selectedBranch?.branchName}</p>
+                        <span className="text-[10px] text-teal-800 font-semibold block uppercase">Cơ sở tiếp nhận khám</span>
+                        <p className="font-bold text-teal-950 truncate text-[11px]">{selectedBranch?.branchName || 'Chi nhánh Crown Dental'}</p>
                       </div>
                     </div>
                   </div>
