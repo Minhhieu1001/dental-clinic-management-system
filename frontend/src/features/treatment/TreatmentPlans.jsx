@@ -1815,7 +1815,7 @@ export default function TreatmentPlans() {
                 className="flex items-center gap-1.5 rounded-lg border border-teal-300 bg-white px-3 py-1.5 text-xs font-bold text-teal-800 hover:bg-teal-50 cursor-pointer shadow-2xs"
               >
                 <Plus size={14} />
-                <span>+ Thêm giai đoạn mới</span>
+                <span>Thêm giai đoạn mới</span>
               </motion.button>
             </div>
           </div>
@@ -1829,7 +1829,7 @@ export default function TreatmentPlans() {
               <div className="space-y-1">
                 <p className="text-sm font-bold text-slate-800">Kế hoạch điều trị mới chưa có giai đoạn nào!</p>
                 <p className="text-xs text-slate-500 max-w-md mx-auto">
-                  Bạn có thể bấm <strong>"+ Thêm giai đoạn mới"</strong> để tự thiết lập giai đoạn và chỉ định dịch vụ, hoặc chọn một <strong>Gói phác đồ gợi ý</strong> ở trên theo kết quả khám lâm sàng.
+                  Bạn có thể bấm <strong>"Thêm giai đoạn mới"</strong> để tự thiết lập giai đoạn và chỉ định dịch vụ, hoặc chọn một <strong>Gói phác đồ gợi ý</strong> ở trên theo kết quả khám lâm sàng.
                 </p>
               </div>
               <div className="pt-2 flex items-center justify-center gap-2">
@@ -2051,7 +2051,7 @@ export default function TreatmentPlans() {
                                 title="Chỉ định dịch vụ nha khoa vào giai đoạn"
                               >
                                 <Plus size={13} />
-                                <span>+ Thêm dịch vụ</span>
+                                <span>Thêm dịch vụ</span>
                               </motion.button>
 
                               {/* Nút Sửa */}

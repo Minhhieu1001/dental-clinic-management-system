@@ -1,7 +1,7 @@
 package iuh.fit.backend.appointment.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import iuh.fit.backend.patient.entity.Patient;
+import iuh.fit.backend.inforclinic.entity.Branch;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -26,6 +26,15 @@ public class Room {
     private String roomName;
     private String floorName;
     private LocalDateTime createAt;
+
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "branch_id", referencedColumnName = "branch_id")
+    private Branch branch;
+
+    public String getBranchId() {
+        return branch != null ? branch.getBranchId() : null;
+    }
 
     @JsonIgnore
     @Builder.Default

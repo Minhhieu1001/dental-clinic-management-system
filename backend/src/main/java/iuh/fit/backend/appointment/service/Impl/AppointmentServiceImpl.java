@@ -252,7 +252,8 @@ public class AppointmentServiceImpl implements AppointmentService {
         // 3. Resolve Room if any
         Room room = null;
         if (dto.getRoomId() != null) {
-            room = roomRepository.findById(dto.getRoomId()).orElse(null);
+            room = roomRepository.findById(dto.getRoomId())
+                    .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy phòng khám."));
         }
 
         // 4. Parse Date and Time
@@ -301,6 +302,7 @@ public class AppointmentServiceImpl implements AppointmentService {
         }
 
         Branch branch = resolveBranch(dto);
+        validateRoomBranch(room, branch);
 
         // Claim the request before creating the appointment. The flush makes the
         // optimistic-lock conflict happen before any appointment insert.
@@ -612,6 +614,13 @@ public class AppointmentServiceImpl implements AppointmentService {
                 .stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<AppointmentDetailDTO> getAppointmentsByDentistUserOnDate(UUID userId, LocalDate date) {
+        return appointmentRepository.findForDentistUserOnDate(userId, date.atStartOfDay(), date.plusDays(1).atStartOfDay())
+                .stream().map(this::mapToDTO).toList();
+    }
+
     private void notifyAppointmentStatusChanged(Appointment appointment) {
         StatusAppointment status = appointment.getStatus();
         // Resolve operator who changed status from SecurityContext
@@ -797,7 +806,8 @@ public class AppointmentServiceImpl implements AppointmentService {
         }
 
         if (dto.getRoomId() != null) {
-            Room room = roomRepository.findById(dto.getRoomId()).orElse(null);
+            Room room = roomRepository.findById(dto.getRoomId())
+                    .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy phòng khám."));
             appointment.setRoom(room);
         }
 
@@ -806,6 +816,10 @@ public class AppointmentServiceImpl implements AppointmentService {
                     .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND,
                             "Không tìm thấy chi nhánh ID: " + dto.getBranchId()));
             appointment.setBranch(branch);
+        }
+
+        if (dto.getRoomId() != null || (dto.getBranchId() != null && !dto.getBranchId().isBlank())) {
+            validateRoomBranch(appointment.getRoom(), appointment.getBranch());
         }
 
         boolean hasDate = dto.getAppointmentDate() != null && !dto.getAppointmentDate().isBlank();
@@ -975,5 +989,22 @@ public class AppointmentServiceImpl implements AppointmentService {
     @Transactional(readOnly = true)
     public List<Room> getAllRooms() {
         return roomRepository.findAll();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Room> getRoomsByBranch(String branchId) {
+        if (branchId == null || branchId.isBlank()) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Vui lòng xác định chi nhánh của lịch hẹn.");
+        }
+        return roomRepository.findByBranch_BranchIdOrderByRoomNameAsc(branchId.trim());
+    }
+
+    private void validateRoomBranch(Room room, Branch branch) {
+        if (room != null && (branch == null || room.getBranchId() == null
+                || !room.getBranchId().equals(branch.getBranchId()))) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR,
+                    "Phòng khám phải thuộc chi nhánh của lịch hẹn.");
+        }
     }
 }

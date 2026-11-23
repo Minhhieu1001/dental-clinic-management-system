@@ -29,6 +29,7 @@ public interface AppointmentService {
             UUID dentistId, LocalDate appointmentDate, LocalTime appointmentTime);
 
     List<AppointmentDetailDTO> getAppointmentsByDentistUser(UUID userId);
+    List<AppointmentDetailDTO> getAppointmentsByDentistUserOnDate(UUID userId, LocalDate date);
 
     AppointmentDetailDTO updateAppointment(UUID appointmentId, AppointmentCreateDTO dto);
 
@@ -39,4 +40,5 @@ public interface AppointmentService {
     List<AppointmentDetailDTO> getAppointmentsByPatient(UUID patientId);
 
     List<Room> getAllRooms();
+    List<Room> getRoomsByBranch(String branchId);
 }

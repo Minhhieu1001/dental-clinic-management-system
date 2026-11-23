@@ -18,7 +18,7 @@ export const roleRoutes = {
         to: 'settings',
         children: [
           { label: 'Chi Nhánh', to: 'clinic-branches' },
-          { label: 'Thiết Lập Chung', to: 'general-settings' },
+          { label: 'Phòng khám', to: 'clinic-rooms' },
           { label: 'Danh mục', to: 'system-dictionaries' },
         ],
       },
@@ -35,7 +35,8 @@ export const roleRoutes = {
       { path: 'notifications', title: 'Thông báo hệ thống' },
       { path: 'settings', title: 'Cài đặt hệ thống' },
       { path: 'clinic-branches', title: 'Thông tin & Chi nhánh' },
-      { path: 'general-settings', title: 'Thiết lập chung' },
+      { path: 'clinic-rooms', title: 'Quản lý phòng khám' },
+      { path: 'general-settings', title: 'Quản lý phòng khám' },
       { path: 'system-dictionaries', title: 'Danh mục nha khoa' },
       { path: 'services', title: 'Quản lý dịch vụ' },
     ],

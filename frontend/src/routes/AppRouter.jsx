@@ -36,7 +36,7 @@ import MedicationManagement from '../features/prescriptions/admin/MedicationMana
 import Promotions from '../features/promotion/Promotions.jsx'
 import AdminNotifications from '../features/notification/AdminNotifications.jsx'
 import AdminSettings from '../features/setting/admin/AdminSettings.jsx'
-import GeneralSettings from '../features/setting/admin/GeneralSettings.jsx'
+import RoomManagement from '../features/setting/admin/RoomManagement.jsx'
 import SystemDictionaryManagement from '../features/setting/admin/SystemDictionaryManagement.jsx'
 import ServicesAdmin from '../features/treatment/Services.jsx'
 
@@ -122,7 +122,9 @@ export default function AppRouter() {
             <Route path="promotions" element={<Promotions />} />
             <Route path="notifications" element={<AdminNotifications />} />
             <Route path="clinic-branches" element={<AdminSettings />} />
-            <Route path="general-settings" element={<GeneralSettings />} />
+            <Route path="clinic-rooms" element={<RoomManagement />} />
+            <Route path="rooms" element={<Navigate to="clinic-rooms" replace />} />
+            <Route path="general-settings" element={<Navigate to="clinic-rooms" replace />} />
             <Route path="system-dictionaries" element={<SystemDictionaryManagement />} />
             <Route path="settings" element={<Navigate to="clinic-branches" replace />} />
             <Route path="clinic-info" element={<Navigate to="clinic-branches" replace />} />

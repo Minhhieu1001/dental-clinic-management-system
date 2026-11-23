@@ -57,8 +57,8 @@ public class AppointmentController {
     }
 
     @GetMapping("/rooms")
-    public List<Room> getAllRooms() {
-        return appointmentService.getAllRooms();
+    public List<Room> getAllRooms(@RequestParam(required = false) String branchId) {
+        return branchId == null ? appointmentService.getAllRooms() : appointmentService.getRoomsByBranch(branchId);
     }
 
     @GetMapping("/day")
@@ -104,7 +104,8 @@ public class AppointmentController {
     }
 
     @GetMapping("/my-appointments")
-    public List<AppointmentDetailDTO> getMyAppointments(@RequestParam(required = false) UUID dentistId) {
+    public List<AppointmentDetailDTO> getMyAppointments(@RequestParam(required = false) UUID dentistId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getName() != null && !auth.getName().equalsIgnoreCase("anonymousUser")) {
             String username = auth.getName();
@@ -116,8 +117,13 @@ public class AppointmentController {
                     UUID pId = p != null ? p.getId() : user.getId();
                     return appointmentService.getAppointmentsByPatient(pId);
                 }
-                return appointmentService.getAppointmentsByDentistUser(user.getId());
+                return date == null ? appointmentService.getAppointmentsByDentistUser(user.getId())
+                        : appointmentService.getAppointmentsByDentistUserOnDate(user.getId(), date);
             }
+        }
+        if (date != null) {
+            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                    "Vui lòng đăng nhập để xem lịch hẹn.");
         }
         if (dentistId != null) {
             return appointmentService.getAppointmentsByDentist(dentistId);

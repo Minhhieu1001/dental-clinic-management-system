@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Calendar,
@@ -32,7 +32,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { getDentistsList } from '../../services/dentist.service';
-import { getMyAppointments, getAppointments, getRooms, updateAppointment } from '../../services/appointment.service';
+import { getMyAppointments, getRooms, updateAppointment } from '../../services/appointment.service';
 import { getInventory } from '../../services/inventory.service';
 import ClinicalExamModal from '../../components/ui/ClinicalExamModal';
 import AppointmentTable from './dentist/AppointmentTable';
@@ -44,6 +44,12 @@ export default function DentistDashboard() {
   const { user } = useAuth();
   const [dentistInfo, setDentistInfo] = useState(null);
   const [appointments, setAppointments] = useState([]);
+  const [summaryAppointments, setSummaryAppointments] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  });
+  const appointmentRequestId = useRef(0);
   const [inventoryList, setInventoryList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoadingId, setActionLoadingId] = useState(null);
@@ -108,7 +114,6 @@ export default function DentistDashboard() {
 
   // Fetch logged in dentist details, real appointments & real inventory
   const fetchDashboardData = useCallback(async () => {
-    setLoading(true);
     try {
       const [dentistsList, inventoryData] = await Promise.all([
         getDentistsList().catch(() => []),
@@ -131,24 +136,42 @@ export default function DentistDashboard() {
 
       setDentistInfo(currentDentist);
 
-      let myAppts = await getMyAppointments().catch(() => []);
-      if (!Array.isArray(myAppts) || myAppts.length === 0) {
-        if (currentDentist?.id) {
-          myAppts = await getAppointments({ dentistId: currentDentist.id }).catch(() => []);
-        }
-        if (!Array.isArray(myAppts) || myAppts.length === 0) {
-          myAppts = await getAppointments().catch(() => []);
-        }
-      }
-
-      setAppointments(Array.isArray(myAppts) ? myAppts : []);
+      const myAppts = await getMyAppointments();
+      setSummaryAppointments(Array.isArray(myAppts) ? myAppts : []);
     } catch (err) {
-      console.warn('Lỗi tải dữ liệu bác sĩ:', err);
-      setAppointments([]);
-    } finally {
-      setLoading(false);
+      console.warn('Dashboard loading failed:', err);
+      setSummaryAppointments([]);
     }
   }, [user]);
+
+  const fetchSelectedAppointments = useCallback(async () => {
+    const requestId = ++appointmentRequestId.current;
+    setLoading(true);
+    setAppointments([]);
+    try {
+      const data = await getMyAppointments(selectedDate);
+      if (requestId === appointmentRequestId.current) {
+        setAppointments(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      if (requestId === appointmentRequestId.current) {
+        toast.error('Không thể tải lịch hẹn của ngày đã chọn.');
+      }
+    } finally {
+      if (requestId === appointmentRequestId.current) setLoading(false);
+    }
+  }, [selectedDate, user?.id]);
+
+  useEffect(() => {
+    setSelectedPatientCard(null);
+    fetchSelectedAppointments();
+    return () => { appointmentRequestId.current += 1; };
+  }, [fetchSelectedAppointments]);
+
+  const refreshDashboard = useCallback(() => {
+    fetchDashboardData();
+    fetchSelectedAppointments();
+  }, [fetchDashboardData, fetchSelectedAppointments]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -157,15 +180,9 @@ export default function DentistDashboard() {
   // Realtime appointment updates via WebSocket
   const handleRealtimeAppointment = useCallback((updatedApt) => {
     if (!updatedApt || !updatedApt.id) return;
-    setAppointments((prev) => {
-      const exists = prev.some((item) => item.id === updatedApt.id);
-      if (exists) {
-        return prev.map((item) => (item.id === updatedApt.id ? { ...item, ...updatedApt } : item));
-      } else {
-        return [updatedApt, ...prev];
-      }
-    });
-  }, []);
+    // Reload from the authenticated API instead of inserting broadcast data.
+    refreshDashboard();
+  }, [refreshDashboard]);
   // update table
   useWebSocket(handleRealtimeAppointment, null);
 
@@ -192,7 +209,7 @@ export default function DentistDashboard() {
   // 1. Call patient into examination room (WAITING -> CALLED)
   const handleCallIn = async (apt) => {
     try {
-      const roomResponse = await getRooms();
+      const roomResponse = apt.branchId ? await getRooms(apt.branchId) : [];
       const roomList = Array.isArray(roomResponse?.data)
         ? roomResponse.data
         : Array.isArray(roomResponse)
@@ -201,7 +218,7 @@ export default function DentistDashboard() {
       setRooms(roomList);
       setCallInAppointment(apt);
       setCallInForm({
-        roomId: apt.roomId ? String(apt.roomId) : '',
+        roomId: roomList.some((room) => String(room.id) === String(apt.roomId)) ? String(apt.roomId) : '',
         notes: apt.notes || '',
       });
       setIsCallInModalOpen(true);
@@ -306,13 +323,13 @@ export default function DentistDashboard() {
 
   // Filter today's appointments by todayStr date
   const todayAppointments = useMemo(() => {
-    return appointments.filter((apt) => {
+    return summaryAppointments.filter((apt) => {
       const dateVal = apt.appointmentDate || apt.appointmentTime || apt.createdAt;
       const aptDateStr = extractYYYYMMDD(dateVal);
       if (!aptDateStr) return true;
       return aptDateStr === todayStr;
     });
-  }, [appointments, todayStr]);
+  }, [summaryAppointments, todayStr]);
 
   const totalTodayCount = todayAppointments.length;
   const totalToday = totalTodayCount;
@@ -324,7 +341,7 @@ export default function DentistDashboard() {
 
   // Calculate appointments count in the current week
   const weekAppointmentsCount = useMemo(() => {
-    if (!appointments || appointments.length === 0) return 0;
+    if (summaryAppointments.length === 0) return 0;
     const now = new Date();
     const dayOfWeek = now.getDay();
     const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
@@ -336,17 +353,17 @@ export default function DentistDashboard() {
     sunday.setDate(monday.getDate() + 6);
     sunday.setHours(23, 59, 59, 999);
 
-    const filtered = appointments.filter((a) => {
+    const filtered = summaryAppointments.filter((a) => {
       const dateStr = a.appointmentDate || a.appointmentTime || a.createdAt;
       if (!dateStr) return true;
       const d = new Date(dateStr);
       return d >= monday && d <= sunday;
     });
-    return filtered.length > 0 ? filtered.length : appointments.length;
-  }, [appointments]);
+    return filtered.length;
+  }, [summaryAppointments]);
 
   // Unique patient count dynamically
-  const uniquePatientSet = new Set(appointments.map((a) => a.phone || a.patientName).filter(Boolean));
+  const uniquePatientSet = new Set(summaryAppointments.map((a) => a.phone || a.patientName).filter(Boolean));
   const newPatientsCount = uniquePatientSet.size > 0 ? uniquePatientSet.size : (totalToday > 0 ? totalToday : 7);
 
   // Dynamic Revenue Calculation (Based on completed & in-progress real appointments)
@@ -455,7 +472,7 @@ export default function DentistDashboard() {
         {/* Refresh & Action */}
         <div className="flex items-center gap-2.5">
           <button
-            onClick={fetchDashboardData}
+            onClick={refreshDashboard}
             disabled={loading}
             className="flex items-center gap-1.5 rounded-md bg-white px-3.5 py-1.5 text-xs font-bold text-teal-800 border border-slate-200 hover:bg-teal-50/70 hover:border-teal-300 transition-all shadow-2xs cursor-pointer"
           >
@@ -543,6 +560,8 @@ export default function DentistDashboard() {
         {/* Left Column: Bảng danh sách lịch hẹn (Tỉ lệ 7) */}
         <AppointmentTable
           appointments={appointments}
+          selectedDate={selectedDate}
+          onDateChange={setSelectedDate}
           loading={loading}
           activePatientInfo={activePatientInfo}
           onSelectPatient={setSelectedPatientCard}
@@ -585,7 +604,7 @@ export default function DentistDashboard() {
           setSelectedExamAppt(null);
         }}
         appointment={selectedExamAppt}
-        onSuccess={fetchDashboardData}
+        onSuccess={refreshDashboard}
       />
     </div>
   );

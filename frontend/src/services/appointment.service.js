@@ -44,8 +44,8 @@ export const getAppointmentsByPatient = async (patientId) => {
 };
 
 // Get all examination rooms
-export const getRooms = async () => {
-  const response = await api.get('/appointments/rooms');
+export const getRooms = async (branchId) => {
+  const response = await api.get('/appointments/rooms', { params: { branchId } });
   return response.data;
 };
 
@@ -56,8 +56,8 @@ export const getDentistAppointments = async (dentistId) => {
 };
 
 // Get appointments for logged in dentist user
-export const getMyAppointments = async () => {
-  const response = await api.get('/appointments/my-appointments');
+export const getMyAppointments = async (date) => {
+  const response = await api.get('/appointments/my-appointments', { params: { date } });
   return response.data;
 };
 

@@ -188,6 +188,7 @@ export function AddServiceModal({
     };
 
     setStagedServices((prev) => [...prev, newItem]);
+    handleClearTeeth();
     toast.success(`Đã thêm "${activeService.service_name}" (${toothString}) vào bảng chỉ định!`, {
       icon: '✨',
     });

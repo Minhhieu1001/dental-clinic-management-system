@@ -30,7 +30,7 @@ export default function RoomNoteForm({
   useEffect(() => {
     let timeoutId;
     if (isOpen) {
-      setRoomId(initialRoomId || appointment?.roomId || appointment?.room_id || '');
+      setRoomId(initialRoomId);
       setNotes(initialNotes || appointment?.notes || '');
       setShouldRender(true);
       timeoutId = setTimeout(() => {
@@ -153,7 +153,9 @@ export default function RoomNoteForm({
                 required
                 className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-800 shadow-2xs outline-none transition-all focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20"
               >
-                <option value="">-- Chọn phòng khám --</option>
+                <option value="">
+                  {rooms.length === 0 ? '-- Chưa có phòng khám --' : '-- Chọn phòng khám --'}
+                </option>
                 {rooms.map((room) => (
                   <option key={room.id} value={room.id}>
                     {room.roomName || room.name || `Phòng ${room.id}`}

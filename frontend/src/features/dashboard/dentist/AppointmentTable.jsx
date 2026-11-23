@@ -9,7 +9,6 @@ import {
   ChevronLeft,
   ChevronRight,
   RotateCcw,
-  Filter,
   Calendar,
   Clock,
   CheckCircle2,
@@ -49,6 +48,8 @@ const ITEMS_PER_PAGE = 5;
 
 export default function AppointmentTable({
   appointments = [],
+  selectedDate,
+  onDateChange,
   loading = false,
   activePatientInfo = null,
   onSelectPatient = () => { },
@@ -58,10 +59,8 @@ export default function AppointmentTable({
   onOpenExamModal = () => { },
   onStatusChange = () => { },
 }) {
-  const [dateScope, setDateScope] = useState('today'); // 'today' | 'week'
   const [activeTab, setActiveTab] = useState('ALL'); // ALL, WAITING, CALLED, IN_PROGRESS, COMPLETED
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedRoom, setSelectedRoom] = useState('ALL');
   const [sortOrder, setSortOrder] = useState('asc'); // 'asc' | 'desc'
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -72,7 +71,7 @@ export default function AppointmentTable({
   // Reset page when any filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [dateScope, activeTab, searchTerm, selectedRoom, sortOrder]);
+  }, [selectedDate, activeTab, searchTerm, sortOrder]);
 
   const handleOpenDetail = (apt) => {
     let timeStr = '09:00';
@@ -94,80 +93,17 @@ export default function AppointmentTable({
     setIsDetailOpen(true);
   };
 
-  // Lọc lịch hẹn theo dateScope ('today' | 'week')
-  const dateScopedAppointments = useMemo(() => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const date = String(now.getDate()).padStart(2, '0');
-    const todayStr = `${year}-${month}-${date}`;
+  const shiftDate = (days) => {
+    const date = new Date(`${selectedDate}T12:00:00`);
+    date.setDate(date.getDate() + days);
+    onDateChange(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`);
+  };
 
-    const day = now.getDay();
-    const diffToMonday = day === 0 ? -6 : 1 - day;
-    const monday = new Date(now);
-    monday.setDate(now.getDate() + diffToMonday);
-    monday.setHours(0, 0, 0, 0);
-
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    sunday.setHours(23, 59, 59, 999);
-
-    const extractYYYYMMDD = (val) => {
-      if (!val) return null;
-      if (typeof val === 'string') {
-        if (val.includes('T')) return val.split('T')[0];
-        if (val.includes(' ')) return val.split(' ')[0];
-        if (val.length >= 10) return val.substring(0, 10);
-      }
-      try {
-        const d = new Date(val);
-        if (isNaN(d.getTime())) return null;
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const dt = String(d.getDate()).padStart(2, '0');
-        return `${y}-${m}-${dt}`;
-      } catch (e) {
-        return null;
-      }
-    };
-
-    return appointments.filter((apt) => {
-      const dateVal = apt.appointmentDate || apt.appointmentTime;
-      const aptDateStr = extractYYYYMMDD(dateVal);
-
-      if (dateScope === 'today') {
-        if (aptDateStr && aptDateStr !== todayStr) {
-          return false;
-        }
-      } else if (dateScope === 'week') {
-        if (dateVal) {
-          const d = new Date(dateVal);
-          if (!isNaN(d.getTime()) && (d < monday || d > sunday)) {
-            return false;
-          }
-        }
-      }
-      return true;
-    });
-  }, [appointments, dateScope]);
-
-  // Unique rooms list from appointments
-  const roomOptions = useMemo(() => {
-    const set = new Set();
-    appointments.forEach((apt) => {
-      const r = apt.roomName || apt.room || apt.roomNumber;
-      if (r) {
-        set.add(String(r).trim());
-      }
-    });
-    return Array.from(set).sort();
-  }, [appointments]);
-
-  // Filtered appointments by search term, activeTab, room, and sorted
+  // Filter the selected day's API results by search and status.
   const sortedAndFilteredAppointments = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
 
-    let list = dateScopedAppointments.filter((apt) => {
+    let list = appointments.filter((apt) => {
       if (term) {
         const matchesSearch =
           (apt.patientName && apt.patientName.toLowerCase().includes(term)) ||
@@ -188,11 +124,6 @@ export default function AppointmentTable({
         if (apt.status !== 'COMPLETED') return false;
       }
 
-      if (selectedRoom !== 'ALL') {
-        const rVal = String(apt.roomName || apt.room || apt.roomNumber || '').trim();
-        if (rVal !== selectedRoom) return false;
-      }
-
       return true;
     });
 
@@ -203,15 +134,15 @@ export default function AppointmentTable({
     });
 
     return list;
-  }, [dateScopedAppointments, searchTerm, activeTab, selectedRoom, sortOrder]);
+  }, [appointments, searchTerm, activeTab, sortOrder]);
 
-  const totalCount = dateScopedAppointments.length;
-  const waitingCount = dateScopedAppointments.filter(
+  const totalCount = appointments.length;
+  const waitingCount = appointments.filter(
     (a) => a.status === 'WAITING' || a.status === 'CONFIRMED' || a.status === 'PENDING' || a.status === 'not-arrived'
   ).length;
-  const calledCount = dateScopedAppointments.filter((a) => a.status === 'CALLED').length;
-  const inProgressCount = dateScopedAppointments.filter((a) => a.status === 'IN_PROGRESS').length;
-  const completedCount = dateScopedAppointments.filter((a) => a.status === 'COMPLETED').length;
+  const calledCount = appointments.filter((a) => a.status === 'CALLED').length;
+  const inProgressCount = appointments.filter((a) => a.status === 'IN_PROGRESS').length;
+  const completedCount = appointments.filter((a) => a.status === 'COMPLETED').length;
 
   // Pagination calculations (strictly 5 items per page)
   const totalFiltered = sortedAndFilteredAppointments.length;
@@ -224,11 +155,10 @@ export default function AppointmentTable({
     safeCurrentPage * ITEMS_PER_PAGE
   );
 
-  const isFilterActive = searchTerm !== '' || selectedRoom !== 'ALL' || activeTab !== 'ALL' || sortOrder !== 'asc';
+  const isFilterActive = searchTerm !== '' || activeTab !== 'ALL' || sortOrder !== 'asc';
 
   const handleResetFilters = () => {
     setSearchTerm('');
-    setSelectedRoom('ALL');
     setActiveTab('ALL');
     setSortOrder('asc');
     setCurrentPage(1);
@@ -237,35 +167,11 @@ export default function AppointmentTable({
   return (
     <div className="min-w-0 flex-[7] rounded-lg border border-slate-200/90 bg-white p-4 sm:p-5 shadow-2xs flex flex-col justify-between w-full">
       <div>
-        {/* Header: Nút chọn Ngày/Tuần & Title */}
+        {/* Selected date and total */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3.5 pb-3 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
-            {/* Date Scope Toggle Pill */}
-            <div className="flex items-center gap-1 rounded-md bg-slate-100/90 p-0.5 border border-slate-200/80">
-              <button
-                type="button"
-                onClick={() => setDateScope('today')}
-                className={`rounded px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${dateScope === 'today'
-                  ? 'bg-teal-700 text-white shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
-                  }`}
-              >
-                Hôm nay
-              </button>
-              <button
-                type="button"
-                onClick={() => setDateScope('week')}
-                className={`rounded px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${dateScope === 'week'
-                  ? 'bg-teal-700 text-white shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
-                  }`}
-              >
-                Tuần này
-              </button>
-            </div>
-
             <h2 className="text-base font-bold text-slate-800 tracking-tight">
-              {dateScope === 'today' ? 'Danh sách lịch hẹn hôm nay' : 'Danh sách lịch hẹn theo tuần'}
+              Danh sách lịch hẹn ngày {formatDisplayDate(selectedDate)}
             </h2>
           </div>
 
@@ -274,11 +180,11 @@ export default function AppointmentTable({
           </span>
         </div>
 
-        {/* Thanh lọc nâng cao (Search, Phòng khám, Sắp xếp, Reset) */}
+        {/* Search, appointment date, sort order and reset */}
         <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3 bg-slate-50/80 p-2.5 rounded-md border border-slate-200/80">
           <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
             {/* Search Input */}
-            <div className="relative flex-1 min-w-[200px]">
+            <div className="relative w-full sm:w-64 sm:shrink-0">
               <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
@@ -298,21 +204,20 @@ export default function AppointmentTable({
               )}
             </div>
 
-            {/* Room Filter Dropdown */}
-            <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-md border border-slate-200 text-xs">
-              <Filter size={13} className="text-slate-400 shrink-0" />
-              <select
-                value={selectedRoom}
-                onChange={(e) => setSelectedRoom(e.target.value)}
-                className="bg-transparent text-slate-700 font-medium focus:outline-none cursor-pointer pr-1"
-              >
-                <option value="ALL">Tất cả phòng khám</option>
-                {roomOptions.map((room) => (
-                  <option key={room} value={room}>
-                    {formatRoomDisplay(room)}
-                  </option>
-                ))}
-              </select>
+            <div className="flex items-center gap-2 bg-white px-2.5 py-1.5 rounded-md border border-slate-200 text-xs">
+              <Calendar size={14} className="text-teal-700" />
+              <label htmlFor="dentist-appointment-date" className="font-medium text-slate-700">Ngày khám</label>
+              <button type="button" aria-label="Ngày trước" onClick={() => shiftDate(-1)}
+                className="rounded border border-slate-200 p-1 text-slate-500 hover:bg-slate-100">
+                <ChevronLeft size={14} />
+              </button>
+              <input id="dentist-appointment-date" type="date" value={selectedDate}
+                onChange={(e) => { if (e.target.value) onDateChange(e.target.value); }}
+                className="bg-transparent text-slate-700 focus:outline-none" />
+              <button type="button" aria-label="Ngày tiếp theo" onClick={() => shiftDate(1)}
+                className="rounded border border-slate-200 p-1 text-slate-500 hover:bg-slate-100">
+                <ChevronRight size={14} />
+              </button>
             </div>
 
             {/* Sort Order Dropdown */}

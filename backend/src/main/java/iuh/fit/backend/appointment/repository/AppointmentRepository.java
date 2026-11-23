@@ -13,6 +13,14 @@ import java.util.UUID;
 
 @Repository
 public interface AppointmentRepository extends JpaRepository<Appointment, UUID> {
+  @Query("""
+      SELECT a FROM Appointment a
+      WHERE a.dentist.user.id = :userId
+        AND a.appointmentDate >= :start AND a.appointmentDate < :end
+      ORDER BY a.appointmentTime ASC
+      """)
+  List<Appointment> findForDentistUserOnDate(@Param("userId") UUID userId,
+      @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
   boolean existsByAppointmentCode(String appointmentCode);
   @Query(value = """
       SELECT a.* FROM appointments a
