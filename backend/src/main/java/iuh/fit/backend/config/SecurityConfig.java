@@ -9,15 +9,12 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.ProviderManager;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -35,7 +32,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-        @Value("${app.cors.allowed-origins:http://localhost:5173}")
+        @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:8081}")
         private String[] allowedOrigins;
 
         private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -164,7 +161,8 @@ public class SecurityConfig {
                 configuration.setAllowedOrigins(Arrays.asList(allowedOrigins));
                 configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
                 configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With",
-                                "Accept", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers"));
+                                "X-Client-Type", "X-Refresh-Token", "Accept", "Origin",
+                                "Access-Control-Request-Method", "Access-Control-Request-Headers"));
                 configuration.setExposedHeaders(
                                 List.of("Access-Control-Allow-Origin", "Access-Control-Allow-Credentials"));
                 configuration.setAllowCredentials(true);

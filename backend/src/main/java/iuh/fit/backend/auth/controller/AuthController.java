@@ -4,6 +4,7 @@ import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import iuh.fit.backend.auth.dto.AuthResponse;
 import iuh.fit.backend.auth.dto.LoginRequest;
 import iuh.fit.backend.auth.dto.PatientLoginRequest;
+import iuh.fit.backend.auth.dto.RefreshTokenRequest;
 import iuh.fit.backend.auth.service.AuthService;
 import iuh.fit.backend.common.response.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -49,9 +50,11 @@ public class AuthController {
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<AuthResponse>> refreshToken(
             HttpServletRequest request,
-            HttpServletResponse response) {
+            HttpServletResponse response,
+            @RequestBody(required = false) RefreshTokenRequest refreshBody) {
 
-        AuthResponse authResponse = authService.refreshToken(request, response);
+        String bodyToken = refreshBody != null ? refreshBody.refreshToken() : null;
+        AuthResponse authResponse = authService.refreshToken(request, response, bodyToken);
         return ResponseEntity.ok(ApiResponse.success("Làm mới token thành công", authResponse));
     }
 
