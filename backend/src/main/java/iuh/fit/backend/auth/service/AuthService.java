@@ -16,5 +16,9 @@ public interface AuthService {
 
     AuthResponse refreshToken(HttpServletRequest request, HttpServletResponse response);
 
+    default AuthResponse refreshToken(HttpServletRequest request, HttpServletResponse response, String bodyRefreshToken) {
+        return refreshToken(request, response);
+    }
+
     AuthResponse getCurrentUser();
 }

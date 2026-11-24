@@ -29,6 +29,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.UUID;
 
@@ -36,6 +38,9 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
+
+    private static final String CLIENT_TYPE_HEADER = "X-Client-Type";
+    private static final String MOBILE_CLIENT = "mobile";
 
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
@@ -78,7 +83,10 @@ public class AuthServiceImpl implements AuthService {
 
             log.info("User logged in successfully: {}", user.getEmail());
 
-            return toAuthResponse(user);
+            AuthResponse authResponse = toAuthResponse(user);
+            return isCurrentRequestMobile()
+                    ? authResponse.withTokens(accessToken, refreshToken)
+                    : authResponse;
 
         } catch (BadCredentialsException ex) {
             throw new AppException(ErrorCode.INVALID_CREDENTIALS);
@@ -155,7 +163,7 @@ public class AuthServiceImpl implements AuthService {
                         ? patient.getPhoneNumber().trim()
                         : rawPhone);
 
-        return new AuthResponse(
+        AuthResponse authResponse = new AuthResponse(
                 user.getId(),
                 user.getEmail(),
                 fullName,
@@ -165,12 +173,18 @@ public class AuthServiceImpl implements AuthService {
                 null,
                 patientId,
                 phoneResult);
+
+        return isCurrentRequestMobile()
+                ? authResponse.withTokens(accessToken, refreshToken)
+                : authResponse;
     }
 
     private String normalizePhone(String p) {
-        if (p == null) return "";
+        if (p == null)
+            return "";
         p = p.replaceAll("[^0-9]", "");
-        if (p.startsWith("84")) p = "0" + p.substring(2);
+        if (p.startsWith("84"))
+            p = "0" + p.substring(2);
         return p;
     }
 
@@ -189,9 +203,16 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthResponse refreshToken(HttpServletRequest request, HttpServletResponse response) {
-        String refreshToken = extractTokenFromCookie(request, "refresh_token");
+        return refreshToken(request, response, null);
+    }
 
-        if (refreshToken == null) {
+    @Override
+    public AuthResponse refreshToken(HttpServletRequest request, HttpServletResponse response,
+            String bodyRefreshToken) {
+        boolean fromMobile = isMobileRequest(request) || (bodyRefreshToken != null && !bodyRefreshToken.isBlank());
+        String refreshToken = extractRefreshToken(request, bodyRefreshToken);
+
+        if (refreshToken == null || refreshToken.isBlank()) {
             clearAuthCookies(response);
             throw new AppException(ErrorCode.REFRESH_TOKEN_NOT_FOUND);
         }
@@ -223,7 +244,35 @@ public class AuthServiceImpl implements AuthService {
 
         log.info("Access token refreshed for user: {}", email);
 
-        return toAuthResponse(userDetails.getUser());
+        AuthResponse authResponse = toAuthResponse(userDetails.getUser());
+        return fromMobile
+                ? authResponse.withTokens(newAccessToken, refreshToken)
+                : authResponse;
+    }
+
+    private String extractRefreshToken(HttpServletRequest request, String bodyRefreshToken) {
+        if (bodyRefreshToken != null && !bodyRefreshToken.isBlank()) {
+            return bodyRefreshToken.trim();
+        }
+        String headerToken = request.getHeader("X-Refresh-Token");
+        if (headerToken != null && !headerToken.isBlank()) {
+            return headerToken.trim();
+        }
+        return extractTokenFromCookie(request, "refresh_token");
+    }
+
+    private boolean isCurrentRequestMobile() {
+        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attrs) {
+            return isMobileRequest(attrs.getRequest());
+        }
+        return false;
+    }
+
+    private boolean isMobileRequest(HttpServletRequest request) {
+        if (request == null)
+            return false;
+        String clientType = request.getHeader(CLIENT_TYPE_HEADER);
+        return MOBILE_CLIENT.equalsIgnoreCase(clientType);
     }
 
     private void clearAuthCookies(HttpServletResponse response) {
