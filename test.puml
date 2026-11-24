@@ -1,0 +1,5 @@
+@startuml
+rectangle A
+rectangle B
+A -down-> B
+@enduml

@@ -320,7 +320,7 @@ export default function AppointmentDetail({
             </div>
           </div>
 
-          {/* Card 3: Notes & Reception Staff (Hiển thị toàn bộ ghi chú) */}
+          {/* Card 3: Notes & Reception Staff (Hiển thị toàn bộ ghi chú & Lý do hủy nếu có) */}
           <div className="rounded-xl border border-slate-200/90 bg-white p-4 sm:p-5 shadow-2xs space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <span className="flex items-center gap-1.5 font-bold text-slate-800 text-xs uppercase tracking-wider">
@@ -329,8 +329,20 @@ export default function AppointmentDetail({
               </span>
             </div>
 
+            {(appointment.status === 'CANCELLED' || appointment.status === 'REJECTED' || appointment.status === 'cancelled') && (
+              <div className="rounded-lg bg-rose-50 border border-rose-200 p-3">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-rose-800 mb-1">
+                  <AlertCircle size={15} className="text-rose-600" />
+                  <span>Lý do hủy / Từ chối ca khám:</span>
+                </div>
+                <p className="text-xs sm:text-[13px] text-rose-900 font-semibold break-words">
+                  {appointment.cancelReason || appointment.notes || appointment.description || 'Không có lý do chi tiết.'}
+                </p>
+              </div>
+            )}
+
             <div>
-              <span className="text-xs text-slate-500 font-semibold">Ghi chú của bệnh nhân / Tiếp nhận</span>
+              <span className="text-xs text-slate-500 font-semibold">Ghi chú của bệnh nhân / Tiếp nhận:</span>
               <div className="mt-1.5 rounded-lg bg-slate-50 border border-slate-200 p-3 text-xs sm:text-[13px] text-slate-800 italic leading-relaxed break-words">
                 &ldquo;{appointment.notes || appointment.reason || 'Không có ghi chú bổ sung.'}&rdquo;
               </div>

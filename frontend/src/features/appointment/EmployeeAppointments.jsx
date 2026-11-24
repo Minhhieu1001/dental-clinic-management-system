@@ -36,6 +36,7 @@ import { getDentistsList } from '../../services/dentist.service';
 import { getAppointments, getAppointmentById, updateAppointment } from '../../services/appointment.service';
 import { getAppointmentRequestToday, updateAppointmentRequestStatus } from '../../services/appointmentRequest.service';
 import CreateAppointmentModal from '../../components/ui/CreateAppointmentModal';
+import AppointmentDetail from '../dashboard/receptionist/action/AppointmentDetail';
 
 const TIME_SLOTS = [
   '07:00',
@@ -269,6 +270,31 @@ export default function EmployeeAppointments() {
   const [rejectReason, setRejectReason] = useState('');
   const [isRejecting, setIsRejecting] = useState(false);
 
+  // Detail Modal State (khi double click hoặc xem lịch hẹn đã hủy/từ chối)
+  const [detailApt, setDetailApt] = useState(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  const handleOpenDetailModal = (apt) => {
+    if (!apt) return;
+    let timeStr = '09:00';
+    if (apt.appointmentTime) {
+      try {
+        const d = new Date(apt.appointmentTime);
+        timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      } catch (e) {
+        timeStr = String(apt.appointmentTime).substring(11, 16) || '09:00';
+      }
+    }
+    setDetailApt({
+      ...apt,
+      time: timeStr,
+      service: apt.service || apt.reason || 'Tư vấn nha khoa',
+      dentist: apt.dentist || apt.dentistName || 'Bác sĩ điều trị',
+      cancelReason: apt.notes || apt.rejectReason || apt.description || '',
+    });
+    setIsDetailOpen(true);
+  };
+
   // Trigger Reject Confirmation Modal
   const handleOpenRejectModal = (apt) => {
     setRejectTarget(apt);
@@ -281,14 +307,15 @@ export default function EmployeeAppointments() {
     if (!rejectTarget) return;
     setIsRejecting(true);
     const aptId = rejectTarget.id;
+    const finalReason = rejectReason.trim() || 'Lễ tân từ chối lịch hẹn';
     try {
       if (aptId && !String(aptId).startsWith('mock-')) {
-        await updateAppointmentRequestStatus(aptId, 'CANCELLED').catch(() =>
-          updateAppointment(aptId, { status: 'CANCELLED' })
+        await updateAppointmentRequestStatus(aptId, 'CANCELLED', { notes: finalReason }).catch(() =>
+          updateAppointment(aptId, { status: 'CANCELLED', notes: finalReason })
         );
       }
       setAppointments((prev) =>
-        prev.map((a) => (a.id === aptId ? { ...a, status: 'CANCELLED' } : a))
+        prev.map((a) => (a.id === aptId ? { ...a, status: 'CANCELLED', notes: finalReason } : a))
       );
       toast.success(`Đã từ chối lịch hẹn của ${rejectTarget.patientName || rejectTarget.fullName || 'bệnh nhân'}`);
       setIsRejectModalOpen(false);
@@ -1070,8 +1097,15 @@ export default function EmployeeAppointments() {
                       ? `${String(aptDate.getDate()).padStart(2, '0')}/${String(aptDate.getMonth() + 1).padStart(2, '0')}/${aptDate.getFullYear()} ${String(aptDate.getHours()).padStart(2, '0')}:${String(aptDate.getMinutes()).padStart(2, '0')}`
                       : 'Chưa xác định';
 
+                    const isCancelled = style.type === 'REJECTED';
+
                     return (
-                      <tr key={apt.id} className="hover:bg-slate-50/80 transition-colors">
+                      <tr
+                        key={apt.id}
+                        onDoubleClick={() => handleOpenDetailModal(apt)}
+                        title={isCancelled ? "Ca đã hủy / từ chối - Double click để xem chi tiết & lý do hủy" : "Double click để xem chi tiết ca khám"}
+                        className="hover:bg-slate-50/80 transition-colors cursor-pointer"
+                      >
                         <td className="p-3 font-bold text-slate-900 whitespace-nowrap">
                           {dateStr}
                         </td>
@@ -1102,7 +1136,15 @@ export default function EmployeeAppointments() {
                         </td>
                         <td className="p-3 text-right">
                           <div className="flex items-center justify-end gap-1.5">
-                            {style.type === 'UNASSIGNED' ? (
+                            {style.type === 'REJECTED' ? (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenDetailModal(apt)}
+                                className="px-2.5 py-1 rounded border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 text-[10px] font-bold shadow-2xs cursor-pointer"
+                              >
+                                Chi tiết hủy
+                              </button>
+                            ) : style.type === 'UNASSIGNED' ? (
                               <>
                                 <button
                                   type="button"
@@ -1221,10 +1263,14 @@ export default function EmployeeAppointments() {
                               }
                             }
 
+                            const isCancelled = style.type === 'REJECTED';
+
                             return (
                               <div
                                 key={event.id}
-                                className={`w-full p-2.5 rounded-sm border-l-[3.5px] shadow-2xs hover:shadow-md transition-all space-y-1.5 overflow-hidden text-left ${style.cardBg}`}
+                                onDoubleClick={() => handleOpenDetailModal(event)}
+                                title={isCancelled ? "Ca đã hủy / từ chối - Double click để xem chi tiết & lý do hủy" : "Double click để xem chi tiết ca khám"}
+                                className={`w-full p-2.5 rounded-sm border-l-[3.5px] shadow-2xs hover:shadow-md transition-all space-y-1.5 overflow-hidden text-left cursor-pointer ${style.cardBg}`}
                               >
                                 {isUrgent && (
                                   <div className="flex items-center gap-1 text-[9px] font-extrabold text-rose-700 bg-rose-100/90 border border-rose-200 rounded px-1.5 py-0.5 w-max">
@@ -1294,7 +1340,16 @@ export default function EmployeeAppointments() {
                                     </span>
                                   </div>
 
-                                  {style.type === 'UNASSIGNED' ? (
+                                  {style.type === 'REJECTED' ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenDetailModal(event)}
+                                      className="w-full flex items-center justify-center gap-1 rounded-sm bg-white border border-rose-200 hover:bg-rose-50 py-1 text-[10px] font-extrabold text-rose-800 shadow-2xs transition-colors mt-0.5 cursor-pointer"
+                                    >
+                                      <Eye size={11} className="text-rose-600" />
+                                      Xem chi tiết & Lý do hủy
+                                    </button>
+                                  ) : style.type === 'UNASSIGNED' ? (
                                     <div className="flex items-center gap-1 mt-0.5">
                                       <button
                                         type="button"
@@ -1432,10 +1487,19 @@ export default function EmployeeAppointments() {
                             }
                           }
 
+                          const isAptCancelled = style.type === 'REJECTED';
                           return (
                             <div
                               key={apt.id}
-                              onClick={() => handleOpenScheduleModal(apt)}
+                              onClick={() => {
+                                if (isAptCancelled) {
+                                  handleOpenDetailModal(apt);
+                                } else {
+                                  handleOpenScheduleModal(apt);
+                                }
+                              }}
+                              onDoubleClick={() => handleOpenDetailModal(apt)}
+                              title={isAptCancelled ? "Ca đã hủy - Double click để xem chi tiết & lý do" : "Click để đổi lịch, Double click xem chi tiết"}
                               className={`p-1 rounded border border-slate-200 text-[10px] cursor-pointer hover:shadow-2xs transition-all text-left truncate ${style.cardBg}`}
                             >
                               <div className="font-bold truncate flex items-center justify-between gap-1">
@@ -1565,6 +1629,16 @@ export default function EmployeeAppointments() {
           </div>
         </div>
       )}
+
+      {/* Appointment Detail Modal (Xem thông tin ca khám & lý do hủy) */}
+      <AppointmentDetail
+        isOpen={isDetailOpen}
+        onClose={() => {
+          setIsDetailOpen(false);
+          setDetailApt(null);
+        }}
+        appointment={detailApt}
+      />
     </div>
   );
 }

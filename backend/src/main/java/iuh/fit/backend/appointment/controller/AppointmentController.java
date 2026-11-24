@@ -11,6 +11,8 @@ import iuh.fit.backend.patient.repository.PatientRepository;
 import iuh.fit.backend.user.enums.Role;
 import iuh.fit.backend.user.entity.User;
 import iuh.fit.backend.user.repository.UserRepository;
+import iuh.fit.backend.common.response.ApiResponse;
+import jakarta.validation.Valid;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -59,6 +61,26 @@ public class AppointmentController {
     @GetMapping("/rooms")
     public List<Room> getAllRooms(@RequestParam(required = false) String branchId) {
         return branchId == null ? appointmentService.getAllRooms() : appointmentService.getRoomsByBranch(branchId);
+    }
+
+    @PostMapping("/rooms")
+    public ResponseEntity<ApiResponse<iuh.fit.backend.appointment.dto.RoomResponseDTO>> createRoom(
+            @Valid @RequestBody iuh.fit.backend.appointment.dto.RoomRequestDTO request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Tạo phòng khám thành công", appointmentService.createRoom(request)));
+    }
+
+    @PutMapping("/rooms/{id}")
+    public ResponseEntity<ApiResponse<iuh.fit.backend.appointment.dto.RoomResponseDTO>> updateRoom(
+            @PathVariable UUID id,
+            @Valid @RequestBody iuh.fit.backend.appointment.dto.RoomRequestDTO request) {
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật phòng khám thành công", appointmentService.updateRoom(id, request)));
+    }
+
+    @DeleteMapping("/rooms/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteRoom(@PathVariable UUID id) {
+        appointmentService.deleteRoom(id);
+        return ResponseEntity.ok(ApiResponse.success("Xóa phòng khám thành công", null));
     }
 
     @GetMapping("/day")

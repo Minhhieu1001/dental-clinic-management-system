@@ -450,6 +450,17 @@ export default function AppointmentTable({
                             Đã hoàn thành
                           </span>
                         )}
+
+                        {apt.status === 'CANCELLED' && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDetail(apt)}
+                            className="inline-flex items-center justify-center rounded-md bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-700 border border-rose-200 hover:bg-rose-100 transition-colors cursor-pointer"
+                            title="Nhấp để xem lý do hủy"
+                          >
+                            Xem lý do hủy
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
