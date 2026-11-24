@@ -9,5 +9,8 @@ import java.util.List;
 
 @Repository
 public interface RoomRepository extends JpaRepository<Room, UUID> {
+    List<Room> findAllByOrderByRoomNameAsc();
     List<Room> findByBranch_BranchIdOrderByRoomNameAsc(String branchId);
+    boolean existsByRoomNameIgnoreCaseAndBranch_BranchId(String roomName, String branchId);
+    boolean existsByRoomNameIgnoreCaseAndBranch_BranchIdAndIdNot(String roomName, String branchId, UUID id);
 }

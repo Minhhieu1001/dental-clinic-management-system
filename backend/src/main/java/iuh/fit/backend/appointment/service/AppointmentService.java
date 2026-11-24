@@ -41,4 +41,8 @@ public interface AppointmentService {
 
     List<Room> getAllRooms();
     List<Room> getRoomsByBranch(String branchId);
+
+    iuh.fit.backend.appointment.dto.RoomResponseDTO createRoom(iuh.fit.backend.appointment.dto.RoomRequestDTO dto);
+    iuh.fit.backend.appointment.dto.RoomResponseDTO updateRoom(UUID id, iuh.fit.backend.appointment.dto.RoomRequestDTO dto);
+    void deleteRoom(UUID id);
 }

@@ -36,6 +36,10 @@ public class Room {
         return branch != null ? branch.getBranchId() : null;
     }
 
+    public String getBranchName() {
+        return branch != null ? branch.getBranchName() : null;
+    }
+
     @JsonIgnore
     @Builder.Default
     @OneToMany(mappedBy = "room", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})

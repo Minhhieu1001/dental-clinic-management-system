@@ -11,6 +11,7 @@ import {
   createClinic,
   deleteBranch,
   getClinics,
+  getBranches,
   updateBranch,
   updateClinic,
 } from '../../../services/clinic.service.js';
@@ -71,11 +72,17 @@ export default function AdminSettings() {
 
     const loadClinicData = async () => {
       try {
-        const clinics = await getClinics();
+        const [clinics, allBranches] = await Promise.all([
+          getClinics().catch(() => []),
+          getBranches().catch(() => []),
+        ]);
         const clinic = normalizeClinic(clinics?.[0] || EMPTY_CLINIC);
         if (isMounted) {
           setClinicInfo(clinic);
-          setBranches((clinic.branches || []).map(normalizeBranch));
+          const rawBranches = Array.isArray(allBranches) && allBranches.length > 0
+            ? allBranches
+            : (clinic.branches || []);
+          setBranches(rawBranches.map(normalizeBranch));
         }
       } catch (error) {
         if (isMounted) {

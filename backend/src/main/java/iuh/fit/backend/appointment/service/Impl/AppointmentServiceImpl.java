@@ -988,7 +988,7 @@ public class AppointmentServiceImpl implements AppointmentService {
     @Override
     @Transactional(readOnly = true)
     public List<Room> getAllRooms() {
-        return roomRepository.findAll();
+        return roomRepository.findAllByOrderByRoomNameAsc();
     }
 
     @Override
@@ -998,6 +998,93 @@ public class AppointmentServiceImpl implements AppointmentService {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "Vui lòng xác định chi nhánh của lịch hẹn.");
         }
         return roomRepository.findByBranch_BranchIdOrderByRoomNameAsc(branchId.trim());
+    }
+
+    @Override
+    @Transactional
+    public iuh.fit.backend.appointment.dto.RoomResponseDTO createRoom(iuh.fit.backend.appointment.dto.RoomRequestDTO dto) {
+        if (dto.getRoomName() == null || dto.getRoomName().trim().isEmpty()) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Tên phòng khám không được để trống.");
+        }
+        if (dto.getBranchId() == null || dto.getBranchId().trim().isEmpty()) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Chi nhánh không được để trống.");
+        }
+
+        String trimmedRoomName = dto.getRoomName().trim();
+        String trimmedBranchId = dto.getBranchId().trim();
+
+        Branch branch = branchRepository.findById(trimmedBranchId)
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy chi nhánh với mã: " + trimmedBranchId));
+
+        if (roomRepository.existsByRoomNameIgnoreCaseAndBranch_BranchId(trimmedRoomName, trimmedBranchId)) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Tên phòng '" + trimmedRoomName + "' đã tồn tại ở chi nhánh này.");
+        }
+
+        Room room = Room.builder()
+                .roomName(trimmedRoomName)
+                .floorName(dto.getFloorName() != null ? dto.getFloorName().trim() : null)
+                .branch(branch)
+                .createAt(LocalDateTime.now())
+                .build();
+
+        Room saved = roomRepository.save(room);
+        return mapToRoomResponseDTO(saved);
+    }
+
+    @Override
+    @Transactional
+    public iuh.fit.backend.appointment.dto.RoomResponseDTO updateRoom(UUID id, iuh.fit.backend.appointment.dto.RoomRequestDTO dto) {
+        Room room = roomRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy phòng khám."));
+
+        if (dto.getRoomName() == null || dto.getRoomName().trim().isEmpty()) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Tên phòng khám không được để trống.");
+        }
+        if (dto.getBranchId() == null || dto.getBranchId().trim().isEmpty()) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Chi nhánh không được để trống.");
+        }
+
+        String trimmedRoomName = dto.getRoomName().trim();
+        String trimmedBranchId = dto.getBranchId().trim();
+
+        Branch branch = branchRepository.findById(trimmedBranchId)
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy chi nhánh với mã: " + trimmedBranchId));
+
+        if (roomRepository.existsByRoomNameIgnoreCaseAndBranch_BranchIdAndIdNot(trimmedRoomName, trimmedBranchId, id)) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Tên phòng '" + trimmedRoomName + "' đã tồn tại ở chi nhánh này.");
+        }
+
+        room.setRoomName(trimmedRoomName);
+        room.setFloorName(dto.getFloorName() != null ? dto.getFloorName().trim() : null);
+        room.setBranch(branch);
+
+        Room saved = roomRepository.save(room);
+        return mapToRoomResponseDTO(saved);
+    }
+
+    @Override
+    @Transactional
+    public void deleteRoom(UUID id) {
+        Room room = roomRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy phòng khám."));
+
+        if (room.getAppointments() != null && !room.getAppointments().isEmpty()) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Không thể xóa phòng khám đang có lịch hẹn gắn kèm.");
+        }
+
+        roomRepository.delete(room);
+    }
+
+    private iuh.fit.backend.appointment.dto.RoomResponseDTO mapToRoomResponseDTO(Room room) {
+        if (room == null) return null;
+        return iuh.fit.backend.appointment.dto.RoomResponseDTO.builder()
+                .id(room.getId())
+                .roomName(room.getRoomName())
+                .floorName(room.getFloorName())
+                .createAt(room.getCreateAt())
+                .branchId(room.getBranchId())
+                .branchName(room.getBranchName())
+                .build();
     }
 
     private void validateRoomBranch(Room room, Branch branch) {

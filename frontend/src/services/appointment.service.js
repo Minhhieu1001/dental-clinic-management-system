@@ -45,7 +45,25 @@ export const getAppointmentsByPatient = async (patientId) => {
 
 // Get all examination rooms
 export const getRooms = async (branchId) => {
-  const response = await api.get('/appointments/rooms', { params: { branchId } });
+  const response = await api.get('/appointments/rooms', { params: { branchId: branchId || undefined } });
+  return response.data;
+};
+
+// Create a new room
+export const createRoom = async (roomData) => {
+  const response = await api.post('/appointments/rooms', roomData);
+  return response.data?.data || response.data;
+};
+
+// Update an existing room
+export const updateRoom = async (id, roomData) => {
+  const response = await api.put(`/appointments/rooms/${id}`, roomData);
+  return response.data?.data || response.data;
+};
+
+// Delete a room
+export const deleteRoom = async (id) => {
+  const response = await api.delete(`/appointments/rooms/${id}`);
   return response.data;
 };
 

@@ -184,11 +184,16 @@ VALUES
   ('c3333333-3333-3333-3333-333333333333', '77777777-7777-7777-7777-777777777777', 'Nguyễn Minh Long', 'BN-002185', 'Việt Nam', 'Đà Nẵng', 'Nhân viên văn phòng', '0903456789', '001088000003', 'long.nguyen@patient.clinic.vn', 'MALE', TIMESTAMP '1989-12-05 00:00:00', '25 Nguyễn Văn Linh, Đà Nẵng', 'Không', 'Không', 'Không', 'Không', NOW(), 0)
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO rooms (id, room_name, floor_name, create_at)
+INSERT INTO rooms (id, room_name, floor_name, branch_id, create_at)
 VALUES
-  ('f1111111-1111-1111-1111-111111111111', 'Phòng khám 01', 'Tầng 1', NOW()),
-  ('f2222222-2222-2222-2222-222222222222', 'Phòng chỉnh nha 02', 'Tầng 2', NOW())
+  ('f1111111-1111-1111-1111-111111111111', 'Phòng khám 01', 'Tầng 1', 'branch-hn-01', NOW()),
+  ('f2222222-2222-2222-2222-222222222222', 'Phòng chỉnh nha 02', 'Tầng 2', 'branch-hn-01', NOW())
 ON CONFLICT (id) DO NOTHING;
+
+UPDATE rooms
+SET branch_id = 'branch-hn-01'
+WHERE id IN ('f1111111-1111-1111-1111-111111111111', 'f2222222-2222-2222-2222-222222222222')
+  AND branch_id IS NULL;
 
 INSERT INTO appointments (id, patient_id, patient_name, phone, dentist_id, employee_id, appointment_date, appointment_time, reason, attribute, status, notes, diagnosis, symptoms, treatment_notes, reminded_1day, reminded_1hour, room_id, created_at, version)
 VALUES

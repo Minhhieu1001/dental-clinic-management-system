@@ -60,6 +60,11 @@ export const appointmentStatusConfig = {
     className: 'bg-rose-50 text-rose-700 border border-rose-200/80',
     action: 'Đã hủy',
   },
+  REJECTED: {
+    label: 'Từ chối / Đã hủy',
+    className: 'bg-rose-50 text-rose-700 border border-rose-200/80',
+    action: 'Đã hủy',
+  },
   // Fallbacks
   'not-arrived': {
     label: 'Chưa đến',
