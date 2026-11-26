@@ -26,6 +26,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.MimeType;
 import org.springframework.util.MimeTypeUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -360,6 +361,7 @@ public class XrayAiAnalysisService {
     // =====================================================================================================
 
     /** Lịch sử phim X-quang đã phân tích của đợt khám / hồ sơ bệnh án. */
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> history(UUID medicalRecordId, UUID examinationResultId) {
         List<XrayImage> images = examinationResultId != null
                 ? xrayImageRepository.findByExaminationResultId(examinationResultId).stream().toList()
@@ -367,11 +369,15 @@ public class XrayAiAnalysisService {
 
         List<Map<String, Object>> list = new ArrayList<>();
         for (XrayImage image : images) {
+            ExaminationResult exam = image.getExaminationResult();
             for (XrayAnalysis analysis : xrayAnalysisRepository.findByXrayImageIdOrderByAnalyzedAtDesc(image.getId())) {
                 Map<String, Object> item = parseStored(analysis.getResult());
                 item.put("analysisId", analysis.getId());
                 item.put("analyzedAt", analysis.getAnalyzedAt() != null ? analysis.getAnalyzedAt().toString() : null);
                 item.put("xrayImageId", image.getId());
+                item.put("examinationResultId", exam.getId());
+                item.put("examinationDate", exam.getExaminationDate() != null ? exam.getExaminationDate().toString() : null);
+                item.put("treatmentPlanName", exam.getTreatmentPlan() != null ? exam.getTreatmentPlan().getPlanName() : null);
                 // Keep the image snapshot associated with each historical analysis.
                 item.putIfAbsent("imageUrl", image.getImageUrl());
                 item.putIfAbsent("imageType", image.getImageType());

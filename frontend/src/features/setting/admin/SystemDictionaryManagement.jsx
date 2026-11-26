@@ -28,19 +28,19 @@ const getErrorMessage = (error, fallback) =>
 
 function SectionHeader({ title, description, onAdd, onRefresh, loading }) {
   return (
-    <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h2 className="flex items-center gap-2 text-base font-black text-slate-900">
+    <div className="flex min-h-28 flex-col justify-between gap-3 border-b border-slate-200 pb-4">
+      <div className="min-w-0">
+        <h2 className="text-base font-black text-slate-900">
           {title}
         </h2>
         <p className="mt-1 text-xs text-slate-500">{description}</p>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={onRefresh}
           disabled={loading}
-          className="inline-flex items-center gap-1.5 rounded border border-slate-300 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded border border-slate-300 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
         >
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           Làm mới
@@ -48,7 +48,7 @@ function SectionHeader({ title, description, onAdd, onRefresh, loading }) {
         <button
           type="button"
           onClick={onAdd}
-          className="inline-flex items-center gap-1.5 rounded bg-teal-700 px-3 py-2 text-xs font-bold text-white hover:bg-teal-800"
+          className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded bg-teal-700 px-3 py-2 text-xs font-bold text-white hover:bg-teal-800"
         >
           <Plus size={14} />
           Thêm mới
@@ -283,30 +283,31 @@ export default function SystemDictionaryManagement() {
           Đang tải danh mục...
         </div>
       ) : (
-        <div className="grid gap-6 xl:grid-cols-2">
-          <section className="rounded border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="grid items-stretch gap-5 xl:grid-cols-2">
+          <section className="min-w-0 rounded border border-slate-200 bg-white p-5 shadow-sm">
             <SectionHeader
               title={`Chẩn đoán chính (${diagnoses.length})`}
-              description="Danh sách chẩn đoán ."
+              description="Danh sách chẩn đoán được sử dụng trong hồ sơ khám."
               onAdd={() => setModal({ type: 'diagnosis', item: null })}
               onRefresh={() => loadData(false)}
               loading={loading}
             />
             <div className="mt-4 overflow-x-auto">
-              <table className="w-full min-w-[440px] text-left text-sm">
+              <table className="w-full min-w-[440px] table-fixed text-left text-sm">
+                <colgroup><col className="w-[62%]" /><col className="w-[22%]" /><col className="w-[16%]" /></colgroup>
                 <thead className="border-b border-slate-200 text-xs uppercase text-slate-500">
                   <tr>
                     <th className="px-2 py-3">Tên chẩn đoán</th>
-                    <th className="px-2 py-3">Trạng thái</th>
-                    <th className="px-2 py-3 text-right">Thao tác</th>
+                    <th className="px-2 py-3 whitespace-nowrap">Trạng thái</th>
+                    <th className="px-2 py-3 text-right whitespace-nowrap">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {diagnoses.map((item) => (
                     <tr key={item.id} className="hover:bg-slate-50">
-                      <td className="px-2 py-3 font-semibold text-slate-800">{item.primaryDiagnosisName}</td>
+                      <td className="break-words px-2 py-3 font-semibold text-slate-800">{item.primaryDiagnosisName}</td>
                       <td className="px-2 py-3">
-                        <span className={`rounded-full px-2 py-1 text-[11px] font-bold ${item.status ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                        <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-1 text-[11px] font-bold ${item.status ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
                           {item.status ? 'Đang dùng' : 'Ngừng dùng'}
                         </span>
                       </td>
@@ -328,7 +329,7 @@ export default function SystemDictionaryManagement() {
             </div>
           </section>
 
-          <section className="rounded border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="min-w-0 rounded border border-slate-200 bg-white p-5 shadow-sm">
             <SectionHeader
               title={`Tình trạng răng (${toothStatuses.length})`}
               description="Danh mục tình trạng và màu hiển thị trên sơ đồ răng."
@@ -337,22 +338,23 @@ export default function SystemDictionaryManagement() {
               loading={loading}
             />
             <div className="mt-4 overflow-x-auto">
-              <table className="w-full min-w-[440px] text-left text-sm">
+              <table className="w-full min-w-[440px] table-fixed text-left text-sm">
+                <colgroup><col className="w-[20%]" /><col className="w-[29%]" /><col className="w-[32%]" /><col className="w-[19%]" /></colgroup>
                 <thead className="border-b border-slate-200 text-xs uppercase text-slate-500">
                   <tr>
                     <th className="px-2 py-3">Mã</th>
                     <th className="px-2 py-3">Tên</th>
                     <th className="px-2 py-3">Màu</th>
-                    <th className="px-2 py-3 text-right">Thao tác</th>
+                    <th className="px-2 py-3 text-right whitespace-nowrap">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {toothStatuses.map((item) => (
                     <tr key={item.id} className="hover:bg-slate-50">
-                      <td className="px-2 py-3 font-mono text-xs font-bold text-slate-700">{item.toothCode}</td>
-                      <td className="px-2 py-3 font-semibold text-slate-800">{item.label}</td>
+                      <td className="break-all px-2 py-3 font-mono text-xs font-bold text-slate-700">{item.toothCode}</td>
+                      <td className="break-words px-2 py-3 font-semibold text-slate-800">{item.label}</td>
                       <td className="px-2 py-3">
-                        <span className="inline-flex items-center gap-2">
+                        <span className="inline-flex items-center gap-2 whitespace-nowrap">
                           <span className="h-5 w-5 rounded border border-slate-300" style={{ backgroundColor: item.color }} />
                           <span className="font-mono text-xs text-slate-500">{item.color}</span>
                         </span>

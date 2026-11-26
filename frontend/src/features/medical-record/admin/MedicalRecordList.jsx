@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import {
     FileText,
@@ -42,10 +42,10 @@ import { getExaminationResultsByMedicalRecordId } from '../../../services/examin
 import { getTreatmentPlansByPatientId } from '../../../services/treatmentPlan.service';
 import { getPrescriptions } from '../../../services/prescription.service';
 import { getDentistsList } from '../../../services/dentist.service';
+import { getXrayAnalysisHistory } from '../../../services/xrayAi.service';
 
 export default function MedicalRecordList() {
     // State danh sách tổng
-    const [patients, setPatients] = useState([]);
     const [medicalRecords, setMedicalRecords] = useState([]);
     const [dentists, setDentists] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -70,6 +70,8 @@ export default function MedicalRecordList() {
     const [detailExams, setDetailExams] = useState([]);
     const [detailPlans, setDetailPlans] = useState([]);
     const [detailPrescriptions, setDetailPrescriptions] = useState([]);
+    const [detailXrays, setDetailXrays] = useState([]);
+    const [xrayError, setXrayError] = useState(false);
 
     // Tải dữ liệu từ API thực tế kèm theo bộ lọc
     const fetchData = useCallback(async () => {
@@ -94,7 +96,6 @@ export default function MedicalRecordList() {
                 ? (dentistsRes.value?.data || dentistsRes.value)
                 : [];
 
-            setPatients(rawPatients);
             setDentists(rawDentists);
 
             // Gộp thông tin bệnh nhân và bác sĩ vào record
@@ -174,16 +175,19 @@ export default function MedicalRecordList() {
         setSelectedRecord(record);
         setDetailModalOpen(true);
         setLoadingDetail(true);
+        setDetailXrays([]);
+        setXrayError(false);
 
         try {
             const patientId = record.patientId;
             const recordId = record.id;
 
-            const [singleRecordRes, examsRes, plansRes, presRes] = await Promise.allSettled([
+            const [singleRecordRes, examsRes, plansRes, presRes, xrayRes] = await Promise.allSettled([
                 recordId ? getMedicalRecordById(recordId).catch(() => null) : Promise.resolve(null),
                 recordId ? getExaminationResultsByMedicalRecordId(recordId).catch(() => []) : Promise.resolve([]),
                 patientId ? getTreatmentPlansByPatientId(patientId).catch(() => []) : Promise.resolve([]),
                 patientId ? getPrescriptions({ patientId }).catch(() => []) : Promise.resolve([]),
+                recordId ? getXrayAnalysisHistory({ medicalRecordId: recordId }) : Promise.resolve([]),
             ]);
 
             // 1. Cập nhật thông tin chi tiết hồ sơ
@@ -235,6 +239,11 @@ export default function MedicalRecordList() {
                 }
             }
             setDetailPrescriptions(loadedPrescriptions);
+            if (xrayRes.status === 'fulfilled') {
+                setDetailXrays(xrayRes.value);
+            } else {
+                setXrayError(true);
+            }
         } catch (error) {
             console.error('Lỗi khi tải chi tiết hồ sơ bệnh án:', error);
             toast.error('Có lỗi xảy ra khi tải dữ liệu chi tiết của hồ sơ bệnh án!');
@@ -751,6 +760,8 @@ export default function MedicalRecordList() {
                 detailExams={detailExams}
                 detailPlans={detailPlans}
                 detailPrescriptions={detailPrescriptions}
+                detailXrays={detailXrays}
+                xrayError={xrayError}
                 loadingDetail={loadingDetail}
             />
         </div>

@@ -29,6 +29,7 @@ import NotFound from '../pages/NotFound.jsx'
 import AdminDashboard from '../features/dashboard/AdminDashboard.jsx'
 import AdminAppointments from '../features/appointment/AdminAppointments.jsx'
 import AdminPatients from '../features/patient/AdminPatients.jsx'
+import MedicalRecordList from '../features/medical-record/admin/MedicalRecordList.jsx'
 import AdminDentists from '../features/user/AdminDentists.jsx'
 import EmployeeManagement from '../features/employee/EmployeeManagement.jsx'
 import AdminBilling from '../features/billing/admin/AdminBilling.jsx'
@@ -115,6 +116,7 @@ export default function AppRouter() {
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="appointments" element={<AdminAppointments />} />
             <Route path="patients" element={<AdminPatients />} />
+            <Route path="medical-records" element={<MedicalRecordList />} />
             <Route path="dentists" element={<AdminDentists />} />
             <Route path="employees" element={<EmployeeManagement />} />
             <Route path="billing" element={<AdminBilling />} />

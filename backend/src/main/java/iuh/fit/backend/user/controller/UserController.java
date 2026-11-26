@@ -13,6 +13,7 @@ import iuh.fit.backend.user.dto.UpdateUserStatusRequest;
 import iuh.fit.backend.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -59,6 +60,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or (#request.status() == null and #request.role() == null)")
     public UserResponse updateUser(@PathVariable UUID id, @RequestBody UserRequest request) {
         return userService.updateUser(id, request);
     }
@@ -75,6 +77,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
     public UserResponse updateUserStatus(@PathVariable UUID id, @RequestBody UpdateUserStatusRequest request) {
         return userService.updateUserStatus(id, request.status());
     }

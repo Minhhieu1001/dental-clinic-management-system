@@ -9,6 +9,7 @@ import { getExaminationResultsByMedicalRecordId } from '../../../services/examin
 import { getTreatmentPlansByPatientId } from '../../../services/treatmentPlan.service';
 import { getPrescriptions } from '../../../services/prescription.service';
 import { getPatientById } from '../../../services/patient.service';
+import { getPatientXrayHistory } from '../../../services/xrayAi.service';
 import { deletePatientRelationship, getListPatientRelationship } from '../../../services/patientRelationship.service';
 import PatientInfoTab from './tabs/PatientInfoTab';
 import ClinicalHistoryTab from '../admin/components/tabs/ClinicalHistoryTab';
@@ -41,13 +42,16 @@ function PatientMedicalRecordsContent({ user }) {
   const [isLinkNewModalOpen, setIsLinkNewModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('patient_info');
   const [view, setView] = useState(null);
+  const [recordOptions, setRecordOptions] = useState([]);
+  const [selectedRecordId, setSelectedRecordId] = useState(null);
   const [reloadVersion, setReloadVersion] = useState(0);
   const selectedPatientId = activeProfile?.patientId;
-  const currentView = view?.patientId === selectedPatientId ? view : null;
+  const currentView = view?.patientId === selectedPatientId && view?.recordId === selectedRecordId ? view : null;
   const selectedRecord = currentView?.record ?? null;
   const detailExams = currentView?.exams ?? [];
   const detailPlans = currentView?.plans ?? [];
   const detailPrescriptions = currentView?.prescriptions ?? [];
+  const detailXrays = currentView?.xrays ?? [];
   const loadingDetail = Boolean(selectedPatientId && !currentView);
 
   const refreshProfiles = useCallback(async (preferredId) => {
@@ -114,13 +118,18 @@ function PatientMedicalRecordsContent({ user }) {
         ]);
         const patient = unwrap(patientResult);
         const records = unwrap(recordsResult);
-        const first = Array.isArray(records) ? records[0] : null;
-        const recordId = first?.id || first?.medicalRecordId;
+        const options = Array.isArray(records) ? records : [];
+        const first = options.find((item) => (item.id || item.medicalRecordId) === selectedRecordId) || options[0] || null;
+        const recordId = first?.id || first?.medicalRecordId || null;
+        if (cancelled) return;
+        setRecordOptions(options);
+        if (recordId !== selectedRecordId) setSelectedRecordId(recordId);
         const results = await Promise.allSettled([
           recordId ? getMedicalRecordById(recordId) : Promise.resolve(null),
           recordId ? getExaminationResultsByMedicalRecordId(recordId) : Promise.resolve([]),
           getTreatmentPlansByPatientId(selectedPatientId),
-          getPrescriptions({ patientId: selectedPatientId })
+          getPrescriptions({ patientId: selectedPatientId }),
+          recordId ? getPatientXrayHistory(recordId) : Promise.resolve([])
         ]);
         if (cancelled) return;
         const value = (index, fallback) => results[index].status === 'fulfilled' ? (unwrap(results[index].value) ?? fallback) : fallback;
@@ -128,6 +137,7 @@ function PatientMedicalRecordsContent({ user }) {
         const prescriptions = value(3, []);
         setView({
           patientId: selectedPatientId,
+          recordId,
           record: {
             ...patient, ...record, id: recordId || null, patientId: selectedPatientId,
             patientName: patient.fullName, patientCode: patient.patientCode,
@@ -135,21 +145,25 @@ function PatientMedicalRecordsContent({ user }) {
             systemicDiseases: patient.systemicDisease ? [patient.systemicDisease] : []
           },
           exams: value(1, []), plans: value(2, []),
-          prescriptions: Array.isArray(prescriptions) ? prescriptions : (prescriptions.items || [])
+          prescriptions: Array.isArray(prescriptions) ? prescriptions : (prescriptions.items || []),
+          xrays: value(4, []),
+          xrayError: results[4].status === 'rejected'
         });
         if (results.some((result) => result.status === 'rejected')) toast.error('Một số dữ liệu khám chưa tải được. Vui lòng thử lại.');
       } catch (error) {
         if (cancelled) return;
-        setView({ patientId: selectedPatientId, error: true });
+        setView({ patientId: selectedPatientId, recordId: selectedRecordId, error: true });
         toast.error(error.response?.data?.message || 'Không thể tải bệnh án của hồ sơ đã chọn');
       }
     }
     load();
     return () => { cancelled = true; };
-  }, [selectedPatientId, reloadVersion]);
+  }, [selectedPatientId, selectedRecordId, reloadVersion]);
 
   const handleSelectProfile = (profile) => {
     setActiveProfile(profile);
+    setSelectedRecordId(null);
+    setRecordOptions([]);
     setActiveTab('patient_info');
     setIsDropdownOpen(false);
   };
@@ -314,6 +328,19 @@ function PatientMedicalRecordsContent({ user }) {
           </div>
         </div>
 
+        {recordOptions.length > 1 && (
+          <div className="px-4 sm:px-7 py-3 border-b border-slate-100 bg-white">
+            <label htmlFor="patient-medical-record" className="mr-3 text-xs font-bold text-slate-700">Hồ sơ bệnh án đang xem</label>
+            <select id="patient-medical-record" value={selectedRecordId || ''} onChange={(event) => setSelectedRecordId(event.target.value)} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-800">
+              {recordOptions.map((record) => (
+                <option key={record.id || record.medicalRecordId} value={record.id || record.medicalRecordId}>
+                  {record.medicalRecordCode || 'Hồ sơ bệnh án'} · {record.recordDate ? new Date(record.recordDate).toLocaleDateString('vi-VN') : 'Chưa rõ ngày'}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* PHẦN GIỮA KHỐI: THANH TABS ĐIỀU HƯỚNG (Ẩn thanh cuộn xấu xí) */}
         <div className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-5 pt-1.5 sm:pt-2 border-b border-slate-200/80 bg-slate-50/60 shrink-0 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden scroll-smooth">
           {/* TAB 1: Thông tin cá nhân & Bệnh án */}
@@ -421,7 +448,7 @@ function PatientMedicalRecordsContent({ user }) {
 
           {/* TAB 5: HÌNH ẢNH */}
           {!currentView?.error && activeTab === 'images' && (
-            <DentalImagesTab />
+            <DentalImagesTab key={selectedRecordId} analyses={detailXrays} error={currentView?.xrayError} />
           )}
         </div>
 

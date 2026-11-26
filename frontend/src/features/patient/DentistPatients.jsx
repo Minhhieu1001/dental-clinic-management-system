@@ -58,6 +58,8 @@ export default function DentistPatients() {
       if (Array.isArray(rawList)) {
         const formatted = rawList.map((p) => ({
           id: p.id || `p-${Math.random()}`,
+          createdBranchId: p.createdBranchId || null,
+          createdBranchName: p.createdBranchName || null,
           patientCode: p.patientCode || `PA-${Math.floor(100000 + Math.random() * 900000)}`,
           fullName: p.fullName || p.user?.fullName || 'Bệnh nhân',
           phone: p.phone || p.phoneNumber || p.user?.phone || 'N/A',
@@ -90,7 +92,8 @@ export default function DentistPatients() {
   };
 
   useEffect(() => {
-    fetchPatientData();
+    const timer = setTimeout(fetchPatientData, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   // Format date helper (DD/MM/YYYY)
@@ -108,7 +111,7 @@ export default function DentistPatients() {
       const month = String(d.getMonth() + 1).padStart(2, '0');
       const year = d.getFullYear();
       return `${day}/${month}/${year}`;
-    } catch (e) {
+    } catch {
       return dateStr;
     }
   };

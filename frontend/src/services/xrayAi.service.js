@@ -40,3 +40,10 @@ export const getXrayAnalysisHistory = async ({ medicalRecordId, examinationResul
   const data = unwrap(response);
   return Array.isArray(data) ? data : [];
 };
+
+// Patient-only history, scoped on the server to the account and linked family profiles.
+export const getPatientXrayHistory = async (medicalRecordId) => {
+  const response = await api.get('/ai/xray/patient-history', { params: { medicalRecordId } });
+  const data = unwrap(response);
+  return Array.isArray(data) ? data : [];
+};

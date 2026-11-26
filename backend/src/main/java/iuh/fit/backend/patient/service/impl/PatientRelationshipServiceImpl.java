@@ -54,7 +54,7 @@ public class PatientRelationshipServiceImpl implements PatientRelationshipServic
     @Override
     @Transactional(readOnly = true)
     public List<PatientRelationshipProfileResponse> getProfilesByPatientId(UUID patientId) {
-        User user = currentUser(Role.PATIENT, Role.EMPLOYEE, Role.DENTIST);
+        User user = currentUser(Role.PATIENT, Role.EMPLOYEE, Role.DENTIST, Role.ADMIN);
         Patient owner = requireLinkOwner(patientId, user);
         return getProfiles(owner);
     }
@@ -62,7 +62,7 @@ public class PatientRelationshipServiceImpl implements PatientRelationshipServic
     @Override
     @Transactional(readOnly = true)
     public List<PatientRelationshipResponse> getAllActiveRelationships() {
-        currentUser(Role.EMPLOYEE, Role.DENTIST);
+        currentUser(Role.EMPLOYEE, Role.DENTIST, Role.ADMIN);
         return relationships.findByStatusTrueOrderByCreatedAtDesc()
                 .stream()
                 .map(relationship -> new PatientRelationshipResponse(
@@ -103,7 +103,7 @@ public class PatientRelationshipServiceImpl implements PatientRelationshipServic
     @Override
     @Transactional
     public PatientRelationshipCodeResponse requestCode(PatientRelationshipRequest request) {
-        User user = currentUser(Role.PATIENT, Role.EMPLOYEE);
+        User user = currentUser(Role.PATIENT, Role.EMPLOYEE, Role.ADMIN);
         lockAccount(user.getId());
         Patient owner = requireLinkOwner(request.patientId(), user);
         if (!phone(request.patientPhone()).equals(phone(owner.getPhoneNumber()))) {
@@ -146,7 +146,7 @@ public class PatientRelationshipServiceImpl implements PatientRelationshipServic
     @Override
     @Transactional(noRollbackFor = InvalidRelationshipOtpException.class)
     public PatientRelationshipResponse verify(PatientRelationshipVerifyRequest request) {
-        User user = currentUser(Role.PATIENT, Role.EMPLOYEE);
+        User user = currentUser(Role.PATIENT, Role.EMPLOYEE, Role.ADMIN);
         lockAccount(user.getId());
         PatientRelationshipOtp session = challenges.findById(user.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.RELATIONSHIP_CODE_INVALID));
@@ -244,7 +244,7 @@ public class PatientRelationshipServiceImpl implements PatientRelationshipServic
             return patients.findById(patientId)
                     .orElseThrow(() -> new AppException(ErrorCode.PATIENT_NOT_FOUND));
         }
-        if (actor.getRole() != Role.EMPLOYEE) throw new AppException(ErrorCode.ACCESS_DENIED);
+        if (actor.getRole() != Role.EMPLOYEE && actor.getRole() != Role.ADMIN) throw new AppException(ErrorCode.ACCESS_DENIED);
         Patient owner = patients.findById(patientId)
                 .orElseThrow(() -> new AppException(ErrorCode.PATIENT_NOT_FOUND));
         if (owner.getUser() == null) {

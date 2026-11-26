@@ -13,10 +13,13 @@ import {
   ChevronRight,
   Filter,
   Link2,
-  Users,
   ArrowUpDown,
   RotateCcw,
+  MoreHorizontal,
+  LockKeyhole,
+  LockKeyholeOpen,
 } from 'lucide-react';
+import { Dialog, Menu, MenuItem } from '@mui/material';
 import toast from 'react-hot-toast';
 import {
   getPatients,
@@ -27,10 +30,11 @@ import {
 import PatientModal from '../../components/ui/PatientModal';
 import EmployeeLinkedProfile from './components/EmployeeLinkedProfile';
 import { toPatientPayload } from '../../utils/patientFormMapper';
+import { lockUser, unlockUser } from '../../services/user.service';
 
 const ROWS_PER_PAGE = 5;
 
-export default function EmployeePatients() {
+export default function EmployeePatients({ adminMode = false }) {
   // Quản lý Tab chính: 'PATIENTS' (Danh sách bệnh nhân) | 'LINKED_PROFILES' (Hồ sơ đã liên kết)
   const [activeTab, setActiveTab] = useState('PATIENTS');
 
@@ -38,10 +42,14 @@ export default function EmployeePatients() {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [genderFilter, setGenderFilter] = useState('ALL');
+  const [accountFilter, setAccountFilter] = useState('ALL');
+  const [updatingAccountId, setUpdatingAccountId] = useState(null);
+  const [accountActionPatient, setAccountActionPatient] = useState(null);
   const [monthFilter, setMonthFilter] = useState('ALL');
   const [yearFilter, setYearFilter] = useState('ALL');
   const [sortOrder, setSortOrder] = useState('NEWEST'); // 'NEWEST' | 'OLDEST'
   const [currentPage, setCurrentPage] = useState(1);
+  const [actionMenu, setActionMenu] = useState({ anchorEl: null, patient: null });
 
   // Unified Modal State: { open: boolean, type: 'CREATE'|'EDIT'|'VIEW'|'DELETE', payload: object }
   const [modalConfig, setModalConfig] = useState({
@@ -58,6 +66,10 @@ export default function EmployeePatients() {
       const rawList = Array.isArray(data) ? data : data?.data || data?.result || [];
       const formatted = rawList.map((p) => ({
         id: p.id,
+        userId: p.userId || null,
+        accountStatus: p.accountStatus || null,
+        createdBranchId: p.createdBranchId || null,
+        createdBranchName: p.createdBranchName || null,
         patientCode: p.patientCode || '',
         fullName: p.fullName || p.user?.fullName || 'Bệnh nhân',
         phone: p.phone || p.phoneNumber || p.user?.phone || 'N/A',
@@ -89,7 +101,8 @@ export default function EmployeePatients() {
   };
 
   useEffect(() => {
-    fetchPatientData();
+    const timer = setTimeout(fetchPatientData, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   // Format date helper (DD/MM/YYYY)
@@ -107,7 +120,7 @@ export default function EmployeePatients() {
       const month = String(d.getMonth() + 1).padStart(2, '0');
       const year = d.getFullYear();
       return `${day}/${month}/${year}`;
-    } catch (e) {
+    } catch {
       return dateStr;
     }
   };
@@ -138,6 +151,8 @@ export default function EmployeePatients() {
   // Filtered Patients List
   const filteredPatients = useMemo(() => {
     const list = patients.filter((p) => {
+      if (adminMode && accountFilter === 'WITH_ACCOUNT' && !p.userId) return false;
+      if (adminMode && accountFilter === 'WITHOUT_ACCOUNT' && p.userId) return false;
       // 1. Search term (Tên, Mã BN, SĐT)
       if (searchTerm) {
         const term = searchTerm.toLowerCase().trim();
@@ -147,10 +162,9 @@ export default function EmployeePatients() {
         if (!matchName && !matchPhone && !matchCode) return false;
       }
 
-      // 2. Gender Filter
       if (genderFilter !== 'ALL' && p.gender !== genderFilter) return false;
 
-      // 3. Month Filter (createdAt)
+      // Month Filter (createdAt)
       if (monthFilter !== 'ALL') {
         if (!p.createdAt) return false;
         const d = new Date(p.createdAt);
@@ -159,7 +173,7 @@ export default function EmployeePatients() {
         if (month !== String(monthFilter)) return false;
       }
 
-      // 4. Year Filter (createdAt)
+      // Year Filter (createdAt)
       if (yearFilter !== 'ALL') {
         if (!p.createdAt) return false;
         const d = new Date(p.createdAt);
@@ -182,7 +196,31 @@ export default function EmployeePatients() {
     });
 
     return list;
-  }, [patients, searchTerm, genderFilter, monthFilter, yearFilter, sortOrder]);
+  }, [patients, searchTerm, genderFilter, accountFilter, monthFilter, yearFilter, sortOrder, adminMode]);
+
+  const accountCounts = useMemo(() => ({
+    total: patients.length,
+    withAccount: patients.filter((patient) => Boolean(patient.userId)).length,
+    withoutAccount: patients.filter((patient) => !patient.userId).length,
+  }), [patients]);
+
+  const handleAccountStatusChange = async () => {
+    const patient = accountActionPatient;
+    if (!patient?.userId || updatingAccountId) return;
+    const shouldLock = patient.accountStatus !== 'BLOCK';
+    setUpdatingAccountId(patient.userId);
+    try {
+      if (shouldLock) await lockUser(patient.userId);
+      else await unlockUser(patient.userId);
+      await fetchPatientData();
+      setAccountActionPatient(null);
+      toast.success(shouldLock ? 'Đã khóa tài khoản bệnh nhân' : 'Đã mở khóa tài khoản bệnh nhân');
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Không thể cập nhật trạng thái tài khoản');
+    } finally {
+      setUpdatingAccountId(null);
+    }
+  };
 
   // Pagination
   const totalPages = Math.ceil(filteredPatients.length / ROWS_PER_PAGE) || 1;
@@ -207,6 +245,8 @@ export default function EmployeePatients() {
   const handleOpenDelete = (patient) => {
     setModalConfig({ open: true, type: 'DELETE', payload: patient });
   };
+
+  const closeActionMenu = () => setActionMenu({ anchorEl: null, patient: null });
 
   // Unified Save Handler for CREATE and EDIT
   const handleSaveModal = async (formData) => {
@@ -236,8 +276,7 @@ export default function EmployeePatients() {
         toast.success(`Đã xóa hồ sơ bệnh nhân ${patient.fullName}`);
       } catch (error) {
         console.error('Error deleting patient:', error);
-        setPatients((prev) => prev.filter((p) => p.id !== patient.id));
-        toast.success(`Đã xóa hồ sơ bệnh nhân ${patient.fullName}`);
+        toast.error(error?.response?.data?.message || 'Không thể xóa hồ sơ bệnh nhân');
       } finally {
         await fetchPatientData();
       }
@@ -280,6 +319,14 @@ export default function EmployeePatients() {
         </div>
       </div>
 
+      {adminMode && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded border border-slate-200 bg-white p-4"><p className="text-xs font-semibold text-slate-500">Tổng số hồ sơ bệnh nhân</p><p className="mt-1 text-2xl font-bold text-slate-900">{accountCounts.total}</p></div>
+          <div className="rounded border border-teal-200 bg-teal-50 p-4"><p className="text-xs font-semibold text-teal-700">Đã có tài khoản</p><p className="mt-1 text-2xl font-bold text-teal-800">{accountCounts.withAccount}</p></div>
+          <div className="rounded border border-amber-200 bg-amber-50 p-4"><p className="text-xs font-semibold text-amber-700">Chưa có tài khoản</p><p className="mt-1 text-2xl font-bold text-amber-800">{accountCounts.withoutAccount}</p></div>
+        </div>
+      )}
+
       {/* 2. TAB NAVIGATION (Tab 1: Danh sách bệnh nhân | Tab 2: Hồ sơ đã liên kết) */}
       <div className="flex items-center gap-2 border-b border-slate-200 bg-white rounded-t-sm px-1.5 pt-1 shadow-2xs">
         <button
@@ -311,9 +358,9 @@ export default function EmployeePatients() {
       {activeTab === 'PATIENTS' && (
         <div className="space-y-4">
           {/* Filter & Search Controls */}
-          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 rounded-[4px] border border-slate-200 bg-white p-3 shadow-2xs">
+          <div className="flex flex-col xl:flex-row items-stretch xl:items-center gap-2 rounded-[4px] border border-slate-200 bg-white p-3 shadow-2xs">
             {/* Search Input */}
-            <div className="relative w-full lg:max-w-xs">
+            <div className="relative w-full xl:w-56 xl:shrink-0">
               <input
                 type="text"
                 value={searchTerm}
@@ -321,16 +368,28 @@ export default function EmployeePatients() {
                   setSearchTerm(e.target.value);
                   setCurrentPage(1);
                 }}
-                placeholder="Tìm theo tên bệnh nhân, mã bệnh nhân (PA-...), số điện thoại..."
+                placeholder="Tìm tên, mã BN hoặc SĐT..."
                 className="w-full rounded border border-slate-300 bg-slate-50/50 pl-9 pr-3 py-2 text-xs text-slate-800 focus:border-teal-600 focus:bg-white focus:outline-none transition-colors"
               />
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             </div>
 
-            {/* Filter Toolbar: Tháng tạo, Năm tạo, Giới tính, Sắp xếp */}
-            <div className="flex flex-wrap items-center gap-2">
+            {/* Filter Toolbar */}
+            <div className="flex flex-wrap xl:flex-nowrap items-center gap-2 min-w-0">
+              {adminMode && (
+                <select
+                  value={accountFilter}
+                  onChange={(event) => { setAccountFilter(event.target.value); setCurrentPage(1); }}
+                  aria-label="Lọc theo tài khoản"
+                  className="shrink-0 rounded border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-800"
+                >
+                  <option value="ALL">Tất cả tài khoản</option>
+                  <option value="WITH_ACCOUNT">Đã có tài khoản</option>
+                  <option value="WITHOUT_ACCOUNT">Chưa có tài khoản</option>
+                </select>
+              )}
               {/* Lọc theo Tháng tạo */}
-              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-700">
+              <div className="flex shrink-0 items-center gap-1.5 bg-slate-50 border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-700">
                 <Calendar size={13} className="text-teal-700 shrink-0" />
                 <span className="text-[11px] font-semibold text-slate-500">Tháng:</span>
                 <select
@@ -351,7 +410,7 @@ export default function EmployeePatients() {
               </div>
 
               {/* Lọc theo Năm tạo */}
-              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-700">
+              <div className="flex shrink-0 items-center gap-1.5 bg-slate-50 border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-700">
                 <span className="text-[11px] font-semibold text-slate-500">Năm:</span>
                 <select
                   value={yearFilter}
@@ -370,25 +429,23 @@ export default function EmployeePatients() {
                 </select>
               </div>
 
-              {/* Lọc theo Giới tính */}
-              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-700">
-                <Filter size={13} className="text-slate-400 shrink-0" />
-                <select
-                  value={genderFilter}
-                  onChange={(e) => {
-                    setGenderFilter(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
-                >
-                  <option value="ALL">Tất cả giới tính</option>
-                  <option value="MALE">Nam (MALE)</option>
-                  <option value="FEMALE">Nữ (FEMALE)</option>
-                </select>
-              </div>
+              {!adminMode && (
+                <div className="flex shrink-0 items-center gap-1.5 rounded border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-700">
+                  <Filter size={13} className="shrink-0 text-slate-400" />
+                  <select
+                    value={genderFilter}
+                    onChange={(event) => { setGenderFilter(event.target.value); setCurrentPage(1); }}
+                    className="cursor-pointer bg-transparent text-xs font-bold text-slate-800 focus:outline-none"
+                  >
+                    <option value="ALL">Tất cả giới tính</option>
+                    <option value="MALE">Nam</option>
+                    <option value="FEMALE">Nữ</option>
+                  </select>
+                </div>
+              )}
 
               {/* Sắp xếp Ngày tạo mới nhất / trễ nhất (cũ nhất) */}
-              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-700">
+              <div className="flex shrink-0 items-center gap-1.5 bg-slate-50 border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-700">
                 <ArrowUpDown size={13} className="text-teal-700 shrink-0" />
                 <span className="text-[11px] font-semibold text-slate-500">Sắp xếp:</span>
                 <select
@@ -399,13 +456,13 @@ export default function EmployeePatients() {
                   }}
                   className="bg-transparent text-xs font-bold text-teal-900 focus:outline-none cursor-pointer"
                 >
-                  <option value="NEWEST">Mới nhất trước</option>
-                  <option value="OLDEST">Trễ nhất (Cũ nhất)</option>
+                  <option value="NEWEST">Mới nhất</option>
+                  <option value="OLDEST">Cũ nhất</option>
                 </select>
               </div>
 
               {/* Reset filter button if any active */}
-              {(searchTerm || monthFilter !== 'ALL' || yearFilter !== 'ALL' || genderFilter !== 'ALL' || sortOrder !== 'NEWEST') && (
+              {(searchTerm || monthFilter !== 'ALL' || yearFilter !== 'ALL' || genderFilter !== 'ALL' || sortOrder !== 'NEWEST' || (adminMode && accountFilter !== 'ALL')) && (
                 <button
                   type="button"
                   onClick={() => {
@@ -413,6 +470,7 @@ export default function EmployeePatients() {
                     setMonthFilter('ALL');
                     setYearFilter('ALL');
                     setGenderFilter('ALL');
+                    setAccountFilter('ALL');
                     setSortOrder('NEWEST');
                     setCurrentPage(1);
                   }}
@@ -433,18 +491,19 @@ export default function EmployeePatients() {
                 <thead className="bg-slate-100/90 text-slate-700 uppercase font-bold border-b border-slate-200">
                   <tr>
                     <th className="px-4 py-3">Mã Bệnh Nhân</th>
-                    <th className="px-4 py-3">Họ Và Tên</th>
+                    <th className="px-4 py-3 whitespace-nowrap">Họ Và Tên</th>
                     <th className="px-4 py-3">Ngày Tạo</th>
                     <th className="px-4 py-3">Số Điện Thoại</th>
                     <th className="px-4 py-3">Giới Tính / Tuổi</th>
                     <th className="px-4 py-3">Địa Chỉ</th>
-                    <th className="px-4 py-3 text-right">Thao Tác</th>
+                    {adminMode && <th className="px-4 py-3">Tài khoản</th>}
+                    <th className="px-4 py-3 text-center whitespace-nowrap w-16">Thao Tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {loading ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                      <td colSpan={adminMode ? 8 : 7} className="px-4 py-8 text-center text-slate-400">
                         <div className="flex flex-col items-center justify-center gap-2">
                           <RefreshCw size={16} className="animate-spin text-teal-600" />
                           <span>Đang tải danh sách hồ sơ bệnh nhân từ hệ thống...</span>
@@ -458,8 +517,8 @@ export default function EmployeePatients() {
                           {p.patientCode}
                         </td>
 
-                        <td className="px-4 py-3 font-bold text-slate-900">
-                          <div className="flex items-center gap-2">
+                        <td className="px-4 py-3 font-bold text-slate-900 whitespace-nowrap">
+                          <div className="flex items-center gap-2 min-w-max">
                             <div className="flex h-7 w-7 items-center justify-center rounded-full bg-teal-700 text-white font-bold text-xs shrink-0">
                               {(p.fullName || 'B').charAt(0)}
                             </div>
@@ -490,44 +549,31 @@ export default function EmployeePatients() {
                           {p.address}
                         </td>
 
-                        <td className="px-4 py-3 text-right whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-1.5">
-                            {/* Xem chi tiết */}
-                            <button
-                              type="button"
-                              onClick={() => handleOpenView(p)}
-                              className="rounded border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-100 transition-colors shadow-2xs cursor-pointer"
-                              title="Xem chi tiết"
-                            >
-                              <Eye size={13} />
-                            </button>
+                        {adminMode && (
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className={`rounded px-2 py-1 text-[11px] font-bold ${!p.userId ? 'bg-slate-100 text-slate-600' : p.accountStatus === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                              {!p.userId ? 'Chưa có TK' : p.accountStatus === 'ACTIVE' ? '● Active' : p.accountStatus === 'BLOCK' ? '● Inactive (bị khóa)' : '● Inactive'}
+                            </span>
+                          </td>
+                        )}
 
-                            {/* Chỉnh sửa */}
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEdit(p)}
-                              className="rounded border border-teal-200 bg-teal-50 px-2 py-1 text-[11px] font-bold text-teal-800 hover:bg-teal-100 transition-colors shadow-2xs cursor-pointer"
-                              title="Chỉnh sửa"
-                            >
-                              <Edit size={13} />
-                            </button>
-
-                            {/* Xóa */}
-                            <button
-                              type="button"
-                              onClick={() => handleOpenDelete(p)}
-                              className="rounded border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-bold text-rose-700 hover:bg-rose-100 transition-colors shadow-2xs cursor-pointer"
-                              title="Xóa hồ sơ"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
+                        <td className="px-4 py-3 text-center whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={(event) => setActionMenu({ anchorEl: event.currentTarget, patient: p })}
+                            aria-label={`Thao tác với ${p.fullName}`}
+                            aria-haspopup="menu"
+                            aria-expanded={actionMenu.patient?.id === p.id ? true : undefined}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded border border-slate-200 bg-white text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-colors cursor-pointer"
+                          >
+                            <MoreHorizontal size={18} />
+                          </button>
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                      <td colSpan={adminMode ? 8 : 7} className="px-4 py-8 text-center text-slate-400">
                         Không tìm thấy hồ sơ bệnh nhân nào phù hợp.
                       </td>
                     </tr>
@@ -571,6 +617,79 @@ export default function EmployeePatients() {
       {activeTab === 'LINKED_PROFILES' && (
         <EmployeeLinkedProfile />
       )}
+
+      <Menu
+        anchorEl={actionMenu.anchorEl}
+        open={Boolean(actionMenu.anchorEl)}
+        onClose={closeActionMenu}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <MenuItem onClick={() => { handleOpenView(actionMenu.patient); closeActionMenu(); }} className="!text-xs !gap-2">
+          <Eye size={15} /> Xem chi tiết
+        </MenuItem>
+        <MenuItem onClick={() => { handleOpenEdit(actionMenu.patient); closeActionMenu(); }} className="!text-xs !gap-2">
+          <Edit size={15} /> Chỉnh sửa
+        </MenuItem>
+        {adminMode && (
+          <MenuItem
+            disabled={!actionMenu.patient?.userId || Boolean(updatingAccountId)}
+            onClick={() => { setAccountActionPatient(actionMenu.patient); closeActionMenu(); }}
+            className="!text-xs !gap-2"
+          >
+            {actionMenu.patient?.accountStatus === 'BLOCK' ? <LockKeyholeOpen size={15} /> : <LockKeyhole size={15} />}
+            {!actionMenu.patient?.userId ? 'Chưa có tài khoản' : actionMenu.patient.accountStatus === 'BLOCK' ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
+          </MenuItem>
+        )}
+        <MenuItem onClick={() => { handleOpenDelete(actionMenu.patient); closeActionMenu(); }} className="!text-xs !gap-2 !text-rose-700">
+          <Trash2 size={15} /> Xóa hồ sơ
+        </MenuItem>
+      </Menu>
+
+      <Dialog
+        open={Boolean(accountActionPatient)}
+        onClose={() => { if (!updatingAccountId) setAccountActionPatient(null); }}
+        maxWidth="xs"
+        fullWidth
+        aria-labelledby="patient-account-confirm-title"
+      >
+        <div className="p-5 sm:p-6">
+          <div className={`mb-4 flex h-11 w-11 items-center justify-center rounded-full ${accountActionPatient?.accountStatus === 'BLOCK' ? 'bg-teal-50 text-teal-700' : 'bg-amber-50 text-amber-700'}`}>
+            {accountActionPatient?.accountStatus === 'BLOCK' ? <LockKeyholeOpen size={22} /> : <LockKeyhole size={22} />}
+          </div>
+          <h2 id="patient-account-confirm-title" className="text-lg font-bold text-slate-900">
+            {accountActionPatient?.accountStatus === 'BLOCK' ? 'Mở khóa tài khoản bệnh nhân' : 'Khóa tài khoản bệnh nhân'}
+          </h2>
+          <p className="mt-2 text-sm text-slate-600">
+            {accountActionPatient?.accountStatus === 'BLOCK' ? 'Mở khóa tài khoản của ' : 'Khóa tài khoản của '}
+            <strong className="text-slate-900">{accountActionPatient?.fullName}</strong>
+            {accountActionPatient?.patientCode ? ` (${accountActionPatient.patientCode})` : ''}?
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            {accountActionPatient?.accountStatus === 'BLOCK'
+              ? 'Bệnh nhân sẽ có thể đăng nhập lại sau khi mở khóa.'
+              : 'Bệnh nhân sẽ không thể đăng nhập khi tài khoản bị khóa.'}
+          </p>
+          <div className="mt-6 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setAccountActionPatient(null)}
+              disabled={Boolean(updatingAccountId)}
+              className="rounded border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              onClick={handleAccountStatusChange}
+              disabled={Boolean(updatingAccountId)}
+              className="rounded bg-teal-700 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-800 disabled:opacity-50"
+            >
+              {updatingAccountId ? 'Đang xử lý...' : accountActionPatient?.accountStatus === 'BLOCK' ? 'Xác nhận mở khóa' : 'Xác nhận khóa'}
+            </button>
+          </div>
+        </div>
+      </Dialog>
 
       {/* ========================================================================= */}
       {/* UNIFIED REUSABLE PATIENT MODAL (CREATE, EDIT, VIEW, DELETE) */}

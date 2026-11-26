@@ -1,6 +1,5 @@
-import React from 'react';
-import MedicalRecordList from '../medical-record/admin/MedicalRecordList';
+import EmployeePatients from './EmployeePatients';
 
 export default function AdminPatients() {
-  return <MedicalRecordList />;
+  return <EmployeePatients adminMode />;
 }

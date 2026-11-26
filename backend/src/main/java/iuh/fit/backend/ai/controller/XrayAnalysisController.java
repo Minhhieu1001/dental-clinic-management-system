@@ -2,6 +2,10 @@ package iuh.fit.backend.ai.controller;
 
 import iuh.fit.backend.ai.service.XrayAiAnalysisService;
 import iuh.fit.backend.common.response.ApiResponse;
+import iuh.fit.backend.common.exception.AppException;
+import iuh.fit.backend.common.exception.ErrorCode;
+import iuh.fit.backend.medicalrecord.repository.MedicalRecordRepository;
+import iuh.fit.backend.patient.service.PatientRelationshipService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +25,8 @@ import java.util.UUID;
 public class XrayAnalysisController {
 
     private final XrayAiAnalysisService xrayAiAnalysisService;
+    private final PatientRelationshipService patientRelationshipService;
+    private final MedicalRecordRepository medicalRecordRepository;
 
     @PostMapping(value = "/analyze", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<Map<String, Object>>> analyze(
@@ -65,5 +71,19 @@ public class XrayAnalysisController {
                 .message("Lấy lịch sử phân tích X-quang thành công")
                 .data(xrayAiAnalysisService.history(medicalRecordId, examinationResultId))
                 .build());
+    }
+
+    @GetMapping("/patient-history")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> patientHistory(@RequestParam UUID medicalRecordId) {
+        var record = medicalRecordRepository.findById(medicalRecordId)
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND));
+        UUID patientId = record.getPatient() != null ? record.getPatient().getId() : null;
+        boolean linked = patientId != null && patientRelationshipService.getMyProfiles().stream()
+                .anyMatch(profile -> patientId.equals(profile.patientId()));
+        if (!linked) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+        return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử X-quang của hồ sơ bệnh án thành công",
+                xrayAiAnalysisService.history(medicalRecordId, null)));
     }
 }
