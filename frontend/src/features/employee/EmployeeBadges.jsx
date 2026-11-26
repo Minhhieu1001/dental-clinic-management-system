@@ -37,7 +37,7 @@ const roleBadgeStyles = {
 export function RoleBadge({ role }) {
   const style = roleBadgeStyles[role] || 'bg-slate-50 text-slate-700 border-slate-300 font-medium';
   return (
-    <span className={`inline-flex items-center rounded-[2px] border px-2.5 py-0.5 text-[11px] uppercase tracking-wide ${style}`}>
+    <span className={`inline-flex items-center whitespace-nowrap rounded-[2px] border px-2.5 py-0.5 text-[11px] uppercase tracking-wide ${style}`}>
       {role}
     </span>
   );
@@ -60,7 +60,7 @@ export function StatusDot({ status, compact = false }) {
 
   if (compact) {
     return (
-      <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${textColor}`}>
+      <span className={`inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold ${textColor}`}>
         <span className={`h-2 w-2 rounded-full ${dotColor}`} />
         {label}
       </span>
@@ -69,7 +69,7 @@ export function StatusDot({ status, compact = false }) {
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-[2px] border px-2.5 py-0.5 text-[11px] font-bold ${badgeStyle}`}
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-[2px] border px-2.5 py-0.5 text-[11px] font-bold ${badgeStyle}`}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${dotColor}`} />
       {label}

@@ -7,6 +7,46 @@ export interface PatientLoginPayload {
   password: string;
 }
 
+export interface PatientRegisterPayload {
+  fullName: string;
+  dateOfBirth: string; // YYYY-MM-DD
+  gender: 'MALE' | 'FEMALE' | 'OTHER';
+  address: string;
+  branchId: string;
+  email: string;
+  phone: string;
+  password: string;
+  confirmPassword: string;
+}
+
+export interface PatientActivationLookupPayload {
+  patientCode: string;
+  phone: string;
+  email: string;
+}
+
+export interface PatientActivationCompletePayload {
+  activationId: string;
+  activationToken: string;
+  password: string;
+  confirmPassword: string;
+}
+
+export interface OtpCodeInfo {
+  expiresAt: string;
+  activationId?: string;
+}
+
+export interface ActivationVerifyInfo {
+  fullName: string;
+  activationToken: string;
+  tokenExpiresAt: string;
+}
+
+export interface RegistrationResult {
+  patientCode: string;
+}
+
 export interface AuthUser {
   id: string;
   email: string;
@@ -33,6 +73,41 @@ export const authService = {
       await tokenStorage.setUser(data);
     }
     return data;
+  },
+
+  registerPatient: async (payload: PatientRegisterPayload): Promise<OtpCodeInfo> => {
+    const response = await api.post('/auth/patient/register', payload);
+    return response.data?.data;
+  },
+
+  resendRegistrationOtp: async (email: string): Promise<OtpCodeInfo> => {
+    const response = await api.post('/auth/patient/register/resend', { email });
+    return response.data?.data;
+  },
+
+  verifyRegistrationOtp: async (email: string, code: string): Promise<RegistrationResult> => {
+    const response = await api.post('/auth/patient/register/verify', { email, code });
+    return response.data?.data;
+  },
+
+  requestActivation: async (payload: PatientActivationLookupPayload): Promise<{ activationId: string; expiresAt: string }> => {
+    const response = await api.post('/auth/patient/activate', payload);
+    return response.data?.data;
+  },
+
+  resendActivationOtp: async (activationId: string): Promise<{ activationId: string; expiresAt: string }> => {
+    const response = await api.post('/auth/patient/activate/resend', { activationId });
+    return response.data?.data;
+  },
+
+  verifyActivationOtp: async (activationId: string, code: string): Promise<ActivationVerifyInfo> => {
+    const response = await api.post('/auth/patient/activate/verify', { activationId, code });
+    return response.data?.data;
+  },
+
+  completeActivation: async (payload: PatientActivationCompletePayload): Promise<RegistrationResult> => {
+    const response = await api.post('/auth/patient/activate/complete', payload);
+    return response.data?.data;
   },
 
   getCurrentUser: async (): Promise<AuthUser> => {

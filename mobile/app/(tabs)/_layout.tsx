@@ -4,29 +4,35 @@ import FileText from 'lucide-react-native/icons/file-text';
 import Home from 'lucide-react-native/icons/house';
 import MessageCircle from 'lucide-react-native/icons/message-circle';
 import Receipt from 'lucide-react-native/icons/receipt';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { HeaderRightActions } from '../../src/components/HeaderRightActions';
 import { Colors } from '../../src/constants/theme';
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
+  const bottom = Math.max(insets.bottom, 8);
+
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textSecondary,
+        tabBarInactiveTintColor: Colors.textMuted,
+        tabBarHideOnKeyboard: true,
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '700' },
         tabBarStyle: {
           backgroundColor: Colors.card,
-          borderTopColor: Colors.border,
-          height: 60,
-          paddingBottom: 8,
+          borderTopColor: Colors.primarySoft,
+          borderTopWidth: 1,
+          height: 58 + bottom,
+          paddingBottom: bottom,
           paddingTop: 6,
         },
-        headerStyle: {
-          backgroundColor: Colors.card,
-        },
-        headerTitleStyle: {
-          fontWeight: '700',
-          color: Colors.text,
-        },
+        headerStyle: { backgroundColor: Colors.primary },
+        headerTintColor: Colors.onPrimary,
+        headerTitleStyle: { fontWeight: '800', color: Colors.onPrimary },
+        headerRight: () => <HeaderRightActions inTabHeader />,
         headerShadowVisible: false,
+        sceneStyle: { backgroundColor: Colors.background },
       }}>
       <Tabs.Screen
         name="index"

@@ -64,14 +64,20 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.POST,
                                                                 "/api/v1/patient-relationships/request-otp",
                                                                 "/api/v1/patient-relationships/verify")
-                                                .hasAnyRole("PATIENT", "EMPLOYEE")
+                                                .hasAnyRole("PATIENT", "EMPLOYEE", "ADMIN")
                                                 .requestMatchers(HttpMethod.GET,
                                                                 "/api/v1/patient-relationships/patient/**")
-                                                .hasAnyRole("PATIENT", "EMPLOYEE", "DENTIST")
+                                                .hasAnyRole("PATIENT", "EMPLOYEE", "DENTIST", "ADMIN")
                                                 .requestMatchers(HttpMethod.GET, "/api/v1/patient-relationships/linked")
-                                                .hasAnyRole("EMPLOYEE", "DENTIST")
+                                                .hasAnyRole("EMPLOYEE", "DENTIST", "ADMIN")
+                                                .requestMatchers(HttpMethod.DELETE, "/api/v1/patient-relationships/*")
+                                                .hasAnyRole("PATIENT", "EMPLOYEE", "ADMIN")
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/patients", "/api/v1/medical-records")
+                                                .hasAnyRole("ADMIN", "EMPLOYEE", "DENTIST")
                                                 .requestMatchers("/api/v1/patient-relationships/**").hasRole("PATIENT")
-                                                // Dữ liệu phim X-quang & kết quả AI đọc phim là dữ liệu y khoa: chỉ bác sĩ / quản trị truy cập
+                                                // Patients can read X-rays only through the endpoint that verifies record ownership.
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/ai/xray/patient-history").hasRole("PATIENT")
+                                                // Other X-ray endpoints remain restricted to dentists and admins.
                                                 .requestMatchers("/api/v1/ai/xray/**").hasAnyRole("DENTIST", "ADMIN")
                                                 .requestMatchers(
                                                                 "/api/v1/auth/login",

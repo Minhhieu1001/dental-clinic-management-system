@@ -463,18 +463,29 @@ export default function EmployeeManagement() {
 
         {/* Table container */}
         <div className="overflow-x-auto max-h-[calc(100vh-310px)] overflow-y-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full min-w-[1050px] table-fixed text-left border-collapse">
+            <colgroup>
+              <col className="w-[35px]" />
+              <col className="w-[125px]" />
+              <col className="w-[180px]" />
+              <col className="w-[110px]" />
+              <col className="w-[115px]" />
+              <col className="w-[80px]" />
+              <col className="w-[155px]" />
+              <col className="w-[130px]" />
+              <col className="w-[60px]" />
+            </colgroup>
             <thead className="sticky top-0 bg-slate-100 shadow-xs z-10 border-b border-slate-300">
               <tr>
-                <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-800 uppercase tracking-wide border-r border-slate-200 w-12">#</th>
-                <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-800 uppercase tracking-wide border-r border-slate-200">Mã nhân viên</th>
-                <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-800 uppercase tracking-wide border-r border-slate-200">Nhân viên</th>
-                <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-800 uppercase tracking-wide border-r border-slate-200">Số điện thoại</th>
-                <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-800 uppercase tracking-wide border-r border-slate-200">Ngày vào làm</th>
-                <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-800 uppercase tracking-wide border-r border-slate-200">Vai trò</th>
-                <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-800 uppercase tracking-wide border-r border-slate-200">Chi nhánh</th>
-                <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-800 uppercase tracking-wide border-r border-slate-200">Trạng thái tài khoản</th>
-                <th className="px-4 py-3 text-center text-[11px] font-bold text-slate-800 uppercase tracking-wide w-20">Thao tác</th>
+                <th className="px-2 py-3 text-left text-[11px] font-bold text-slate-800 uppercase border-r border-slate-200 whitespace-nowrap">#</th>
+                <th className="px-2 py-3 text-left text-[11px] font-bold text-slate-800 uppercase border-r border-slate-200 whitespace-nowrap">Mã NV</th>
+                <th className="px-2 py-3 text-left text-[11px] font-bold text-slate-800 uppercase border-r border-slate-200 whitespace-nowrap">Nhân viên</th>
+                <th className="px-2 py-3 text-left text-[11px] font-bold text-slate-800 uppercase border-r border-slate-200 whitespace-nowrap">SĐT</th>
+                <th className="px-2 py-3 text-left text-[11px] font-bold text-slate-800 uppercase border-r border-slate-200 whitespace-nowrap">Ngày vào làm</th>
+                <th className="px-2 py-3 text-left text-[11px] font-bold text-slate-800 uppercase border-r border-slate-200 whitespace-nowrap">Vai trò</th>
+                <th className="px-2 py-3 text-left text-[11px] font-bold text-slate-800 uppercase border-r border-slate-200 whitespace-nowrap">Chi nhánh</th>
+                <th className="px-2 py-3 text-left text-[11px] font-bold text-slate-800 uppercase border-r border-slate-200 whitespace-nowrap">Trạng thái</th>
+                <th className="px-2 py-3 text-center text-[11px] font-bold text-slate-800 uppercase whitespace-nowrap">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
@@ -502,16 +513,16 @@ export default function EmployeeManagement() {
                       className="transition-colors hover:bg-teal-50/40 bg-white cursor-pointer select-none"
                       title="Nhấp đúp để xem chi tiết nhân viên"
                     >
-                      <td className="px-4 py-3 text-xs text-slate-500 font-bold border-r border-slate-100">
+                      <td className="px-2 py-3 text-xs text-slate-500 font-bold border-r border-slate-100">
                         {startIndex + index + 1}
                       </td>
-                      <td className="px-4 py-3 border-r border-slate-100">
-                        <span className="font-mono text-xs font-bold text-teal-900 bg-teal-50 px-2 py-0.5 rounded-[2px] border border-teal-300 inline-block shadow-2xs">
+                      <td className="px-2 py-3 border-r border-slate-100">
+                        <span className="font-mono text-xs font-bold text-teal-900 bg-teal-50 px-2 py-0.5 rounded-[2px] border border-teal-300 inline-block whitespace-nowrap shadow-2xs">
                           {emp.employeeCode || '—'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 border-r border-slate-100">
-                        <div className="flex items-center gap-3">
+                      <td className="px-2 py-3 border-r border-slate-100">
+                        <div className="flex min-w-0 items-center gap-2">
                           <EmployeeAvatar employee={emp} />
                           <div className="min-w-0 flex-1">
                             <p className="font-bold text-slate-900 text-xs truncate">{emp.name || 'Chưa cập nhật'}</p>
@@ -519,26 +530,26 @@ export default function EmployeeManagement() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-xs text-slate-700 font-semibold border-r border-slate-100">{emp.phone || '—'}</td>
-                      <td className="px-4 py-3 text-xs text-slate-700 font-medium border-r border-slate-100">
-                        <span className="inline-flex items-center gap-1">
+                      <td className="px-2 py-3 text-xs text-slate-700 font-semibold border-r border-slate-100 whitespace-nowrap">{emp.phone || '—'}</td>
+                      <td className="px-2 py-3 text-xs text-slate-700 font-medium border-r border-slate-100">
+                        <span className="inline-flex items-center gap-1 whitespace-nowrap">
                           <CalendarDays className="h-3 w-3 text-slate-400" />
                           {formatDate(emp.createdAt || emp.hireDate)}
                         </span>
                       </td>
-                      <td className="px-4 py-3 border-r border-slate-100">
+                      <td className="px-2 py-3 border-r border-slate-100">
                         <RoleBadge role={emp.displayRole} />
                       </td>
-                      <td className="px-4 py-3 text-xs text-slate-700 font-semibold border-r border-slate-100 whitespace-nowrap">
-                        <span className="inline-flex items-center gap-1.5 text-slate-800">
+                      <td className="px-2 py-3 text-xs text-slate-700 font-semibold border-r border-slate-100">
+                        <span className="flex min-w-0 items-center gap-1.5 text-slate-800" title={emp.branchName || 'Chưa phân chi nhánh'}>
                           <Building2 className="h-3.5 w-3.5 text-teal-700 shrink-0" />
-                          <span>{emp.branchName || 'Chưa phân chi nhánh'}</span>
+                          <span className="truncate">{emp.branchName || 'Chưa phân chi nhánh'}</span>
                         </span>
                       </td>
-                      <td className="px-4 py-3 border-r border-slate-100">
+                      <td className="px-2 py-3 border-r border-slate-100">
                         <StatusDot status={emp.displayStatus} />
                       </td>
-                      <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                      <td className="px-2 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           onClick={(e) => handleOpenMenu(e, emp)}
@@ -580,8 +591,8 @@ export default function EmployeeManagement() {
                   key={idx}
                   onClick={() => setCurrentPage(idx + 1)}
                   className={`h-7 w-7 rounded-[3px] text-xs font-bold transition-colors cursor-pointer border ${currentPage === idx + 1
-                      ? 'bg-teal-800 text-white border-teal-800 shadow-2xs'
-                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                    ? 'bg-teal-800 text-white border-teal-800 shadow-2xs'
+                    : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
                     }`}
                 >
                   {idx + 1}

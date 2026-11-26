@@ -18,6 +18,9 @@ export const deleteClinic = async (clinicId) =>
 
 export const getBranches = async () => unwrap(await api.get('/branches'));
 
+export const getBranchById = async (branchId) =>
+  unwrap(await api.get(`/branches/${encodeURIComponent(branchId)}`));
+
 export const getBranchesByClinic = async (clinicId) =>
   unwrap(await api.get(`/clinics/${clinicId}/branches`));
 

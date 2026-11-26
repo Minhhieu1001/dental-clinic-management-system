@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
     Activity,
     Layers,
@@ -27,6 +27,8 @@ export default function MedicalRecordDetailModal({
     detailExams = [],
     detailPlans = [],
     detailPrescriptions = [],
+    detailXrays = [],
+    xrayError = false,
     loadingDetail = false,
 }) {
     const [activeTab, setActiveTab] = useState('clinical_history'); // 'clinical_history' | 'treatment_plan' | 'prescriptions' | 'images'
@@ -207,7 +209,7 @@ export default function MedicalRecordDetailModal({
 
                             {/* TAB 4 */}
                             {activeTab === 'images' && (
-                                <DentalImagesTab />
+                                <DentalImagesTab key={selectedRecord?.id} analyses={detailXrays} error={xrayError} />
                             )}
                         </div>
                     </div>

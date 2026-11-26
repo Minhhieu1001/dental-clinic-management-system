@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 const ACCESS_TOKEN_KEY = 'crown_dental_access_token';
 const REFRESH_TOKEN_KEY = 'crown_dental_refresh_token';
 const USER_KEY = 'crown_dental_user';
+const SAVED_LOGIN_KEY = 'crown_dental_saved_patient_login';
 
 async function setItem(key: string, value: string): Promise<void> {
   if (Platform.OS === 'web') {
@@ -28,6 +29,11 @@ async function removeItem(key: string): Promise<void> {
   await SecureStore.deleteItemAsync(key);
 }
 
+export interface SavedPatientLogin {
+  patientCode: string;
+  phone: string;
+}
+
 export const tokenStorage = {
   getAccessToken: () => getItem(ACCESS_TOKEN_KEY),
   setAccessToken: (token: string) => setItem(ACCESS_TOKEN_KEY, token),
@@ -43,6 +49,17 @@ export const tokenStorage = {
     }
   },
   setUser: (user: unknown) => setItem(USER_KEY, JSON.stringify(user)),
+  getSavedLogin: async (): Promise<SavedPatientLogin | null> => {
+    const raw = await getItem(SAVED_LOGIN_KEY);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as SavedPatientLogin;
+    } catch {
+      return null;
+    }
+  },
+  setSavedLogin: (data: SavedPatientLogin) => setItem(SAVED_LOGIN_KEY, JSON.stringify(data)),
+  clearSavedLogin: () => removeItem(SAVED_LOGIN_KEY),
   clearAll: async () => {
     await Promise.all([
       removeItem(ACCESS_TOKEN_KEY),

@@ -12,18 +12,17 @@ import {
   Globe,
   X,
   Save,
-  Clock,
   HeartPulse,
   AlertTriangle,
   Pill,
   Stethoscope,
-  Info,
   Building2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 import { getEmployeeAddressById } from '../../services/employee.service';
 import { getDentistAddressById } from '../../services/dentist.service';
+import { getBranchById, getBranches, getClinicById, getClinics } from '../../services/clinic.service';
 
 const COMMON_SYSTEMIC_DISEASES = [
   'Huyết áp cao',
@@ -66,12 +65,15 @@ export default function PatientModal({
   const [branchLoading, setBranchLoading] = useState(false);
   const [branchError, setBranchError] = useState('');
   const [branchRetry, setBranchRetry] = useState(0);
+  const [branchOptions, setBranchOptions] = useState([]);
+  const [selectedBranchId, setSelectedBranchId] = useState('');
   const role = user?.role;
   const staffId = role === 'DENTIST' ? user?.dentistId : user?.employeeId;
   const isCreate = type === 'CREATE';
   const isEdit = type === 'EDIT';
   const isView = type === 'VIEW';
   const isReadOnly = isView;
+  const branchScope = isCreate ? `${role}:${staffId || 'create'}` : `patient:${payload?.id || ''}`;
 
   useEffect(() => {
     if (!open || type === 'DELETE') return;
@@ -81,16 +83,46 @@ export default function PatientModal({
       setBranchError('');
       setBranchLoading(true);
       try {
-        if (!staffId || !['EMPLOYEE', 'DENTIST'].includes(role)) {
-          throw new Error('Không xác định được thông tin nhân viên hoặc bác sĩ đang đăng nhập.');
+        if (type === 'CREATE' && role === 'ADMIN') {
+          setSelectedBranchId('');
+          const [branches, clinics] = await Promise.all([
+            getBranches(),
+            getClinics().catch(() => []),
+          ]);
+          const options = (Array.isArray(branches) ? branches : []).map((branch) => {
+            const clinic = (Array.isArray(clinics) ? clinics : []).find((item) => item.clinicId === branch.clinicId);
+            return {
+              branchId: branch.branchId,
+              branchName: branch.branchName,
+              branchAddress: branch.address,
+              dentalClinicName: clinic?.legalName || clinic?.brandName || branch.branchName,
+            };
+          });
+          if (!options.length) throw new Error('Hệ thống chưa có chi nhánh để tạo hồ sơ bệnh nhân.');
+          if (!cancelled) setBranchOptions(options);
+        } else if (type === 'CREATE') {
+          if (!staffId || !['EMPLOYEE', 'DENTIST'].includes(role)) {
+            throw new Error('Không xác định được thông tin nhân viên hoặc bác sĩ đang đăng nhập.');
+          }
+          const profile = role === 'DENTIST'
+            ? await getDentistAddressById(staffId)
+            : await getEmployeeAddressById(staffId);
+          if (!profile?.branchId) {
+            throw new Error('Tài khoản chưa được gán chi nhánh. Vui lòng liên hệ quản trị viên.');
+          }
+          if (!cancelled) setBranchInfo({ ...profile, scope: branchScope });
+        } else {
+          if (!payload?.createdBranchId) throw new Error('Hồ sơ bệnh nhân chưa có thông tin chi nhánh tạo hồ sơ.');
+          const branch = await getBranchById(payload.createdBranchId);
+          const clinic = branch.clinicId ? await getClinicById(branch.clinicId).catch(() => null) : null;
+          if (!cancelled) setBranchInfo({
+            branchId: branch.branchId,
+            branchName: branch.branchName,
+            branchAddress: branch.address,
+            dentalClinicName: clinic?.legalName || clinic?.brandName || branch.branchName,
+            scope: branchScope,
+          });
         }
-        const profile = role === 'DENTIST'
-          ? await getDentistAddressById(staffId)
-          : await getEmployeeAddressById(staffId);
-        if (!profile?.branchId) {
-          throw new Error('Tài khoản chưa được gán chi nhánh. Vui lòng liên hệ quản trị viên.');
-        }
-        if (!cancelled) setBranchInfo({ ...profile, staffId, role });
       } catch (error) {
         if (!cancelled) setBranchError(error.response?.data?.message || error.message || 'Không tải được thông tin chi nhánh.');
       } finally {
@@ -99,9 +131,11 @@ export default function PatientModal({
     };
     loadBranch();
     return () => { cancelled = true; };
-  }, [open, type, role, staffId, branchRetry]);
+  }, [open, type, role, staffId, branchRetry, payload?.id, payload?.createdBranchId, branchScope]);
 
-  const currentBranch = branchInfo?.staffId === staffId && branchInfo?.role === role ? branchInfo : null;
+  const currentBranch = isCreate && role === 'ADMIN'
+    ? branchOptions.find((branch) => branch.branchId === selectedBranchId) || null
+    : branchInfo?.scope === branchScope ? branchInfo : null;
 
   // Form state initialized from payload
   const [formData, setFormData] = useState({
@@ -126,6 +160,7 @@ export default function PatientModal({
   });
 
   useEffect(() => {
+    const timer = setTimeout(() => {
     if (open && payload && (type === 'EDIT' || type === 'VIEW')) {
       setFormData({
         fullName: payload.fullName || payload.patientName || '',
@@ -173,6 +208,8 @@ export default function PatientModal({
         notes: '',
       });
     }
+    }, 0);
+    return () => clearTimeout(timer);
   }, [open, type, payload]);
 
   if (!open) return null;
@@ -242,22 +279,6 @@ export default function PatientModal({
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const calculateAge = (dob) => {
-    if (!dob) return '';
-    const birthYear = new Date(dob).getFullYear();
-    if (isNaN(birthYear)) return '';
-    const age = new Date().getFullYear() - birthYear;
-    return `(${age} tuổi)`;
-  };
-
-  const formatDateDisplay = (dateStr) => {
-    if (!dateStr) return 'Chưa cập nhật';
-    const clean = dateStr.split('T')[0];
-    const parts = clean.split('-');
-    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
-    return dateStr;
   };
 
   // =========================================================================
@@ -365,10 +386,25 @@ export default function PatientModal({
             </div>
 
             <div className="flex sm:flex-col items-center sm:items-end justify-between border-t sm:border-t-0 pt-2 sm:pt-0 border-teal-100/80">
-              <span className="text-[11px] text-slate-400 font-semibold">{isCreate ? 'Chi nhánh tạo hồ sơ:' : 'Chi nhánh đang làm việc:'}</span>
-              <span className="text-xs font-bold text-teal-900 bg-white px-2.5 py-1 rounded-md border border-teal-200 shadow-2xs">
-                {currentBranch?.branchName || 'Chưa xác định chi nhánh'}
-              </span>
+              <span className="text-[11px] text-slate-400 font-semibold">Chi nhánh tạo hồ sơ:</span>
+              {isCreate && role === 'ADMIN' ? (
+                <select
+                  value={selectedBranchId}
+                  onChange={(event) => setSelectedBranchId(event.target.value)}
+                  disabled={branchLoading}
+                  aria-label="Chọn chi nhánh tạo hồ sơ"
+                  className="max-w-64 rounded-md border border-teal-200 bg-white px-2.5 py-1 text-xs font-bold text-teal-900"
+                >
+                  <option value="">Chọn chi nhánh</option>
+                  {branchOptions.map((branch) => (
+                    <option key={branch.branchId} value={branch.branchId}>{branch.branchName}</option>
+                  ))}
+                </select>
+              ) : (
+                <span className="text-xs font-bold text-teal-900 bg-white px-2.5 py-1 rounded-md border border-teal-200 shadow-2xs">
+                  {currentBranch?.branchName || 'Chưa xác định chi nhánh'}
+                </span>
+              )}
             </div>
           </div>
 

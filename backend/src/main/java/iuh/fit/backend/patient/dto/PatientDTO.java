@@ -1,6 +1,7 @@
 package iuh.fit.backend.patient.dto;
 
 import iuh.fit.backend.patient.enums.Gender;
+import iuh.fit.backend.user.enums.StatusUser;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -13,6 +14,8 @@ import java.util.UUID;
 @AllArgsConstructor
 public class PatientDTO {
     private UUID id;
+    private UUID userId;
+    private StatusUser accountStatus;
     private String patientCode;
     private String createdBranchId;
     private String createdBranchName;

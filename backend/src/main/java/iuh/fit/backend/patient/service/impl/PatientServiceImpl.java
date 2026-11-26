@@ -36,7 +36,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
 
@@ -176,7 +175,6 @@ public class PatientServiceImpl implements PatientService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(value = "patients", key = "'all'")
     public List<PatientDTO> getAllPatients() {
         return patientRepository.findAllByOrderByCreatedAtDesc()
                 .stream()
@@ -186,7 +184,6 @@ public class PatientServiceImpl implements PatientService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(value = "patients", key = "'registered'")
     public List<PatientDTO> getRegisteredPatients() {
         return patientRepository.findByUserIsNotNullOrderByCreatedAtDesc()
                 .stream()
@@ -599,6 +596,8 @@ public class PatientServiceImpl implements PatientService {
 
         return PatientDTO.builder()
                 .id(patient.getId())
+                .userId(patient.getUser() != null ? patient.getUser().getId() : null)
+                .accountStatus(patient.getUser() != null ? patient.getUser().getStatus() : null)
                 .createdBranchId(patient.getCreatedBranch() != null ? patient.getCreatedBranch().getBranchId() : null)
                 .createdBranchName(patient.getCreatedBranch() != null ? patient.getCreatedBranch().getBranchName() : null)
                 .patientCode(patient.getPatientCode())
