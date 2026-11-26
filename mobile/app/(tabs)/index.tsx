@@ -36,7 +36,37 @@ import { appointmentService } from '../../src/services/appointment.service';
 import { medicalRecordService } from '../../src/services/medicalRecord.service';
 import { notificationService } from '../../src/services/notification.service';
 import { PatientStatistics, patientService } from '../../src/services/patient.service';
+import { useAppRealtime } from '../../src/services/stompClient';
 import { formatDate, formatMoney } from '../../src/utils/formatters';
+
+const APPOINTMENT_STATUS_META: Record<string, { label: string; bg: string; color: string }> = {
+  CONFIRMED: { label: 'Đã xác nhận', bg: '#ecfdf5', color: '#007552' },
+  PENDING: { label: 'Chờ xác nhận', bg: '#fffbeb', color: '#b45309' },
+  WAITING: { label: 'Đang chờ khám', bg: '#eff6ff', color: '#1d4ed8' },
+  CALLED: { label: 'Đã gọi vào phòng', bg: '#ecfdf5', color: '#009165' },
+  IN_PROGRESS: { label: 'Đang khám', bg: '#eef2ff', color: '#4338ca' },
+  COMPLETED: { label: 'Đã hoàn tất', bg: '#f1f5f9', color: '#334155' },
+  CANCELLED: { label: 'Đã hủy', bg: '#fef2f2', color: '#dc2626' },
+};
+
+function extractDateIso(raw?: any): string {
+  if (!raw) return '';
+  if (Array.isArray(raw)) {
+    const [y, m = 1, d = 1] = raw;
+    if (!y) return '';
+    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  }
+  const str = String(raw).trim();
+  const match = str.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : str.split('T')[0] || '';
+}
+
+function getLocalTodayIso(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
+    now.getDate()
+  ).padStart(2, '0')}`;
+}
 
 function extractTimeStr(raw?: any): string {
   if (!raw) return '';
@@ -109,30 +139,47 @@ export default function PatientDashboardScreen() {
     loadDashboard();
   }, [loadDashboard]);
 
+  // Đồng bộ Realtime Lịch hẹn & Thông báo qua WebSocket (không dùng polling)
+  useAppRealtime({
+    userId: user?.id,
+    patientId,
+    userPhone: user?.phone,
+    onAppointmentRealtime: useCallback(() => {
+      loadDashboard();
+    }, [loadDashboard]),
+    onNotificationRealtime: useCallback(
+      (notif) => {
+        if (notif && !notif.isRead) {
+          setUnreadNotifs((c) => c + 1);
+        }
+        loadDashboard();
+      },
+      [loadDashboard]
+    ),
+  });
+
   const onRefresh = async () => {
     setRefreshing(true);
     await loadDashboard();
     setRefreshing(false);
   };
 
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = getLocalTodayIso();
 
   const mergedUpcoming = useMemo(() => {
+    // Hiển thị mọi trạng thái (kể cả Đã hoàn tất / Đã hủy) cho tới khi qua ngày hẹn mới ẩn
     const booked = appointments
-      .filter((a) => a.status !== 'CANCELLED' && a.status !== 'COMPLETED')
       .map((a) => ({
         ...a,
         itemType: 'APPOINTMENT' as const,
-        dateStr: String(a.appointmentDate || a.appointmentTime || '').split('T')[0],
+        dateStr: extractDateIso(a.appointmentDate || a.appointmentTime),
         timeStr: extractTimeStr(a.appointmentTime) || extractTimeStr(a.appointmentDate),
         title: a.reason || a.serviceName || 'Khám nha khoa',
       }));
 
     const rechecks = followUps
-      .filter((f) => f.status !== false && f.status !== 'CANCELLED')
       .map((f) => {
-        const raw = String(f.followUpDate || '');
-        const [dPart] = raw.split('T');
+        const dPart = extractDateIso(f.followUpDate);
         return {
           ...f,
           itemType: 'FOLLOW_UP' as const,
@@ -156,6 +203,14 @@ export default function PatientDashboardScreen() {
   );
 
   const nextAppointment = mergedUpcoming[0] ?? null;
+  const nextApptStatus =
+    nextAppointment?.itemType === 'APPOINTMENT'
+      ? APPOINTMENT_STATUS_META[nextAppointment.status || 'CONFIRMED'] ?? null
+      : null;
+  const nextApptFinished =
+    nextAppointment?.status === 'COMPLETED' ||
+    nextAppointment?.status === 'CANCELLED' ||
+    nextAppointment?.status === false;
   const activePlan = plans[selectedPlanIdx] ?? plans[0] ?? null;
 
   const planProgress = useMemo(() => {
@@ -228,8 +283,29 @@ export default function PatientDashboardScreen() {
                   <View style={styles.heroBadge}>
                     <Text style={styles.heroBadgeText}>LỊCH HẸN SẮP TỚI GẦN NHẤT</Text>
                   </View>
-                  {nextAppointment?.appointmentCode ? (
-                    <Text style={styles.heroCodeBadge}>{nextAppointment.appointmentCode}</Text>
+                  {nextAppointment ? (
+                    <View style={styles.heroRightBadges}>
+                      <View
+                        style={[
+                          styles.relativeDayBadge,
+                          nextAppointment.dateStr === todayIso
+                            ? styles.relativeTodayBadge
+                            : styles.relativeUpcomingBadge,
+                        ]}>
+                        <Text
+                          style={[
+                            styles.relativeDayText,
+                            nextAppointment.dateStr === todayIso
+                              ? styles.relativeTodayText
+                              : styles.relativeUpcomingText,
+                          ]}>
+                          {nextAppointment.dateStr === todayIso ? 'Hôm nay' : 'Sắp tới'}
+                        </Text>
+                      </View>
+                      {nextAppointment.appointmentCode ? (
+                        <Text style={styles.heroCodeBadge}>{nextAppointment.appointmentCode}</Text>
+                      ) : null}
+                    </View>
                   ) : null}
                 </View>
 
@@ -237,6 +313,17 @@ export default function PatientDashboardScreen() {
                   <ActivityIndicator color={Colors.primary} style={{ marginVertical: 16 }} />
                 ) : nextAppointment ? (
                   <View style={{ marginTop: 10 }}>
+                    {nextApptStatus ? (
+                      <View
+                        style={[
+                          styles.apptStatusBadge,
+                          { backgroundColor: nextApptStatus.bg, alignSelf: 'flex-start', marginBottom: 6 },
+                        ]}>
+                        <Text style={[styles.apptStatusText, { color: nextApptStatus.color }]}>
+                          {nextApptStatus.label}
+                        </Text>
+                      </View>
+                    ) : null}
                     <Text style={styles.heroService}>{nextAppointment.title}</Text>
                     <View style={styles.heroMetaRow}>
                       <Clock size={14} color={Colors.primary} />
@@ -260,15 +347,17 @@ export default function PatientDashboardScreen() {
                     ) : null}
 
                     <View style={styles.heroBtnRow}>
-                      <Pressable
-                        style={styles.heroActionPrimary}
-                        onPress={() => {
-                          setCheckInTarget(nextAppointment);
-                          setCheckInOpen(true);
-                        }}>
-                        <QrCode size={16} color="#ffffff" />
-                        <Text style={styles.heroActionPrimaryText}>Quét QR Check-in</Text>
-                      </Pressable>
+                      {!nextApptFinished ? (
+                        <Pressable
+                          style={styles.heroActionPrimary}
+                          onPress={() => {
+                            setCheckInTarget(nextAppointment);
+                            setCheckInOpen(true);
+                          }}>
+                          <QrCode size={16} color="#ffffff" />
+                          <Text style={styles.heroActionPrimaryText}>Quét QR Check-in</Text>
+                        </Pressable>
+                      ) : null}
                       <Pressable
                         style={styles.heroActionOutline}
                         onPress={() => setBookingOpen(true)}>
@@ -351,7 +440,7 @@ export default function PatientDashboardScreen() {
                 icon: QrCode,
                 action: () => {
                   if (!user) return router.push('/(auth)/login');
-                  setCheckInTarget(nextAppointment);
+                  setCheckInTarget(nextApptFinished ? null : nextAppointment);
                   setCheckInOpen(true);
                 },
               },
@@ -474,38 +563,63 @@ export default function PatientDashboardScreen() {
               {filteredUpcoming.length === 0 ? (
                 <Text style={styles.emptySmall}>Không có lịch hẹn nào trong mục này.</Text>
               ) : (
-                filteredUpcoming.slice(0, 4).map((item, idx) => (
-                  <Pressable
-                    key={item.id || idx}
-                    style={styles.listRow}
-                    onPress={() => router.push('/(tabs)/appointments')}>
-                    <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Text
-                          style={[
-                            styles.typeTag,
-                            item.itemType === 'FOLLOW_UP' && {
-                              backgroundColor: '#fef3c7',
-                              color: '#b45309',
-                            },
-                          ]}>
-                          {item.itemType === 'FOLLOW_UP' ? 'Tái khám' : 'Lịch hẹn'}
+                filteredUpcoming.slice(0, 4).map((item, idx) => {
+                  const apptStatus =
+                    item.itemType === 'APPOINTMENT'
+                      ? APPOINTMENT_STATUS_META[item.status || 'CONFIRMED'] || {
+                          label: item.status || 'Đã xác nhận',
+                          bg: '#f1f5f9',
+                          color: '#334155',
+                        }
+                      : null;
+
+                  return (
+                    <Pressable
+                      key={item.id || idx}
+                      style={styles.listRow}
+                      onPress={() => router.push('/(tabs)/appointments')}>
+                      <View style={{ flex: 1 }}>
+                        <View style={styles.listTagsWrap}>
+                          <Text
+                            style={[
+                              styles.typeTag,
+                              item.itemType === 'FOLLOW_UP' && {
+                                backgroundColor: '#fef3c7',
+                                color: '#b45309',
+                              },
+                            ]}>
+                            {item.itemType === 'FOLLOW_UP' ? 'Tái khám' : 'Lịch hẹn'}
+                          </Text>
+                          {apptStatus ? (
+                            <View style={[styles.apptStatusBadge, { backgroundColor: apptStatus.bg }]}>
+                              <Text style={[styles.apptStatusText, { color: apptStatus.color }]}>
+                                {apptStatus.label}
+                              </Text>
+                            </View>
+                          ) : null}
+                          {item.dateStr === todayIso ? (
+                            <View style={[styles.relativeDayBadge, styles.relativeTodayBadge]}>
+                              <Text style={[styles.relativeDayText, styles.relativeTodayText]}>
+                                Hôm nay
+                              </Text>
+                            </View>
+                          ) : null}
+                          <Text style={styles.listDate}>{formatDateTimeLine(item)}</Text>
+                        </View>
+                        <Text numberOfLines={1} style={styles.listTitle}>
+                          {item.title}
                         </Text>
-                        <Text style={styles.listDate}>{formatDateTimeLine(item)}</Text>
+                        {item.branchName || item.dentistName ? (
+                          <Text numberOfLines={1} style={styles.listSub}>
+                            {item.dentistName ? `${formatDoctorName(item.dentistName)} • ` : ''}
+                            {item.branchName || ''}
+                          </Text>
+                        ) : null}
                       </View>
-                      <Text numberOfLines={1} style={styles.listTitle}>
-                        {item.title}
-                      </Text>
-                      {item.branchName || item.dentistName ? (
-                        <Text numberOfLines={1} style={styles.listSub}>
-                          {item.dentistName ? `${formatDoctorName(item.dentistName)} • ` : ''}
-                          {item.branchName || ''}
-                        </Text>
-                      ) : null}
-                    </View>
-                    <ChevronRight size={18} color={Colors.textMuted} />
-                  </Pressable>
-                ))
+                      <ChevronRight size={18} color={Colors.textMuted} />
+                    </Pressable>
+                  );
+                })
               )}
             </View>
           ) : null}
@@ -623,7 +737,13 @@ const styles = StyleSheet.create({
   },
   guestTitle: { color: Colors.text, fontSize: 17, fontWeight: '800' },
   guestSub: { color: Colors.textSecondary, fontSize: 13, marginTop: 6, lineHeight: 19 },
-  heroTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  heroTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
   heroBadge: {
     backgroundColor: Colors.primaryLight,
     paddingHorizontal: 9,
@@ -631,6 +751,35 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   heroBadgeText: { fontSize: 10.5, fontWeight: '800', color: Colors.primary, letterSpacing: 0.4 },
+  heroRightBadges: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  relativeDayBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  relativeTodayBadge: {
+    backgroundColor: '#fef3c7',
+    borderColor: '#fcd34d',
+  },
+  relativeUpcomingBadge: {
+    backgroundColor: Colors.primarySoft,
+    borderColor: Colors.primaryBorder,
+  },
+  relativeDayText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+  },
+  relativeTodayText: {
+    color: '#b45309',
+  },
+  relativeUpcomingText: {
+    color: Colors.primaryDark,
+  },
   heroCodeBadge: {
     fontSize: 11,
     fontWeight: '800',
@@ -771,6 +920,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#f1f5f9',
   },
+  listTagsWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
   typeTag: {
     fontSize: 10.5,
     fontWeight: '800',
@@ -779,6 +934,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 6,
+  },
+  apptStatusBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 999,
+  },
+  apptStatusText: {
+    fontSize: 10.5,
+    fontWeight: '800',
   },
   listDate: { fontSize: 11.5, fontWeight: '700', color: Colors.textSecondary },
   listTitle: { fontSize: 14, fontWeight: '700', color: Colors.text, marginTop: 3 },

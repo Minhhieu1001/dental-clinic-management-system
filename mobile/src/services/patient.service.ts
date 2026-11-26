@@ -85,6 +85,11 @@ export const patientService = {
     return unwrap(res);
   },
 
+  updateUser: async (userId: string, payload: { avatarUrl?: string | null }) => {
+    const res = await api.put(`/users/${encodeURIComponent(userId)}`, payload);
+    return unwrap(res);
+  },
+
   changeMyPassword: async (payload: {
     currentPassword: string;
     newPassword: string;

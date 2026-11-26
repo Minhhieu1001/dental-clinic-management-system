@@ -33,6 +33,7 @@ import { Colors } from '../../src/constants/theme';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useSuccessModal } from '../../src/contexts/SuccessModalContext';
 import { appointmentService } from '../../src/services/appointment.service';
+import { useAppRealtime } from '../../src/services/stompClient';
 import { formatDate } from '../../src/utils/formatters';
 
 type TabFilter = 'ALL' | 'UPCOMING' | 'COMPLETED' | 'CANCELLED';
@@ -159,6 +160,23 @@ export default function AppointmentsScreen() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Tự động đồng bộ lịch hẹn realtime khi Lễ tân / Bác sĩ thay đổi trạng thái
+  useAppRealtime({
+    userId: user?.id,
+    patientId,
+    userPhone: user?.phone,
+    onAppointmentRealtime: loadData,
+    onNotificationRealtime: useCallback(
+      (notif) => {
+        const t = notif?.type || '';
+        if (t === 'APPOINTMENT' || t === 'STATUS_CHANGE' || t === 'FOLLOW_UP' || t === 'PATIENT_CHECKIN') {
+          loadData();
+        }
+      },
+      [loadData]
+    ),
+  });
 
   const onRefresh = async () => {
     setRefreshing(true);

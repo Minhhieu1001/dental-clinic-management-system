@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Modal,
   Platform,
   Pressable,
@@ -12,8 +13,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
+import Camera from 'lucide-react-native/icons/camera';
 import CreditCard from 'lucide-react-native/icons/credit-card';
 import Eye from 'lucide-react-native/icons/eye';
 import EyeOff from 'lucide-react-native/icons/eye-off';
@@ -27,6 +30,7 @@ import X from 'lucide-react-native/icons/x';
 import { Colors } from '../src/constants/theme';
 import { useAuth } from '../src/contexts/AuthContext';
 import { useSuccessModal } from '../src/contexts/SuccessModalContext';
+import { chatService, resolveMediaUrl } from '../src/services/chat.service';
 import { patientService } from '../src/services/patient.service';
 
 import { KeyboardSafeView } from '../src/components/KeyboardSafeView';
@@ -81,7 +85,7 @@ function genderLabel(g?: string) {
 }
 
 export default function ProfileScreen() {
-  const { patientId, signOut, user } = useAuth();
+  const { patientId, signOut, user, updateAvatarUrl } = useAuth();
   const { showSuccess } = useSuccessModal();
   const router = useRouter();
   const [patient, setPatient] = useState<any>(null);
@@ -92,10 +96,92 @@ export default function ProfileScreen() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarFailed, setAvatarFailed] = useState(false);
 
   const [pw, setPw] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [showPw, setShowPw] = useState(false);
   const [changingPw, setChangingPw] = useState(false);
+
+  useEffect(() => {
+    setAvatarFailed(false);
+  }, [user?.avatarUrl]);
+
+  const pickAndUploadAvatar = async (source: 'camera' | 'library') => {
+    if (!user?.id) return;
+    try {
+      if (source === 'camera') {
+        const perm = await ImagePicker.requestCameraPermissionsAsync();
+        if (!perm.granted) {
+          Alert.alert('Cần quyền truy cập', 'Vui lòng cấp quyền máy ảnh để chụp ảnh đại diện.');
+          return;
+        }
+      } else {
+        const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!perm.granted) {
+          Alert.alert('Cần quyền truy cập', 'Vui lòng cấp quyền thư viện ảnh để chọn ảnh đại diện.');
+          return;
+        }
+      }
+
+      const pickerResult =
+        source === 'camera'
+          ? await ImagePicker.launchCameraAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.85,
+          })
+          : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.85,
+          });
+
+      if (pickerResult.canceled || !pickerResult.assets?.[0]?.uri) return;
+
+      const asset = pickerResult.assets[0];
+      setUploadingAvatar(true);
+      const uploadedUrl = await chatService.uploadImage(
+        asset.uri,
+        asset.mimeType || 'image/jpeg',
+        asset.fileName || `avatar-${Date.now()}.jpg`
+      );
+      if (!uploadedUrl) {
+        throw new Error('Không nhận được đường dẫn ảnh sau khi tải lên.');
+      }
+
+      await patientService.updateUser(user.id, { avatarUrl: uploadedUrl });
+      await updateAvatarUrl(uploadedUrl);
+      setAvatarFailed(false);
+
+      showSuccess({
+        title: 'Đổi ảnh đại diện thành công!',
+        message: 'Ảnh đại diện mới của bạn đã được lưu và đồng bộ trên toàn ứng dụng.',
+      });
+    } catch (e: any) {
+      Alert.alert(
+        'Lỗi tải ảnh',
+        e?.response?.data?.message || e?.message || 'Không thể cập nhật ảnh đại diện. Vui lòng thử lại.'
+      );
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleAvatarPress = () => {
+    if (uploadingAvatar || !user?.id) return;
+    if (Platform.OS === 'web') {
+      pickAndUploadAvatar('library');
+      return;
+    }
+    Alert.alert('Đổi ảnh đại diện', 'Chọn nguồn ảnh cho hồ sơ cá nhân của bạn', [
+      { text: 'Chụp ảnh mới', onPress: () => pickAndUploadAvatar('camera') },
+      { text: 'Chọn từ thư viện', onPress: () => pickAndUploadAvatar('library') },
+      { text: 'Hủy', style: 'cancel' },
+    ]);
+  };
 
   const fillForm = (p: any) => {
     setForm({
@@ -271,9 +357,33 @@ export default function ProfileScreen() {
         }>
         {/* Header card */}
         <View style={styles.heroCard}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{(patient?.fullName || user?.username || 'B').charAt(0).toUpperCase()}</Text>
-          </View>
+          <Pressable
+            style={styles.avatarWrap}
+            onPress={handleAvatarPress}
+            disabled={uploadingAvatar}
+            accessibilityLabel="Đổi ảnh đại diện">
+            <View style={styles.avatar}>
+              {resolveMediaUrl(user?.avatarUrl) && !avatarFailed ? (
+                <Image
+                  source={{ uri: resolveMediaUrl(user?.avatarUrl) }}
+                  style={styles.avatarImg}
+                  onError={() => setAvatarFailed(true)}
+                />
+              ) : (
+                <Text style={styles.avatarText}>
+                  {(patient?.fullName || user?.username || 'B').charAt(0).toUpperCase()}
+                </Text>
+              )}
+              {uploadingAvatar ? (
+                <View style={styles.avatarLoadingOverlay}>
+                  <ActivityIndicator size="small" color="#ffffff" />
+                </View>
+              ) : null}
+            </View>
+            <View style={styles.avatarCamBadge}>
+              <Camera size={12} color={Colors.primary} />
+            </View>
+          </Pressable>
           <View style={{ flex: 1 }}>
             <Text style={styles.heroName}>{patient?.fullName || user?.username || 'Bệnh nhân'}</Text>
             <Text style={styles.heroSub}>Mã BN: {patient?.patientCode || '—'}</Text>
@@ -479,13 +589,48 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 16,
   },
+  avatarWrap: {
+    position: 'relative',
+    width: 60,
+    height: 60,
+  },
   avatar: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.85)',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarImg: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarLoadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: 'rgba(15,23,42,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarCamBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: Colors.primary,
   },
   avatarText: { color: '#fff', fontSize: 22, fontWeight: '800' },
   heroName: { color: '#fff', fontSize: 17, fontWeight: '800' },

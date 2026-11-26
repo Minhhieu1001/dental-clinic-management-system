@@ -33,6 +33,7 @@ import { Colors } from '../constants/theme';
 import { useAuth } from '../contexts/AuthContext';
 import { resolveMediaUrl } from '../services/chat.service';
 import { notificationService } from '../services/notification.service';
+import { useAppRealtime } from '../services/stompClient';
 import { CheckInModal } from './CheckInModal';
 
 const DRAWER_WIDTH = Math.min(310, Math.round(Dimensions.get('window').width * 0.82));
@@ -54,7 +55,7 @@ export function HeaderRightActions({
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const { user, signOut } = useAuth();
+  const { user, patientId, signOut } = useAuth();
 
   const [unreadCount, setUnreadCount] = useState(0);
   const [drawerMounted, setDrawerMounted] = useState(false);
@@ -83,11 +84,26 @@ export function HeaderRightActions({
       .then((list) => {
         if (active) setUnreadCount(list.filter((n) => !n.isRead).length);
       })
-      .catch(() => {});
+      .catch(() => { });
     return () => {
       active = false;
     };
   }, [user?.id, unreadCountOverride, pathname]);
+
+  // Nhận thông báo mới realtime qua WebSocket để nhảy số chuông ngay lập tức
+  useAppRealtime({
+    userId: user?.id,
+    patientId,
+    userPhone: user?.phone,
+    onNotificationRealtime: useCallback(
+      (notif) => {
+        if (notif && !notif.isRead) {
+          setUnreadCount((prev) => prev + 1);
+        }
+      },
+      []
+    ),
+  });
 
   const openDrawer = useCallback(() => {
     if (!user) {

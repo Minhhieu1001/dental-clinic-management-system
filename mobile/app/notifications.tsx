@@ -25,6 +25,7 @@ import { Colors } from '../src/constants/theme';
 import { useAuth } from '../src/contexts/AuthContext';
 import { useSuccessModal } from '../src/contexts/SuccessModalContext';
 import { NotificationItem, notificationService } from '../src/services/notification.service';
+import { useAppRealtime } from '../src/services/stompClient';
 
 type ReadTab = 'ALL' | 'UNREAD' | 'READ';
 const TYPE_FILTERS: { key: string; label: string }[] = [
@@ -77,7 +78,7 @@ function navTarget(n: NotificationItem): { path: string; label: string } | null 
 }
 
 export default function NotificationsScreen() {
-  const { user } = useAuth();
+  const { user, patientId } = useAuth();
   const { showSuccess } = useSuccessModal();
   const router = useRouter();
   const [items, setItems] = useState<NotificationItem[]>([]);
@@ -109,6 +110,24 @@ export default function NotificationsScreen() {
     load();
   }, [load]);
 
+  useAppRealtime({
+    userId: user?.id,
+    patientId,
+    userPhone: user?.phone,
+    onNotificationRealtime: useCallback(
+      (incoming: NotificationItem) => {
+        if (!incoming?.id) {
+          load();
+          return;
+        }
+        setItems((prev) =>
+          prev.some((x) => x.id === incoming.id) ? prev : [incoming, ...prev]
+        );
+      },
+      [load]
+    ),
+  });
+
   const unreadCount = items.filter((n) => !n.isRead).length;
 
   const filtered = useMemo(() => {
@@ -130,7 +149,7 @@ export default function NotificationsScreen() {
     setSelected(n);
     if (!n.isRead) {
       setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, isRead: true } : x)));
-      notificationService.markAsRead(n.id).catch(() => {});
+      notificationService.markAsRead(n.id).catch(() => { });
     }
   };
 

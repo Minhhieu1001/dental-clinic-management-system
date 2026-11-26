@@ -10,6 +10,7 @@ interface AuthContextValue {
   signIn: (payload: PatientLoginPayload) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  updateAvatarUrl: (avatarUrl: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -78,8 +79,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateAvatarUrl = async (avatarUrl: string) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, avatarUrl };
+      tokenStorage.setUser(next).catch(() => { });
+      return next;
+    });
+    await refreshUser();
+  };
+
   return (
-    <AuthContext.Provider value={{ user, patientId, isLoading, signIn, signOut, refreshUser }}>
+    <AuthContext.Provider
+      value={{ user, patientId, isLoading, signIn, signOut, refreshUser, updateAvatarUrl }}>
       {children}
     </AuthContext.Provider>
   );
