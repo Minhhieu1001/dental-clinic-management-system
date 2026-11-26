@@ -1,24 +1,23 @@
 import { useRouter } from 'expo-router';
-import Bell from 'lucide-react-native/icons/bell';
+import Bot from 'lucide-react-native/icons/bot';
 import Calendar from 'lucide-react-native/icons/calendar';
 import ChevronRight from 'lucide-react-native/icons/chevron-right';
 import Clock from 'lucide-react-native/icons/clock';
 import FileText from 'lucide-react-native/icons/file-text';
 import HeartPulse from 'lucide-react-native/icons/heart-pulse';
-import LogIn from 'lucide-react-native/icons/log-in';
 import MapPin from 'lucide-react-native/icons/map-pin';
 import MessageCircle from 'lucide-react-native/icons/message-circle';
 import Pill from 'lucide-react-native/icons/pill';
 import Plus from 'lucide-react-native/icons/plus';
 import QrCode from 'lucide-react-native/icons/qr-code';
 import Receipt from 'lucide-react-native/icons/receipt';
-import ShieldCheck from 'lucide-react-native/icons/shield-check';
 import Stethoscope from 'lucide-react-native/icons/stethoscope';
 import User from 'lucide-react-native/icons/user';
 import Wallet from 'lucide-react-native/icons/wallet';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -237,7 +236,13 @@ export default function PatientDashboardScreen() {
         <SafeAreaView edges={['top']} style={styles.headerBanner}>
           <View style={styles.headerTopRow}>
             <View style={styles.brandPill}>
-              <ShieldCheck size={14} color="#ffffff" />
+              <View style={styles.brandLogoCircle}>
+                <Image
+                  source={require('../../assets/images/crown-logo.png')}
+                  style={styles.brandLogoImg}
+                  resizeMode="contain"
+                />
+              </View>
               <Text style={styles.brandPillText}>Crown Dental</Text>
             </View>
             <HeaderRightActions
@@ -249,36 +254,14 @@ export default function PatientDashboardScreen() {
           <View style={styles.greetingBlock}>
             <Text style={styles.greetingSub}>Cổng thông tin Bệnh nhân</Text>
             <Text style={styles.userName}>
-              {user ? `Xin chào, ${user.username}` : 'Xin chào quý khách'}
+              {user ? `Xin chào, ${user.username}` : 'Xin chào'}
             </Text>
           </View>
         </SafeAreaView>
 
         <View style={styles.body}>
-          {/* Unauthenticated CTA */}
-          {!user ? (
-            <View style={styles.heroCard}>
-              <Text style={styles.guestTitle}>Đăng nhập để quản lý hồ sơ nha khoa</Text>
-              <Text style={styles.guestSub}>
-                Đặt lịch khám ưu tiên, tự check-in mã QR, xem phác đồ điều trị, đơn thuốc và hóa đơn trực tuyến.
-              </Text>
-              <View style={styles.heroBtnRow}>
-                <Pressable
-                  style={styles.heroActionPrimary}
-                  onPress={() => router.push('/(auth)/login')}>
-                  <Text style={styles.heroActionPrimaryText}>Đăng nhập</Text>
-                </Pressable>
-                <Pressable
-                  style={styles.heroActionOutline}
-                  onPress={() => router.push('/(auth)/register')}>
-                  <Text style={styles.heroActionOutlineText}>Đăng ký mới</Text>
-                </Pressable>
-              </View>
-            </View>
-          ) : (
-            <>
-              {/* Hero Next Appointment Card */}
-              <View style={styles.heroCard}>
+          {/* Hero Next Appointment Card */}
+          <View style={styles.heroCard}>
                 <View style={styles.heroTopRow}>
                   <View style={styles.heroBadge}>
                     <Text style={styles.heroBadgeText}>LỊCH HẸN SẮP TỚI GẦN NHẤT</Text>
@@ -423,8 +406,6 @@ export default function PatientDashboardScreen() {
                   </Text>
                 </Pressable>
               </View>
-            </>
-          )}
 
           {/* Quick Actions Grid */}
           <Text style={styles.sectionTitle}>Tiện ích nhanh</Text>
@@ -433,21 +414,24 @@ export default function PatientDashboardScreen() {
               {
                 label: 'Đặt lịch khám',
                 icon: Plus,
-                action: () => (user ? setBookingOpen(true) : router.push('/(auth)/login')),
+                action: () => setBookingOpen(true),
               },
               {
                 label: 'Quét QR Check-in',
                 icon: QrCode,
                 action: () => {
-                  if (!user) return router.push('/(auth)/login');
                   setCheckInTarget(nextApptFinished ? null : nextAppointment);
                   setCheckInOpen(true);
                 },
               },
+              {
+                label: 'Trợ lý AI 24/7',
+                icon: Bot,
+                action: () => router.push('/ai-chat' as any),
+              },
               { label: 'Bệnh án & Đơn thuốc', icon: FileText, action: () => router.push('/(tabs)/records') },
               { label: 'Hóa đơn viện phí', icon: Receipt, action: () => router.push('/(tabs)/invoices') },
-              { label: 'Chat Tư vấn', icon: MessageCircle, action: () => router.push('/(tabs)/consultation') },
-              { label: 'Tài khoản & BH', icon: User, action: () => router.push(user ? '/profile' : '/(auth)/login') },
+              { label: 'Tài khoản & BH', icon: User, action: () => router.push('/profile') },
             ].map((item) => {
               const Icon = item.icon;
               return (
@@ -652,6 +636,15 @@ export default function PatientDashboardScreen() {
         </View>
       </ScrollView>
 
+      {/* Nút nổi Trợ lý ảo AI 24/7 đồng bộ Web */}
+      <Pressable
+        style={styles.floatingAiBtn}
+        onPress={() => router.push('/ai-chat' as any)}
+        accessibilityLabel="Mở Trợ lý ảo AI">
+        <Bot size={24} color="#ffffff" />
+        <View style={styles.floatingAiOnlineDot} />
+      </Pressable>
+
       <BookingModal
         visible={bookingOpen}
         onClose={() => setBookingOpen(false)}
@@ -687,13 +680,55 @@ const styles = StyleSheet.create({
   brandPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 7,
     backgroundColor: 'rgba(255,255,255,0.18)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingRight: 11,
+    paddingLeft: 4,
+    paddingVertical: 4,
     borderRadius: 999,
   },
+  brandLogoCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandLogoImg: {
+    width: 18,
+    height: 18,
+  },
   brandPillText: { color: '#ffffff', fontSize: 12, fontWeight: '800' },
+  floatingAiBtn: {
+    position: 'absolute',
+    right: 18,
+    bottom: 18,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#1f4fb2',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  floatingAiOnlineDot: {
+    position: 'absolute',
+    top: 1,
+    right: 1,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#34d399',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+  },
   headerActions: { flexDirection: 'row', gap: 8 },
   headerIconBtn: {
     width: 38,

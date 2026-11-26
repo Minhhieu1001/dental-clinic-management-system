@@ -1,8 +1,9 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UserCheck, X, ArrowRight, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { UserCheck, X, ArrowRight, ShieldCheck, CheckCircle2, Bot, Sparkles } from 'lucide-react';
 import PatientHeader from './PatientHeader.jsx';
+import Chatbot from '../../features/ai/Chatbot.jsx';
 import { roleRoutes } from '../../constants/roleRoutes.js';
 import { useAuth } from '../../hooks/useAuth';
 import { hasMissingPatientInformation } from '../../services/patient.service';
@@ -12,19 +13,21 @@ export default function PatientLayout() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isDashboard = location.pathname === '/patient/dashboard' || location.pathname === '/patient';
+  const isLiveChatPage = location.pathname.startsWith('/patient/chat');
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [isAiChatOpen, setIsAiChatOpen] = useState(false);
+  const profileModalVisible = isDashboard && showProfileModal;
 
   useEffect(() => {
     const patientId = user?.patientId;
     if (!isDashboard || !patientId) {
-      setShowProfileModal(false);
       return;
     }
 
     let active = true;
     hasMissingPatientInformation(patientId)
       .then((profileIncomplete) => {
-        if (active && profileIncomplete) setShowProfileModal(true);
+        if (active) setShowProfileModal(Boolean(profileIncomplete));
       })
       .catch((error) => {
         console.error('Không thể kiểm tra mức độ đầy đủ hồ sơ bệnh nhân:', error);
@@ -43,9 +46,57 @@ export default function PatientLayout() {
         <Outlet />
       </main>
 
+      {/* AI Chatbot Assistant có sẵn cho Bệnh nhân đã đăng nhập */}
+      <Chatbot
+        isOpen={isAiChatOpen && !profileModalVisible}
+        onClose={() => setIsAiChatOpen(false)}
+      />
+
+      <AnimatePresence>
+        {!isAiChatOpen && !profileModalVisible && (
+          <motion.div
+            key="patient-floating-ai-btn"
+            initial={{ opacity: 0, scale: 0.6, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{
+              opacity: 0,
+              scale: 0.6,
+              y: 20,
+              transition: { duration: 0.18, ease: 'easeOut' },
+            }}
+            transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+            className={`fixed right-4 sm:right-6 z-40 ${
+              isLiveChatPage ? 'bottom-24 sm:bottom-24' : 'bottom-4 sm:bottom-6'
+            }`}
+          >
+            <div className="relative group">
+              <button
+                type="button"
+                onClick={() => setIsAiChatOpen(true)}
+                className="relative flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-gradient-to-r from-[#1f4fb2] to-[#00a859] text-white shadow-xl shadow-blue-500/30 transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer"
+                title="Trợ lý ảo AI tư vấn 24/7"
+              >
+                <Bot className="w-6 h-6 sm:w-7 sm:h-7" />
+                <span className="absolute top-0.5 right-0.5 flex h-3 w-3 sm:h-3.5 sm:w-3.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 sm:h-3.5 sm:w-3.5 bg-emerald-400 border-2 border-white"></span>
+                </span>
+              </button>
+
+              <div className="absolute right-full top-1/2 -translate-y-1/2 mr-3 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap hidden sm:block">
+                <div className="rounded-lg bg-slate-900/90 text-white text-xs font-semibold px-3 py-1.5 shadow-lg backdrop-blur-sm flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Trợ lý AI tư vấn 24/7</span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ================= MODAL CẬP NHẬT HỒ SƠ (HIỆU ỨNG MƯỢT MÀ, HEADER CHUẨN ERP) ================= */}
       <AnimatePresence>
-        {showProfileModal && (
+        {profileModalVisible && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             {/* Backdrop mượt mà */}
             <motion.div

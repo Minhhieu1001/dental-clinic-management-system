@@ -1,5 +1,6 @@
 import { usePathname, useRouter } from 'expo-router';
 import Bell from 'lucide-react-native/icons/bell';
+import Bot from 'lucide-react-native/icons/bot';
 import Calendar from 'lucide-react-native/icons/calendar';
 import FileText from 'lucide-react-native/icons/file-text';
 import Home from 'lucide-react-native/icons/house';
@@ -229,6 +230,12 @@ export function HeaderRightActions({
       route: '/(tabs)/consultation',
       active: pathname.includes('/consultation'),
       Icon: MessageCircle,
+    },
+    {
+      label: 'Trợ lý ảo AI 24/7',
+      route: '/ai-chat',
+      active: pathname.includes('/ai-chat'),
+      Icon: Bot,
     },
   ];
 

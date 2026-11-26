@@ -18,8 +18,11 @@ import {
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
 import ArrowLeft from 'lucide-react-native/icons/arrow-left';
+import Bot from 'lucide-react-native/icons/bot';
 import Building2 from 'lucide-react-native/icons/building-2';
+import ChevronRight from 'lucide-react-native/icons/chevron-right';
 import Check from 'lucide-react-native/icons/check';
 import CheckCheck from 'lucide-react-native/icons/check-check';
 import ImagePlus from 'lucide-react-native/icons/image-plus';
@@ -117,6 +120,7 @@ function ChatMediaView({
 }
 
 export default function ConsultationScreen() {
+  const router = useRouter();
   const { patientId } = useAuth();
   const { showSuccess } = useSuccessModal();
   const [branches, setBranches] = useState<BranchItem[]>([]);
@@ -758,7 +762,28 @@ export default function ConsultationScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.listHeader}>
-        <Text style={styles.subtitle}>Chọn chi nhánh để trò chuyện với nhân viên tư vấn</Text>
+        <Pressable
+          style={styles.aiBannerCard}
+          onPress={() => router.push('/ai-chat' as any)}>
+          <View style={styles.aiBannerIcon}>
+            <Bot size={22} color="#ffffff" />
+            <View style={styles.aiBannerOnlineDot} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={styles.aiBannerTitle}>Trợ lý ảo AI Crown Dental</Text>
+              <View style={styles.aiBannerTag}>
+                <Text style={styles.aiBannerTagText}>24/7</Text>
+              </View>
+            </View>
+            <Text style={styles.aiBannerSub} numberOfLines={1}>
+              Tra cứu bảng giá, trả góp 0%, bảo hành & quy trình khám tức thì
+            </Text>
+          </View>
+          <ChevronRight size={18} color="#ffffff" />
+        </Pressable>
+
+        <Text style={styles.subtitle}>Hoặc chọn chi nhánh để nhắn tin trực tiếp với nhân viên</Text>
         <View style={styles.searchBox}>
           <Search size={16} color={Colors.textMuted} />
           <TextInput
@@ -832,6 +857,44 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listHeader: { padding: 14, backgroundColor: Colors.card, borderBottomWidth: 1, borderColor: Colors.border },
+  aiBannerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+    backgroundColor: '#1f4fb2',
+    borderRadius: 15,
+    paddingHorizontal: 13,
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+  aiBannerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  aiBannerOnlineDot: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#34d399',
+    borderWidth: 1.5,
+    borderColor: '#1f4fb2',
+  },
+  aiBannerTitle: { color: '#ffffff', fontSize: 14, fontWeight: '800' },
+  aiBannerTag: {
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 5,
+  },
+  aiBannerTagText: { color: '#ffffff', fontSize: 10, fontWeight: '800' },
+  aiBannerSub: { color: '#dbeafe', fontSize: 11.5, marginTop: 2 },
   subtitle: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500' },
   searchBox: {
     marginTop: 10,

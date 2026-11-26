@@ -15,12 +15,10 @@
       "package": "com.crowndental.patient",
       "versionCode": 1,
       "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.CAMERA"
       ],
       "adaptiveIcon": {
-        "backgroundColor": "#009165",
+        "backgroundColor": "#ffffff",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"

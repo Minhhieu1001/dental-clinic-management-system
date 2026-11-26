@@ -1,5 +1,4 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import ArrowLeft from 'lucide-react-native/icons/arrow-left';
 import Check from 'lucide-react-native/icons/check';
 import ChevronRight from 'lucide-react-native/icons/chevron-right';
 import CircleAlert from 'lucide-react-native/icons/circle-alert';
@@ -14,6 +13,7 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Linking,
   Pressable,
   ScrollView,
@@ -124,12 +124,16 @@ export default function PatientLoginScreen() {
             <View style={styles.decorCircleSmall} />
 
             <View style={styles.topNav}>
-              <Pressable
-                style={styles.navPill}
-                onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))}>
-                <ArrowLeft size={16} color="#ffffff" />
-                <Text style={styles.navPillText}>Trang chủ</Text>
-              </Pressable>
+              <View style={styles.logoBrandPill}>
+                <View style={styles.logoImgBox}>
+                  <Image
+                    source={require('../../assets/images/crown-logo.png')}
+                    style={styles.logoImg}
+                    resizeMode="contain"
+                  />
+                </View>
+                <Text style={styles.navPillText}>Crown Dental</Text>
+              </View>
               <Pressable style={styles.navPill} onPress={() => Linking.openURL('tel:19008059')}>
                 <Phone size={13} color="#ffffff" />
                 <Text style={styles.navPillText}>1900 8059</Text>
@@ -329,6 +333,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  logoBrandPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingRight: 12,
+    paddingLeft: 5,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  logoImgBox: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoImg: {
+    width: 20,
+    height: 20,
   },
   navPill: {
     flexDirection: 'row',

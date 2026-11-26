@@ -1,4 +1,4 @@
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
 import Calendar from 'lucide-react-native/icons/calendar';
 import FileText from 'lucide-react-native/icons/file-text';
 import Home from 'lucide-react-native/icons/house';
@@ -7,10 +7,15 @@ import Receipt from 'lucide-react-native/icons/receipt';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HeaderRightActions } from '../../src/components/HeaderRightActions';
 import { Colors } from '../../src/constants/theme';
+import { useAuth } from '../../src/contexts/AuthContext';
 
 export default function TabLayout() {
+  const { user, isLoading } = useAuth();
   const insets = useSafeAreaInsets();
   const bottom = Math.max(insets.bottom, 8);
+
+  if (isLoading) return null;
+  if (!user) return <Redirect href="/(auth)/login" />;
 
   return (
     <Tabs
