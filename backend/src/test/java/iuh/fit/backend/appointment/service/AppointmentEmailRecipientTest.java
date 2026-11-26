@@ -10,7 +10,7 @@ import java.util.Map;
 import static org.mockito.Mockito.*;
 
 class AppointmentEmailRecipientTest {
-    @Test void resendDoesNotRedirectBookingEmailToTestMailbox() {
+    @Test void resendRedirectsBookingEmailToTestMailboxWhenConfigured() {
         RestClient.Builder builder = mock(RestClient.Builder.class);
         RestClient client = mock(RestClient.class);
         RestClient.RequestBodyUriSpec request = mock(RestClient.RequestBodyUriSpec.class, RETURNS_SELF);
@@ -21,13 +21,13 @@ class AppointmentEmailRecipientTest {
         when(request.retrieve()).thenReturn(response);
         EmailServiceImpl service = new EmailServiceImpl(mock(JavaMailSender.class), builder);
         ReflectionTestUtils.setField(service, "resendApiKey", "fake-test-key");
-        ReflectionTestUtils.setField(service, "resendFrom", "sender@example.com");
+        ReflectionTestUtils.setField(service, "resendFrom", "Crown Dental <onboarding@resend.dev>");
         ReflectionTestUtils.setField(service, "resendTestRedirect", "test@example.com");
 
         service.sendToRecipient("form@example.com", "Appointment APT-123", "Confirmation");
 
         verify(request).body(argThat((Object body) -> body instanceof Map<?, ?> map
-                && List.of("form@example.com").equals(map.get("to"))
-                && "Appointment APT-123".equals(map.get("subject"))));
+                && List.of("test@example.com").equals(map.get("to"))
+                && "[Gửi tới: form@example.com] Appointment APT-123".equals(map.get("subject"))));
     }
 }

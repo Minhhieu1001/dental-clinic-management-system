@@ -9,7 +9,8 @@ interface RetryableRequestConfig extends InternalAxiosRequestConfig {
 
 const api = axios.create({
   baseURL: API_V1_URL,
-  timeout: 15000,
+  // Tăng timeout lên 60s để không bị ngắt kết nối khi Render (gói Free) khởi động lại sau khi ngủ
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
     'X-Client-Type': 'mobile',

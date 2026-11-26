@@ -1,0 +1,26 @@
+# Ignore backend & web frontend when uploading to Expo EAS Build
+backend/
+frontend/
+.idea/
+.vscode/
+
+# Dependencies & build outputs
+**/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+mobile/ios/
+mobile/android/
+*.log
+*.tsbuildinfo
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Ignore local LAN .env, but ALLOW mobile/.env.production for cloud APK builds
+.env
+mobile/.env
+mobile/.env*.local
+!mobile/.env.production

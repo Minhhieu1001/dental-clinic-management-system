@@ -30,8 +30,9 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
+# local & build env files (không đẩy lên GitHub)
 .env
+.env.*
 .env*.local
 !.env.example
 

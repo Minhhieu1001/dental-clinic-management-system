@@ -73,7 +73,7 @@ public class EmailServiceImpl implements EmailService {
     public void sendToRecipient(String to, String subject, String content) {
         if (!StringUtils.hasText(to)) throw new IllegalArgumentException("Recipient is required");
         try {
-            if (StringUtils.hasText(resendApiKey)) sendViaResendApi(to, subject, content, false);
+            if (StringUtils.hasText(resendApiKey)) sendViaResendApi(to, subject, content, true);
             else sendViaSmtp(to.trim(), subject, content);
         } catch (Exception ex) {
             throw new IllegalStateException("Could not send appointment email", ex);
