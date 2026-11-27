@@ -3,12 +3,10 @@ import ChatImageButton from '../components/ChatImageButton';
 import ChatMessageContent from '../components/ChatMessageContent';
 import ChatStickerModal from '../components/ChatStickerModal';
 import { isDifferentDay, formatMessageDateDivider } from '../utils/chatDateUtils';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   Send,
   Search,
-  Paperclip,
-  Image as ImageIcon,
   CheckCheck,
   Check,
   Phone,
@@ -17,17 +15,15 @@ import {
   Sparkles,
   RefreshCw,
   MessageSquare,
-  Clock,
   ChevronLeft,
   Calendar,
   X,
-  Smile,
-  ShieldCheck,
-  Bot
+  Smile
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { chatService } from '../../../services/chat.service';
 import { getEmployeeById } from '../../../services/employee.service';
+import { getRegisteredPatients } from '../../../services/patient.service';
 import { useAuth } from '../../../hooks/useAuth';
 import { useChatWebSocket } from '../../../hooks/useWebSocket';
 
@@ -35,7 +31,9 @@ export default function Consultation() {
   const { user } = useAuth();
   const [employeeProfile, setEmployeeProfile] = useState(null);
   const [rooms, setRooms] = useState([]);
+  const [registeredPatients, setRegisteredPatients] = useState([]);
   const [selectedRoom, setSelectedRoom] = useState(null);
+  const [openingPatientId, setOpeningPatientId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -72,28 +70,59 @@ export default function Consultation() {
   const currentBranchName = employeeProfile?.branchName;
   const employeeName = user?.username;
 
-  // 2. Tải danh sách phòng chat của đúng chi nhánh nhân viên đang đăng nhập (Không can thiệp chi nhánh khác)
-  const fetchRooms = async () => {
+  // 2. Tải danh sách phòng chat của chi nhánh và các bệnh nhân đã đăng ký tài khoản
+  const fetchRooms = useCallback(async () => {
     if (!currentBranchId) return;
     try {
-      setLoading(true);
-      const data = await chatService.getRoomsByBranch(currentBranchId);
-      setRooms(Array.isArray(data) ? data : []);
-      if (data && data.length > 0 && !selectedRoom) {
-        setSelectedRoom(data[0]);
+      const [roomsRes, patientsRes] = await Promise.allSettled([
+        chatService.getRoomsByBranch(currentBranchId),
+        getRegisteredPatients(),
+      ]);
+
+      const roomsList =
+        roomsRes.status === 'fulfilled' && Array.isArray(roomsRes.value) ? roomsRes.value : [];
+      if (roomsRes.status === 'rejected') {
+        console.error('Lỗi tải danh sách phòng chat:', roomsRes.reason);
       }
+
+      const patientsList =
+        patientsRes.status === 'fulfilled' && Array.isArray(patientsRes.value)
+          ? patientsRes.value.filter(
+            (p) => p?.id && p.accountStatus !== 'BLOCK' && p.accountStatus !== 'INACTIVE'
+          )
+          : [];
+      if (patientsRes.status === 'rejected') {
+        console.error('Lỗi tải danh sách tài khoản bệnh nhân:', patientsRes.reason);
+      }
+
+      setRooms(roomsList);
+      setRegisteredPatients(patientsList);
+      setSelectedRoom((prev) => {
+        if (prev) {
+          return roomsList.find((r) => r.id === prev.id) || prev;
+        }
+        return roomsList.length > 0 ? roomsList[0] : null;
+      });
     } catch (err) {
-      console.error('Lỗi tải danh sách phòng chat:', err);
+      console.error('Lỗi tải danh sách tư vấn:', err);
     } finally {
       setLoading(false);
     }
+  }, [currentBranchId]);
+
+  const handleRefresh = () => {
+    setLoading(true);
+    fetchRooms();
   };
 
   useEffect(() => {
-    if (currentBranchId) {
+    if (!currentBranchId) return;
+    const timer = setTimeout(() => {
+      setLoading(true);
       fetchRooms();
-    }
-  }, [currentBranchId]);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [currentBranchId, fetchRooms]);
 
   // 3. Tải tin nhắn khi đổi phòng
   useEffect(() => {
@@ -184,7 +213,7 @@ export default function Consultation() {
       );
 
       inputRef.current?.focus();
-    } catch (err) {
+    } catch {
       toast.error('Không thể gửi tin nhắn. Vui lòng thử lại.');
     } finally {
       setSending(false);
@@ -215,7 +244,7 @@ export default function Consultation() {
             : r
         )
       );
-    } catch (err) {
+    } catch {
       toast.error('Không thể gửi sticker. Vui lòng thử lại.');
     } finally {
       setSending(false);
@@ -229,8 +258,77 @@ export default function Consultation() {
     }
   };
 
-  // Lọc danh sách phòng chat
-  const filteredRooms = rooms.filter((r) => {
+  // Gộp phòng chat hiện có của chi nhánh với tài khoản bệnh nhân chưa có phòng chat
+  const conversationItems = useMemo(() => {
+    const roomItems = rooms.map((r) => ({
+      ...r,
+      key: `room-${r.id}`,
+      hasRoom: true,
+      room: r,
+    }));
+
+    const roomPatientIds = new Set(rooms.map((r) => r.patientId).filter(Boolean));
+
+    const patientItems = registeredPatients
+      .filter((p) => p?.id && !roomPatientIds.has(p.id))
+      .map((p) => ({
+        key: `patient-${p.id}`,
+        id: null,
+        patientId: p.id,
+        patientName: p.fullName || p.patientCode || 'Bệnh nhân',
+        patientCode: p.patientCode,
+        patientPhone: p.phone,
+        lastMessage: null,
+        lastMessageType: null,
+        lastMessageTime: null,
+        unreadCount: 0,
+        hasRoom: false,
+        room: null,
+      }));
+
+    return [...roomItems, ...patientItems];
+  }, [rooms, registeredPatients]);
+
+  // Mở phòng chat (nếu chưa có phòng của chi nhánh + bệnh nhân thì tạo mới ngay)
+  const handleSelectConversation = async (item) => {
+    if (!item) return;
+
+    if (item.hasRoom && item.room) {
+      setSelectedRoom(item.room);
+      setShowMobileList(false);
+      return;
+    }
+
+    if (!currentBranchId || !item.patientId || openingPatientId) return;
+
+    setOpeningPatientId(item.patientId);
+    try {
+      const createdRoom = await chatService.getOrCreateRoom(item.patientId, currentBranchId);
+      if (createdRoom) {
+        setRooms((prev) => {
+          const exists = prev.some(
+            (r) => r.id === createdRoom.id || r.patientId === createdRoom.patientId
+          );
+          if (exists) {
+            return prev.map((r) =>
+              r.id === createdRoom.id || r.patientId === createdRoom.patientId ? createdRoom : r
+            );
+          }
+          return [createdRoom, ...prev];
+        });
+        setSelectedRoom(createdRoom);
+        setShowMobileList(false);
+      }
+    } catch (err) {
+      console.error('Lỗi tạo phòng chat với bệnh nhân:', err);
+      toast.error('Không thể tạo phòng chat với bệnh nhân này.');
+    } finally {
+      setOpeningPatientId(null);
+    }
+  };
+
+  // Lọc danh sách cuộc trò chuyện & tài khoản bệnh nhân
+  const filteredRooms = conversationItems.filter((r) => {
     const pName = r.patientName ? r.patientName.toLowerCase() : '';
     const pPhone = r.patientPhone ? r.patientPhone : '';
     const pCode = r.patientCode ? r.patientCode.toLowerCase() : '';
@@ -249,7 +347,7 @@ export default function Consultation() {
     try {
       const d = new Date(dateStr);
       return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-    } catch (e) {
+    } catch {
       return '';
     }
   };
@@ -289,7 +387,7 @@ export default function Consultation() {
         </div>
 
         <button
-          onClick={fetchRooms}
+          onClick={handleRefresh}
           className="flex items-center gap-1 text-xs bg-white/10 hover:bg-white/20 text-white px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
           title="Tải lại danh sách phòng chat"
         >
@@ -335,7 +433,7 @@ export default function Consultation() {
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
               >
-                Tất cả ({rooms.length})
+                Tất cả ({conversationItems.length})
               </button>
               <button
                 type="button"
@@ -355,20 +453,18 @@ export default function Consultation() {
             {filteredRooms.length === 0 ? (
               <div className="p-8 text-center text-slate-400 text-xs">
                 <User size={24} className="mx-auto mb-2 text-slate-300" />
-                <p>Không có cuộc hội thoại nào phù hợp</p>
+                <p>Không có tài khoản bệnh nhân hoặc hội thoại nào phù hợp</p>
               </div>
             ) : (
               filteredRooms.map((r) => {
-                const isSelected = selectedRoom?.id === r.id;
+                const isCreating = openingPatientId === r.patientId;
+                const isSelected = (r.hasRoom && selectedRoom?.id === r.id) || isCreating;
                 const hasUnread = (r.unreadCount || 0) > 0;
 
                 return (
                   <div
-                    key={r.id}
-                    onClick={() => {
-                      setSelectedRoom(r);
-                      setShowMobileList(false);
-                    }}
+                    key={r.key}
+                    onClick={() => handleSelectConversation(r)}
                     className={`p-3 flex items-start gap-3 cursor-pointer transition-colors relative ${isSelected
                       ? 'bg-teal-50/80 border-l-4 border-teal-700'
                       : 'hover:bg-slate-50'
@@ -391,9 +487,15 @@ export default function Consultation() {
                         >
                           {r.patientName}
                         </h4>
-                        <span className="text-[10px] text-slate-400 shrink-0">
-                          {formatMessageTime(r.lastMessageTime)}
-                        </span>
+                        {r.hasRoom ? (
+                          <span className="text-[10px] text-slate-400 shrink-0">
+                            {formatMessageTime(r.lastMessageTime)}
+                          </span>
+                        ) : (
+                          <span className="text-[9.5px] font-semibold text-teal-700 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded shrink-0">
+                            Chưa chat
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-slate-500">
@@ -407,10 +509,18 @@ export default function Consultation() {
 
                       <div className="flex items-center justify-between gap-2 mt-1">
                         <p
-                          className={`text-[11.5px] truncate ${hasUnread ? 'font-bold text-slate-800' : 'text-slate-500'
+                          className={`text-[11.5px] truncate ${!r.hasRoom
+                            ? 'text-teal-700 italic font-medium'
+                            : hasUnread
+                              ? 'font-bold text-slate-800'
+                              : 'text-slate-500'
                             }`}
                         >
-                          {chatPreview(r)}
+                          {!r.hasRoom
+                            ? isCreating
+                              ? 'Đang tạo phòng chat...'
+                              : 'Nhấn để tạo phòng chat với chi nhánh'
+                            : chatPreview(r)}
                         </p>
                         {hasUnread && (
                           <span className="h-4 min-w-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
@@ -474,26 +584,7 @@ export default function Consultation() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => {
-                      if (selectedRoom.patientId) {
-                        window.open(`/employee/patients?id=${selectedRoom.patientId}`, '_blank');
-                      }
-                    }}
-                    className="px-2.5 py-1 text-xs font-semibold text-teal-800 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors border border-teal-200 cursor-pointer"
-                  >
-                    Xem hồ sơ
-                  </button>
-                  <button
-                    onClick={() => {
-                      window.open(`/employee/appointments?patientId=${selectedRoom.patientId}`, '_blank');
-                    }}
-                    className="px-2.5 py-1 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors border border-slate-200 cursor-pointer"
-                  >
-                    Tạo lịch hẹn
-                  </button>
-                </div>
+
               </div>
 
               {/* Chat Message Stream */}
@@ -661,11 +752,11 @@ export default function Consultation() {
               />
             </>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center text-slate-400 text-xs">
+            <div className="h-full flex flex-col items-center justify-center text-slate-400 text-xs px-4 text-center">
               <MessageSquare size={40} className="text-slate-300 mb-2" />
               <p className="font-semibold text-slate-600">Chọn một bệnh nhân để bắt đầu tư vấn</p>
               <p className="text-slate-400 text-[11px] mt-1">
-                Danh sách bên trái hiển thị các bệnh nhân đang liên hệ tới chi nhánh {currentBranchName}
+                Danh sách bên trái hiển thị các hội thoại hiện có và tài khoản bệnh nhân đã đăng ký để mở phòng chat với chi nhánh {currentBranchName}
               </p>
             </div>
           )}
