@@ -44,7 +44,6 @@ const emptyForm = {
   maxDiscountAmount: '',
   minOrderAmount: '',
   usageLimit: '',
-  applyAllServices: false,
   status: 'ACTIVE',
   startDate: '',
   endDate: '',
@@ -77,6 +76,46 @@ const isVoucherPromo = (promo) => {
     (promo.discountAmount &&
       Number(promo.discountAmount) > 0 &&
       (!promo.discountPercent || Number(promo.discountPercent) === 0))
+  )
+}
+
+const getAppliedServicesText = (promo) => {
+  if (isVoucherPromo(promo)) return 'Toàn bộ hóa đơn'
+  const services = promo.services || []
+  if (services.length === 0) return 'Chưa chọn dịch vụ'
+  const names = services.slice(0, 3).map((service) => service.serviceName).join(', ')
+  return services.length > 3 ? `${names} (+${services.length - 3} dịch vụ)` : names
+}
+
+const renderAppliedServices = (promo, active) => {
+  const services = isVoucherPromo(promo) ? [] : promo.services || []
+  if (isVoucherPromo(promo)) {
+    return <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${active
+      ? 'border-violet-200 bg-violet-50 text-violet-700'
+      : 'border-slate-200 bg-slate-50 text-slate-600'}`}>Toàn bộ hóa đơn</span>
+  }
+  if (services.length === 0) {
+    return <span className="text-[11px] text-slate-400">Chưa chọn dịch vụ</span>
+  }
+  return (
+    <>
+      {services.slice(0, 3).map((service) => (
+        <span
+          key={service.id}
+          title={service.serviceName}
+          className={`max-w-36 truncate rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${active
+            ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+            : 'border-slate-200 bg-slate-50 text-slate-600'}`}
+        >
+          {service.serviceName}
+        </span>
+      ))}
+      {services.length > 3 && (
+        <span className="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
+          +{services.length - 3} dịch vụ
+        </span>
+      )}
+    </>
   )
 }
 
@@ -279,7 +318,6 @@ export default function Promotions() {
       discountPercent: '',
       maxDiscountAmount: '',
       serviceIds: [],
-      applyAllServices: false,
     }))
   }
 
@@ -331,7 +369,6 @@ export default function Promotions() {
       maxDiscountAmount: promotion.maxDiscountAmount || '',
       minOrderAmount: promotion.minOrderAmount || '',
       usageLimit: promotion.usageLimit || '',
-      applyAllServices: Boolean(promotion.applyAllServices),
       status: promotion.status || 'ACTIVE',
       startDate: toInputDate(promotion.startDate),
       endDate: toInputDate(promotion.endDate),
@@ -426,11 +463,11 @@ export default function Promotions() {
         isVoucher && form.usageLimit !== '' && form.usageLimit != null
           ? parseInt(form.usageLimit)
           : null,
-      applyAllServices: isVoucher ? false : Boolean(form.applyAllServices),
+      applyAllServices: false,
       status: form.status || 'ACTIVE',
       startDate: toApiLocalDateTime(form.startDate),
       endDate: toApiLocalDateTime(form.endDate),
-      serviceIds: isVoucher ? [] : form.applyAllServices ? [] : form.serviceIds || [],
+      serviceIds: isVoucher ? [] : form.serviceIds || [],
     }
 
     try {
@@ -1094,7 +1131,6 @@ export default function Promotions() {
               <div className="divide-y divide-slate-100">
                 {processedPromotions.map((promo) => {
                   const status = getPromotionStatus(promo)
-                  const hasMoreServices = (promo.services || []).length > 3
 
                   return (
                     <div
@@ -1165,46 +1201,9 @@ export default function Promotions() {
                             </span>
                           </div>
 
-                          {/* Applied Services (Tối đa 3 dịch vụ + Số lượng còn lại) */}
-                          <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-600">
-                            <span className="font-semibold text-slate-400 text-[10px] uppercase tracking-wider">
-                              Áp dụng:
-                            </span>
-                            {promo.applyAllServices ? (
-                              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
-                                <CheckCircle2 className="w-3 h-3" />
-                                Toàn bộ dịch vụ / Hóa đơn
-                              </span>
-                            ) : (promo.services || []).length > 0 ? (
-                              <>
-                                {(promo.services || []).slice(0, 3).map((svc) => (
-                                  <span
-                                    key={svc.id}
-                                    className="inline-block rounded-md bg-slate-100 border border-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-700 max-w-[180px] truncate"
-                                    title={svc.serviceName}
-                                  >
-                                    {svc.serviceName}
-                                  </span>
-                                ))}
-                                {hasMoreServices && (
-                                  <button
-                                    type="button"
-                                    onClick={() => openDetailInspect(promo)}
-                                    className="inline-flex items-center rounded-md bg-teal-50 hover:bg-teal-100 border border-teal-200 px-2 py-0.5 text-[11px] font-bold text-teal-800 cursor-pointer transition shadow-2xs"
-                                    title={(promo.services || [])
-                                      .slice(3)
-                                      .map((s) => s.serviceName)
-                                      .join(', ')}
-                                  >
-                                    +{(promo.services || []).length - 3} dịch vụ khác
-                                  </button>
-                                )}
-                              </>
-                            ) : (
-                              <span className="text-slate-400 text-[11px] italic">
-                                Áp dụng trên toàn hóa đơn
-                              </span>
-                            )}
+                          <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 min-w-0">
+                            <span className="font-semibold text-slate-400 uppercase tracking-wider shrink-0">Áp dụng:</span>
+                            {renderAppliedServices(promo, promo.isValid === true)}
                           </div>
 
                           {/* Time */}
@@ -1340,20 +1339,9 @@ export default function Promotions() {
                         </div>
 
                         <div className="pt-2 border-t border-slate-100 space-y-2">
-                          <div className="text-[11px] text-slate-500 line-clamp-1">
-                            <span className="font-semibold text-slate-700">Áp dụng: </span>
-                            {promo.applyAllServices ? (
-                              <span className="font-semibold text-emerald-700">
-                                Toàn bộ dịch vụ / Hóa đơn
-                              </span>
-                            ) : (promo.services && promo.services.length > 0) ? (
-                              <span>
-                                {promo.services.slice(0, 3).map((s) => s.serviceName).join(', ')}
-                                {promo.services.length > 3 ? ` (+${promo.services.length - 3})` : ''}
-                              </span>
-                            ) : (
-                              <span className="italic text-slate-400">Áp dụng trên hóa đơn</span>
-                            )}
+                          <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500" title={getAppliedServicesText(promo)}>
+                            <span className="font-semibold text-slate-400 uppercase tracking-wider">Áp dụng: </span>
+                            {renderAppliedServices(promo, promo.isValid === true)}
                           </div>
 
                           <div className="flex items-center justify-end gap-1.5 pt-1">

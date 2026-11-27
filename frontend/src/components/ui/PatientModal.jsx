@@ -73,6 +73,7 @@ export default function PatientModal({
   const isEdit = type === 'EDIT';
   const isView = type === 'VIEW';
   const isReadOnly = isView;
+  const isMedicalReadOnly = isReadOnly || role === 'EMPLOYEE';
   const branchScope = isCreate ? `${role}:${staffId || 'create'}` : `patient:${payload?.id || ''}`;
 
   useEffect(() => {
@@ -161,53 +162,53 @@ export default function PatientModal({
 
   useEffect(() => {
     const timer = setTimeout(() => {
-    if (open && payload && (type === 'EDIT' || type === 'VIEW')) {
-      setFormData({
-        fullName: payload.fullName || payload.patientName || '',
-        phone: payload.phone || payload.phoneNumber || '',
-        cccd: payload.cccd || '',
-        email: payload.email || payload.user?.email || '',
-        nationality: payload.nationality || 'Việt Nam',
-        hometown: payload.hometown || '',
-        job: payload.job || '',
-        contactName: payload.contactName || '',
-        contactPhone: payload.contactPhone || '',
-        contactRelationship: payload.contactRelationship || '',
-        gender: payload.gender || 'MALE',
-        dateOfBirth: payload.dateOfBirth ? payload.dateOfBirth.split('T')[0] : '',
-        address: payload.address || '',
-        systemicDisease: Array.isArray(payload.systemicDisease)
-          ? payload.systemicDisease
-          : typeof payload.systemicDisease === 'string'
-            ? payload.systemicDisease.split(',').map((s) => s.trim()).filter(Boolean)
-            : [],
-        allergies: payload.allergies || '',
-        currentMedications: payload.currentMedications || '',
-        surgicalHistory: payload.surgicalHistory || payload.pastSurgeries || '',
-        notes: payload.notes || '',
-      });
-    } else if (type === 'CREATE') {
-      setFormData({
-        fullName: '',
-        phone: '',
-        cccd: '',
-        email: '',
-        nationality: 'Việt Nam',
-        hometown: '',
-        job: '',
-        contactName: '',
-        contactPhone: '',
-        contactRelationship: '',
-        gender: 'MALE',
-        dateOfBirth: '',
-        address: '',
-        systemicDisease: [],
-        allergies: '',
-        currentMedications: '',
-        surgicalHistory: '',
-        notes: '',
-      });
-    }
+      if (open && payload && (type === 'EDIT' || type === 'VIEW')) {
+        setFormData({
+          fullName: payload.fullName || payload.patientName || '',
+          phone: payload.phone || payload.phoneNumber || '',
+          cccd: payload.cccd || '',
+          email: payload.email || payload.user?.email || '',
+          nationality: payload.nationality || 'Việt Nam',
+          hometown: payload.hometown || '',
+          job: payload.job || '',
+          contactName: payload.contactName || '',
+          contactPhone: payload.contactPhone || '',
+          contactRelationship: payload.contactRelationship || '',
+          gender: payload.gender || 'MALE',
+          dateOfBirth: payload.dateOfBirth ? payload.dateOfBirth.split('T')[0] : '',
+          address: payload.address || '',
+          systemicDisease: Array.isArray(payload.systemicDisease)
+            ? payload.systemicDisease
+            : typeof payload.systemicDisease === 'string'
+              ? payload.systemicDisease.split(',').map((s) => s.trim()).filter(Boolean)
+              : [],
+          allergies: payload.allergies || '',
+          currentMedications: payload.currentMedications || '',
+          surgicalHistory: payload.surgicalHistory || payload.pastSurgeries || '',
+          notes: payload.notes || '',
+        });
+      } else if (type === 'CREATE') {
+        setFormData({
+          fullName: '',
+          phone: '',
+          cccd: '',
+          email: '',
+          nationality: 'Việt Nam',
+          hometown: '',
+          job: '',
+          contactName: '',
+          contactPhone: '',
+          contactRelationship: '',
+          gender: 'MALE',
+          dateOfBirth: '',
+          address: '',
+          systemicDisease: [],
+          allergies: '',
+          currentMedications: '',
+          surgicalHistory: '',
+          notes: '',
+        });
+      }
     }, 0);
     return () => clearTimeout(timer);
   }, [open, type, payload]);
@@ -216,7 +217,7 @@ export default function PatientModal({
 
   // Handle disease checkbox toggle
   const handleToggleDisease = (disease) => {
-    if (isReadOnly) return;
+    if (isMedicalReadOnly) return;
     setFormData((prev) => {
       const exists = prev.systemicDisease.includes(disease);
       return {
@@ -230,7 +231,7 @@ export default function PatientModal({
   };
 
   const applyQuickMedicalValue = (field, value) => {
-    if (isReadOnly) return;
+    if (isMedicalReadOnly) return;
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -625,9 +626,16 @@ export default function PatientModal({
 
           {/* Medical History Section */}
           <div className="space-y-4 pt-3 border-t border-slate-100">
-            <h4 className="text-xs font-bold text-rose-800 uppercase tracking-wide flex items-center gap-1.5">
-              <HeartPulse size={15} className="text-rose-600" /> Tiền Sử Y Tế & Lâm Sàng
-            </h4>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h4 className="text-xs font-bold text-rose-800 uppercase tracking-wide flex items-center gap-1.5">
+                <HeartPulse size={15} className="text-rose-600" /> Tiền Sử Y Tế & Lâm Sàng
+              </h4>
+              {role === 'EMPLOYEE' && (
+                <span className="rounded-md border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-500">
+                  Chỉ Bác sĩ thao tác · Nhân viên chỉ xem
+                </span>
+              )}
+            </div>
 
             {/* Bệnh lý toàn thân Checkboxes */}
             <div>
@@ -640,17 +648,19 @@ export default function PatientModal({
                   return (
                     <label
                       key={dis}
-                      className={`flex items-center gap-2 text-xs p-2 rounded-md border transition-all cursor-pointer select-none ${isChecked
-                        ? 'bg-rose-50 text-rose-900 border-rose-300 font-bold shadow-2xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100/80'
-                        }`}
+                      className={`flex items-center gap-2 text-xs p-2 rounded-md border transition-all select-none ${isChecked
+                          ? 'bg-rose-50 text-rose-900 border-rose-300 font-bold shadow-2xs'
+                          : isMedicalReadOnly
+                            ? 'bg-slate-100/70 text-slate-500 border-slate-200'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100/80'
+                        } ${isMedicalReadOnly ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'}`}
                     >
                       <input
                         type="checkbox"
                         checked={isChecked}
-                        disabled={isReadOnly}
+                        disabled={isMedicalReadOnly}
                         onChange={() => handleToggleDisease(dis)}
-                        className="rounded text-rose-600 focus:ring-rose-500 cursor-pointer"
+                        className={`rounded text-rose-600 focus:ring-rose-500 ${isMedicalReadOnly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                       />
                       <span className="truncate">{dis}</span>
                     </label>
@@ -670,22 +680,27 @@ export default function PatientModal({
                   value={formData.allergies}
                   onChange={(e) => setFormData({ ...formData, allergies: e.target.value })}
                   placeholder="VD: Dị ứng Thuốc tê Lidocaine..."
-                  readOnly={isReadOnly}
-                  className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
+                  readOnly={isMedicalReadOnly}
+                  disabled={isMedicalReadOnly}
+                  className={`w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm font-semibold transition-all shadow-2xs ${isMedicalReadOnly
+                      ? 'bg-slate-100 text-slate-500 cursor-not-allowed'
+                      : 'bg-white text-slate-900 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none'
+                    }`}
                 />
-                <div className="flex gap-1.5 mt-1.5">
-                  {QUICK_MEDICAL_VALUES.allergies.map((value) => (
-                    <button
-                      key={value}
-                      type="button"
-                      disabled={isReadOnly}
-                      onClick={() => applyQuickMedicalValue('allergies', value)}
-                      className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-800 hover:bg-amber-100 cursor-pointer"
-                    >
-                      {value}
-                    </button>
-                  ))}
-                </div>
+                {!isMedicalReadOnly && (
+                  <div className="flex gap-1.5 mt-1.5">
+                    {QUICK_MEDICAL_VALUES.allergies.map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => applyQuickMedicalValue('allergies', value)}
+                        className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-800 hover:bg-amber-100 cursor-pointer"
+                      >
+                        {value}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -697,22 +712,27 @@ export default function PatientModal({
                   value={formData.currentMedications}
                   onChange={(e) => setFormData({ ...formData, currentMedications: e.target.value })}
                   placeholder="VD: Aspirin 81mg, Insulin..."
-                  readOnly={isReadOnly}
-                  className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
+                  readOnly={isMedicalReadOnly}
+                  disabled={isMedicalReadOnly}
+                  className={`w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm font-semibold transition-all shadow-2xs ${isMedicalReadOnly
+                      ? 'bg-slate-100 text-slate-500 cursor-not-allowed'
+                      : 'bg-white text-slate-900 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none'
+                    }`}
                 />
-                <div className="flex gap-1.5 mt-1.5">
-                  {QUICK_MEDICAL_VALUES.currentMedications.map((value) => (
-                    <button
-                      key={value}
-                      type="button"
-                      disabled={isReadOnly}
-                      onClick={() => applyQuickMedicalValue('currentMedications', value)}
-                      className="rounded border border-purple-200 bg-purple-50 px-2 py-1 text-[11px] font-semibold text-purple-800 hover:bg-purple-100 cursor-pointer"
-                    >
-                      {value}
-                    </button>
-                  ))}
-                </div>
+                {!isMedicalReadOnly && (
+                  <div className="flex gap-1.5 mt-1.5">
+                    {QUICK_MEDICAL_VALUES.currentMedications.map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => applyQuickMedicalValue('currentMedications', value)}
+                        className="rounded border border-purple-200 bg-purple-50 px-2 py-1 text-[11px] font-semibold text-purple-800 hover:bg-purple-100 cursor-pointer"
+                      >
+                        {value}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -724,22 +744,27 @@ export default function PatientModal({
                   value={formData.surgicalHistory}
                   onChange={(e) => setFormData({ ...formData, surgicalHistory: e.target.value })}
                   placeholder="VD: Mổ ruột thừa năm 2021..."
-                  readOnly={isReadOnly}
-                  className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
+                  readOnly={isMedicalReadOnly}
+                  disabled={isMedicalReadOnly}
+                  className={`w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm font-semibold transition-all shadow-2xs ${isMedicalReadOnly
+                      ? 'bg-slate-100 text-slate-500 cursor-not-allowed'
+                      : 'bg-white text-slate-900 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none'
+                    }`}
                 />
-                <div className="flex gap-1.5 mt-1.5">
-                  {QUICK_MEDICAL_VALUES.surgicalHistory.map((value) => (
-                    <button
-                      key={value}
-                      type="button"
-                      disabled={isReadOnly}
-                      onClick={() => applyQuickMedicalValue('surgicalHistory', value)}
-                      className="rounded border border-teal-200 bg-teal-50 px-2 py-1 text-[11px] font-semibold text-teal-800 hover:bg-teal-100 cursor-pointer"
-                    >
-                      {value}
-                    </button>
-                  ))}
-                </div>
+                {!isMedicalReadOnly && (
+                  <div className="flex gap-1.5 mt-1.5">
+                    {QUICK_MEDICAL_VALUES.surgicalHistory.map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => applyQuickMedicalValue('surgicalHistory', value)}
+                        className="rounded border border-teal-200 bg-teal-50 px-2 py-1 text-[11px] font-semibold text-teal-800 hover:bg-teal-100 cursor-pointer"
+                      >
+                        {value}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -753,8 +778,12 @@ export default function PatientModal({
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 placeholder="Tiền sử phẫu thuật, lưu ý khi nhổ răng/khám..."
-                readOnly={isReadOnly}
-                className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
+                readOnly={isMedicalReadOnly}
+                disabled={isMedicalReadOnly}
+                className={`w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm font-semibold transition-all shadow-2xs ${isMedicalReadOnly
+                    ? 'bg-slate-100 text-slate-500 cursor-not-allowed'
+                    : 'bg-white text-slate-900 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none'
+                  }`}
               />
             </div>
           </div>

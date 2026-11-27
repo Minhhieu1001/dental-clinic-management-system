@@ -17,6 +17,7 @@ import iuh.fit.backend.promotion.service.PromotionService;
 import lombok.RequiredArgsConstructor;
 import iuh.fit.backend.treatment.entity.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.CacheEvict;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -37,6 +38,7 @@ public class PromotionServiceImpl implements PromotionService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "services", allEntries = true)
     public PromotionResponse createPromotion(PromotionRequest request) {
         validateDates(request);
         var catalog = serviceRepository.findAllForPromotionUpdate();
@@ -47,6 +49,7 @@ public class PromotionServiceImpl implements PromotionService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "services", allEntries = true)
     public PromotionResponse updatePromotion(UUID id, PromotionRequest request) {
         validateDates(request);
         var catalog = serviceRepository.findAllForPromotionUpdate();
@@ -57,6 +60,7 @@ public class PromotionServiceImpl implements PromotionService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "services", allEntries = true)
     public void deletePromotion(UUID id) {
         var catalog = serviceRepository.findAllForPromotionUpdate();
         Promotion promotion = findPromotion(id);
@@ -73,6 +77,7 @@ public class PromotionServiceImpl implements PromotionService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "services", allEntries = true)
     public PromotionResponse extendPromotion(UUID id, int days) {
         if (days <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Số ngày gia hạn phải lớn hơn 0");
@@ -179,12 +184,10 @@ public class PromotionServiceImpl implements PromotionService {
     @Transactional(readOnly = true)
     public List<PromotionResponse> getAdminPromotions() {
         return promotionRepository.findAll().stream()
-                .sorted((first, second) -> {
-                    if (first.getStartDate() != null && second.getStartDate() != null) {
-                        return second.getStartDate().compareTo(first.getStartDate());
-                    }
-                    return 0;
-                })
+                .sorted(Comparator.comparing(Promotion::getCreatedAt,
+                                Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(Promotion::getId,
+                                Comparator.nullsLast(Comparator.reverseOrder())))
                 .map(this::toResponse)
                 .toList();
     }
@@ -217,7 +220,7 @@ public class PromotionServiceImpl implements PromotionService {
 
         boolean applyAll = Boolean.TRUE.equals(request.applyAllServices());
         var services = assignServices(promotion, request.serviceIds(), applyAll, catalog);
-        promotion.setApplyAllServices(false);
+        promotion.setApplyAllServices(applyAll);
 
         String cat = request.category() != null ? request.category().trim() : "";
         if (cat.isEmpty() && !services.isEmpty() && services.get(0).getCategory() != null) {

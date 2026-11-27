@@ -1586,12 +1586,18 @@ export function ClinicalExamProvider({ children }) {
     }
     try {
       setIsLoadingXrayHistory(true);
-      const list = await getXrayAnalysisHistory({
+      let list = await getXrayAnalysisHistory({
         examinationResultId: examinationResultId || undefined,
         medicalRecordId: examinationResultId ? undefined : medicalRecord?.id,
-      });
-      setXrayHistory(list);
-      setXrayAnalysis(list[0] || null);
+      }).catch(() => []);
+      if ((!Array.isArray(list) || list.length === 0) && examinationResultId && medicalRecord?.id) {
+        list = await getXrayAnalysisHistory({
+          medicalRecordId: medicalRecord.id,
+        }).catch(() => []);
+      }
+      const safeList = Array.isArray(list) ? list : [];
+      setXrayHistory(safeList);
+      setXrayAnalysis(safeList[0] || null);
     } catch (err) {
       console.warn('Không tải được lịch sử phân tích X-quang:', err);
       setXrayHistory([]);
@@ -1605,11 +1611,11 @@ export function ClinicalExamProvider({ children }) {
     loadXrayHistory();
   }, [loadXrayHistory]);
 
-  // Gửi phim X-quang cho AI đọc phim
+  // Gửi phim X-quang cho AI đọc phim (hỗ trợ cả phân tích mới và phân tích lại)
   const analyzeXrayFile = async (file, imageType = 'AUTO') => {
     if (!file) return null;
-    if (isHistoricalSession) {
-      toast.error('Đợt khám đã khóa, không thể phân tích phim mới.');
+    if (!examinationResultId) {
+      toast.error('Vui lòng chọn hoặc khởi tạo đợt khám trước khi phân tích phim X-quang.');
       return null;
     }
     const ageYears = patient?.dateOfBirth
@@ -1644,6 +1650,32 @@ export function ClinicalExamProvider({ children }) {
       return null;
     } finally {
       setIsAiAnalyzing(false);
+    }
+  };
+
+  // Phân tích lại phim X-quang đang hiển thị (tự động tải blob từ imageUrl hiện tại và gửi AI đọc lại)
+  const reanalyzeCurrentXray = async (imageType = 'AUTO') => {
+    const imageUrl = xrayAnalysis?.imageUrl;
+    if (!imageUrl) {
+      toast.error('Chưa có phim X-quang nào để phân tích lại!');
+      return null;
+    }
+    try {
+      toast.loading('Đang chuẩn bị phim X-quang để phân tích lại...', { id: 'ai-scan' });
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+        throw new Error('Không thể tải lại file ảnh gốc từ máy chủ.');
+      }
+      const blob = await response.blob();
+      const mimeType = blob.type && blob.type.startsWith('image/') ? blob.type : 'image/jpeg';
+      const ext = mimeType.split('/')[1] || 'jpg';
+      const file = new File([blob], `xray-reanalyze-${Date.now()}.${ext}`, { type: mimeType });
+      return await analyzeXrayFile(file, imageType || xrayAnalysis?.imageType || 'AUTO');
+    } catch (err) {
+      toast.error(err?.message || 'Không thể tải ảnh để phân tích lại. Vui lòng chọn lại file ảnh từ máy tính.', {
+        id: 'ai-scan',
+      });
+      return null;
     }
   };
 
@@ -1766,6 +1798,7 @@ export function ClinicalExamProvider({ children }) {
     isLoadingXrayHistory,
     loadXrayHistory,
     analyzeXrayFile,
+    reanalyzeCurrentXray,
     saveXrayReview,
     isXrayModalOpen,
     setIsXrayModalOpen,

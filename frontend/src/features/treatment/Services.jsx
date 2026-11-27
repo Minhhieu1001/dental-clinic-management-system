@@ -240,6 +240,12 @@ export default function AdminServices() {
       return;
     }
 
+    if ([formData.price, formData.costPrice, formData.estimatedDuration, formData.sortOrder]
+      .some((value) => value !== '' && value != null && (!Number.isFinite(Number(value)) || Number(value) < 0))) {
+      toast.error('Giá, thời lượng và thứ tự hiển thị không được âm.');
+      return;
+    }
+
     try {
       setSubmitting(true);
       const payload = {
@@ -266,6 +272,12 @@ export default function AdminServices() {
       toast.error(errMsg);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const updateNonNegativeNumber = (field, value) => {
+    if (value === '' || (!value.includes('-') && Number(value) >= 0)) {
+      setFormData((previous) => ({ ...previous, [field]: value }));
     }
   };
 
@@ -320,16 +332,9 @@ export default function AdminServices() {
       && Number(price) < Number(service.price);
 
     return (
-      <>
-        <span className={`block font-semibold ${hasDiscount ? 'text-emerald-600' : 'text-slate-900'}`}>
-          {price == null ? 'Chưa có giá' : formatPrice(price)}
-        </span>
-        {hasDiscount && service.promotionTitle && (
-          <span className="block text-[10px] text-emerald-600 font-normal max-w-48 truncate" title={service.promotionTitle}>
-            {service.promotionTitle}
-          </span>
-        )}
-      </>
+      <span className={`block font-semibold ${hasDiscount ? 'text-emerald-600' : 'text-slate-900'}`}>
+        {price == null ? 'Chưa có giá' : formatPrice(price)}
+      </span>
     );
   };
 
@@ -966,7 +971,7 @@ export default function AdminServices() {
                     step="1000"
                     placeholder="VD: 19000000"
                     value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                    onChange={(e) => updateNonNegativeNumber('price', e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-semibold text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#005f73] focus:bg-white"
                   />
                   {formData.price !== '' && (
@@ -985,7 +990,7 @@ export default function AdminServices() {
                     step="1000"
                     placeholder="VD: 8000000"
                     value={formData.costPrice}
-                    onChange={(e) => setFormData({ ...formData, costPrice: e.target.value })}
+                    onChange={(e) => updateNonNegativeNumber('costPrice', e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-normal focus:outline-none focus:ring-1 focus:ring-[#005f73] focus:bg-white"
                   />
                 </div>
@@ -999,7 +1004,7 @@ export default function AdminServices() {
                     step="5"
                     placeholder="VD: 45"
                     value={formData.estimatedDuration}
-                    onChange={(e) => setFormData({ ...formData, estimatedDuration: e.target.value })}
+                    onChange={(e) => updateNonNegativeNumber('estimatedDuration', e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#005f73]"
                   />
                 </div>

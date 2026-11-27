@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Sparkles,
   Upload,
@@ -8,20 +9,19 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCw,
-  FileText,
+  RotateCcw,
   BrainCircuit,
   GitCompareArrows,
   ChevronRight,
-  ImageIcon,
   Loader2,
   CheckCircle2,
   XCircle,
   Clock3,
+  History,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useClinicalExam } from '../ClinicalExamContext';
 import {
-  XRAY_IMAGE_TYPES,
   getImageTypeLabel,
   getSeverityMeta,
   getQuadrantLabel,
@@ -31,14 +31,12 @@ import {
   buildDiagnosisPrefillFromFinding,
 } from '../xrayAiHelpers';
 
-const DECISION_META = {
-  ACCEPTED: { label: 'Đã đồng ý', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle2 },
-  REJECTED: { label: 'Đã bác bỏ', cls: 'bg-slate-100 text-slate-500 border-slate-300', icon: XCircle },
-  PENDING: { label: 'Chờ bác sĩ', cls: 'bg-amber-50 text-amber-700 border-amber-200', icon: Clock3 },
-};
-
-export default function AiAnalysisTab() {
+export default function AiAnalysisTab({ standaloneMode = false }) {
+  const navigate = useNavigate();
   const {
+    patient,
+    medicalRecord,
+    examinationResultId,
     selectedTooth,
     setSelectedTooth,
     examinedTeeth,
@@ -47,7 +45,10 @@ export default function AiAnalysisTab() {
     setAiOverlayEnabled,
     isAiAnalyzing,
     analyzeXrayFile,
+    reanalyzeCurrentXray,
     xrayAnalysis,
+    setXrayAnalysis,
+    xrayHistory,
     setIsXrayModalOpen,
     setActiveTab,
     setPendingDiagnosisPrefill,
@@ -153,7 +154,7 @@ export default function AiAnalysisTab() {
       });
   };
 
-  // Bắt đầu gọi AI phân tích ảnh đã chọn
+  // Bắt đầu gọi AI phân tích ảnh đã chọn hoặc phân tích lại ảnh hiện tại
   const handleStartAnalysis = async () => {
     if (!pendingFile && !xrayAnalysis?.imageUrl) {
       toast.error('Vui lòng chọn hoặc tải phim X-quang lên trước khi phân tích!');
@@ -168,8 +169,11 @@ export default function AiAnalysisTab() {
           setSelectedTooth(res.findings[0].toothNumber);
         }
       }
-    } else {
-      setIsXrayModalOpen(true);
+    } else if (reanalyzeCurrentXray) {
+      const res = await reanalyzeCurrentXray(xrayAnalysis?.imageType || selectedImageType);
+      if (res && res.findings && res.findings.length > 0) {
+        setSelectedTooth(res.findings[0].toothNumber);
+      }
     }
   };
 
@@ -186,7 +190,17 @@ export default function AiAnalysisTab() {
     const clinical = examinedTeeth.find((t) => Number(t.toothNumber) === Number(activeFinding.toothNumber));
     const prefill = buildDiagnosisPrefillFromFinding(activeFinding, primaryDiagnoses, clinical);
     setPendingDiagnosisPrefill(prefill);
-    setActiveTab('diagnosis');
+    if (standaloneMode) {
+      navigate('/dentist/clinical-exam', {
+        state: {
+          patient,
+          examinationResultId,
+          medicalRecordId: medicalRecord?.id,
+        },
+      });
+    } else {
+      setActiveTab('diagnosis');
+    }
     toast.success(`Đã chuyển đề xuất Răng ${activeFinding.toothNumber} sang Bước 3: Chẩn đoán bác sĩ!`);
   };
 
@@ -225,35 +239,71 @@ export default function AiAnalysisTab() {
 
             {/* Các nút hành động */}
             <div className="flex items-center gap-2 flex-wrap">
+              {xrayHistory?.length > 1 && (
+                <div className="flex items-center gap-1.5 rounded border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-700">
+                  <History size={13} className="text-teal-700 shrink-0" />
+                  <select
+                    value={xrayAnalysis?.analysisId || xrayAnalysis?.xrayImageId || ''}
+                    onChange={(e) => {
+                      const found = xrayHistory.find(
+                        (h) => String(h.analysisId || h.xrayImageId) === e.target.value
+                      );
+                      if (found) {
+                        handleCancelPending();
+                        setXrayAnalysis(found);
+                      }
+                    }}
+                    className="bg-transparent text-xs font-semibold text-slate-800 outline-none cursor-pointer max-w-[180px]"
+                  >
+                    {xrayHistory.map((h, i) => (
+                      <option key={h.analysisId || h.xrayImageId || i} value={h.analysisId || h.xrayImageId}>
+                        Phim #{xrayHistory.length - i} · {getImageTypeLabel(h.imageType).split(' (')[0]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={isHistoricalSession || isAiAnalyzing}
-                className="flex items-center gap-1.5 rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer disabled:opacity-40"
+                disabled={isAiAnalyzing}
+                className="shrink-0 whitespace-nowrap flex items-center gap-1.5 rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer disabled:opacity-40"
                 title="Tải ảnh X-quang từ máy tính"
               >
-                <Upload size={13} className="text-teal-700" />
+                <Upload size={13} className="text-teal-700 shrink-0" />
                 <span>{hasImage ? 'Đổi phim khác' : 'Tải phim lên'}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setIsXrayModalOpen(true)}
-                className="flex items-center gap-1.5 rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
+                className="shrink-0 whitespace-nowrap flex items-center gap-1.5 rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
                 title="Mở giao diện phân tích toàn diện trên modal kích thước lớn"
               >
                 <span>Xem phim lớn</span>
               </button>
 
-              {hasImage && !hasAnalyzedData && (
+              {hasImage && (
                 <button
                   type="button"
                   onClick={handleStartAnalysis}
-                  disabled={isAiAnalyzing || isHistoricalSession}
-                  className="flex items-center gap-1.5 rounded-lg bg-teal-700 px-3.5 py-1.5 text-xs font-bold text-white shadow hover:bg-teal-800 disabled:opacity-50 transition-colors cursor-pointer"
+                  disabled={isAiAnalyzing}
+                  className="shrink-0 whitespace-nowrap flex items-center gap-1.5 rounded-lg bg-teal-700 px-3.5 py-1.5 text-xs font-bold text-white shadow hover:bg-teal-800 disabled:opacity-50 transition-colors cursor-pointer"
+                  title={hasAnalyzedData ? 'Chạy AI phân tích lại phim X-quang đang hiển thị' : 'Bắt đầu phân tích AI'}
                 >
-                  <Sparkles size={13} className={isAiAnalyzing ? 'animate-spin' : ''} />
-                  <span>{isAiAnalyzing ? 'Đang phân tích...' : 'Phân tích AI'}</span>
+                  {hasAnalyzedData && !isAiAnalyzing ? (
+                    <RotateCcw size={13} className="shrink-0" />
+                  ) : (
+                    <Sparkles size={13} className={`shrink-0 ${isAiAnalyzing ? 'animate-spin' : ''}`} />
+                  )}
+                  <span>
+                    {isAiAnalyzing
+                      ? 'Đang phân tích...'
+                      : hasAnalyzedData
+                        ? 'Phân tích lại'
+                        : 'Phân tích AI'}
+                  </span>
                 </button>
               )}
             </div>
@@ -439,15 +489,15 @@ export default function AiAnalysisTab() {
 
                   {/* BANNER THAO TÁC KHI VỪA TẢI ẢNH MỚI NHƯNG CHƯA BẤM PHÂN TÍCH */}
                   {!hasAnalyzedData && pendingPreview && (
-                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-lg bg-slate-900/90 border border-slate-700/80 px-3 py-1.5 shadow-lg backdrop-blur-md z-30">
-                      <span className="text-xs text-slate-300 max-w-[160px] truncate">
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-max max-w-[calc(100%-1.5rem)] flex items-center gap-2 rounded-xl bg-slate-900/95 border border-slate-700 px-3 py-2 shadow-xl backdrop-blur-md z-30">
+                      <span className="text-xs font-medium text-slate-200 max-w-[140px] sm:max-w-[200px] truncate">
                         {pendingFile?.name || 'Ảnh vừa tải lên'}
                       </span>
                       <button
                         type="button"
                         onClick={handleCancelPending}
                         disabled={isAiAnalyzing}
-                        className="rounded border border-slate-700 px-2.5 py-1 text-xs text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-40 transition-colors cursor-pointer"
+                        className="shrink-0 whitespace-nowrap rounded-lg border border-slate-600 bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:text-white hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                       >
                         Hủy
                       </button>
@@ -455,9 +505,9 @@ export default function AiAnalysisTab() {
                         type="button"
                         onClick={handleStartAnalysis}
                         disabled={isAiAnalyzing}
-                        className="inline-flex items-center gap-1.5 rounded bg-teal-600 hover:bg-teal-500 px-3 py-1 text-xs font-medium text-white disabled:opacity-50 transition-colors cursor-pointer shadow-xs"
+                        className="shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 px-3.5 py-1.5 text-xs font-bold text-white disabled:opacity-70 disabled:cursor-not-allowed transition-colors cursor-pointer shadow-xs"
                       >
-                        {isAiAnalyzing ? <Loader2 size={13} className="animate-spin" /> : null}
+                        {isAiAnalyzing ? <Loader2 size={13} className="animate-spin shrink-0" /> : null}
                         <span>{isAiAnalyzing ? 'Đang đọc phim...' : 'Bắt đầu phân tích AI'}</span>
                       </button>
                     </div>
@@ -913,27 +963,29 @@ export default function AiAnalysisTab() {
       {/* =========================================================================
        * ĐIỀU HƯỚNG GIỮA CÁC BƯỚC KHÁM
        * ========================================================================= */}
-      <div className="flex items-center justify-between pt-3 border-t border-slate-200">
-        <button
-          type="button"
-          onClick={() => setActiveTab('clinical')}
-          className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
-        >
-          <ArrowLeft size={14} />
-          <span>Quay lại Bước 1: Khám lâm sàng & Sơ đồ răng</span>
-        </button>
-
-        <div className="flex items-center gap-2">
+      {!standaloneMode && (
+        <div className="flex items-center justify-between pt-3 border-t border-slate-200">
           <button
             type="button"
-            onClick={() => setActiveTab('diagnosis')}
-            className="flex items-center gap-1.5 rounded bg-teal-700 px-4 py-2 text-xs font-medium text-white shadow-xs hover:bg-teal-800 transition-colors cursor-pointer"
+            onClick={() => setActiveTab('clinical')}
+            className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
           >
-            <span>Tiếp tục: Bước 3 - Chẩn đoán của bác sĩ</span>
-            <ArrowRight size={13} />
+            <ArrowLeft size={14} />
+            <span>Quay lại Bước 1: Khám lâm sàng & Sơ đồ răng</span>
           </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setActiveTab('diagnosis')}
+              className="flex items-center gap-1.5 rounded bg-teal-700 px-4 py-2 text-xs font-medium text-white shadow-xs hover:bg-teal-800 transition-colors cursor-pointer"
+            >
+              <span>Tiếp tục: Bước 3 - Chẩn đoán của bác sĩ</span>
+              <ArrowRight size={13} />
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

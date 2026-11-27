@@ -17,6 +17,7 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '../../store/authStore';
 
 const COMMON_SYSTEMIC_DISEASES = [
   'Huyết áp cao',
@@ -37,6 +38,8 @@ export default function PatientFormModal({
 }) {
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('PERSONAL'); // 'PERSONAL' | 'MEDICAL'
+  const user = useAuthStore((state) => state.user);
+  const isMedicalReadOnly = user?.role === 'EMPLOYEE';
 
   // Form State
   const [formData, setFormData] = useState({
@@ -116,6 +119,7 @@ export default function PatientFormModal({
 
   // Handle systemic disease checkbox toggle
   const handleToggleDisease = (disease) => {
+    if (isMedicalReadOnly) return;
     setFormData((prev) => {
       const exists = prev.systemicDisease.includes(disease);
       return {
@@ -404,6 +408,11 @@ export default function PatientFormModal({
           {/* TAB 2: TIỀN SỬ Y TẾ & GHI CHÚ BÁC SĨ */}
           {activeTab === 'MEDICAL' && (
             <div className="space-y-4">
+              {isMedicalReadOnly && (
+                <div className="rounded-lg border border-slate-200 bg-slate-100 px-3.5 py-2 text-xs font-semibold text-slate-600">
+                  Phần tiền sử y tế và ghi chú chuyên môn chỉ dành cho Bác sĩ thao tác (Nhân viên chỉ xem).
+                </div>
+              )}
               {/* Bệnh lý toàn thân Checkboxes */}
               <div>
                 <label className="block text-xs font-bold text-slate-800 mb-2 flex items-center gap-1.5 uppercase tracking-wide">
@@ -415,17 +424,20 @@ export default function PatientFormModal({
                     return (
                       <label
                         key={dis}
-                        className={`flex items-center gap-2 text-xs p-2 rounded-md border transition-all cursor-pointer select-none ${
+                        className={`flex items-center gap-2 text-xs p-2 rounded-md border transition-all select-none ${
                           isChecked
                             ? 'bg-rose-50 text-rose-900 border-rose-300 font-bold shadow-2xs'
-                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100/80'
-                        }`}
+                            : isMedicalReadOnly
+                              ? 'bg-slate-100/70 text-slate-500 border-slate-200'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100/80'
+                        } ${isMedicalReadOnly ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'}`}
                       >
                         <input
                           type="checkbox"
                           checked={isChecked}
+                          disabled={isMedicalReadOnly}
                           onChange={() => handleToggleDisease(dis)}
-                          className="rounded text-rose-600 focus:ring-rose-500 cursor-pointer"
+                          className={`rounded text-rose-600 focus:ring-rose-500 ${isMedicalReadOnly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                         />
                         <span className="truncate">{dis}</span>
                       </label>
@@ -446,7 +458,13 @@ export default function PatientFormModal({
                     value={formData.allergies}
                     onChange={(e) => setFormData({ ...formData, allergies: e.target.value })}
                     placeholder="VD: Dị ứng Thuốc tê Lidocaine..."
-                    className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
+                    readOnly={isMedicalReadOnly}
+                    disabled={isMedicalReadOnly}
+                    className={`w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm font-semibold transition-all shadow-2xs ${
+                      isMedicalReadOnly
+                        ? 'bg-slate-100 text-slate-500 cursor-not-allowed'
+                        : 'bg-white text-slate-900 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none'
+                    }`}
                   />
                 </div>
 
@@ -460,7 +478,13 @@ export default function PatientFormModal({
                     value={formData.currentMedications}
                     onChange={(e) => setFormData({ ...formData, currentMedications: e.target.value })}
                     placeholder="VD: Aspirin 81mg, Insulin..."
-                    className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
+                    readOnly={isMedicalReadOnly}
+                    disabled={isMedicalReadOnly}
+                    className={`w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm font-semibold transition-all shadow-2xs ${
+                      isMedicalReadOnly
+                        ? 'bg-slate-100 text-slate-500 cursor-not-allowed'
+                        : 'bg-white text-slate-900 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none'
+                    }`}
                   />
                 </div>
 
@@ -474,7 +498,13 @@ export default function PatientFormModal({
                     value={formData.surgicalHistory}
                     onChange={(e) => setFormData({ ...formData, surgicalHistory: e.target.value })}
                     placeholder="VD: Phẫu thuật mổ ruột thừa 2021..."
-                    className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
+                    readOnly={isMedicalReadOnly}
+                    disabled={isMedicalReadOnly}
+                    className={`w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm font-semibold transition-all shadow-2xs ${
+                      isMedicalReadOnly
+                        ? 'bg-slate-100 text-slate-500 cursor-not-allowed'
+                        : 'bg-white text-slate-900 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none'
+                    }`}
                   />
                 </div>
               </div>
@@ -489,7 +519,13 @@ export default function PatientFormModal({
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   placeholder="Nhập ghi chú lâm sàng, lưu ý điều trị đặc biệt..."
-                  className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-2xs"
+                  readOnly={isMedicalReadOnly}
+                  disabled={isMedicalReadOnly}
+                  className={`w-full rounded-lg border border-slate-300 px-3.5 py-2 text-xs sm:text-sm font-semibold transition-all shadow-2xs ${
+                    isMedicalReadOnly
+                      ? 'bg-slate-100 text-slate-500 cursor-not-allowed'
+                      : 'bg-white text-slate-900 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none'
+                  }`}
                 />
               </div>
             </div>

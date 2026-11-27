@@ -1,4 +1,3 @@
-import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Ticket,
@@ -6,28 +5,23 @@ import {
   UploadCloud,
   X,
   Search,
-  Check,
   AlertCircle,
   Calendar,
   Layers,
-  Image as ImageIcon,
   Loader2,
   Trash2,
   Sparkles,
-  HelpCircle
 } from 'lucide-react'
 
 export default function PromotionFormModal({
   isOpen,
   editingId,
   promoTab,
-  setPromoTab,
   form,
   updateForm,
   handleSwitchPromoTab,
   handleImageUpload,
   uploadingImage,
-  services,
   filteredServices,
   serviceSearch,
   setServiceSearch,
@@ -51,6 +45,12 @@ export default function PromotionFormModal({
       `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
     updateForm('startDate', formatDt(start))
     updateForm('endDate', formatDt(end))
+  }
+
+  const updateNonNegativeNumber = (field, value) => {
+    if (value === '' || (!value.includes('-') && Number(value) >= 0)) {
+      updateForm(field, value)
+    }
   }
 
   return (
@@ -234,7 +234,7 @@ export default function PromotionFormModal({
                         min="1000"
                         step="1000"
                         value={form.discountAmount}
-                        onChange={(e) => updateForm('discountAmount', e.target.value)}
+                        onChange={(e) => updateNonNegativeNumber('discountAmount', e.target.value)}
                         className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-normal text-slate-800 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 bg-white transition"
                         placeholder="VD: 200000 (giảm 200.000đ)"
                       />
@@ -270,7 +270,7 @@ export default function PromotionFormModal({
                         min="0"
                         step="1000"
                         value={form.maxDiscountAmount}
-                        onChange={(e) => updateForm('maxDiscountAmount', e.target.value)}
+                        onChange={(e) => updateNonNegativeNumber('maxDiscountAmount', e.target.value)}
                         className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-normal text-slate-800 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 bg-white transition"
                         placeholder="VD: 500000 (để trống nếu không chặn trần)"
                       />
@@ -305,7 +305,7 @@ export default function PromotionFormModal({
                         type="number"
                         min="1"
                         value={form.usageLimit}
-                        onChange={(e) => updateForm('usageLimit', e.target.value)}
+                        onChange={(e) => updateNonNegativeNumber('usageLimit', e.target.value)}
                         className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-normal text-slate-800 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 bg-white transition"
                         placeholder="VD: 100 (để trống nếu không giới hạn)"
                       />
@@ -348,7 +348,7 @@ export default function PromotionFormModal({
                         max="100"
                         step="0.01"
                         value={form.discountPercent}
-                        onChange={(e) => updateForm('discountPercent', e.target.value)}
+                        onChange={(e) => updateNonNegativeNumber('discountPercent', e.target.value)}
                         className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-normal text-slate-800 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 bg-white transition"
                         placeholder="VD: 20 (tức giảm 20%)"
                       />
@@ -378,7 +378,7 @@ export default function PromotionFormModal({
                         min="0"
                         step="1000"
                         value={form.maxDiscountAmount}
-                        onChange={(e) => updateForm('maxDiscountAmount', e.target.value)}
+                        onChange={(e) => updateNonNegativeNumber('maxDiscountAmount', e.target.value)}
                         className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-normal text-slate-800 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 bg-white transition"
                         placeholder="VD: 1000000 (tối đa 1 triệu, để trống nếu không chặn trần)"
                       />
@@ -434,7 +434,7 @@ export default function PromotionFormModal({
                     min="0"
                     step="1000"
                     value={form.minOrderAmount}
-                    onChange={(e) => updateForm('minOrderAmount', e.target.value)}
+                    onChange={(e) => updateNonNegativeNumber('minOrderAmount', e.target.value)}
                     className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-normal text-slate-800 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 bg-white transition"
                     placeholder="VD: 500000 (đơn từ 500k mới áp dụng)"
                   />
@@ -601,19 +601,13 @@ export default function PromotionFormModal({
               {/* Dịch vụ áp dụng: Chỉ dành cho EVENT. VOUCHER áp dụng cho toàn bộ hóa đơn */}
               {promoTab === 'EVENT' ? (
                 <fieldset
-                  className={`border-t border-slate-100 pt-3.5 transition ${form.applyAllServices ? 'opacity-40 pointer-events-none' : ''
-                    }`}
+                  className="border-t border-slate-100 pt-3.5"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 mb-2.5">
                     <div>
                       <legend className="text-sm font-bold text-slate-800 flex items-center gap-2">
                         <Layers className="w-4 h-4 text-teal-600" />
                         <span>Dịch vụ áp dụng (Tùy chọn)</span>
-                        {form.applyAllServices && (
-                          <span className="text-xs text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                            Áp dụng tất cả dịch vụ
-                          </span>
-                        )}
                       </legend>
                       <p className="text-xs text-slate-500 mt-0.5">
                         {form.serviceIds.length > 0
@@ -665,6 +659,7 @@ export default function PromotionFormModal({
                               type="checkbox"
                               checked={checked}
                               disabled={isLockedByOther}
+                              onClick={(e) => e.stopPropagation()}
                               onChange={() => handleServiceCardClick(service)}
                               className={`mt-0.5 rounded border-slate-300 ${isLockedByOther
                                 ? 'text-teal-600 bg-teal-50 cursor-not-allowed'

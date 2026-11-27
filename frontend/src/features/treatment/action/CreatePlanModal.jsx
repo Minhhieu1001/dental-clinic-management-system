@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileText,
@@ -9,7 +9,29 @@ import {
   CheckCircle2,
   Loader2,
 } from 'lucide-react';
-import { PRESET_PACKAGES } from '../clinicalExaminationHelpers';
+
+const INITIAL_PHASE_OPTIONS = [
+  {
+    count: 0,
+    title: 'Tự thiết lập từ đầu (0 giai đoạn)',
+    subtitle: 'Chưa tạo sẵn giai đoạn, tự thêm giai đoạn và dịch vụ sau khi mở kế hoạch.',
+  },
+  {
+    count: 1,
+    title: 'Khởi tạo 1 giai đoạn điều trị',
+    subtitle: 'Tạo sẵn 1 giai đoạn trống để bác sĩ tự nhập thông tin và chỉ định dịch vụ.',
+  },
+  {
+    count: 2,
+    title: 'Khởi tạo 2 giai đoạn điều trị',
+    subtitle: 'Tạo sẵn 2 giai đoạn trống để bác sĩ tự nhập thông tin và chỉ định dịch vụ.',
+  },
+  {
+    count: 3,
+    title: 'Khởi tạo 3 giai đoạn điều trị',
+    subtitle: 'Tạo sẵn 3 giai đoạn trống để bác sĩ tự nhập thông tin và chỉ định dịch vụ.',
+  },
+];
 
 export const CreatePlanModal = ({
   isOpen,
@@ -17,7 +39,6 @@ export const CreatePlanModal = ({
   session,
   patient,
   dentistName = 'BS. Nguyễn Văn Tâm',
-  suggestedPackages = PRESET_PACKAGES,
   onSubmit,
 }) => {
   const [formPlanName, setFormPlanName] = useState('');
@@ -25,11 +46,12 @@ export const CreatePlanModal = ({
   const [formStartDate, setFormStartDate] = useState('');
   const [formEndDate, setFormEndDate] = useState('');
   const [formDescription, setFormDescription] = useState('');
-  const [selectedPackageId, setSelectedPackageId] = useState('EMPTY'); // 'EMPTY' | package_id
+  const [selectedPhaseCount, setSelectedPhaseCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
+    if (!isOpen) return undefined;
+    const timer = setTimeout(() => {
       const today = new Date().toISOString().split('T')[0];
       const next30 = new Date();
       next30.setDate(next30.getDate() + 30);
@@ -37,18 +59,16 @@ export const CreatePlanModal = ({
 
       const sLabel = session?.label || 'Đợt khám hiện tại';
       const defaultName = `Kế hoạch điều trị - ${sLabel}`;
-      const defaultDesc = `Kế hoạch điều trị theo kết quả chẩn đoán ${sLabel}. Triệu chứng/Lý do khám: ${
-        session?.chiefComplaint || 'Khám răng hàm mặt'
-      }`;
 
       setFormPlanName(defaultName);
       setFormDentistName(dentistName);
       setFormStartDate(session?.recordDate ? String(session.recordDate).slice(0, 10) : today);
       setFormEndDate(next30Str);
       setFormDescription('');
-      setSelectedPackageId('EMPTY');
+      setSelectedPhaseCount(0);
       setIsSubmitting(false);
-    }
+    }, 0);
+    return () => clearTimeout(timer);
   }, [isOpen, session, dentistName]);
 
   const handleSubmit = async (e) => {
@@ -59,37 +79,19 @@ export const CreatePlanModal = ({
     }
     if (isSubmitting) return;
 
-    let initialPhases = [];
-    if (selectedPackageId !== 'EMPTY') {
-      const foundPkg = suggestedPackages.find((p) => p.package_id === selectedPackageId);
-      if (foundPkg && foundPkg.phases) {
-        initialPhases = foundPkg.phases.map((ph, idx) => ({
-          phase_id: `ph-${Date.now()}-${idx}`,
-          phase_order: idx + 1,
-          phase_name: ph.phase_name,
-          treatmentType: ph.treatmentType || 'Tổng quát',
-          estimated_duration: ph.estimated_duration || '1 tuần',
-          status: ph.status || 'PENDING',
-          description: ph.description || '',
-          treatment_services: (ph.treatment_services || []).map((s, sIdx) => ({
-            treatmentServicesId: `ts-${Date.now()}-${idx}-${sIdx}`,
-            service_id: s.service_id && !String(s.service_id).startsWith('srv-') ? s.service_id : null,
-            service_name: s.service_name,
-            toothNumber: s.toothNumber || '',
-            quantity: s.quantity || 1,
-            price: s.price || 0,
-          })),
-          treatment_visits: (ph.treatment_visits || []).map((v, vIdx) => ({
-            visitId: `vis-${Date.now()}-${idx}-${vIdx}`,
-            visitName: v.visitName,
-            visitOrder: v.visitOrder || vIdx + 1,
-            start_date: v.start_date || formStartDate,
-            status: v.status || 'PENDING',
-            clinical_notes: v.clinical_notes || '',
-          })),
-        }));
-      }
-    }
+    const initialPhases = Array.from({ length: selectedPhaseCount }, (_, idx) => ({
+      phase_id: `ph-${Date.now()}-${idx}`,
+      phase_order: idx + 1,
+      phase_name: `Giai đoạn ${idx + 1}`,
+      treatmentType: '',
+      estimated_duration: '',
+      expected_start_date: '',
+      expected_end_date: '',
+      status: 'PENDING',
+      description: '',
+      treatment_services: [],
+      treatment_visits: [],
+    }));
 
     setIsSubmitting(true);
     try {
@@ -235,68 +237,42 @@ export const CreatePlanModal = ({
                 />
               </div>
 
-              {/* Lựa chọn mẫu phác đồ khởi đầu */}
+              {/* Lựa chọn số giai đoạn khởi tạo ban đầu (trống dữ liệu, không hardcode dịch vụ) */}
               <div className="space-y-2 pt-1 border-t border-slate-100">
                 <label className="block font-bold text-slate-700">
                   Khởi tạo các giai đoạn điều trị ban đầu:
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div
-                    onClick={() => setSelectedPackageId('EMPTY')}
-                    className={`flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer transition-all ${
-                      selectedPackageId === 'EMPTY'
-                        ? 'border-teal-600 bg-teal-50/60 shadow-xs'
-                        : 'border-slate-200 bg-white hover:bg-slate-50'
-                    }`}
-                  >
-                    <div
-                      className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
-                        selectedPackageId === 'EMPTY'
-                          ? 'border-teal-600 bg-teal-600 text-white'
-                          : 'border-slate-300'
-                      }`}
-                    >
-                      {selectedPackageId === 'EMPTY' && <CheckCircle2 size={12} />}
-                    </div>
-                    <div>
-                      <span className="font-bold text-slate-900 block text-xs">
-                        Tự thiết lập từ đầu (0 giai đoạn)
-                      </span>
-                      <span className="text-[11px] text-slate-500">
-                        Tự tạo các giai đoạn và thêm dịch vụ cụ thể sau khi mở kế hoạch.
-                      </span>
-                    </div>
-                  </div>
-
-                  {suggestedPackages.slice(0, 3).map((pkg) => (
-                    <div
-                      key={pkg.package_id}
-                      onClick={() => setSelectedPackageId(pkg.package_id)}
-                      className={`flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer transition-all ${
-                        selectedPackageId === pkg.package_id
-                          ? 'border-teal-600 bg-teal-50/60 shadow-xs'
-                          : 'border-slate-200 bg-white hover:bg-slate-50'
-                      }`}
-                    >
+                  {INITIAL_PHASE_OPTIONS.map((opt) => {
+                    const isSelected = selectedPhaseCount === opt.count;
+                    return (
                       <div
-                        className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
-                          selectedPackageId === pkg.package_id
-                            ? 'border-teal-600 bg-teal-600 text-white'
-                            : 'border-slate-300'
-                        }`}
+                        key={opt.count}
+                        onClick={() => setSelectedPhaseCount(opt.count)}
+                        className={`flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer transition-all ${isSelected
+                            ? 'border-teal-600 bg-teal-50/60 shadow-xs'
+                            : 'border-slate-200 bg-white hover:bg-slate-50'
+                          }`}
                       >
-                        {selectedPackageId === pkg.package_id && <CheckCircle2 size={12} />}
+                        <div
+                          className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${isSelected
+                              ? 'border-teal-600 bg-teal-600 text-white'
+                              : 'border-slate-300'
+                            }`}
+                        >
+                          {isSelected && <CheckCircle2 size={12} />}
+                        </div>
+                        <div className="min-w-0">
+                          <span className="font-bold text-slate-900 block text-xs">
+                            {opt.title}
+                          </span>
+                          <span className="text-[11px] text-slate-500 block mt-0.5">
+                            {opt.subtitle}
+                          </span>
+                        </div>
                       </div>
-                      <div>
-                        <span className="font-bold text-slate-900 block text-xs truncate" title={pkg.package_name}>
-                          {pkg.package_name}
-                        </span>
-                        <span className="text-[11px] text-teal-700 font-semibold block">
-                          {pkg.phases?.length || 1} giai đoạn • {Number(pkg.package_price || 0).toLocaleString('vi-VN')} đ
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 

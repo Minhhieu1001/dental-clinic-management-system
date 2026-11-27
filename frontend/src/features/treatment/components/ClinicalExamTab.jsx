@@ -276,21 +276,21 @@ export default function ClinicalExamTab() {
           )}
 
           {/* Palette Selector */}
-          <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-slate-600 bg-slate-50 p-2.5 rounded border border-slate-200">
-            <span className="text-slate-400 text-[10px] font-bold uppercase w-full sm:w-auto mb-1 sm:mb-0">
+          <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+            <span className="text-slate-400 text-[10px] font-bold uppercase w-full sm:w-auto mb-0.5 sm:mb-0 mr-1">
               Công cụ:
             </span>
             <button
               type="button"
               disabled={isHistoricalSession}
               onClick={() => setActiveMarkingTool(null)}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded transition-all ${!activeMarkingTool && !isHistoricalSession
-                ? 'bg-teal-700 text-white font-extrabold shadow ring-2 ring-teal-400 scale-105'
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md whitespace-nowrap transition-all ${!activeMarkingTool && !isHistoricalSession
+                ? 'bg-teal-700 text-white font-bold shadow-xs ring-2 ring-teal-500/30'
                 : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
                 } ${isHistoricalSession ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
               title="Chế độ chọn và xem chi tiết răng mà không đổi tình trạng bệnh lý"
             >
-              <MousePointer size={12} />
+              <MousePointer size={12} className="shrink-0" />
               <span>Chọn & Xem răng</span>
             </button>
             {toothConditions.map((cond) => {
@@ -316,12 +316,13 @@ export default function ClinicalExamTab() {
                       }
                     }
                   }}
-                  className={`flex items-center gap-1.5 px-2 py-1 rounded transition-all ${isActive
-                    ? 'bg-slate-900 text-white font-extrabold shadow ring-2 ring-slate-400 scale-105'
+                  title={cond.label}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md whitespace-nowrap transition-all ${isActive
+                    ? 'bg-slate-900 text-white font-bold shadow-xs ring-2 ring-slate-400/40'
                     : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
                     } ${isHistoricalSession ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'}`}
                 >
-                  <span className="h-2.5 w-2.5 rounded-full border border-black/20" style={{ backgroundColor: cond.fill }} />
+                  <span className="h-2.5 w-2.5 rounded-full shrink-0 border border-black/20" style={{ backgroundColor: cond.fill }} />
                   <span>{cond.label}</span>
                 </button>
               );
@@ -406,36 +407,32 @@ export default function ClinicalExamTab() {
           </div>
 
           {/* Quick Change Condition Buttons */}
-          <div className="flex items-center gap-1.5 pb-2 border-b border-slate-100 text-xs">
-            <span className="text-slate-500 font-medium text-[11px]">
-              {isMultiToothMode ? `Đổi tình trạng ${multiSelectedTeeth.length} răng:` : `Đổi tình trạng R${selectedTooth}:`}
-            </span>
-            <div className="flex flex-wrap gap-1">
-              {toothConditions.map((c) => {
-                const currentCond = isMultiToothMode
-                  ? (activeMarkingTool || (multiSelectedTeeth.length > 0 ? teethMap[multiSelectedTeeth[0]] : 'Bình thường'))
-                  : (teethMap[selectedTooth] || 'Bình thường');
-                const isSelected = currentCond === c.key;
-                return (
-                  <button
-                    type="button"
-                    key={c.key}
-                    disabled={isHistoricalSession}
-                    onClick={() => handleChangeToothCondition(c.key)}
-                    className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-bold border transition-all ${isSelected
-                      ? 'bg-teal-700 text-white border-teal-800 shadow-xs'
-                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                      } ${isHistoricalSession ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
-                  >
-                    <span
-                      className="w-2 h-2 rounded-full shrink-0 border border-black/15"
-                      style={{ backgroundColor: c.fill || '#94A3B8' }}
-                    />
-                    <span>{c.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+          <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+            {toothConditions.map((c) => {
+              const currentCond = isMultiToothMode
+                ? (activeMarkingTool || (multiSelectedTeeth.length > 0 ? teethMap[multiSelectedTeeth[0]] : 'Bình thường'))
+                : (teethMap[selectedTooth] || 'Bình thường');
+              const isSelected = currentCond === c.key;
+              return (
+                <button
+                  type="button"
+                  key={c.key}
+                  disabled={isHistoricalSession}
+                  onClick={() => handleChangeToothCondition(c.key)}
+                  title={c.label}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md whitespace-nowrap transition-all ${isSelected
+                    ? 'bg-teal-700 text-white font-bold shadow-xs ring-2 ring-teal-500/30'
+                    : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                    } ${isHistoricalSession ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+                >
+                  <span
+                    className="h-2.5 w-2.5 rounded-full shrink-0 border border-black/20"
+                    style={{ backgroundColor: c.fill || '#94A3B8' }}
+                  />
+                  <span>{c.label}</span>
+                </button>
+              );
+            })}
           </div>
 
           <div className="grid grid-cols-2 gap-3 text-xs">

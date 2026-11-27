@@ -6,6 +6,7 @@ import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Min;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -35,6 +36,7 @@ public record PromotionRequest(
         @DecimalMin(value = "0.0", message = "Giá trị đơn hàng tối thiểu không được âm")
         BigDecimal minOrderAmount,
 
+        @Min(value = 0, message = "Giới hạn số lượt dùng không được âm")
         Integer usageLimit,
         PromotionStatus status,
         Boolean applyAllServices,

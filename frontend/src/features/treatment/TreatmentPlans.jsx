@@ -62,8 +62,6 @@ import {
   updateTreatmentPhaseStatus,
 } from '../../services/treatmentPhase.service';
 import {
-  createTreatmentVisit,
-  updateTreatmentVisit,
   deleteTreatmentVisit,
   updateTreatmentVisitStatus,
 } from '../../services/treatmentVisits.Service';
@@ -73,7 +71,6 @@ import {
 } from '../../services/treatmentService.service';
 import {
   DEFAULT_SERVICE_CATALOG,
-  PRESET_PACKAGES,
   STATUS_PHASE_CONFIG,
 } from './clinicalExaminationHelpers';
 import { AddServiceModal } from '../treatment/action/AddServiceModal';
@@ -407,8 +404,8 @@ export default function TreatmentPlans() {
       phase_id: ph.id || `ph-${Date.now()}-${idx}`,
       phase_order: Number(ph.phaseOrder) || idx + 1,
       phase_name: ph.phaseName,
-      treatmentType: ph.treatmentType || 'Tổng quát',
-      estimated_duration: ph.estimatedDuration || '1 tuần',
+      treatmentType: ph.treatmentType || '',
+      estimated_duration: ph.estimatedDuration || '',
       expected_start_date: ph.expectedStartDate ? String(ph.expectedStartDate).split('T')[0] : '',
       expected_end_date: ph.expectedEndDate ? String(ph.expectedEndDate).split('T')[0] : '',
       status: ph.status || 'PENDING',
@@ -610,39 +607,41 @@ export default function TreatmentPlans() {
           setSelectedPlanId(savedPlan.id);
           setPlanId(savedPlan.id);
 
-          // Nếu có các phase đang soạn sẵn ở local (như khi áp dụng gói mẫu), gọi API riêng tạo từng phase
+          // Nếu có các phase khởi tạo ban đầu, gọi API tạo từng phase và cập nhật lại ID thật từ CSDL
           if (targetPhases && targetPhases.length > 0) {
+            const syncedPhases = [];
             for (let i = 0; i < targetPhases.length; i++) {
               const ph = targetPhases[i];
               const phasePayload = {
                 phaseName: ph.phase_name,
                 phaseOrder: String(ph.phase_order || i + 1),
-                treatmentType: ph.treatmentType || 'Tổng quát',
+                treatmentType: ph.treatmentType || '',
                 description: ph.description || '',
                 status: ph.status || 'PENDING',
-                estimatedDuration: ph.estimated_duration || '1 tuần',
+                estimatedDuration: ph.estimated_duration || '',
                 expectedStartDate: ph.expected_start_date ? `${ph.expected_start_date}T00:00:00` : null,
                 expectedEndDate: ph.expected_end_date ? `${ph.expected_end_date}T00:00:00` : null,
               };
               try {
                 const createdPh = await createTreatmentPhase(savedPlan.id, phasePayload);
-                if (createdPh?.id && ph.treatment_visits?.length > 0) {
-                  for (let j = 0; j < ph.treatment_visits.length; j++) {
-                    const v = ph.treatment_visits[j];
-                    await createTreatmentVisit(createdPh.id, {
-                      visitName: v.visitName,
-                      visitOrder: Number(v.visitOrder) || j + 1,
-                      startDate: v.start_date || new Date().toISOString().split('T')[0],
-                      status: v.status || 'IN_PROGRESS',
-                      clinicalNotes: v.clinical_notes || '',
-                      assignedDentist: v.assigned_dentist || targetDentistName,
-                    });
-                  }
-                }
+                syncedPhases.push({
+                  ...ph,
+                  phase_id: createdPh?.id || ph.phase_id,
+                  phase_order: Number(createdPh?.phaseOrder) || ph.phase_order || i + 1,
+                  phase_name: createdPh?.phaseName || ph.phase_name,
+                  treatmentType: createdPh?.treatmentType ?? ph.treatmentType ?? '',
+                  estimated_duration: createdPh?.estimatedDuration ?? ph.estimated_duration ?? '',
+                  status: createdPh?.status || ph.status || 'PENDING',
+                  description: createdPh?.description ?? ph.description ?? '',
+                  treatment_services: [],
+                  treatment_visits: [],
+                });
               } catch (phaseErr) {
                 console.error('Lỗi tạo phase ban đầu:', phaseErr);
+                syncedPhases.push(ph);
               }
             }
+            setPhases(syncedPhases);
           }
         }
       }
@@ -2089,9 +2088,11 @@ export default function TreatmentPlans() {
                           {/* HÀNG 2: SUB-BAR THUỘC TÍNH LÂM SÀNG CỦA GIAI ĐOẠN */}
                           <div className="flex flex-wrap items-center gap-2 text-xs pt-0.5">
                             {/* Treatment Type badge */}
-                            <span className="rounded-md bg-teal-50 border border-teal-200 text-teal-800 font-bold px-2.5 py-0.5 shadow-2xs">
-                              {phase.treatmentType || 'Tổng quát'}
-                            </span>
+                            {phase.treatmentType && (
+                              <span className="rounded-md bg-teal-50 border border-teal-200 text-teal-800 font-bold px-2.5 py-0.5 shadow-2xs">
+                                {phase.treatmentType}
+                              </span>
+                            )}
 
                             {/* Estimated Duration */}
                             {phase.estimated_duration && (
@@ -2468,7 +2469,6 @@ export default function TreatmentPlans() {
         session={currentSession}
         patient={patient}
         dentistName={dentistName}
-        suggestedPackages={PRESET_PACKAGES}
         onSubmit={handleCreatePlanFromModal}
       />
 

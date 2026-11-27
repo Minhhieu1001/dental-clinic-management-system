@@ -22,8 +22,11 @@ import {
   Printer,
   Building2,
   MapPin,
+  Image,
+  RefreshCw,
 } from 'lucide-react';
 import { getToothStatuses } from '../../../../services/systemDictionary.service';
+import { getXrayAnalysisHistory } from '../../../../services/xrayAi.service';
 
 // =========================================================================
 // 1. MAPPING DICTIONARIES ĐỔI TRẠNG THÁI DB SANG TIẾNG VIỆT THÂN THIỆN (ERP STYLE)
@@ -280,6 +283,10 @@ export const TreatmentHistoryDetailModal = ({
   onOpenPlan,
 }) => {
   const [toothStatuses, setToothStatuses] = useState([]);
+  const [xrayAnalyses, setXrayAnalyses] = useState([]);
+  const [loadingXrays, setLoadingXrays] = useState(false);
+  const [xrayError, setXrayError] = useState(false);
+  const [previewXrayUrl, setPreviewXrayUrl] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -293,6 +300,58 @@ export const TreatmentHistoryDetailModal = ({
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!isOpen || !record) {
+      setXrayAnalyses([]);
+      setXrayError(false);
+      setPreviewXrayUrl(null);
+      return undefined;
+    }
+
+    let isMounted = true;
+    const examId = record.examinationResultId || record.rawExam?.id || null;
+    const medRecordId = record.medicalRecordId || record.rawExam?.medicalRecordId || null;
+
+    if (!examId && !medRecordId) {
+      setXrayAnalyses([]);
+      setXrayError(false);
+      return undefined;
+    }
+
+    setLoadingXrays(true);
+    setXrayError(false);
+
+    const fetchXrays = async () => {
+      try {
+        let list = [];
+        if (examId) {
+          list = await getXrayAnalysisHistory({ examinationResultId: examId }).catch(() => []);
+        }
+        if ((!Array.isArray(list) || list.length === 0) && medRecordId) {
+          list = await getXrayAnalysisHistory({ medicalRecordId: medRecordId });
+        }
+        if (isMounted) {
+          setXrayAnalyses(Array.isArray(list) ? list : []);
+        }
+      } catch (err) {
+        console.warn('Không thể tải danh sách phim X-quang:', err);
+        if (isMounted) {
+          setXrayAnalyses([]);
+          setXrayError(true);
+        }
+      } finally {
+        if (isMounted) {
+          setLoadingXrays(false);
+        }
+      }
+    };
+
+    fetchXrays();
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, record]);
 
   // Đóng bằng phím ESC
   useEffect(() => {
@@ -494,7 +553,78 @@ export const TreatmentHistoryDetailModal = ({
                 </div>
               </div>
 
-              {/* PANEL 2: BẢNG DANH SÁCH CHẨN ĐOÁN (ICD-10) - ERP DATA TABLE */}
+              {/* PANEL 2: BẢNG GHI NHẬN TÌNH TRẠNG TỪNG RĂNG - ERP DENTAL CHART (ĐƯA LÊN TRÊN) */}
+              <div className="bg-white border border-slate-300 shadow-none">
+                <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-b border-slate-300 font-bold text-xs uppercase tracking-wide text-slate-800">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck size={14} className="text-teal-700" />
+                    <span>Chi Tiết Tình Trạng Từng Răng</span>
+                  </div>
+                  <span className="text-[11px] font-mono font-semibold text-slate-600 bg-slate-200 px-1.5 py-0.2">
+                    {Array.isArray(record.toothRecords) ? record.toothRecords.length : 0} RĂNG
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-100 text-slate-700 border-b border-slate-300 font-bold text-[11px]">
+                        <th className="py-1.5 px-2.5 border-r border-slate-200 w-20">Răng</th>
+                        <th className="py-1.5 px-2.5 border-r border-slate-200">Tình trạng</th>
+                        <th className="py-1.5 px-2.5 border-r border-slate-200">Mặt răng</th>
+                        <th className="py-1.5 px-2.5">Nướu / Mô mềm</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {Array.isArray(record.toothRecords) && record.toothRecords.length > 0 ? (
+                        record.toothRecords.map((tr, idx) => {
+                          const toothStatus = tr.toothStatus || '-';
+                          const apiStatus = toothStatuses.find((item) => item.label === toothStatus);
+                          const statusStyle = apiStatus?.color
+                            ? {
+                              backgroundColor: `${apiStatus.color}20`,
+                              borderColor: apiStatus.color,
+                              color: apiStatus.color,
+                            }
+                            : undefined;
+                          const locLabel = CARIES_LOCATION_MAP[String(tr.cariesLocation || '').toUpperCase()] || tr.cariesLocation;
+
+                          return (
+                            <tr key={tr.id || idx} className="hover:bg-slate-50">
+                              <td className="py-2 px-2.5 border-r border-slate-200 font-mono font-bold text-slate-900 bg-slate-50/50">
+                                {tr.toothNumber}
+                              </td>
+                              <td className="py-2 px-2.5 border-r border-slate-200">
+                                <span
+                                  className="px-2 py-0.5 border text-[11px] bg-slate-100 text-slate-700 border-slate-300"
+                                  style={statusStyle}
+                                >
+                                  {toothStatus}
+                                </span>
+                              </td>
+                              <td className="py-2 px-2.5 border-r border-slate-200 text-slate-700">
+                                {locLabel || '-'}
+                              </td>
+                              <td className="py-2 px-2.5 text-slate-600 text-[11px]">
+                                {tr.gingivalCondition || '-'}
+                                {tr.notes && <span className="block text-slate-400 italic">{tr.notes}</span>}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={4} className="p-3 text-center text-slate-400 italic">
+                            Chưa có dữ liệu ghi nhận tình trạng răng.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* PANEL 3: BẢNG DANH SÁCH CHẨN ĐOÁN (ICD-10) - ERP DATA TABLE (ĐƯA XUỐNG DƯỚI) */}
               <div className="bg-white border border-slate-300 shadow-none">
                 <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-b border-slate-300 font-bold text-xs uppercase tracking-wide text-slate-800">
                   <div className="flex items-center gap-2">
@@ -559,74 +689,85 @@ export const TreatmentHistoryDetailModal = ({
                 </div>
               </div>
 
-              {/* PANEL 3: BẢNG GHI NHẬN TÌNH TRẠNG TỪNG RĂNG - ERP DENTAL CHART */}
+              {/* PANEL 4: DANH MỤC HÌNH ẢNH PHIM X-QUANG (GỌI API NHƯ BÊN ADMIN) */}
               <div className="bg-white border border-slate-300 shadow-none">
                 <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-b border-slate-300 font-bold text-xs uppercase tracking-wide text-slate-800">
                   <div className="flex items-center gap-2">
-                    <ShieldCheck size={14} className="text-teal-700" />
-                    <span>Chi Tiết Tình Trạng Từng Răng</span>
+                    <Image size={14} className="text-teal-700" />
+                    <span>Hình Ảnh Phim X-Quang</span>
                   </div>
                   <span className="text-[11px] font-mono font-semibold text-slate-600 bg-slate-200 px-1.5 py-0.2">
-                    {Array.isArray(record.toothRecords) ? record.toothRecords.length : 0} RĂNG
+                    {xrayAnalyses.length} PHIM
                   </span>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="bg-slate-100 text-slate-700 border-b border-slate-300 font-bold text-[11px]">
-                        <th className="py-1.5 px-2.5 border-r border-slate-200 w-20">Răng</th>
-                        <th className="py-1.5 px-2.5 border-r border-slate-200">Tình trạng</th>
-                        <th className="py-1.5 px-2.5 border-r border-slate-200">Mặt răng</th>
-                        <th className="py-1.5 px-2.5">Nướu / Mô mềm</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200">
-                      {Array.isArray(record.toothRecords) && record.toothRecords.length > 0 ? (
-                        record.toothRecords.map((tr, idx) => {
-                          const toothStatus = tr.toothStatus || '-';
-                          const apiStatus = toothStatuses.find((item) => item.label === toothStatus);
-                          const statusStyle = apiStatus?.color
-                            ? {
-                              backgroundColor: `${apiStatus.color}20`,
-                              borderColor: apiStatus.color,
-                              color: apiStatus.color,
-                            }
-                            : undefined;
-                          const locLabel = CARIES_LOCATION_MAP[String(tr.cariesLocation || '').toUpperCase()] || tr.cariesLocation;
+                <div className="p-3">
+                  {loadingXrays ? (
+                    <div className="flex items-center justify-center gap-2 py-6 text-xs text-slate-500">
+                      <RefreshCw size={14} className="animate-spin text-teal-600" />
+                      <span>Đang tải hình ảnh phim X-quang từ hệ thống...</span>
+                    </div>
+                  ) : xrayError ? (
+                    <p className="rounded border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
+                      Không tải được phim X-quang. Vui lòng mở lại hồ sơ để thử lại.
+                    </p>
+                  ) : xrayAnalyses.length === 0 ? (
+                    <div className="rounded border border-dashed border-slate-300 bg-slate-50/70 p-6 text-center text-xs text-slate-500">
+                      <Image className="mx-auto mb-2 text-teal-700" size={24} />
+                      <p className="font-semibold">Hồ sơ này chưa có phim X-quang đã lưu.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {xrayAnalyses.map((item, index) => {
+                        const analyzedTime = item.analyzedAt || item.captureDate;
+                        const formattedAnalyzedTime = analyzedTime
+                          ? new Date(analyzedTime).toLocaleString('vi-VN')
+                          : 'Chưa rõ ngày';
+                        const examDateStr = item.examinationDate
+                          ? new Date(item.examinationDate).toLocaleString('vi-VN')
+                          : formatDateDisplay(record.startDate);
+                        const planLabel = item.treatmentPlanName?.trim()
+                          ? `${item.treatmentPlanName.trim()} (đợt khám ${examDateStr})`
+                          : `${record.planName || 'Chưa có kế hoạch điều trị'} (đợt khám ${examDateStr})`;
 
-                          return (
-                            <tr key={tr.id || idx} className="hover:bg-slate-50">
-                              <td className="py-2 px-2.5 border-r border-slate-200 font-mono font-bold text-slate-900 bg-slate-50/50">
-                                {tr.toothNumber}
-                              </td>
-                              <td className="py-2 px-2.5 border-r border-slate-200">
-                                <span
-                                  className="px-2 py-0.5 border text-[11px] bg-slate-100 text-slate-700 border-slate-300"
-                                  style={statusStyle}
-                                >
-                                  {toothStatus}
-                                </span>
-                              </td>
-                              <td className="py-2 px-2.5 border-r border-slate-200 text-slate-700">
-                                {locLabel || '-'}
-                              </td>
-                              <td className="py-2 px-2.5 text-slate-600 text-[11px]">
-                                {tr.gingivalCondition || '-'}
-                                {tr.notes && <span className="block text-slate-400 italic">{tr.notes}</span>}
-                              </td>
-                            </tr>
-                          );
-                        })
-                      ) : (
-                        <tr>
-                          <td colSpan={5} className="p-3 text-center text-slate-400 italic">
-                            Chưa có dữ liệu ghi nhận tình trạng răng.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                        return (
+                          <div
+                            key={item.analysisId || index}
+                            className="overflow-hidden rounded border border-slate-200 bg-white flex flex-col"
+                          >
+                            <div
+                              onClick={() => item.imageUrl && setPreviewXrayUrl(item.imageUrl)}
+                              className={`relative flex min-h-44 items-center justify-center bg-slate-900 ${item.imageUrl ? 'cursor-zoom-in group' : ''}`}
+                              title={item.imageUrl ? 'Nhấn để phóng to phim X-quang' : ''}
+                            >
+                              {item.imageUrl ? (
+                                <>
+                                  <img
+                                    src={item.imageUrl}
+                                    alt={`Phim X-quang thuộc ${planLabel}`}
+                                    className="max-h-56 w-full object-contain transition-transform duration-200 group-hover:scale-[1.02]"
+                                  />
+                                  <span className="absolute bottom-2 right-2 rounded bg-slate-900/80 px-2 py-0.5 text-[10px] font-semibold text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                                    <Maximize2 size={10} /> Xem lớn
+                                  </span>
+                                </>
+                              ) : (
+                                <p className="p-4 text-center text-xs text-slate-300">Chưa có ảnh X-quang.</p>
+                              )}
+                            </div>
+                            <div className="space-y-1 p-2.5 text-xs text-slate-700 border-t border-slate-100">
+                              <p>
+                                <span className="font-semibold">Ngày phân tích:</span> {formattedAnalyzedTime}
+                              </p>
+                              <p className="line-clamp-2">
+                                <span className="font-semibold">Đợt điều trị:</span> {planLabel}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -874,6 +1015,29 @@ export const TreatmentHistoryDetailModal = ({
             </div>
           </div>
         </div>
+
+        {/* Lightbox phóng to phim X-quang */}
+        {previewXrayUrl && (
+          <div
+            onClick={() => setPreviewXrayUrl(null)}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-xs"
+          >
+            <button
+              type="button"
+              onClick={() => setPreviewXrayUrl(null)}
+              className="absolute top-4 right-4 flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-white hover:bg-rose-600 transition-colors cursor-pointer"
+              title="Đóng ảnh (ESC)"
+            >
+              <X size={20} />
+            </button>
+            <img
+              src={previewXrayUrl}
+              alt="Phim X-quang phóng to"
+              onClick={(e) => e.stopPropagation()}
+              className="max-h-[90vh] max-w-[92vw] rounded-lg object-contain shadow-2xl border border-slate-700"
+            />
+          </div>
+        )}
       </div>
     </div>
   );

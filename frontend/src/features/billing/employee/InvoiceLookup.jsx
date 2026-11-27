@@ -868,6 +868,8 @@ export default function InvoiceLookup() {
         open={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onCreateInvoice={handleCreateInvoiceDraft}
+        initialPatient={activeCustomer}
+        lockPatient={Boolean(activeCustomer)}
       />
     </div>
   );

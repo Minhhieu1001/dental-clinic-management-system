@@ -5,6 +5,7 @@ import iuh.fit.backend.treatment.dto.ServiceCreateDTO;
 import iuh.fit.backend.treatment.dto.ServiceDTO;
 import iuh.fit.backend.treatment.enums.ServiceCategory;
 import iuh.fit.backend.treatment.service.DentalService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -53,7 +54,7 @@ public class ServiceController {
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<ServiceDTO>> createService(@RequestBody ServiceCreateDTO dto) {
+    public ResponseEntity<ApiResponse<ServiceDTO>> createService(@Valid @RequestBody ServiceCreateDTO dto) {
         ServiceDTO created = dentalService.createService(dto);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Tạo dịch vụ mới thành công", created));
@@ -62,7 +63,7 @@ public class ServiceController {
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<ServiceDTO>> updateService(
             @PathVariable UUID id,
-            @RequestBody ServiceCreateDTO dto) {
+            @Valid @RequestBody ServiceCreateDTO dto) {
         ServiceDTO updated = dentalService.updateService(id, dto);
         return ResponseEntity.ok(ApiResponse.success("Cập nhật thông tin dịch vụ thành công", updated));
     }

@@ -27,7 +27,13 @@ const Transition = React.forwardRef(function Transition(props, ref) {
   return <Slide direction="up" ref={ref} {...props} timeout={300} />;
 });
 
-export default function CreateInvoiceModal({ open, onClose, onCreateInvoice }) {
+export default function CreateInvoiceModal({
+  open,
+  onClose,
+  onCreateInvoice,
+  initialPatient = null,
+  lockPatient = false,
+}) {
   // State 1: Danh sách bệnh nhân & Search bar props
   const [patientOptions, setPatientOptions] = useState([]);
   const [loadingPatients, setLoadingPatients] = useState(false);
@@ -70,6 +76,15 @@ export default function CreateInvoiceModal({ open, onClose, onCreateInvoice }) {
 
     if (!open) return;
 
+    if (initialPatient) {
+      setSelectedPatient(initialPatient);
+      setPhoneSearchQuery(initialPatient.phone || initialPatient.phoneNumber || '');
+    }
+
+    if (lockPatient && initialPatient) {
+      return;
+    }
+
     const fetchInitialPatients = async () => {
       setLoadingPatients(true);
       try {
@@ -84,7 +99,7 @@ export default function CreateInvoiceModal({ open, onClose, onCreateInvoice }) {
       }
     };
     fetchInitialPatients();
-  }, [open]);
+  }, [open, initialPatient, lockPatient]);
 
   // Hàm chuyển đổi dữ liệu từ API raw-invoice-data vào danh sách Kế hoạch điều trị của Modal
   const parseInvoiceApiResponse = (apiResult) => {
@@ -471,34 +486,40 @@ export default function CreateInvoiceModal({ open, onClose, onCreateInvoice }) {
       </div>
 
       <DialogContent sx={{ padding: '14px 18px', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', overflow: 'hidden', height: 'calc(660px - 57px)' }} className="space-y-2 flex-1">
-        {/* PHẦN 1: BỘ TÌM KIẾM BỆNH NHÂN (Tái sử dụng PatientSearchBar) */}
+        {/* PHẦN 1: BỘ TÌM KIẾM HOẶC THÔNG TIN BỆNH NHÂN ĐÃ GÁN */}
         <div className="bg-white rounded-md p-2.5 border border-slate-200 shadow-2xs shrink-0">
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 flex items-center gap-1.5">
             <User size={13} className="text-teal-700" />
-            <span>1. Chọn / Tra cứu bệnh nhân cần thanh toán</span>
+            <span>
+              {lockPatient && selectedPatient
+                ? '1. Thông tin bệnh nhân lập hóa đơn'
+                : '1. Chọn / Tra cứu bệnh nhân cần thanh toán'}
+            </span>
           </h4>
 
-          <PatientSearchBar
-            patientOptions={patientOptions}
-            loadingPatientOptions={loadingPatients}
-            selectedPatient={selectedPatient}
-            selectedPatientId={selectedPatient?.id}
-            onSelectPatient={handleSelectPatient}
-            onClearPatient={handleClearPatient}
-            phoneSearchQuery={phoneSearchQuery}
-            setPhoneSearchQuery={setPhoneSearchQuery}
-            onSearchPhone={handleSearchPhone}
-            searchingPhone={searchingPhone}
-            hasPatient={Boolean(selectedPatient)}
-            className="p-0 bg-transparent border-0"
-            selectLabel="Danh sách bệnh nhân phòng khám:"
-            inputLabel="Hoặc tìm nhanh theo SĐT:"
-            selectPlaceholder="Chọn bệnh nhân"
-          />
+          {!(lockPatient && selectedPatient) && (
+            <PatientSearchBar
+              patientOptions={patientOptions}
+              loadingPatientOptions={loadingPatients}
+              selectedPatient={selectedPatient}
+              selectedPatientId={selectedPatient?.id}
+              onSelectPatient={handleSelectPatient}
+              onClearPatient={handleClearPatient}
+              phoneSearchQuery={phoneSearchQuery}
+              setPhoneSearchQuery={setPhoneSearchQuery}
+              onSearchPhone={handleSearchPhone}
+              searchingPhone={searchingPhone}
+              hasPatient={Boolean(selectedPatient)}
+              className="p-0 bg-transparent border-0"
+              selectLabel="Danh sách bệnh nhân phòng khám:"
+              inputLabel="Hoặc tìm nhanh theo SĐT:"
+              selectPlaceholder="Chọn bệnh nhân"
+            />
+          )}
 
           {/* Hồ sơ tóm tắt Bệnh nhân sau khi chọn - Bo góc sm chuẩn ERP */}
           {selectedPatient && (
-            <div className="mt-2 pt-2 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 bg-slate-50 p-2 rounded-md border border-slate-200">
+            <div className={`${!(lockPatient && selectedPatient) ? 'mt-2 pt-2 border-t border-slate-200' : ''} flex flex-wrap items-center justify-between gap-2 bg-slate-50 p-2 rounded-md border border-slate-200`}>
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded bg-teal-700 text-white font-bold text-xs flex items-center justify-center shrink-0">
                   {(selectedPatient.fullName || selectedPatient.name || 'BN').substring(0, 2).toUpperCase()}
