@@ -3,7 +3,11 @@ FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /build
 COPY pom.xml ./
 COPY src src
-RUN --mount=type=cache,target=/root/.m2 mvn -B -DskipTests package
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn -B -DskipTests \
+    -Daether.transport.http.retryHandler.count=5 \
+    -Daether.transport.http.retryHandler.interval=10000 \
+    package
 
 FROM eclipse-temurin:21-jre-noble
 RUN apt-get update && apt-get install -y --no-install-recommends \
