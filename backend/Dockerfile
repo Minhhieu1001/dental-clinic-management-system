@@ -2,9 +2,10 @@
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /build
 COPY pom.xml ./
+COPY maven-settings.xml ./
 COPY src src
 RUN --mount=type=cache,target=/root/.m2 \
-    mvn -B -DskipTests \
+    mvn -B -s maven-settings.xml -DskipTests \
     -Daether.transport.http.retryHandler.count=5 \
     -Daether.transport.http.retryHandler.interval=10000 \
     package
