@@ -244,7 +244,7 @@ public class DashboardServiceImpl implements DashboardService {
         if (paymentStatus != null && !paymentStatus.trim().isEmpty() && !"ALL".equalsIgnoreCase(paymentStatus)) {
             switch (paymentStatus.toUpperCase()) {
                 case "PAID" -> sb.append(" AND ").append(pfx).append("payment_status = 'PAID'");
-                case "DEBT" -> sb.append(" AND (").append(pfx).append("payment_status IN ('PARTIALLY_PAID', 'UNPAID') OR ").append(pfx).append("remaining_amount > 0)");
+                case "DEBT" -> sb.append(" AND (").append(pfx).append("payment_status IS NULL OR ").append(pfx).append("payment_status <> 'CANCELLED') AND (").append(pfx).append("payment_status IN ('PARTIALLY_PAID', 'UNPAID') OR ").append(pfx).append("remaining_amount > 0)");
                 case "PROMO" -> sb.append(" AND (").append(pfx).append("promotion_id IS NOT NULL OR ").append(pfx).append("discount_amount > 0)");
             }
         }
@@ -286,7 +286,7 @@ public class DashboardServiceImpl implements DashboardService {
             String invId = pfx + "invoice_id";
             switch (paymentStatus.toUpperCase()) {
                 case "PAID" -> sb.append(" AND EXISTS (SELECT 1 FROM invoices i_st WHERE i_st.id = ").append(invId).append(" AND i_st.payment_status = 'PAID')");
-                case "DEBT" -> sb.append(" AND EXISTS (SELECT 1 FROM invoices i_st WHERE i_st.id = ").append(invId).append(" AND (i_st.payment_status IN ('PARTIALLY_PAID', 'UNPAID') OR i_st.remaining_amount > 0))");
+                case "DEBT" -> sb.append(" AND EXISTS (SELECT 1 FROM invoices i_st WHERE i_st.id = ").append(invId).append(" AND (i_st.payment_status IS NULL OR i_st.payment_status <> 'CANCELLED') AND (i_st.payment_status IN ('PARTIALLY_PAID', 'UNPAID') OR i_st.remaining_amount > 0))");
                 case "PROMO" -> sb.append(" AND EXISTS (SELECT 1 FROM invoices i_st WHERE i_st.id = ").append(invId).append(" AND (i_st.promotion_id IS NOT NULL OR i_st.discount_amount > 0))");
             }
         }
@@ -375,8 +375,8 @@ public class DashboardServiceImpl implements DashboardService {
         String invSql = """
             SELECT
                 COUNT(id) AS total_invoices,
-                COALESCE(SUM(final_amount), 0) AS invoice_revenue,
-                COALESCE(SUM(remaining_amount), 0) AS remaining_debt
+                COALESCE(SUM(CASE WHEN payment_status = 'CANCELLED' THEN paid_amount ELSE final_amount END), 0) AS invoice_revenue,
+                COALESCE(SUM(CASE WHEN payment_status = 'CANCELLED' THEN 0 ELSE remaining_amount END), 0) AS remaining_debt
             FROM invoices
             WHERE invoice_date BETWEEN ? AND ?
         """ + invFilterClause;
@@ -590,8 +590,8 @@ public class DashboardServiceImpl implements DashboardService {
                 COUNT(id) AS total_invoices,
                 COALESCE(SUM(total_amount), 0) AS total_amount,
                 COALESCE(SUM(discount_amount), 0) AS discount_amount,
-                COALESCE(SUM(final_amount), 0) AS invoice_revenue,
-                COALESCE(SUM(remaining_amount), 0) AS remaining_debt
+                COALESCE(SUM(CASE WHEN payment_status = 'CANCELLED' THEN paid_amount ELSE final_amount END), 0) AS invoice_revenue,
+                COALESCE(SUM(CASE WHEN payment_status = 'CANCELLED' THEN 0 ELSE remaining_amount END), 0) AS remaining_debt
             FROM invoices
             WHERE invoice_date BETWEEN ? AND ?
         """ + invFilterClause;
@@ -634,8 +634,8 @@ public class DashboardServiceImpl implements DashboardService {
         String trendInvSql = String.format("""
             SELECT
                 TO_CHAR(invoice_date, '%s') AS d_key,
-                COALESCE(SUM(final_amount), 0) AS rev,
-                COALESCE(SUM(remaining_amount), 0) AS debt,
+                COALESCE(SUM(CASE WHEN payment_status = 'CANCELLED' THEN paid_amount ELSE final_amount END), 0) AS rev,
+                COALESCE(SUM(CASE WHEN payment_status = 'CANCELLED' THEN 0 ELSE remaining_amount END), 0) AS debt,
                 COUNT(id) AS cnt
             FROM invoices
             WHERE invoice_date BETWEEN ? AND ? %s

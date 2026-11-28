@@ -160,7 +160,7 @@ export default function AdminBilling() {
 
     // Lọc theo Tab nhanh
     if (activeTab === 'DEBT') {
-      result = result.filter((inv) => inv.debtAmount > 0);
+      result = result.filter((inv) => inv.status !== 'Đã hủy' && inv.debtAmount > 0);
     } else if (activeTab === 'PAID') {
       result = result.filter((inv) => inv.status === 'Đã thanh toán');
     }
@@ -423,6 +423,7 @@ export default function AdminBilling() {
                 value={statusFilter}
                 onChange={(e) => {
                   setStatusFilter(e.target.value);
+                  setActiveTab('ALL');
                   setPage(0);
                 }}
                 className="w-full bg-slate-50 border border-slate-300 px-2.5 py-1.5 text-xs font-bold text-slate-800 rounded-md focus:bg-white focus:ring-1 focus:ring-teal-500 focus:outline-none cursor-pointer"
@@ -431,6 +432,7 @@ export default function AdminBilling() {
                 <option value="PAID">Đã thanh toán (PAID)</option>
                 <option value="PARTIALLY_PAID">Thanh toán một phần</option>
                 <option value="UNPAID">Chưa thanh toán</option>
+                <option value="CANCELLED">Đã hủy</option>
               </select>
             </div>
 
@@ -614,6 +616,8 @@ export default function AdminBilling() {
                             ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                             : inv.status === 'Thanh toán một phần'
                               ? 'bg-amber-50 text-amber-800 border-amber-200'
+                              : inv.status === 'Đã hủy'
+                                ? 'bg-slate-100 text-slate-700 border-slate-300'
                               : 'bg-rose-50 text-rose-800 border-rose-200'
                             }`}
                         >
@@ -664,6 +668,7 @@ export default function AdminBilling() {
           <Eye size={15} /> Chi tiết
         </MenuItem>
         <MenuItem
+          disabled={menuInvoice?.status === 'Đã hủy' || menuInvoice?.status === 'Đã thanh toán'}
           onClick={() => {
             setSelectedInvoice(menuInvoice);
             setShowPaymentModal(true);
@@ -691,6 +696,7 @@ export default function AdminBilling() {
         onClose={() => setShowDetailModal(false)}
         invoice={selectedInvoice}
         onPaymentSuccess={handlePaymentSuccess}
+        onCancelSuccess={handlePaymentSuccess}
         onSaveInvoice={handleSaveDraftInvoice}
       />
 

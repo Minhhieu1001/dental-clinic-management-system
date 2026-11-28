@@ -5,6 +5,7 @@ import iuh.fit.backend.billing.cache.PaymentDraftCache;
 import iuh.fit.backend.billing.dto.*;
 import iuh.fit.backend.billing.entity.Invoice;
 import iuh.fit.backend.billing.enums.PaymentMethod;
+import iuh.fit.backend.billing.enums.PaymentStatus;
 import iuh.fit.backend.billing.repository.InvoiceRepository;
 import iuh.fit.backend.billing.service.InvoiceService;
 import iuh.fit.backend.billing.service.PaymentQrService;
@@ -54,6 +55,9 @@ public class PaymentQrServiceImpl implements PaymentQrService {
         UUID invoiceId = request.getInvoiceId();
         Invoice invoice = invoiceRepository.findById(invoiceId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn với ID: " + invoiceId));
+        if (invoice.getPaymentStatus() == PaymentStatus.CANCELLED) {
+            throw new IllegalArgumentException("Hóa đơn đã hủy, không thể tạo mã QR thanh toán");
+        }
 
         BigDecimal amount = request.getAmount();
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {

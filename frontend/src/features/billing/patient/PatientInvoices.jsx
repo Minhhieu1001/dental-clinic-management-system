@@ -106,12 +106,12 @@ export default function PatientInvoices() {
     let unpaidCount = 0;
 
     invoices.forEach((inv) => {
-      totalCost += Number(inv.finalAmount || 0);
+      totalCost += Number(inv.status === 'Đã hủy' ? inv.paidAmount || 0 : inv.finalAmount || 0);
       totalPaid += Number(inv.paidAmount || 0);
-      totalDebt += Number(inv.debtAmount || 0);
+      if (inv.status !== 'Đã hủy') totalDebt += Number(inv.debtAmount || 0);
       if (inv.status === 'Đã thanh toán') {
         paidCount++;
-      } else {
+      } else if (inv.status !== 'Đã hủy') {
         unpaidCount++;
       }
     });
@@ -145,6 +145,7 @@ export default function PatientInvoices() {
       if (statusFilter === 'PAID' && inv.status !== 'Đã thanh toán') return false;
       if (statusFilter === 'UNPAID' && inv.status !== 'Chưa thanh toán') return false;
       if (statusFilter === 'PARTIAL' && inv.status !== 'Thanh toán một phần') return false;
+      if (statusFilter === 'CANCELLED' && inv.status !== 'Đã hủy') return false;
 
       // Chỉ so khớp hóa đơn có ngày hợp lệ khi lọc thời gian.
       if (yearFilter !== 'ALL' || monthFilter !== 'ALL') {
@@ -183,6 +184,13 @@ export default function PatientInvoices() {
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
             Thanh toán một phần
+          </span>
+        );
+      case 'Đã hủy':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-300">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
+            Đã hủy
           </span>
         );
       default:
@@ -393,6 +401,17 @@ export default function PatientInvoices() {
                   }`}
               >
                 Thanh toán một phần
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStatusFilter('CANCELLED')}
+                className={`min-h-10 px-2 py-2 rounded-xl text-center font-bold transition-colors cursor-pointer sm:min-h-0 sm:px-3 sm:py-1.5 ${statusFilter === 'CANCELLED'
+                  ? 'bg-slate-700 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
+                  }`}
+              >
+                Đã hủy
               </button>
             </div>
           </div>
@@ -615,7 +634,7 @@ export default function PatientInvoices() {
                         </div>
                         {Number(inv.debtAmount) > 0 && (
                           <div className="flex items-center justify-between text-rose-700 pt-0.5 border-t border-slate-200/60 font-bold">
-                            <span>Còn nợ:</span>
+                            <span>{inv.status === 'Đã hủy' ? 'Chưa thanh toán khi hủy:' : 'Còn nợ:'}</span>
                             <span>{formatVND(inv.debtAmount)}</span>
                           </div>
                         )}

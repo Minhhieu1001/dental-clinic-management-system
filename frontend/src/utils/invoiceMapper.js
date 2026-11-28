@@ -79,7 +79,9 @@ export const mapBackendInvoiceToUi = (inv) => {
         : (inv.date || '');
 
     let uiStatus = 'Chưa thanh toán';
-    if (inv.paymentStatus === 'PAID' || inv.status === 'PAID' || inv.status === 'Đã thanh toán') {
+    if (inv.paymentStatus === 'CANCELLED' || inv.status === 'CANCELLED' || inv.status === 'Đã hủy') {
+        uiStatus = 'Đã hủy';
+    } else if (inv.paymentStatus === 'PAID' || inv.status === 'PAID' || inv.status === 'Đã thanh toán') {
         uiStatus = 'Đã thanh toán';
     } else if (inv.paymentStatus === 'PARTIALLY_PAID' || inv.paymentStatus === 'PARTIAL' || inv.status === 'PARTIAL' || inv.status === 'Thanh toán một phần') {
         uiStatus = 'Thanh toán một phần';
@@ -127,6 +129,9 @@ export const mapBackendInvoiceToUi = (inv) => {
         debtAmount: Math.max(0, debt),
         nextPaymentDate: inv.nextPaymentDate ?? null,
         status: uiStatus,
+        paymentStatus: inv.paymentStatus || (uiStatus === 'Đã hủy' ? 'CANCELLED' : null),
+        cancelReason: inv.cancelReason || '',
+        cancelledAt: inv.cancelledAt || null,
         branchId: inv.branchId || null,
         branchName: inv.branchName || null,
         branchAddress: inv.branchAddress || null,

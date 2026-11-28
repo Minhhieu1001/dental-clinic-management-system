@@ -14,6 +14,7 @@ import {
   Receipt,
   X,
   Save,
+  Ban,
 } from 'lucide-react';
 import {
   Dialog,
@@ -26,6 +27,10 @@ import {
   TableRow,
   TableContainer,
   IconButton,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
 } from '@mui/material';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../../hooks/useAuth';
@@ -34,14 +39,14 @@ import PaymentModal from './PaymentModal';
 import PaymentHistoryModal from './PaymentHistory';
 import VoucherSelectModal from './VoucherSelectModal';
 import PaymentSuccessModal from './action/PaymentSuccessModal';
-import { createInvoice as createInvoiceApi } from '../../../../services/invoice.service';
+import { createInvoice as createInvoiceApi, cancelInvoice as cancelInvoiceApi } from '../../../../services/invoice.service';
 import { getAvailableVoucherByCouponCode } from '../../../../services/promotion.service';
 import { mapBackendInvoiceToUi } from '../../../../utils/invoiceMapper';
 import { useAuthStore } from '../../../../store/authStore';
 import { DEFAULT_DENTAL_CLINIC_NAME, DEFAULT_DENTAL_CLINIC_ADDRESS, PHONE_NUMBER_CLINIC, } from '../../../medical-record/dentist/medicalRecordHelpers';
 import { getEmployeeAddressById } from '../../../../services/employee.service';
 
-export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSuccess, onSaveInvoice, onSaveSuccess }) {
+export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSuccess, onCancelSuccess, onSaveInvoice, onSaveSuccess }) {
   const user = useAuthStore.getState().user;
   const [currentInvoice, setCurrentInvoice] = useState(invoice);
   const [savingInvoice, setSavingInvoice] = useState(false);
@@ -59,6 +64,9 @@ export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSu
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successPaymentData, setSuccessPaymentData] = useState(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancellingInvoice, setCancellingInvoice] = useState(false);
 
   const activeInvoice = currentInvoice || invoice;
 
@@ -87,6 +95,8 @@ export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSu
 
   React.useEffect(() => {
     setCurrentInvoice(invoice);
+    setShowCancelModal(false);
+    setCancelReason('');
     if (invoice) {
       const code = invoice.appliedVoucher || invoice.couponCode || '';
       setVoucherInput(code);
@@ -100,6 +110,7 @@ export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSu
 
   if (!activeInvoice) return null;
   const isSaved = Boolean(activeInvoice.isSave);
+  const isCancelled = activeInvoice.paymentStatus === 'CANCELLED' || activeInvoice.status === 'Đã hủy';
 
   const handleOpenHistory = () => {
     if (!activeInvoice.isSave) {
@@ -110,6 +121,10 @@ export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSu
   };
 
   const handleOpenPayment = () => {
+    if (isCancelled) {
+      toast.error('Hóa đơn đã hủy, không thể thanh toán.');
+      return;
+    }
     if (!activeInvoice.isSave) {
       toast.error('Hóa đơn chưa được lưu! Vui lòng lưu hóa đơn trước khi thanh toán.');
       return;
@@ -171,7 +186,31 @@ export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSu
   const finalServiceTotal = Math.max(0, serviceTotal - discountAmount);
   const totalInvoiceAmount = finalServiceTotal;
   const paidAmount = activeInvoice.paidAmount || 0;
-  const remainingDebt = Math.max(0, totalInvoiceAmount - paidAmount);
+  const remainingDebt = isSaved
+    ? Number(activeInvoice.debtAmount ?? Math.max(0, totalInvoiceAmount - paidAmount))
+    : Math.max(0, totalInvoiceAmount - paidAmount);
+
+  const handleCancelInvoice = async () => {
+    const reason = cancelReason.trim();
+    if (!reason) {
+      toast.error('Vui lòng nhập lý do hủy hóa đơn.');
+      return;
+    }
+    if (cancellingInvoice || !activeInvoice.rawId) return;
+    setCancellingInvoice(true);
+    try {
+      const cancelled = mapBackendInvoiceToUi(await cancelInvoiceApi(activeInvoice.rawId, reason));
+      setCurrentInvoice(cancelled);
+      setShowCancelModal(false);
+      setCancelReason('');
+      toast.success('Đã hủy hóa đơn.');
+      await onCancelSuccess?.(cancelled);
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || 'Không thể hủy hóa đơn.');
+    } finally {
+      setCancellingInvoice(false);
+    }
+  };
 
   const handleSaveInvoiceClick = async () => {
     if (savingInvoice) return;
@@ -367,10 +406,10 @@ export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSu
                   <div>
                     <div className="flex items-center gap-3">
                       <h2 className="font-bold text-slate-900 text-lg tracking-tight">
-                        {invoice.isDraft ? 'HÓA ĐƠN MỚI' : `Hóa đơn thanh toán dịch vụ - ${invoice.id}`}
+                        {activeInvoice.isDraft ? 'HÓA ĐƠN MỚI' : `Hóa đơn thanh toán dịch vụ - ${activeInvoice.id}`}
                       </h2>
                       <Chip
-                        label={invoice.isDraft ? 'Hóa đơn chưa tạo' : invoice.status}
+                        label={activeInvoice.isDraft ? 'Hóa đơn chưa tạo' : activeInvoice.status}
                         size="small"
                         sx={{
                           fontWeight: 700,
@@ -543,6 +582,12 @@ export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSu
                           <span className="text-slate-500">Ghi chú:</span>
                           <strong className="text-slate-700 font-normal">{invoice.note || '-'}</strong>
                         </div>
+                        {isCancelled && (
+                          <div className="flex justify-between gap-3">
+                            <span className="text-slate-500 shrink-0">Lý do hủy:</span>
+                            <strong className="text-rose-700 font-medium text-right whitespace-pre-wrap break-words">{activeInvoice.cancelReason || '-'}</strong>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -692,7 +737,7 @@ export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSu
                           </div>
 
                           <div className="flex justify-between items-center">
-                            <span className="text-slate-600 font-medium">Còn nợ</span>
+                            <span className="text-slate-600 font-medium">{isCancelled ? 'Chưa thanh toán khi hủy' : 'Còn nợ'}</span>
                             <span className="font-black text-rose-600 text-base">{formatVND(remainingDebt)}</span>
                           </div>
 
@@ -700,7 +745,7 @@ export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSu
                             <span className="text-slate-600 font-medium">Trạng thái</span>
                             <Chip
                               icon={<LinkIcon size={12} />}
-                              label={invoice.isDraft ? 'Hóa đơn chưa tạo' : invoice.status}
+                              label={activeInvoice.isDraft ? 'Hóa đơn chưa tạo' : activeInvoice.status}
                               size="small"
                               sx={{
                                 fontWeight: 700,
@@ -752,7 +797,7 @@ export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSu
                           variant="contained"
                           startIcon={<Save size={15} />}
                           onClick={handleSaveInvoiceClick}
-                          disabled={savingInvoice || invoice.isSave}
+                          disabled={savingInvoice || activeInvoice.isSave}
                           size="medium"
                           className="flex-1"
                           sx={{
@@ -777,14 +822,15 @@ export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSu
                             },
                           }}
                         >
-                          {savingInvoice ? 'Đang lưu...' : invoice.isSave ? 'Đã lưu hóa đơn' : 'Lưu hóa đơn'}
+                          {savingInvoice ? 'Đang lưu...' : activeInvoice.isSave ? 'Đã lưu hóa đơn' : 'Lưu hóa đơn'}
                         </Button>
 
-                        {remainingDebt > 0 && (
+                        {(remainingDebt > 0 || isCancelled) && (
                           <Button
                             variant="contained"
                             startIcon={<CreditCard size={15} />}
                             onClick={handleOpenPayment}
+                            disabled={isCancelled}
                             size="medium"
                             className="flex-1"
                             sx={{
@@ -800,10 +846,22 @@ export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSu
                               '&:hover': { backgroundColor: '#1d4ed8', boxShadow: 'none' },
                             }}
                           >
-                            Thanh toán
+                            {isCancelled ? 'Đã hủy' : 'Thanh toán'}
                           </Button>
                         )}
                       </div>
+                      {isSaved && !isCancelled && activeInvoice.status !== 'Đã thanh toán' && (
+                        <Button
+                          variant="outlined"
+                          startIcon={<Ban size={15} />}
+                          onClick={() => setShowCancelModal(true)}
+                          fullWidth
+                          size="small"
+                          sx={{ mt: 1.5, textTransform: 'none', color: '#b91c1c', borderColor: '#fca5a5', '&:hover': { borderColor: '#dc2626', backgroundColor: '#fef2f2' } }}
+                        >
+                          Hủy hóa đơn
+                        </Button>
+                      )}
                     </div>
 
                   </div>
@@ -813,6 +871,31 @@ export default function InvoiceDetailModal({ open, onClose, invoice, onPaymentSu
             </div>
           </div>
         </div>
+      </Dialog>
+
+      <Dialog open={showCancelModal} onClose={cancellingInvoice ? undefined : () => setShowCancelModal(false)} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ fontWeight: 700 }}>Hủy hóa đơn {activeInvoice.id}</DialogTitle>
+        <DialogContent>
+          <p className="text-sm text-slate-600 mb-4">Hóa đơn sẽ ngừng thu tiền. Các khoản đã thanh toán vẫn được giữ trong lịch sử.</p>
+          <TextField
+            autoFocus
+            fullWidth
+            multiline
+            minRows={3}
+            label="Lý do hủy"
+            required
+            value={cancelReason}
+            onChange={(event) => setCancelReason(event.target.value)}
+            inputProps={{ maxLength: 1000 }}
+            helperText={`${cancelReason.length}/1000 ký tự`}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setShowCancelModal(false)} disabled={cancellingInvoice}>Đóng</Button>
+          <Button onClick={handleCancelInvoice} disabled={cancellingInvoice || !cancelReason.trim()} color="error" variant="contained">
+            {cancellingInvoice ? 'Đang hủy...' : 'Xác nhận hủy'}
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* Payment Transaction History Modal */}

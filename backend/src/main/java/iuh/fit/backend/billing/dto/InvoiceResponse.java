@@ -55,6 +55,8 @@ public class InvoiceResponse {
     
     private PaymentStatus paymentStatus;
     private LocalDateTime updateAt;
+    private String cancelReason;
+    private LocalDateTime cancelledAt;
     
     private List<InvoiceDetailDTO> invoiceDetails;
     private List<PaymentTransactionDTO> paymentTransactions;

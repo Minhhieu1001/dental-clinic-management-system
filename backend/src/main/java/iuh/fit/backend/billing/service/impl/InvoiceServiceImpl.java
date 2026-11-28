@@ -4,6 +4,7 @@ import iuh.fit.backend.billing.dto.*;
 import iuh.fit.backend.billing.entity.Invoice;
 import iuh.fit.backend.billing.entity.InvoiceDetail;
 import iuh.fit.backend.billing.entity.PaymentTransactions;
+import iuh.fit.backend.billing.cache.PaymentDraftCache;
 import iuh.fit.backend.billing.enums.PaymentMethod;
 import iuh.fit.backend.billing.enums.PaymentStatus;
 import iuh.fit.backend.billing.enums.TransactionStatus;
@@ -52,6 +53,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     private final UserRepository userRepository;
     private final PromotionRepository promotionRepository;
     private final BranchRepository branchRepository;
+    private final PaymentDraftCache paymentDraftCache;
 
     @Override
     @Transactional(readOnly = true)
@@ -195,8 +197,12 @@ public class InvoiceServiceImpl implements InvoiceService {
             throw new IllegalArgumentException("Thông tin thanh toán không được để trống");
         }
 
-        Invoice invoice = invoiceRepository.findById(id)
+        Invoice invoice = invoiceRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn với ID: " + id));
+
+        if (invoice.getPaymentStatus() == PaymentStatus.CANCELLED) {
+            throw new IllegalArgumentException("Hóa đơn đã hủy, không thể thanh toán");
+        }
 
         BigDecimal serviceAmount = request.getServiceAmount();
         BigDecimal medicineAmount = request.getMedicineAmount();
@@ -290,6 +296,34 @@ public class InvoiceServiceImpl implements InvoiceService {
         }
 
         Invoice updated = invoiceRepository.save(invoice);
+        return mapToResponse(updated);
+    }
+
+    @Override
+    @Transactional
+    public InvoiceResponse cancelInvoice(UUID id, String reason) {
+        String cleanReason = reason == null ? "" : reason.trim();
+        if (cleanReason.isEmpty() || cleanReason.length() > 1000) {
+            throw new IllegalArgumentException("Lý do hủy hóa đơn phải có từ 1 đến 1000 ký tự");
+        }
+
+        Invoice invoice = invoiceRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn với ID: " + id));
+        if (invoice.getPaymentStatus() == PaymentStatus.CANCELLED) {
+            throw new IllegalArgumentException("Hóa đơn đã được hủy trước đó");
+        }
+        if (invoice.getPaymentStatus() == PaymentStatus.PAID) {
+            throw new IllegalArgumentException("Hóa đơn đã thanh toán đủ, không thể hủy");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        invoice.setPaymentStatus(PaymentStatus.CANCELLED);
+        invoice.setCancelReason(cleanReason);
+        invoice.setCancelledAt(now);
+        invoice.setNextPaymentDate(null);
+        invoice.setUpdateAt(now);
+        Invoice updated = invoiceRepository.save(invoice);
+        paymentDraftCache.removeByInvoiceId(id);
         return mapToResponse(updated);
     }
 
@@ -416,6 +450,8 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .nextPaymentDate(inv.getNextPaymentDate())
                 .paymentStatus(inv.getPaymentStatus())
                 .updateAt(inv.getUpdateAt())
+                .cancelReason(inv.getCancelReason())
+                .cancelledAt(inv.getCancelledAt())
                 .invoiceDetails(detailDTOs)
                 .paymentTransactions(txDTOs)
                 .build();

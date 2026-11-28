@@ -20,4 +20,5 @@ public interface InvoiceService {
     List<InvoiceResponse> getInvoicesByPatientId(UUID patientId);
     InvoiceResponse createInvoice(CreateInvoiceRequest request);
     InvoiceResponse processPayment(UUID id, PaymentRequest request);
+    InvoiceResponse cancelInvoice(UUID id, String reason);
 }

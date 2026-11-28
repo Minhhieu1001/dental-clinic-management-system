@@ -40,6 +40,11 @@ export const payInvoice = async (invoiceId, paymentData) => {
   }
 };
 
+export const cancelInvoice = async (invoiceId, reason) => {
+  const response = await api.patch(`/invoices/${invoiceId}/cancel`, { reason });
+  return response.data?.data ?? response.data?.result ?? response.data;
+};
+
 
 // Lấy danh sách hóa đơn theo bệnh nhân
 export const getInvoicesByPatientId = async (patientId) => {

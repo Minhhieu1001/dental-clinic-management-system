@@ -5,6 +5,9 @@ import iuh.fit.backend.billing.entity.Invoice;
 import iuh.fit.backend.billing.enums.PaymentStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
+import java.util.Optional;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
@@ -14,6 +17,9 @@ import java.util.UUID;
 
 @Repository
 public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
+        @Lock(LockModeType.PESSIMISTIC_WRITE)
+        @Query("SELECT i FROM Invoice i WHERE i.id = :id")
+        Optional<Invoice> findByIdForUpdate(@Param("id") UUID id);
         @Query("""
                         SELECT i FROM Invoice i JOIN FETCH i.patient p
                         WHERE i.remainingAmount > 0
@@ -71,9 +77,9 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
 
         @Query(value = """
                         SELECT
-                            COALESCE(SUM(i.final_amount), 0) AS "totalRevenue",
+                            COALESCE(SUM(CASE WHEN i.payment_status = 'CANCELLED' THEN i.paid_amount ELSE i.final_amount END), 0) AS "totalRevenue",
                             COALESCE(SUM(i.paid_amount), 0) AS "totalPaid",
-                            COALESCE(SUM(i.remaining_amount), 0) AS "totalDebt",
+                            COALESCE(SUM(CASE WHEN i.payment_status = 'CANCELLED' THEN 0 ELSE i.remaining_amount END), 0) AS "totalDebt",
                             COUNT(i.id) AS "totalCount",
                             COALESCE(SUM(COALESCE(tx.total_transaction, 0)), 0) AS "totalTransaction",
                             COALESCE(SUM(COALESCE(tx.total_medicine, 0)), 0) AS "totalMedicine"

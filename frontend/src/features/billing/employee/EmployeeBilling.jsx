@@ -356,6 +356,7 @@ export default function EmployeeBilling() {
                 <option value="PAID">Đã thanh toán</option>
                 <option value="PARTIALLY_PAID">Thanh toán một phần</option>
                 <option value="UNPAID">Chưa thanh toán</option>
+                <option value="CANCELLED">Đã hủy</option>
               </select>
             </div>
           </div>
@@ -473,6 +474,8 @@ export default function EmployeeBilling() {
                             ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                             : inv.status === 'Thanh toán một phần'
                               ? 'bg-amber-50 text-amber-800 border-amber-200'
+                              : inv.status === 'Đã hủy'
+                                ? 'bg-slate-100 text-slate-700 border-slate-300'
                               : 'bg-rose-50 text-rose-800 border-rose-200'
                             }`}
                         >
@@ -523,6 +526,7 @@ export default function EmployeeBilling() {
           <Eye size={15} /> Xem chi tiết
         </MenuItem>
         <MenuItem
+          disabled={menuInvoice?.status === 'Đã hủy' || menuInvoice?.status === 'Đã thanh toán'}
           onClick={() => {
             setSelectedInvoice(menuInvoice);
             setShowDetailModal(true);
@@ -550,6 +554,7 @@ export default function EmployeeBilling() {
         onClose={() => setShowDetailModal(false)}
         invoice={selectedInvoice}
         onPaymentSuccess={handlePaymentSuccess}
+        onCancelSuccess={handlePaymentSuccess}
         onSaveInvoice={handleSaveDraftInvoice}
       />
 

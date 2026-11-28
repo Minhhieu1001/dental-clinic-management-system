@@ -501,7 +501,7 @@ export default function PatientAppointments() {
         );
       case 'COMPLETED':
         return (
-          <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-bold inline-flex items-center gap-1 shrink-0">
+          <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 border border-emerald-300 text-[11px] font-extrabold inline-flex items-center gap-1 shrink-0">
             <Check className="h-3 w-3" />
             Hoàn thành
           </span>
@@ -741,7 +741,7 @@ export default function PatientAppointments() {
         </div>
 
         {/* Card 3: Đã khám xong */}
-        <div className="bg-white rounded-lg p-2.5 sm:p-3 border border-slate-200/80 shadow-2xs hover:border-slate-300 transition-all flex flex-col justify-between">
+        <div className="bg-emerald-50 rounded-lg p-2.5 sm:p-3 border border-emerald-300 shadow-2xs hover:border-emerald-500 transition-all flex flex-col justify-between">
           <div>
             <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-slate-400 block truncate">
               Đã khám xong
@@ -916,7 +916,7 @@ export default function PatientAppointments() {
             return (
               <div
                 key={apt.id}
-                className="bg-white rounded-xl border border-slate-200/90 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group"
+                className={`rounded-xl border shadow-2xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group ${apt.status === 'COMPLETED' ? 'bg-emerald-50/70 border-emerald-300 hover:border-emerald-500' : 'bg-white border-slate-200/90'}`}
               >
                 {/* Card Top Header */}
                 <div className="p-3.5 sm:p-4 space-y-3">
@@ -1239,7 +1239,7 @@ export default function PatientAppointments() {
                     return (
                       <div
                         key={apt.id}
-                        className="p-3.5 rounded-xl border border-slate-200/90 hover:border-slate-300 bg-slate-50/50 hover:bg-white space-y-2.5 transition-all shadow-2xs group"
+                        className={`p-3.5 rounded-xl border space-y-2.5 transition-all shadow-2xs group ${apt.status === 'COMPLETED' ? 'border-emerald-300 bg-emerald-50/70 hover:border-emerald-500' : 'border-slate-200/90 bg-slate-50/50 hover:bg-white hover:border-slate-300'}`}
                       >
                         {/* Header: Service Name & Status Badge */}
                         <div className="flex items-start justify-between gap-2">
@@ -1375,7 +1375,7 @@ export default function PatientAppointments() {
                     className={`absolute -left-6 sm:-left-8 top-1 h-5 w-5 rounded-full border-2 border-white flex items-center justify-center transition-all ${isUpcoming
                       ? 'bg-[#009766] ring-4 ring-[#009766]/20'
                       : apt.status === 'COMPLETED'
-                        ? 'bg-slate-700'
+                        ? 'bg-emerald-600 ring-4 ring-emerald-100'
                         : 'bg-rose-500'
                       }`}
                   >
@@ -1383,7 +1383,7 @@ export default function PatientAppointments() {
                   </div>
 
                   {/* Timeline Card */}
-                  <div className="bg-slate-50/70 hover:bg-white p-4.5 rounded-xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all space-y-3">
+                  <div className={`p-4.5 rounded-xl border shadow-xs hover:shadow-md transition-all space-y-3 ${apt.status === 'COMPLETED' ? 'bg-emerald-50/70 border-emerald-300 hover:border-emerald-500' : 'bg-slate-50/70 hover:bg-white border-slate-200/80'}`}>
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div>
                         <div className="flex items-center gap-2">

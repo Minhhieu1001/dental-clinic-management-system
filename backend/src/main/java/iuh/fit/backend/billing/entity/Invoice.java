@@ -78,6 +78,12 @@ public class Invoice {
     @Column(name = "update_at")
     private LocalDateTime updateAt;
 
+    @Column(name = "cancel_reason", length = 1000)
+    private String cancelReason;
+
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
     @Builder.Default
     @OneToMany(mappedBy = "invoice", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<InvoiceDetail> invoiceDetails = new ArrayList<>();

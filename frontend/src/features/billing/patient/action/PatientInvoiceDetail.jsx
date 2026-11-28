@@ -100,6 +100,8 @@ export default function PatientInvoiceDetail({ invoice, onBack }) {
             ? 'bg-emerald-50 text-emerald-700'
             : invoice.status === 'Thanh toán một phần'
                 ? 'bg-amber-50 text-amber-700'
+                : invoice.status === 'Đã hủy'
+                    ? 'bg-slate-100 text-slate-700'
                 : 'bg-rose-50 text-rose-700';
 
     return (
@@ -164,6 +166,9 @@ export default function PatientInvoiceDetail({ invoice, onBack }) {
                         <p className="text-xs text-slate-500 mt-1.5">
                             Ngày lập: {invoice.date || 'Chưa cập nhật'}
                         </p>
+                        {invoice.status === 'Đã hủy' && (
+                            <p className="text-xs text-rose-700 mt-1.5 whitespace-pre-wrap">Lý do hủy: {invoice.cancelReason || 'Chưa cập nhật'}</p>
+                        )}
                     </div>
                 </div>
 

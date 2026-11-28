@@ -408,10 +408,10 @@ export default function DentistAppointments() {
       case 'COMPLETED':
       case 'completed':
         return {
-          cardBg: 'bg-white border border-slate-200 border-l-[3.5px] border-l-slate-400 text-slate-900 hover:border-slate-300 hover:shadow-xs transition-all',
-          badgeBg: 'bg-slate-100 text-slate-700 border border-slate-200',
+          cardBg: 'bg-emerald-50 border border-emerald-200 border-l-[3.5px] border-l-emerald-600 text-slate-900 hover:border-emerald-400 hover:shadow-sm transition-all',
+          badgeBg: 'bg-emerald-700 text-white border border-emerald-800 font-extrabold',
           label: 'Hoàn thành',
-          iconColor: 'text-slate-600',
+          iconColor: 'text-emerald-700',
         };
       case 'CANCELLED':
       case 'cancelled':

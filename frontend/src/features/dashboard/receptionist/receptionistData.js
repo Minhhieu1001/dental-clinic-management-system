@@ -52,7 +52,7 @@ export const appointmentStatusConfig = {
   },
   COMPLETED: {
     label: 'Hoàn thành',
-    className: 'bg-slate-100 text-slate-700 border border-slate-200',
+    className: 'bg-emerald-100 text-emerald-900 border border-emerald-300 font-extrabold',
     action: 'Hoàn thành',
   },
   CANCELLED: {

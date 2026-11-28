@@ -953,19 +953,19 @@ export default function CreateAppointmentModal({
                     <label className="block text-[11px] font-bold text-slate-700 mb-1">
                       Chi nhánh tiếp nhận khám
                     </label>
-                    <div className="h-[36px] px-3 rounded-md bg-teal-50/70 border border-teal-200/80 flex items-center justify-between text-xs text-teal-900 font-medium">
-                      <div className="flex items-center gap-2 truncate min-w-0">
-                        <Building size={14} className="text-teal-700 shrink-0" />
-                        <span className="font-bold truncate text-slate-800">
+                    <div className="min-h-[48px] px-3 py-2 rounded-md bg-teal-50/70 border border-teal-200/80 flex items-start gap-2 text-xs text-teal-900 font-medium">
+                      <Building size={14} className="text-teal-700 shrink-0 mt-0.5" />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-slate-800 leading-4 wrap-break-word">
                           {selectedBranch?.branchName || 'Chi nhánh Crown Dental'}
-                        </span>
+                        </p>
                         {selectedBranch?.address && (
-                          <span className="text-[11px] text-slate-500 truncate hidden sm:inline">
-                            • {selectedBranch?.address}
-                          </span>
+                          <p className="text-[11px] leading-4 text-slate-500 wrap-break-word mt-0.5">
+                            {selectedBranch.address}
+                          </p>
                         )}
                       </div>
-                      <span className="shrink-0 text-[10px] font-bold text-teal-700 bg-teal-100/90 px-1.5 py-0.5 rounded ml-2">
+                      <span className="shrink-0 text-[10px] font-bold text-teal-700 bg-teal-100/90 px-1.5 py-0.5 rounded">
                         Cố định
                       </span>
                     </div>
@@ -975,12 +975,12 @@ export default function CreateAppointmentModal({
 
               {/* Title & Tabs Chọn dịch vụ / Lý do khám */}
               <div>
-                <div className="flex items-center justify-between pb-1.5 border-b border-slate-200">
+                <div className="flex flex-wrap items-center justify-between gap-2 pb-1.5 border-b border-slate-200">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
                     <FileText size={14} className="text-teal-700" />
                     Lý do khám bệnh <span className="text-rose-500">*</span>
                   </h3>
-                  <span className="text-[11px] text-teal-800 font-semibold bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                  <span className="max-w-full text-[11px] text-teal-800 font-semibold bg-teal-50 px-2 py-0.5 rounded border border-teal-200 wrap-break-word">
                     Đã chọn: {selectedService?.serviceName || 'Chưa chọn'}
                   </span>
                 </div>

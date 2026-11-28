@@ -355,6 +355,7 @@ export default function InvoiceLookup() {
       if (statusFilter === 'PAID' && inv.status !== 'Đã thanh toán') return false;
       if (statusFilter === 'PARTIAL' && inv.status !== 'Thanh toán một phần') return false;
       if (statusFilter === 'UNPAID' && inv.status !== 'Chưa thanh toán') return false;
+      if (statusFilter === 'CANCELLED' && inv.status !== 'Đã hủy') return false;
 
       // 3. Search Query filter (Mã HĐ hoặc Tên bệnh nhân)
       if (searchQuery.trim()) {
@@ -661,6 +662,7 @@ export default function InvoiceLookup() {
                 <option value="PAID">Đã thanh toán đủ</option>
                 <option value="PARTIAL">Thanh toán một phần</option>
                 <option value="UNPAID">Chưa thanh toán</option>
+                <option value="CANCELLED">Đã hủy</option>
               </select>
             </div>
           </div>
@@ -758,6 +760,8 @@ export default function InvoiceLookup() {
                             ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                             : inv.status === 'Thanh toán một phần'
                               ? 'bg-amber-50 text-amber-800 border-amber-200'
+                              : inv.status === 'Đã hủy'
+                                ? 'bg-slate-100 text-slate-700 border-slate-300'
                               : 'bg-rose-50 text-rose-800 border-rose-200'
                             }`}
                         >
@@ -816,7 +820,7 @@ export default function InvoiceLookup() {
             setShowPaymentModal(true);
             handleCloseMenu();
           }}
-          disabled={!menuInvoice || menuInvoice.debtAmount <= 0}
+          disabled={!menuInvoice || menuInvoice.status === 'Đã hủy' || menuInvoice.debtAmount <= 0}
           className="text-xs font-medium text-teal-700 gap-2"
         >
           <CreditCard size={15} className="text-teal-700" /> Thanh toán
@@ -848,6 +852,7 @@ export default function InvoiceLookup() {
         onClose={() => setShowDetailModal(false)}
         invoice={selectedInvoice}
         onPaymentSuccess={handlePaymentSuccess}
+        onCancelSuccess={handlePaymentSuccess}
         onSaveInvoice={handleSaveDraftInvoice}
       />
 

@@ -96,7 +96,7 @@ export default function EmployeeAppointments() {
   // View state: 'WEEK' | 'DAY' | 'MONTH' | 'LIST'
   const [viewMode, setViewMode] = useState('WEEK');
 
-  // Receptionist Status Filter: 'ALL' | 'UNASSIGNED' | 'SCHEDULED' | 'REJECTED'
+  // Receptionist Status Filter: 'ALL' | 'UNASSIGNED' | 'SCHEDULED' | 'COMPLETED' | 'REJECTED'
   const [statusFilter, setStatusFilter] = useState('ALL');
 
   // Date Navigation State (Current week start date)
@@ -413,13 +413,14 @@ export default function EmployeeAppointments() {
   const weekStats = useMemo(() => {
     let unassigned = 0;
     let scheduled = 0;
+    let completed = 0;
     let rejected = 0;
     let filteredCount = 0;
     let myCreatedCount = 0;
     let webRequestCount = 0;
 
     if (weekDaysList.length === 0) {
-      return { unassigned: 0, scheduled: 0, rejected: 0, total: 0, myCreatedCount: 0, webRequestCount: 0 };
+      return { unassigned: 0, scheduled: 0, completed: 0, rejected: 0, total: 0, myCreatedCount: 0, webRequestCount: 0 };
     }
 
     const startWeek = new Date(weekDaysList[0]);
@@ -456,15 +457,17 @@ export default function EmployeeAppointments() {
 
         if (apt.status === 'CANCELLED' || apt.status === 'REJECTED') {
           rejected++;
+        } else if (apt.status === 'COMPLETED') {
+          completed++;
         } else if (apt.status === 'PENDING' || isUnassigned) {
           unassigned++;
         } else {
-          scheduled++; // SCHEDULED / CONFIRMED / WAITING / IN_PROGRESS / COMPLETED
+          scheduled++; // SCHEDULED / CONFIRMED / WAITING / IN_PROGRESS
         }
       }
     });
 
-    return { unassigned, scheduled, rejected, total: filteredCount, myCreatedCount, webRequestCount };
+    return { unassigned, scheduled, completed, rejected, total: filteredCount, myCreatedCount, webRequestCount };
   }, [appointments, weekDaysList, selectedDentistId, searchTerm, isApptByCurrentEmp, isApptFromWeb]);
 
   // Filter 7-day appointments list for LIST view
@@ -497,8 +500,9 @@ export default function EmployeeAppointments() {
         // Receptionist Status Filter
         const isUnassigned = !apt.dentistId && !apt.dentistName;
         if (statusFilter !== 'ALL') {
-          if (statusFilter === 'UNASSIGNED' && apt.status !== 'PENDING' && !isUnassigned) return false;
-          if (statusFilter === 'SCHEDULED' && (apt.status === 'CANCELLED' || apt.status === 'REJECTED' || apt.status === 'PENDING' || isUnassigned)) return false;
+          if (statusFilter === 'UNASSIGNED' && !(apt.status === 'PENDING' || (isUnassigned && !['COMPLETED', 'CANCELLED', 'REJECTED'].includes(apt.status)))) return false;
+          if (statusFilter === 'SCHEDULED' && (apt.status === 'CANCELLED' || apt.status === 'REJECTED' || apt.status === 'COMPLETED' || apt.status === 'PENDING' || isUnassigned)) return false;
+          if (statusFilter === 'COMPLETED' && apt.status !== 'COMPLETED') return false;
           if (statusFilter === 'REJECTED' && apt.status !== 'CANCELLED' && apt.status !== 'REJECTED') return false;
         }
 
@@ -566,8 +570,9 @@ export default function EmployeeAppointments() {
       // Receptionist Status Filter
       const isUnassigned = !apt.dentistId && !apt.dentistName;
       if (statusFilter !== 'ALL') {
-        if (statusFilter === 'UNASSIGNED' && apt.status !== 'PENDING' && !isUnassigned) return false;
-        if (statusFilter === 'SCHEDULED' && (apt.status === 'CANCELLED' || apt.status === 'REJECTED' || apt.status === 'PENDING' || isUnassigned)) return false;
+        if (statusFilter === 'UNASSIGNED' && !(apt.status === 'PENDING' || (isUnassigned && !['COMPLETED', 'CANCELLED', 'REJECTED'].includes(apt.status)))) return false;
+        if (statusFilter === 'SCHEDULED' && (apt.status === 'CANCELLED' || apt.status === 'REJECTED' || apt.status === 'COMPLETED' || apt.status === 'PENDING' || isUnassigned)) return false;
+        if (statusFilter === 'COMPLETED' && apt.status !== 'COMPLETED') return false;
         if (statusFilter === 'REJECTED' && apt.status !== 'CANCELLED' && apt.status !== 'REJECTED') return false;
       }
 
@@ -649,6 +654,16 @@ export default function EmployeeAppointments() {
         label: 'Từ chối',
         iconColor: 'text-rose-600',
         type: 'REJECTED',
+      };
+    }
+
+    if (status === 'COMPLETED') {
+      return {
+        cardBg: 'bg-emerald-50 border-l-emerald-600 text-emerald-950 hover:bg-emerald-100 hover:shadow-sm',
+        badgeBg: 'bg-emerald-700 text-white font-extrabold ring-1 ring-emerald-800/20',
+        label: 'Hoàn tất',
+        iconColor: 'text-emerald-700',
+        type: 'COMPLETED',
       };
     }
 
@@ -938,6 +953,13 @@ export default function EmployeeAppointments() {
                     title={`Đã lên lịch: ${weekStats.scheduled} (${Math.round((weekStats.scheduled / weekStats.total) * 100)}%)`}
                   />
                 )}
+                {weekStats.completed > 0 && (
+                  <div
+                    style={{ width: `${(weekStats.completed / weekStats.total) * 100}%` }}
+                    className="h-full bg-gradient-to-r from-emerald-500 to-emerald-700 transition-all duration-300 first:rounded-l-full last:rounded-r-full"
+                    title={`Hoàn tất: ${weekStats.completed} (${Math.round((weekStats.completed / weekStats.total) * 100)}%)`}
+                  />
+                )}
                 {weekStats.rejected > 0 && (
                   <div
                     style={{ width: `${(weekStats.rejected / weekStats.total) * 100}%` }}
@@ -951,7 +973,7 @@ export default function EmployeeAppointments() {
         </div>
 
         {/* Metric Cards Grid below the progress bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-0.5 text-xs select-none">
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2 pt-0.5 text-xs select-none">
           {/* Card 1: Tất cả */}
           <div
             onClick={() => setStatusFilter('ALL')}
@@ -1004,7 +1026,25 @@ export default function EmployeeAppointments() {
             </span>
           </div>
 
-          {/* Card 4: Từ chối */}
+          {/* Card 4: Hoàn tất */}
+          <div
+            onClick={() => setStatusFilter('COMPLETED')}
+            className={`rounded-sm p-2 px-2.5 border flex items-center justify-between shadow-2xs cursor-pointer transition-all duration-150 active:scale-95 ${statusFilter === 'COMPLETED'
+              ? 'bg-emerald-100 border-emerald-700 ring-2 ring-emerald-700'
+              : 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100'
+              }`}
+            title="Nhấp để lọc lịch hẹn đã hoàn tất"
+          >
+            <div>
+              <div className="text-[10px] text-emerald-800 uppercase font-extrabold">HOÀN TẤT</div>
+              <div className="text-xs font-extrabold text-emerald-950 mt-0.5">{weekStats.completed} ca</div>
+            </div>
+            <span className="text-[11px] font-bold text-emerald-800 bg-white px-1.5 py-0.5 rounded border border-emerald-200">
+              {weekStats.total > 0 ? Math.round((weekStats.completed / weekStats.total) * 100) : 0}%
+            </span>
+          </div>
+
+          {/* Card 5: Từ chối */}
           <div
             onClick={() => setStatusFilter('REJECTED')}
             className={`rounded-sm p-2 px-2.5 border flex items-center justify-between shadow-2xs cursor-pointer transition-all duration-150 active:scale-95 ${statusFilter === 'REJECTED'
